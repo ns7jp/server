@@ -19,8 +19,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # 0.35.0 is the immutable safe release identified in GHSA-69fq-xp46-6x23.
       - name: Scan dependencies, secrets, and configuration
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@0.35.0
         with:
           scan-type: fs
           scan-ref: .
