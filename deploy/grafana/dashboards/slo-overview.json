@@ -1,0 +1,272 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "unit": "percentunit",
+          "min": 0.99,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "orange", "value": 0.995},
+              {"color": "green", "value": 0.999}
+            ]
+          }
+        }
+      },
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0},
+      "id": 1,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "expr": "sli:probe_success:ratio_rate30d",
+          "refId": "A",
+          "legendFormat": "30 day availability"
+        }
+      ],
+      "title": "Current Availability (30d)",
+      "type": "stat",
+      "description": "SLO 目標 99.5%。緑 >= 99.9%、橙 99.5〜99.9%、赤 < 99.5%。"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 1,
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "orange", "value": 0.2},
+              {"color": "yellow", "value": 0.5},
+              {"color": "green", "value": 0.8}
+            ]
+          }
+        }
+      },
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 0},
+      "id": 2,
+      "options": {
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}
+      },
+      "targets": [
+        {
+          "expr": "slo:error_budget_remaining_ratio:rate30d",
+          "refId": "A",
+          "legendFormat": "Remaining"
+        }
+      ],
+      "title": "Error Budget Remaining (30d)",
+      "type": "gauge",
+      "description": "30 日エラーバジェット (216 分) の残量。80% 以上で緑、20% 未満で赤。"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 2,
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "orange", "value": 6},
+              {"color": "red", "value": 14.4}
+            ]
+          }
+        }
+      },
+      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 0},
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {"expr": "slo:burn_rate:rate1h", "refId": "A", "legendFormat": "1h burn"},
+        {"expr": "slo:burn_rate:rate6h", "refId": "B", "legendFormat": "6h burn"}
+      ],
+      "title": "Burn Rate (1h / 6h)",
+      "type": "stat",
+      "description": "14.4 = fast burn しきい値、6 = slow burn しきい値。1 を超えると平常以上の速度でバジェット消費中。"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0.95,
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 6},
+      "id": 4,
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "none"}
+      },
+      "targets": [
+        {"expr": "sli:probe_success:ratio_rate5m", "refId": "A", "legendFormat": "5m"},
+        {"expr": "sli:probe_success:ratio_rate1h", "refId": "B", "legendFormat": "1h"},
+        {"expr": "sli:probe_success:ratio_rate6h", "refId": "C", "legendFormat": "6h"}
+      ],
+      "title": "Probe Success Ratio over Time",
+      "type": "timeseries",
+      "description": "短窓 (5m) と長窓 (1h, 6h) の成功率。短窓だけが下がる場合は瞬間的な障害、両方下がる場合は持続的な障害。"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "red", "value": 0.5}
+            ]
+          },
+          "custom_overrides": []
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 6},
+      "id": 5,
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "none"}
+      },
+      "targets": [
+        {"expr": "probe_duration_seconds{job=\"blackbox-probe-health\"}", "refId": "A", "legendFormat": "current"},
+        {"expr": "sli:probe_duration_seconds:p95_1h", "refId": "B", "legendFormat": "p95 (1h)"}
+      ],
+      "title": "Probe Duration (vs SLO 500ms)",
+      "type": "timeseries",
+      "description": "p95 が 500ms を超えると SLOLatencyHigh が発火する。"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1},
+              {"color": "orange", "value": 6},
+              {"color": "red", "value": 14.4}
+            ]
+          }
+        }
+      },
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 14},
+      "id": 6,
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi", "sort": "none"}
+      },
+      "targets": [
+        {"expr": "slo:burn_rate:rate5m", "refId": "A", "legendFormat": "5m burn rate"},
+        {"expr": "slo:burn_rate:rate30m", "refId": "B", "legendFormat": "30m burn rate"},
+        {"expr": "slo:burn_rate:rate1h", "refId": "C", "legendFormat": "1h burn rate"},
+        {"expr": "slo:burn_rate:rate6h", "refId": "D", "legendFormat": "6h burn rate"}
+      ],
+      "title": "Burn Rate windows (fast / slow)",
+      "type": "timeseries",
+      "description": "Multi-window Multi-burn-rate アラートの根拠。5m & 1h が 14.4 を超えると fast burn、30m & 6h が 6 を超えると slow burn。"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "green", "value": 1}
+            ]
+          },
+          "mappings": [
+            {"options": {"0": {"text": "DOWN"}, "1": {"text": "UP"}}, "type": "value"}
+          ]
+        }
+      },
+      "gridPos": {"h": 4, "w": 12, "x": 0, "y": 22},
+      "id": 7,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {"expr": "up{job=\"alertmanager\"}", "refId": "A", "legendFormat": "alertmanager"},
+        {"expr": "up{job=\"blackbox\"}", "refId": "B", "legendFormat": "blackbox"},
+        {"expr": "up{job=\"server-monitor\"}", "refId": "C", "legendFormat": "server-monitor"}
+      ],
+      "title": "Monitoring of Monitoring",
+      "type": "stat",
+      "description": "アラート配送経路と SLI 計測経路の生存確認。"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "none"}},
+      "gridPos": {"h": 4, "w": 12, "x": 12, "y": 22},
+      "id": 8,
+      "options": {
+        "content": "## SLO 早見表\n\n| 指標 | 目標 | 期間 |\n| --- | --- | --- |\n| 可用性 | 99.5% | 30 日 |\n| /healthz p95 | < 500ms | 28 日 |\n| アラート到達時間 | < 2 分 | 月次手動テスト |\n\n運用ルールと月次レビューは [docs/slo.md](https://github.com/ns7jp/server-monitor/blob/main/docs/slo.md) を参照。",
+        "mode": "markdown"
+      },
+      "title": "SLO Definition",
+      "type": "text"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["infrastructure", "server-monitor", "slo"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Server Monitor SLO",
+  "uid": "slo-overview",
+  "version": 1
+}

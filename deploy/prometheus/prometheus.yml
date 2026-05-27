@@ -1,9 +1,12 @@
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
+  external_labels:
+    monitor: server-monitor-lab
 
 rule_files:
   - /etc/prometheus/rules.yml
+  - /etc/prometheus/slo-rules.yml
 
 alerting:
   alertmanagers:
@@ -26,3 +29,38 @@ scrape_configs:
       - targets: ["node-exporter:9100"]
         labels:
           environment: lab
+
+  # アラート経路自体の生存監視（「監視の監視」）
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]
+        labels:
+          environment: lab
+
+  # blackbox-exporter 自身の up メトリクス
+  - job_name: blackbox
+    static_configs:
+      - targets: ["blackbox:9115"]
+        labels:
+          environment: lab
+
+  # SLI: ユーザーが触る入口 (nginx) を通して /healthz を 30 秒ごとに probe する。
+  - job_name: blackbox-probe-health
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    static_configs:
+      - targets:
+          - http://nginx:8080/healthz
+        labels:
+          environment: lab
+          slo_service: server-monitor
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
