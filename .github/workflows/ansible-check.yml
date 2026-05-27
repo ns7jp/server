@@ -25,11 +25,12 @@ jobs:
       - name: Install Ansible toolchain
         run: |
           python -m pip install --upgrade pip
-          pip install 'ansible-core>=2.16,<2.18' 'ansible-lint>=24,<26' 'yamllint>=1.35'
+          pip install 'ansible' 'ansible-lint' 'yamllint'
 
-      - name: Install collections
-        working-directory: ansible
-        run: ansible-galaxy collection install -r requirements.yml
+      - name: Show installed versions
+        run: |
+          ansible --version
+          ansible-lint --version
 
       - name: ansible-lint
         working-directory: ansible
@@ -65,11 +66,15 @@ jobs:
       - name: Install Ansible + Molecule
         run: |
           python -m pip install --upgrade pip
-          pip install 'ansible-core>=2.16,<2.18' 'molecule>=24,<26' 'molecule-plugins[docker]>=23.5' 'docker>=7.1'
+          pip install 'ansible' 'molecule' 'molecule-plugins[docker]' 'docker'
 
-      - name: Install Ansible collections
-        working-directory: ansible
-        run: ansible-galaxy collection install -r requirements.yml
+      - name: Show installed versions
+        run: |
+          ansible --version
+          molecule --version
+
+      - name: Pre-pull molecule test image
+        run: docker pull geerlingguy/docker-ubuntu2204-ansible:latest
 
       - name: Molecule test for ${{ matrix.role }}
         working-directory: ansible/roles/${{ matrix.role }}
