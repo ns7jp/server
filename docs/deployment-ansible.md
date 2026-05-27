@@ -125,15 +125,31 @@ ls -lah /var/backups/server-monitor
 
 ## 9. ローカル検証（Molecule）
 
-各ロールに Molecule シナリオを同梱している。
+各ロールに Molecule シナリオを同梱している。フルライフサイクル
+（create → converge → idempotence → verify → destroy）は Docker-in-Docker
++ systemd を要するためローカル実行を前提とする。
 
 ```bash
-pip install 'ansible-core' 'molecule' 'molecule-plugins[docker]' 'docker'
+pip install 'ansible' 'molecule' 'molecule-plugins[docker]' 'docker'
+docker pull geerlingguy/docker-ubuntu2204-ansible:latest
 cd ansible/roles/common
-molecule test          # create → converge → idempotence → verify → destroy
+molecule test
 ```
 
-GitHub Actions では `ansible-lint` と `molecule test` を `common` / `docker` / `nginx` / `monitoring` の各ロールに対して並列実行する（`.github/workflows/ansible-check.yml`）。
+`common` 以外も同様に `roles/docker`、`roles/nginx`、`roles/monitoring` から
+`molecule test` を実行できる。冪等性が崩れたタスクは Molecule の
+`idempotence` ステップで検出される。
+
+GitHub Actions（`.github/workflows/ansible-check.yml`）では次を検証する：
+
+| ジョブ | 内容 |
+| --- | --- |
+| `lint` | `ansible-lint --offline` と全 playbook の `--syntax-check` |
+| `molecule (common/docker/nginx/monitoring)` | `molecule list` で各 scenario を読み込み、`converge.yml` / `verify.yml` の `--syntax-check` を実行 |
+
+Molecule のフル実行を CI で行うには共有ランナー上の Docker daemon と
+systemd-in-container の組み合わせが安定しないため、CI ではシナリオの
+妥当性のみを検証する。実環境での収束 / 冪等性確認は上記のローカル実行で行う。
 
 ## 10. 既存 docker-compose 環境からの移行
 
