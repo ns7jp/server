@@ -26,7 +26,8 @@ Python / Flask で作成したサーバー状態表示アプリを、**認証、
 | 構成管理 | Ansible roles で OS / Docker / TLS / 監視設定 / アプリ配備 / バックアップを宣言的に管理 |
 | クラウド配備 | Terraform で AWS（VPC / ALB / EC2 / Backup / CloudWatch / CloudTrail / GuardDuty / Budgets）を IaC 化、5 モジュール + dev / prod 環境分離 |
 | SLO 運用 | blackbox-exporter による `/healthz` プロービング、Multi-Window Multi-Burn-Rate アラート、Grafana SLO ダッシュボード、月次レビュー運用 |
-| 品質確認 | pytest、GitHub Actions、Compose / Prometheus / Alertmanager / Loki / Promtail / blackbox / Docker build 検証、ansible-lint、Molecule、terraform fmt / validate、tfsec、checkov |
+| 復旧演習 | D-1（月次、プロセスダウン自動復旧）/ D-2（四半期、ホスト障害 → スナップ復元）、ランブックと演習テンプレ、日次バックアップ検証 CI |
+| 品質確認 | pytest、GitHub Actions、Compose / Prometheus / Alertmanager / Loki / Promtail / blackbox / Docker build 検証、ansible-lint、Molecule、terraform fmt / validate、tfsec、checkov、shellcheck（バックアップスクリプト）|
 
 ## 構成
 
@@ -65,6 +66,10 @@ flowchart LR
 | [latency-spike ランブック](docs/runbooks/latency-spike.md) | `/healthz` p95 が 500ms を越えた際の切り分け |
 | [監視の監視ランブック](docs/runbooks/alertmanager-down.md) | Alertmanager / blackbox-exporter 停止時の対応 |
 | [SLO 月次レビュー](docs/slo-reviews/) | 各月のバジェット消費・インシデント振り返り |
+| [復旧演習一覧](docs/drills/README.md) | D-1〜D-5 のシナリオと頻度 |
+| [スナップショット命名規則](docs/backup-naming.md) | バックアップアーティファクトのタグと命名 |
+| [インシデント周知テンプレ](docs/incident-comms.md) | Slack へ流す状態遷移ごとの定型文 |
+| [スナップ復元ランブック](docs/runbooks/restore-from-snapshot.md) | D-2 ホスト障害復旧の正本手順 |
 
 ## ダッシュボード機能
 
@@ -150,6 +155,30 @@ Prometheus が 30 日窓の成功率からバジェット消費率を計算す�
 
 Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可用性、バジェット
 残量、バーンレート、`/healthz` のレイテンシ、監視の監視を 1 画面で見られる。
+
+## 復旧演習
+
+「バックアップではなく、リストアが運用できることが価値」のため、演習を月次・四半期で
+回し、実時間 RTO / RPO を実測する。
+
+| 演習 | 頻度 | 想定時間 | 環境 | 自動化 |
+| --- | --- | --- | --- | --- |
+| **D-1** プロセスダウン → 自動復旧 | 月次 | 15 分 | ローカル Docker | `scripts/drills/d1-process-down.sh` |
+| **D-2** ホスト障害 → 別ホストに復元 | 四半期 | 2 時間 | AWS staging | 手動（ランブック化）|
+
+```bash
+# D-1 を実行
+./scripts/drills/d1-process-down.sh
+```
+
+人手の演習を補うため、`.github/workflows/backup-verify.yml` が毎日 04:00 UTC に：
+
+- Ansible が生成するバックアップシェルスクリプトを **shellcheck** で検査
+- ダミー volume を tar 圧縮し、展開可能性まで **smoke test**
+- （任意）AWS Backup の最新 recovery point の鮮度を OIDC 経由で確認
+
+実施計画と振り返りテンプレは [docs/drills/](docs/drills/) を、演習由来の改善履歴は
+[docs/backup-restore.md](docs/backup-restore.md) を参照。
 
 ## ログ集約
 

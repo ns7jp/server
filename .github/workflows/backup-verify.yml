@@ -1,0 +1,180 @@
+name: Backup verify
+
+on:
+  schedule:
+    # 毎日 04:00 UTC (= 13:00 JST)
+    - cron: '0 4 * * *'
+  push:
+    paths:
+      - 'ansible/roles/backup/**'
+      - 'scripts/drills/**'
+      - '.github/workflows/backup-verify.yml'
+  pull_request:
+    paths:
+      - 'ansible/roles/backup/**'
+      - 'scripts/drills/**'
+      - '.github/workflows/backup-verify.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Ansible が生成するバックアップシェルスクリプトの構文 / リンタ検証。
+  # ---------------------------------------------------------------------------
+  backup-script-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Jinja2 (for rendering)
+        run: pip install 'jinja2>=3,<4'
+
+      - name: Render backup script with sample vars
+        run: |
+          mkdir -p /tmp/rendered
+          python <<'PY'
+          from jinja2 import Environment, FileSystemLoader
+          env = Environment(loader=FileSystemLoader("ansible/roles/backup/templates"))
+          tpl = env.get_template("server-monitor-backup.sh.j2")
+          rendered = tpl.render(
+              backup_target_dir="/var/backups/server-monitor",
+              backup_compose_project="server-monitor-lab",
+              backup_retention_days=14,
+              backup_volumes=["prometheus_data", "grafana_data", "loki_data"],
+          )
+          with open("/tmp/rendered/server-monitor-backup.sh", "w") as f:
+              f.write(rendered)
+          print(rendered)
+          PY
+
+      - name: bash -n on rendered script
+        run: bash -n /tmp/rendered/server-monitor-backup.sh
+
+      - name: bash -n on D-1 drill script
+        run: bash -n scripts/drills/d1-process-down.sh
+
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: shellcheck rendered backup script
+        run: shellcheck /tmp/rendered/server-monitor-backup.sh
+
+      - name: shellcheck D-1 drill script
+        run: shellcheck scripts/drills/d1-process-down.sh
+
+  # ---------------------------------------------------------------------------
+  # 2. ローカルでのバックアップ取得を smoke test する。
+  #    ダミー Docker volume を作って Ansible role と同等の tar 圧縮を実行し、
+  #    生成アーティファクトが期待形式で展開可能か検証する。
+  # ---------------------------------------------------------------------------
+  backup-archive-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare fake compose volumes
+        run: |
+          set -euo pipefail
+          for vol in prometheus_data grafana_data loki_data; do
+            docker volume create "server-monitor-lab_${vol}"
+            docker run --rm \
+              -v "server-monitor-lab_${vol}:/data" \
+              alpine:3.20 \
+              sh -c "mkdir -p /data/inner && echo backup-${vol}-$(date -u +%s) > /data/inner/marker"
+          done
+
+      - name: Render and run backup script
+        run: |
+          set -euo pipefail
+          pip install 'jinja2>=3,<4' >/dev/null
+          mkdir -p /tmp/rendered /tmp/backups
+          python <<'PY'
+          from jinja2 import Environment, FileSystemLoader
+          env = Environment(loader=FileSystemLoader("ansible/roles/backup/templates"))
+          tpl = env.get_template("server-monitor-backup.sh.j2")
+          with open("/tmp/rendered/server-monitor-backup.sh", "w") as f:
+              f.write(tpl.render(
+                  backup_target_dir="/tmp/backups",
+                  backup_compose_project="server-monitor-lab",
+                  backup_retention_days=14,
+                  backup_volumes=["prometheus_data", "grafana_data", "loki_data"],
+              ))
+          PY
+          chmod +x /tmp/rendered/server-monitor-backup.sh
+          /tmp/rendered/server-monitor-backup.sh
+
+      - name: Verify archives exist and are non-empty
+        run: |
+          set -euo pipefail
+          # 最新ディレクトリ (タイムスタンプ名)
+          LATEST=$(ls -td /tmp/backups/*/ | head -1)
+          echo "latest backup dir: $LATEST"
+          for vol in prometheus_data grafana_data loki_data; do
+            test -s "${LATEST}${vol}.tgz" || { echo "::error::${vol}.tgz is missing or empty"; exit 1; }
+            tar tzf "${LATEST}${vol}.tgz" | head -3
+          done
+
+      - name: Cleanup
+        if: always()
+        run: |
+          for vol in prometheus_data grafana_data loki_data; do
+            docker volume rm "server-monitor-lab_${vol}" >/dev/null 2>&1 || true
+          done
+
+  # ---------------------------------------------------------------------------
+  # 3. AWS Backup の最新 recovery point の鮮度を確認する。
+  #    実環境では GitHub OIDC で IAM ロールを assume する。
+  #    OIDC ロールが未設定の環境ではスキップ。
+  # ---------------------------------------------------------------------------
+  cloud-snapshot-age:
+    runs-on: ubuntu-latest
+    if: ${{ vars.ENABLE_AWS_BACKUP_VERIFY == 'true' }}
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-1' }}
+      BACKUP_VAULT: ${{ vars.AWS_BACKUP_VAULT || 'server-monitor-prod-vault' }}
+      RESOURCE_ARN: ${{ vars.AWS_BACKUP_RESOURCE_ARN }}
+      MAX_AGE_HOURS: ${{ vars.AWS_BACKUP_MAX_AGE_HOURS || '25' }}
+    steps:
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_BACKUP_VERIFY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check latest recovery point age
+        run: |
+          set -euo pipefail
+          if [ -z "${RESOURCE_ARN}" ]; then
+            echo "::warning::AWS_BACKUP_RESOURCE_ARN variable is not set; skipping age check"
+            exit 0
+          fi
+          LATEST=$(aws backup list-recovery-points-by-backup-vault \
+            --backup-vault-name "${BACKUP_VAULT}" \
+            --by-resource-arn "${RESOURCE_ARN}" \
+            --query 'RecoveryPoints | sort_by(@,&CreationDate)[-1].CreationDate' \
+            --output text)
+          if [ -z "$LATEST" ] || [ "$LATEST" = "None" ]; then
+            echo "::error::No recovery point found for ${RESOURCE_ARN} in ${BACKUP_VAULT}"
+            exit 1
+          fi
+          # macOS 日付互換のため数値秒で比較
+          LATEST_EPOCH=$(date -u -d "$LATEST" +%s)
+          NOW_EPOCH=$(date -u +%s)
+          AGE_HOURS=$(( (NOW_EPOCH - LATEST_EPOCH) / 3600 ))
+          echo "Latest recovery point: $LATEST (age: ${AGE_HOURS}h)"
+          if [ "$AGE_HOURS" -gt "${MAX_AGE_HOURS}" ]; then
+            echo "::error::Latest recovery point is ${AGE_HOURS}h old (> ${MAX_AGE_HOURS}h)"
+            exit 1
+          fi

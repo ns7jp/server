@@ -39,3 +39,57 @@ docker compose start prometheus grafana loki
 ## 復旧目標
 
 このラボでの目標は、設定が Git に存在し秘密値を復元できる前提で、監視 UI と収集を60分以内に再構築できることである。履歴喪失を許容しない業務要件では、外部ストレージまたはリモート write を別途設計する。
+
+## RTO / RPO 目標
+
+| 障害種別 | RTO | RPO | 関連ランブック / 演習 |
+| --- | --- | --- | --- |
+| プロセスダウン | 5 分 | 0 | [docs/drills/D-1-process-down.md](drills/D-1-process-down.md) |
+| ホスト障害（OS 起動不能） | 60 分 | 24 時間 | [docs/runbooks/restore-from-snapshot.md](runbooks/restore-from-snapshot.md) / [docs/drills/D-2-host-failure.md](drills/D-2-host-failure.md) |
+| AZ 障害（v2.x 以降の冗長化前提）| 15 分 | 0 | （未演習）|
+| リージョン障害 | 24 時間 | 24 時間 | （未演習・Terraform 別リージョン適用）|
+| 操作ミスでデータ削除 | 30 分 | 24 時間 | （D-3 別 PR で追加予定）|
+
+## 復旧演習
+
+「バックアップではなく、リストアが運用できることが価値」。手順書だけでは
+**いざというときに動かない** ため、定期的な演習で実証する。
+
+| 演習 | 頻度 | 想定時間 | 環境 |
+| --- | --- | --- | --- |
+| D-1: プロセスダウン → 自動復旧 | 月次 | 15 分 | ローカル Docker |
+| D-2: ホスト障害 → 別ホストに復元 | 四半期 | 2 時間 | AWS staging |
+
+一覧は [docs/drills/README.md](drills/README.md)、テンプレートは
+[docs/drill-template.md](drill-template.md)、Slack 周知例は
+[docs/incident-comms.md](incident-comms.md) を参照。命名規則は
+[docs/backup-naming.md](backup-naming.md) で統一する。
+
+### D-1 自動ランナー
+
+```bash
+./scripts/drills/d1-process-down.sh
+```
+
+`app` コンテナを SIGKILL し、`restart: unless-stopped` による自動復旧までの時間を
+計測する。Slack 演習チャンネルにそのまま貼れるサマリーと、機械可読 JSON を出力する。
+
+### CI による日次バックアップ検証
+
+`.github/workflows/backup-verify.yml` で以下を毎日 04:00 UTC に検証する。
+
+| ジョブ | 内容 |
+| --- | --- |
+| `backup-script-syntax` | Ansible テンプレートをレンダリングし、`bash -n` + `shellcheck` |
+| `backup-archive-smoke-test` | ダミー volume を作って tar 圧縮、展開可能性まで確認 |
+| `cloud-snapshot-age` | （任意）AWS Backup の最新 recovery point の鮮度を OIDC 経由で確認 |
+
+`cloud-snapshot-age` は GitHub Variable `ENABLE_AWS_BACKUP_VERIFY=true` と
+GitHub Secret `AWS_BACKUP_VERIFY_ROLE_ARN` が設定された環境でのみ動く。
+
+## 演習履歴
+
+| 日付 | 演習 | RTO 実績 | 結果 | 記録 |
+| --- | --- | --- | --- | --- |
+| YYYY-MM-DD | D-1 | XX 秒 | PASS / FAIL | `docs/drills/logs/YYYY-MM-DD-D-1.md` |
+| YYYY-MM-DD | D-2 | XX 分 | PASS / FAIL | `docs/drills/logs/YYYY-MM-DD-D-2.md` |
