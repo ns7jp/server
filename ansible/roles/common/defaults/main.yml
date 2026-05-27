@@ -8,6 +8,7 @@ common_required_packages:
   - chrony
   - ufw
   - unattended-upgrades
+  - openssh-server
 common_disable_root_ssh: true
 common_password_authentication: false
 common_ufw_default_incoming: deny

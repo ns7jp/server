@@ -41,7 +41,8 @@
     path: /etc/ssh/sshd_config
     regexp: '^#?PermitRootLogin'
     line: 'PermitRootLogin no'
-    validate: 'sshd -t -f %s'
+    create: false
+    state: present
   notify: Restart sshd
   when: common_disable_root_ssh | bool
 
@@ -50,7 +51,8 @@
     path: /etc/ssh/sshd_config
     regexp: '^#?PasswordAuthentication'
     line: 'PasswordAuthentication no'
-    validate: 'sshd -t -f %s'
+    create: false
+    state: present
   notify: Restart sshd
   when: not (common_password_authentication | bool)
 
