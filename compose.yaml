@@ -65,6 +65,7 @@ services:
     volumes:
       - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./deploy/prometheus/rules.yml:/etc/prometheus/rules.yml:ro
+      - ./deploy/prometheus/slo-rules.yml:/etc/prometheus/slo-rules.yml:ro
       - prometheus_data:/prometheus
     secrets:
       - metrics_token
@@ -146,6 +147,25 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - promtail_data:/var/lib/promtail
     networks:
+      - monitoring
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.25.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    volumes:
+      - ./deploy/blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    expose:
+      - "9115"
+    # SLI 用に nginx (frontend) と Prometheus (monitoring) の両方を見るため、両ネットワークに参加する。
+    networks:
+      - frontend
       - monitoring
     read_only: true
     tmpfs:

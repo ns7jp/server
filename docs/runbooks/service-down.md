@@ -2,8 +2,17 @@
 
 ## 発火条件
 
-- Alert: `ServerMonitorUnavailable`
-- 条件: Prometheus が `server-monitor` を2分間 scrape できない
+- Alert: `ServerMonitorUnavailable` / `LinuxNodeExporterUnavailable`
+  - Prometheus が `server-monitor` または `linux-node` を 2 分間 scrape できない
+- Alert: `SLOFastBurnRateAvailability`
+  - 5 分窓と 1 時間窓の両方で 14.4 倍のバーンレートを観測。即対応が必要
+- Alert: `SLOSlowBurnRateAvailability`
+  - 30 分窓と 6 時間窓の両方で 6 倍のバーンレート。業務時間内に対応
+
+SLO 違反バーンレートの場合、原因が scrape 失敗とは限らない
+（アプリの一過性 5xx、Nginx 設定不整合、ホスト負荷など）。Grafana の
+`Server Monitor SLO` ダッシュボードと `Server Monitor Infrastructure Lab`
+ダッシュボードを両方確認する。
 
 ## 影響
 

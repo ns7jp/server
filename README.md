@@ -25,7 +25,8 @@ Python / Flask で作成したサーバー状態表示アプリを、**認証、
 | 障害対応 | アラートルール、停止ランブック、CPU 高負荷の模擬インシデント記録 |
 | 構成管理 | Ansible roles で OS / Docker / TLS / 監視設定 / アプリ配備 / バックアップを宣言的に管理 |
 | クラウド配備 | Terraform で AWS（VPC / ALB / EC2 / Backup / CloudWatch / CloudTrail / GuardDuty / Budgets）を IaC 化、5 モジュール + dev / prod 環境分離 |
-| 品質確認 | pytest、GitHub Actions、Compose / Prometheus / Alertmanager / Loki / Promtail / Docker build 検証、ansible-lint、Molecule、terraform fmt / validate、tfsec、checkov |
+| SLO 運用 | blackbox-exporter による `/healthz` プロービング、Multi-Window Multi-Burn-Rate アラート、Grafana SLO ダッシュボード、月次レビュー運用 |
+| 品質確認 | pytest、GitHub Actions、Compose / Prometheus / Alertmanager / Loki / Promtail / blackbox / Docker build 検証、ansible-lint、Molecule、terraform fmt / validate、tfsec、checkov |
 
 ## 構成
 
@@ -60,6 +61,10 @@ flowchart LR
 | [Ansible 配備手順](docs/deployment-ansible.md) | 0 台から構築可能な playbook、roles 構成、Vault、Molecule |
 | [AWS / Terraform 設計](docs/aws-architecture.md) | VPC / ALB / EC2 / Backup / Monitoring の構成と Ansible との接続 |
 | [AWS コスト計画](docs/cost-report.md) | 月額試算、削減策、Budgets、実費記録 |
+| [SLO / SLI / エラーバジェット設計](docs/slo.md) | 可用性 99.5% / レイテンシ p95 < 500ms、Multi-Window Multi-Burn-Rate、月次レビュー |
+| [latency-spike ランブック](docs/runbooks/latency-spike.md) | `/healthz` p95 が 500ms を越えた際の切り分け |
+| [監視の監視ランブック](docs/runbooks/alertmanager-down.md) | Alertmanager / blackbox-exporter 停止時の対応 |
+| [SLO 月次レビュー](docs/slo-reviews/) | 各月のバジェット消費・インシデント振り返り |
 
 ## ダッシュボード機能
 
@@ -117,6 +122,34 @@ terraform apply
 
 詳細は [docs/aws-architecture.md](docs/aws-architecture.md) と
 [docs/cost-report.md](docs/cost-report.md) を参照。
+
+## SLO / エラーバジェット
+
+`server-monitor` のサービス品質目標を SLI / SLO として明文化し、エラーバジェットを
+連続的に観測する。blackbox-exporter が Nginx 経由で `/healthz` を 30 秒間隔で probe し、
+Prometheus が 30 日窓の成功率からバジェット消費率を計算する。
+
+| 項目 | 目標 | 期間 |
+| --- | --- | --- |
+| 可用性 | 99.5% | 30 日（許容ダウンタイム 216 分 / 月） |
+| `/healthz` p95 | < 500ms | 28 日 |
+| アラート到達時間 | < 2 分 | 月次手動テスト |
+
+アラートは Google SRE Workbook の Multi-Window Multi-Burn-Rate パターン。
+
+| アラート | 短窓 / 長窓 | バーンレート | 対応緊急度 |
+| --- | --- | --- | --- |
+| `SLOFastBurnRateAvailability` | 5m / 1h | 14.4 | 即対応 |
+| `SLOSlowBurnRateAvailability` | 30m / 6h | 6 | 業務時間内 |
+| `SLOErrorBudgetExhausted` | — | — | リリース凍結 |
+| `SLOLatencyHigh` | 1h p95 | — | 業務時間内 |
+
+各アラートの `annotations.runbook_url` に対応ランブックを紐付け、Slack 通知から
+ワンクリックで手順に到達できるようにしている。詳細とエラーバジェット運用ルールは
+[docs/slo.md](docs/slo.md) を参照。
+
+Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可用性、バジェット
+残量、バーンレート、`/healthz` のレイテンシ、監視の監視を 1 画面で見られる。
 
 ## ログ集約
 

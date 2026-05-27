@@ -1,0 +1,173 @@
+# SLI / SLO / エラーバジェット用のルール。
+# 定義の出典: docs/slo.md
+#
+# 可用性 SLO: 99.5% (30 日)、エラーバジェット = 0.5%
+# レイテンシ SLO: probe_duration_seconds < 0.5s が 99% (28 日)
+
+groups:
+  # ---------------------------------------------------------------------------
+  # SLI: 確実に計測できる window で「成功率」と「速い probe の割合」を出す。
+  # 元データは blackbox-probe-health job の probe_success / probe_duration_seconds。
+  # ---------------------------------------------------------------------------
+  - name: slo-sli-recording
+    interval: 30s
+    rules:
+      - record: sli:probe_success:ratio_rate5m
+        expr: avg_over_time(probe_success{job="blackbox-probe-health"}[5m])
+
+      - record: sli:probe_success:ratio_rate30m
+        expr: avg_over_time(probe_success{job="blackbox-probe-health"}[30m])
+
+      - record: sli:probe_success:ratio_rate1h
+        expr: avg_over_time(probe_success{job="blackbox-probe-health"}[1h])
+
+      - record: sli:probe_success:ratio_rate6h
+        expr: avg_over_time(probe_success{job="blackbox-probe-health"}[6h])
+
+      - record: sli:probe_success:ratio_rate1d
+        expr: avg_over_time(probe_success{job="blackbox-probe-health"}[1d])
+
+      - record: sli:probe_success:ratio_rate30d
+        expr: avg_over_time(probe_success{job="blackbox-probe-health"}[30d])
+
+      # レイテンシ SLI: probe_duration_seconds < 0.5 となった probe の割合（28 日）
+      - record: sli:probe_fast:ratio_rate28d
+        expr: |
+          (
+            sum_over_time((probe_duration_seconds{job="blackbox-probe-health"} < bool 0.5)[28d:30s])
+              /
+            count_over_time(probe_duration_seconds{job="blackbox-probe-health"}[28d:30s])
+          )
+
+      - record: sli:probe_duration_seconds:p95_1h
+        expr: |
+          quantile_over_time(0.95, probe_duration_seconds{job="blackbox-probe-health"}[1h])
+
+      - record: sli:probe_duration_seconds:p95_28d
+        expr: |
+          quantile_over_time(0.95, probe_duration_seconds{job="blackbox-probe-health"}[28d])
+
+  # ---------------------------------------------------------------------------
+  # エラーバジェット: 30 日 SLO 99.5% に対する消費率と残量。
+  # ---------------------------------------------------------------------------
+  - name: slo-error-budget
+    interval: 1m
+    rules:
+      # 可用性 SLO の目標値（再利用しやすいようルール化）
+      - record: slo:availability_target:server_monitor
+        expr: vector(0.995)
+
+      # 30 日窓のエラー率
+      - record: slo:availability_error_rate:rate30d
+        expr: 1 - sli:probe_success:ratio_rate30d
+
+      # バジェット消費率 = エラー率 / (1 - SLO)
+      # 0 〜 1+ の範囲。1 を超えると SLO 違反。
+      - record: slo:error_budget_consumed_ratio:rate30d
+        expr: |
+          clamp_min(
+            (1 - sli:probe_success:ratio_rate30d) / (1 - 0.995),
+            0
+          )
+
+      # バジェット残量比率（1 = 100% 残、0 = 使い切り）
+      - record: slo:error_budget_remaining_ratio:rate30d
+        expr: |
+          clamp_max(
+            clamp_min(1 - ((1 - sli:probe_success:ratio_rate30d) / (1 - 0.995)), 0),
+            1
+          )
+
+      # バーンレート（短窓 / 長窓）。1 を超えると「平常以上の速度でバジェットを消費している」。
+      - record: slo:burn_rate:rate5m
+        expr: |
+          clamp_min(
+            (1 - sli:probe_success:ratio_rate5m) / (1 - 0.995),
+            0
+          )
+
+      - record: slo:burn_rate:rate30m
+        expr: |
+          clamp_min(
+            (1 - sli:probe_success:ratio_rate30m) / (1 - 0.995),
+            0
+          )
+
+      - record: slo:burn_rate:rate1h
+        expr: |
+          clamp_min(
+            (1 - sli:probe_success:ratio_rate1h) / (1 - 0.995),
+            0
+          )
+
+      - record: slo:burn_rate:rate6h
+        expr: |
+          clamp_min(
+            (1 - sli:probe_success:ratio_rate6h) / (1 - 0.995),
+            0
+          )
+
+  # ---------------------------------------------------------------------------
+  # アラート: Multi-Window Multi-Burn-Rate
+  # 出典: Google SRE Workbook
+  #   Fast burn  = 5m & 1h どちらも 14.4x 以上 → 約 1 時間で 2% のバジェット消費（即対応）
+  #   Slow burn  = 30m & 6h どちらも 6x 以上   → 約 6 時間で 5% のバジェット消費（業務時間内対応）
+  # ---------------------------------------------------------------------------
+  - name: slo-burn-rate
+    rules:
+      - alert: SLOFastBurnRateAvailability
+        expr: |
+          slo:burn_rate:rate5m > 14.4
+          and
+          slo:burn_rate:rate1h > 14.4
+        for: 2m
+        labels:
+          severity: critical
+          slo: availability
+          burn_rate: fast
+        annotations:
+          summary: "可用性 SLO のエラーバジェットを高速消費中（fast burn）"
+          description: "5分窓と1時間窓の両方で 14.4 倍のバーンレートを観測している。このまま継続すると数時間で30日分のバジェットを使い切る。即時対応が必要。"
+          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/service-down.md"
+          dashboard: "http://127.0.0.1:3000/d/slo-overview/server-monitor-slo"
+
+      - alert: SLOSlowBurnRateAvailability
+        expr: |
+          slo:burn_rate:rate30m > 6
+          and
+          slo:burn_rate:rate6h > 6
+        for: 15m
+        labels:
+          severity: warning
+          slo: availability
+          burn_rate: slow
+        annotations:
+          summary: "可用性 SLO のエラーバジェットを継続消費中（slow burn）"
+          description: "30分窓と6時間窓の両方で 6 倍のバーンレートを観測している。30日バジェットの5%を6時間で消費する速度。業務時間内に原因を特定する。"
+          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/service-down.md"
+          dashboard: "http://127.0.0.1:3000/d/slo-overview/server-monitor-slo"
+
+      # バジェットを使い切った時点で通知（締めくくり用）
+      - alert: SLOErrorBudgetExhausted
+        expr: slo:error_budget_consumed_ratio:rate30d >= 1
+        for: 0m
+        labels:
+          severity: critical
+          slo: availability
+        annotations:
+          summary: "可用性 SLO のエラーバジェットを使い切った"
+          description: "直近 30 日のエラーバジェット (0.5%) を使い切り、SLO を割り込んだ。新規リリースを凍結し、信頼性改善を優先する。"
+          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/slo.md"
+
+      # レイテンシ SLO 違反: 1 時間の p95 が 500ms を超えた状態が継続
+      - alert: SLOLatencyHigh
+        expr: sli:probe_duration_seconds:p95_1h > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          slo: latency
+        annotations:
+          summary: "/healthz の p95 応答時間が SLO を超過"
+          description: "直近 1 時間の p95 応答時間が 500ms を超えた状態が 10 分継続している。"
+          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/latency-spike.md"
+          dashboard: "http://127.0.0.1:3000/d/slo-overview/server-monitor-slo"

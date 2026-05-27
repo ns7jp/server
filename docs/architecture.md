@@ -64,6 +64,32 @@ flowchart LR
 
 `server-monitor` の `/metrics` は CPU / メモリ / 稼働秒数 / Load Average (1m, 5m, 15m) / プロセス数 / アプリプロセス起動時刻 / ディスク使用率を Prometheus に提供する。ホスト全体の詳細な収集は `node-exporter` 側に集約する。
 
+## SLO と SLI 計測経路
+
+`server-monitor` は社内向け監視ダッシュボードとして以下の SLO を定める（詳細は
+[docs/slo.md](slo.md) を参照）。
+
+| SLO | 目標 | 計測 |
+| --- | --- | --- |
+| 可用性 | 99.5% / 30 日 | blackbox-exporter が Nginx 経由で `/healthz` を 30 秒間隔で GET |
+| `/healthz` p95 | < 500ms / 28 日 | blackbox-exporter `probe_duration_seconds` |
+| アラート到達時間 | < 2 分 | 月次の手動テスト |
+
+```mermaid
+flowchart LR
+    Probe["blackbox-exporter<br/>30 秒間隔"] -->|"GET /healthz"| Nginx
+    Nginx --> App["Flask /healthz"]
+    Prom["Prometheus<br/>recording rules"] -->|"scrape probe_*"| Probe
+    Prom -->|"sli:* / slo:burn_rate:*"| Alert["Alertmanager<br/>fast/slow burn"]
+    Prom --> Grafana["Grafana<br/>SLO ダッシュボード"]
+    Alert -.通知.-> Slack
+```
+
+Multi-Window Multi-Burn-Rate アラートは Prometheus の recording rule
+（`slo:burn_rate:rate{5m,30m,1h,6h}`）で計算し、各アラートには対応するランブック URL
+を `annotations.runbook_url` で付与する。「監視の監視」として Alertmanager と
+blackbox-exporter 自身の `up` も監視対象に含める。
+
 ## ログ収集とラベル設計
 
 | 対象 | ジョブ | 主なラベル |
