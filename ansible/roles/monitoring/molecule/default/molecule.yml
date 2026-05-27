@@ -1,0 +1,33 @@
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: ../../../../requirements.yml
+driver:
+  name: docker
+platforms:
+  - name: server-monitor-monitoring
+    image: geerlingguy/docker-ubuntu2204-ansible:latest
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      stdout_callback: yaml
+  inventory:
+    group_vars:
+      all:
+        server_monitor_user: monitor
+        server_monitor_group: monitor
+        server_monitor_install_dir: /opt/server-monitor
+        server_monitor_secrets_dir: /opt/server-monitor/deploy/secrets
+        # Molecule では docker run を実行できないため、テンプレート出力のみを検証する
+        monitoring_run_validation: false
+        alertmanager_slack_enabled: false
+        slack_webhook_url: ""
+verifier:
+  name: ansible

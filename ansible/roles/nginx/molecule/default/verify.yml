@@ -1,0 +1,24 @@
+---
+- name: Verify nginx role outcomes
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Stat self-signed cert
+      ansible.builtin.stat:
+        path: /opt/server-monitor/deploy/tls/server.crt
+      register: cert
+
+    - name: Stat self-signed key
+      ansible.builtin.stat:
+        path: /opt/server-monitor/deploy/tls/server.key
+      register: key
+
+    - name: Assert TLS material was generated and is owned by monitor
+      ansible.builtin.assert:
+        that:
+          - cert.stat.exists
+          - key.stat.exists
+          - cert.stat.pw_name == 'monitor'
+          - key.stat.pw_name == 'monitor'
+          - key.stat.mode == '0640'

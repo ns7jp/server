@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: nginx
+  author: server-monitor
+  description: Manage TLS prerequisites for the Nginx reverse proxy that runs inside the compose stack
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+  galaxy_tags:
+    - nginx
+    - tls
+dependencies: []

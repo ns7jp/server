@@ -1,0 +1,38 @@
+---
+- name: Ensure TLS directory exists
+  ansible.builtin.file:
+    path: "{{ nginx_tls_dir }}"
+    state: directory
+    owner: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    mode: '0750'
+
+- name: Install certbot for Let's Encrypt
+  ansible.builtin.apt:
+    name:
+      - certbot
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: nginx_letsencrypt_enabled | bool
+
+- name: Generate self-signed TLS material (lab / staging fallback)
+  ansible.builtin.command:
+    cmd: >-
+      openssl req -x509 -nodes -days 365 -newkey rsa:2048
+      -keyout {{ nginx_tls_dir }}/server.key
+      -out {{ nginx_tls_dir }}/server.crt
+      -subj "/CN={{ nginx_self_signed_cn }}"
+    creates: "{{ nginx_tls_dir }}/server.crt"
+  when: not (nginx_letsencrypt_enabled | bool)
+
+- name: Tighten permissions on TLS material
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    mode: '0640'
+  loop:
+    - "{{ nginx_tls_dir }}/server.key"
+    - "{{ nginx_tls_dir }}/server.crt"
+  when: not (nginx_letsencrypt_enabled | bool)

@@ -1,0 +1,10 @@
+---
+backup_enabled: true
+backup_target_dir: /var/backups/server-monitor
+backup_retention_days: 14
+backup_schedule_oncalendar: "*-*-* 03:30:00"
+backup_compose_project: server-monitor-lab
+backup_volumes:
+  - prometheus_data
+  - grafana_data
+  - loki_data

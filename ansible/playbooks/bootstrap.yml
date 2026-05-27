@@ -1,0 +1,8 @@
+---
+# OS の初期設定のみを実施する。新しいホストの追加時に使う。
+- name: Apply OS hardening and base packages
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - role: common

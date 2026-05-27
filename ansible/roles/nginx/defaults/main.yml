@@ -1,0 +1,7 @@
+---
+# Nginx 本体は compose スタック内で動く。このロールはホスト側の TLS 準備のみを行う。
+nginx_letsencrypt_enabled: false
+nginx_letsencrypt_email: noc@example.com
+nginx_server_name: monitor.example.com
+nginx_tls_dir: "{{ server_monitor_install_dir }}/deploy/tls"
+nginx_self_signed_cn: "server-monitor.local"

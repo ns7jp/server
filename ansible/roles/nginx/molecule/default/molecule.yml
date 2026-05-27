@@ -1,0 +1,29 @@
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: ../../../../requirements.yml
+driver:
+  name: docker
+platforms:
+  - name: server-monitor-nginx
+    image: geerlingguy/docker-ubuntu2204-ansible:latest
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      stdout_callback: yaml
+  inventory:
+    group_vars:
+      all:
+        server_monitor_user: monitor
+        server_monitor_group: monitor
+        server_monitor_install_dir: /opt/server-monitor
+        nginx_letsencrypt_enabled: false
+verifier:
+  name: ansible

@@ -76,6 +76,21 @@ flowchart LR
 
 ログ起点のアラートを追加する場合、Loki Ruler が同じ Alertmanager (`http://alertmanager:9093`) にルーティングする設計のため、Prometheus 由来のアラートと統一の通知経路で扱える。
 
+## 構成管理
+
+OS 設定、Docker / Compose スタック、監視配付物、秘密値、バックアップは Ansible（`ansible/`）で管理する。役割分担は次のとおり。
+
+| ロール | 担当 |
+| --- | --- |
+| `common` | timezone、UFW、SSH ハードニング、unattended-upgrades、アプリ用ユーザー |
+| `docker` | Docker CE、Compose plugin、`daemon.json`（ログローテーション + live-restore） |
+| `nginx` | ホスト側 TLS（Let's Encrypt または自己署名）。Nginx 本体は compose 内 |
+| `monitoring` | `deploy/` の同期、Alertmanager テンプレート、`promtool` / `loki -verify-config` |
+| `app` | リポジトリ同期、Vault 由来の `deploy/secrets/*.txt` 生成、`docker compose up -d` |
+| `backup` | systemd timer による Prometheus / Grafana / Loki volume の日次スナップショット |
+
+CI（`.github/workflows/ansible-check.yml`）で `ansible-lint` と Molecule を実行し、roles の構文と冪等性、verify アサーションを確認する。詳細手順は [Ansible 配備手順](deployment-ansible.md) を参照。
+
 ## 可用性と拡張
 
 このラボは単一ホストでの学習・検証を対象とし、冗長化は行わない。本番相当へ拡張する場合は、TLS 終端、VPN または SSO、外部永続ストレージ（Prometheus は remote_write、Loki は S3 互換のチャンクストア）、複数 node-exporter / Promtail の収集、通知先の当番運用を追加する。

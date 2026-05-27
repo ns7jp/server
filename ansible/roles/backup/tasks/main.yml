@@ -1,0 +1,41 @@
+---
+- name: Ensure backup target directory exists
+  ansible.builtin.file:
+    path: "{{ backup_target_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: Install backup script
+  ansible.builtin.template:
+    src: server-monitor-backup.sh.j2
+    dest: /usr/local/sbin/server-monitor-backup.sh
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: Install systemd service unit
+  ansible.builtin.template:
+    src: server-monitor-backup.service.j2
+    dest: /etc/systemd/system/server-monitor-backup.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload systemd daemon
+
+- name: Install systemd timer unit
+  ansible.builtin.template:
+    src: server-monitor-backup.timer.j2
+    dest: /etc/systemd/system/server-monitor-backup.timer
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload systemd daemon
+
+- name: Enable / disable backup timer
+  ansible.builtin.systemd:
+    name: server-monitor-backup.timer
+    enabled: "{{ backup_enabled | bool }}"
+    state: "{{ 'started' if backup_enabled | bool else 'stopped' }}"
+    daemon_reload: true

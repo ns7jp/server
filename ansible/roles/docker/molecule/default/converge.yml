@@ -1,0 +1,19 @@
+---
+- name: Prepare prerequisites
+  hosts: all
+  become: true
+  pre_tasks:
+    - name: Ensure monitor group exists
+      ansible.builtin.group:
+        name: "{{ server_monitor_group }}"
+        state: present
+        system: true
+    - name: Ensure monitor user exists for docker group membership
+      ansible.builtin.user:
+        name: "{{ server_monitor_user }}"
+        group: "{{ server_monitor_group }}"
+        system: true
+        shell: /usr/sbin/nologin
+        create_home: false
+  roles:
+    - role: docker

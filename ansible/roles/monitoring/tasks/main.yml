@@ -1,0 +1,66 @@
+---
+# `app` ロールがリポジトリを {{ server_monitor_install_dir }} に同期した後に走ることを前提とする。
+# このロールは Alertmanager 設定を環境に応じて再生成し、デプロイ後の構文検証も担う。
+
+- name: Ensure deploy target directory exists
+  ansible.builtin.file:
+    path: "{{ monitoring_deploy_target }}"
+    state: directory
+    owner: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    mode: '0750'
+
+- name: Ensure alertmanager directory exists
+  ansible.builtin.file:
+    path: "{{ monitoring_deploy_target }}/alertmanager"
+    state: directory
+    owner: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    mode: '0750'
+
+- name: Render Alertmanager configuration
+  ansible.builtin.template:
+    src: "{{ monitoring_alertmanager_template }}"
+    dest: "{{ monitoring_deploy_target }}/alertmanager/alertmanager.yml"
+    owner: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    mode: '0640'
+
+- name: Validate Prometheus configuration with promtool
+  ansible.builtin.command:
+    cmd: >-
+      docker run --rm
+      --entrypoint /bin/promtool
+      -v {{ monitoring_deploy_target }}/prometheus:/etc/prometheus:ro
+      -v {{ server_monitor_secrets_dir }}/metrics_token.txt:/run/secrets/metrics_token:ro
+      prom/prometheus:v2.55.1
+      check config /etc/prometheus/prometheus.yml
+  changed_when: false
+  register: monitoring_promtool_config
+  failed_when: monitoring_promtool_config.rc != 0
+  when: monitoring_run_validation | bool
+
+- name: Validate Loki configuration
+  ansible.builtin.command:
+    cmd: >-
+      docker run --rm
+      -v {{ monitoring_deploy_target }}/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      grafana/loki:2.9.0
+      -config.file=/etc/loki/loki-config.yml -verify-config
+  changed_when: false
+  register: monitoring_loki_verify
+  failed_when: monitoring_loki_verify.rc != 0
+  when: monitoring_run_validation | bool
+
+- name: Validate Alertmanager configuration with amtool
+  ansible.builtin.command:
+    cmd: >-
+      docker run --rm
+      --entrypoint /bin/amtool
+      -v {{ monitoring_deploy_target }}/alertmanager:/etc/alertmanager:ro
+      prom/alertmanager:v0.27.0
+      check-config /etc/alertmanager/alertmanager.yml
+  changed_when: false
+  register: monitoring_amtool_config
+  failed_when: monitoring_amtool_config.rc != 0
+  when: monitoring_run_validation | bool
