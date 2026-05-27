@@ -1,0 +1,20 @@
+region        = "ap-northeast-1"
+environment   = "prod"
+name_prefix   = "server-monitor-prod"
+vpc_cidr      = "10.20.0.0/16"
+azs           = ["ap-northeast-1a", "ap-northeast-1c"]
+instance_type = "t3.small"
+
+# 必須: ACM 証明書 ARN
+certificate_arn = "arn:aws:acm:ap-northeast-1:123456789012:certificate/REPLACE-ME"
+
+# 必須: 通知先
+alarm_emails = ["noc@example.com", "oncall@example.com"]
+
+monthly_budget_jpy = 5000
+
+# SSH は SSM のみ
+ssh_ingress_cidrs = []
+
+# 必須: ALB の HTTPS 着信元。フルオープンを避ける
+allowed_ingress_cidrs = ["203.0.113.0/24"]

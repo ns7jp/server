@@ -5,3 +5,17 @@ __pycache__/
 .env
 deploy/secrets/*.txt
 !deploy/secrets/*.example
+
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfplan
+crash.log
+crash.*.log
+# tfvars と backend.hcl は実値を含むためコミット禁止。雛形は *.example で配布する。
+**/*.tfvars
+!**/*.tfvars.example
+**/backend.hcl
+!**/backend.hcl.example
