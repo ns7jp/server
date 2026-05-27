@@ -23,7 +23,8 @@ Python / Flask で作成したサーバー状態表示アプリを、**認証、
 | 標準監視基盤 | Prometheus + node-exporter + Grafana + Alertmanager |
 | ログ集約 | Loki + Promtail でコンテナログとホスト `/var/log` を収集、Grafana から横断検索 |
 | 障害対応 | アラートルール、停止ランブック、CPU 高負荷の模擬インシデント記録 |
-| 品質確認 | pytest、GitHub Actions、Compose / Prometheus / Alertmanager / Loki / Promtail / Docker build 検証 |
+| 構成管理 | Ansible roles で OS / Docker / TLS / 監視設定 / アプリ配備 / バックアップを宣言的に管理 |
+| 品質確認 | pytest、GitHub Actions、Compose / Prometheus / Alertmanager / Loki / Promtail / Docker build 検証、ansible-lint、Molecule |
 
 ## 構成
 
@@ -55,6 +56,7 @@ flowchart LR
 | [停止時ランブック](docs/runbooks/service-down.md) | アラート受信後の確認と復旧手順 |
 | [CPU 高負荷演習記録](docs/incidents/cpu-high-drill.md) | 模擬障害の再現、確認、復旧、再発防止 |
 | [LogQL クエリ集](docs/loki-queries.md) | ダッシュボードと運用で使う LogQL の例 |
+| [Ansible 配備手順](docs/deployment-ansible.md) | 0 台から構築可能な playbook、roles 構成、Vault、Molecule |
 
 ## ダッシュボード機能
 
@@ -69,6 +71,27 @@ flowchart LR
 | Network I/O | 累積送受信量と画面更新間隔内の速度 |
 | History | CPU / メモリの直近60秒グラフ |
 | Top Processes | CPU 使用率上位15件。ユーザー名は既定で非表示 |
+
+## 構成管理（Ansible）
+
+新規ホストの構築と運用変更は `ansible/` 配下の playbook と roles に統一している。配備手順書（[docs/deployment.md](docs/deployment.md)）は **Ansible 版（[docs/deployment-ansible.md](docs/deployment-ansible.md)）へ移行済み** で、リファレンス扱い。
+
+| ロール | 役割 |
+| --- | --- |
+| `common` | timezone / UFW / SSH hardening / unattended-upgrades / アプリ用ユーザー作成 |
+| `docker` | Docker CE + Compose plugin の導入、`daemon.json` でログローテーション |
+| `nginx` | ホスト側 TLS（Let's Encrypt / 自己署名）。Nginx 本体は compose スタック内 |
+| `monitoring` | `deploy/` を同期、Alertmanager をテンプレートで環境別に切替、`promtool` / `loki -verify-config` で検証 |
+| `app` | リポジトリの同期、Vault からの秘密値レンダリング、`docker compose up -d` |
+| `backup` | systemd timer で日次の Prometheus / Grafana / Loki volume スナップショット |
+
+```bash
+cd ansible
+ansible-galaxy collection install -r requirements.yml
+ansible-playbook -i inventory/staging.yml playbooks/site.yml
+```
+
+CI では `ansible-lint` と Molecule（`common` / `docker` / `nginx` / `monitoring`）が常時実行される。
 
 ## ログ集約
 

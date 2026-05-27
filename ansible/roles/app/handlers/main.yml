@@ -1,0 +1,6 @@
+---
+- name: Restart compose stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_repo_target }}"
+    state: restarted
+    files: "{{ ['compose.yaml'] + (['compose.slack.yaml.example'] if app_use_slack_overlay else []) }}"

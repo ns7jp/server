@@ -1,0 +1,16 @@
+---
+profile: production
+exclude_paths:
+  - .cache/
+  - collections/
+  - .github/
+  - molecule/
+skip_list:
+  - meta-runtime[unsupported-version]
+  # Galaxy のレポジトリ情報がリポジトリ単独では不要なため
+  - galaxy[no-changelog]
+  - galaxy[version-incorrect]
+warn_list:
+  - command-instead-of-shell
+  - experimental
+use_default_rules: true

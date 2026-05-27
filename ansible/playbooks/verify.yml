@@ -1,0 +1,68 @@
+---
+# 配備後の健全性検証。site.yml の末尾と、独立した smoke test の両方で使う。
+- name: Verify monitoring stack endpoints
+  hosts: monitor
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Wait for Flask app /healthz
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ monitor_port }}/healthz"
+        return_content: true
+        status_code: 200
+      register: healthz
+      retries: 20
+      delay: 3
+      until: healthz.status == 200
+
+    - name: Assert healthz body
+      ansible.builtin.assert:
+        that:
+          - healthz.json.status == 'ok'
+
+    - name: Wait for Prometheus readiness
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ prometheus_port }}/-/ready"
+        status_code: 200
+      register: prom_ready
+      retries: 20
+      delay: 3
+      until: prom_ready.status == 200
+
+    - name: Wait for Loki readiness
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ loki_port }}/ready"
+        status_code: 200
+      register: loki_ready
+      retries: 30
+      delay: 5
+      until: loki_ready.status == 200
+
+    - name: Wait for Grafana health
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ grafana_port }}/api/health"
+        status_code: 200
+      register: grafana_ready
+      retries: 30
+      delay: 5
+      until: grafana_ready.status == 200
+
+    - name: Assert /metrics is protected by Bearer token
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ monitor_port }}/metrics"
+        status_code: 401
+      register: metrics_unauth
+
+    - name: Assert /metrics returns metrics with the configured token
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ monitor_port }}/metrics"
+        headers:
+          Authorization: "Bearer {{ metrics_token }}"
+        return_content: true
+        status_code: 200
+      register: metrics_auth
+
+    - name: Assert metrics body contains server_monitor_cpu_usage_percent
+      ansible.builtin.assert:
+        that:
+          - "'server_monitor_cpu_usage_percent' in metrics_auth.content"

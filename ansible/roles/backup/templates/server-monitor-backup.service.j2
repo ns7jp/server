@@ -1,0 +1,10 @@
+[Unit]
+Description=Snapshot Prometheus / Grafana / Loki volumes
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/server-monitor-backup.sh
+User=root
+Group=root

@@ -1,0 +1,28 @@
+---
+- name: Verify monitoring role outcomes
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Stat alertmanager.yml (rendered by template)
+      ansible.builtin.stat:
+        path: /opt/server-monitor/deploy/alertmanager/alertmanager.yml
+      register: am_yml
+
+    - name: Assert template was rendered with correct ownership
+      ansible.builtin.assert:
+        that:
+          - am_yml.stat.exists
+          - am_yml.stat.pw_name == 'monitor'
+          - am_yml.stat.mode == '0640'
+
+    - name: Inspect alertmanager body
+      ansible.builtin.slurp:
+        src: /opt/server-monitor/deploy/alertmanager/alertmanager.yml
+      register: am
+
+    - name: Assert Slack receiver is absent when slack disabled
+      ansible.builtin.assert:
+        that:
+          - "'local-alert-view' in (am.content | b64decode)"
+          - "'slack_configs' not in (am.content | b64decode)"

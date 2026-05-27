@@ -1,0 +1,48 @@
+---
+- name: Verify docker role outcomes
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Check that docker binary is on PATH
+      ansible.builtin.command: docker --version
+      register: docker_version
+      changed_when: false
+
+    - name: Assert docker is installed
+      ansible.builtin.assert:
+        that:
+          - docker_version.rc == 0
+          - "'Docker version' in docker_version.stdout"
+
+    - name: Check that docker compose plugin is available
+      ansible.builtin.command: docker compose version
+      register: compose_version
+      changed_when: false
+
+    - name: Assert compose plugin is installed
+      ansible.builtin.assert:
+        that:
+          - compose_version.rc == 0
+
+    - name: Inspect daemon.json
+      ansible.builtin.slurp:
+        src: /etc/docker/daemon.json
+      register: daemon_json
+
+    - name: Assert log driver and rotation are configured
+      ansible.builtin.assert:
+        that:
+          - "'json-file' in (daemon_json.content | b64decode)"
+          - "'max-size' in (daemon_json.content | b64decode)"
+          - "'live-restore' in (daemon_json.content | b64decode)"
+
+    - name: Check that monitor user is in docker group
+      ansible.builtin.command: id -nG monitor
+      register: monitor_groups
+      changed_when: false
+
+    - name: Assert monitor user has docker group
+      ansible.builtin.assert:
+        that:
+          - "'docker' in monitor_groups.stdout.split()"

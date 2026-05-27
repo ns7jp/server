@@ -1,0 +1,27 @@
+---
+# OS とユーザー
+server_monitor_timezone: Asia/Tokyo
+server_monitor_user: monitor
+server_monitor_group: monitor
+server_monitor_install_dir: /opt/server-monitor
+server_monitor_secrets_dir: "{{ server_monitor_install_dir }}/deploy/secrets"
+
+# 環境（staging / production）はインベントリで上書きする
+server_monitor_environment: staging
+
+# UFW で許可する着信ポート
+server_monitor_allowed_tcp_ports:
+  - 22
+
+# Docker
+docker_apt_release_channel: stable
+docker_log_max_size: "10m"
+docker_log_max_file: 5
+
+# repo の取得方法
+# - directory: 既存チェックアウトを synchronize する
+# - git: GitHub から clone する
+server_monitor_source_mode: directory
+server_monitor_source_path: "{{ playbook_dir }}/.."
+server_monitor_git_repo: https://github.com/ns7jp/server-monitor.git
+server_monitor_git_version: main

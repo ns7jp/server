@@ -1,5 +1,7 @@
 # 構築・配備手順
 
+> **注記:** 本リポジトリの正規の配備手順は [Ansible 版（deployment-ansible.md）](deployment-ansible.md) に移行済みです。新規ホストの構築は Ansible を使ってください。本文書はラボ向けの手動構築リファレンスとして残しています。
+
 ## Docker Compose ラボ
 
 ### 前提

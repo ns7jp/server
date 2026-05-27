@@ -1,0 +1,14 @@
+---
+common_timezone: "{{ server_monitor_timezone | default('Asia/Tokyo') }}"
+common_required_packages:
+  - ca-certificates
+  - curl
+  - git
+  - rsync
+  - chrony
+  - ufw
+  - unattended-upgrades
+common_disable_root_ssh: true
+common_password_authentication: false
+common_ufw_default_incoming: deny
+common_ufw_allowed_tcp_ports: "{{ server_monitor_allowed_tcp_ports | default([22]) }}"

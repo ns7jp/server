@@ -1,0 +1,10 @@
+---
+# OS の再設定はせずに、アプリと監視設定だけを更新する。
+# CI からの自動デプロイで使う想定。
+- name: Update server-monitor application and monitoring configs
+  hosts: monitor
+  become: true
+  gather_facts: true
+  roles:
+    - role: app
+    - role: monitoring

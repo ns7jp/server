@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: common
+  author: server-monitor
+  description: OS-level baseline for the server-monitor lab (timezone, packages, ufw, sshd, unattended-upgrades)
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+  galaxy_tags:
+    - system
+    - hardening
+dependencies: []

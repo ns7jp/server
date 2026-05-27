@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: docker
+  author: server-monitor
+  description: Install Docker Engine + Compose plugin from the upstream apt repository
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+  galaxy_tags:
+    - docker
+    - container
+dependencies: []

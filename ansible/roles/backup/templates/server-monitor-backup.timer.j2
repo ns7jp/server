@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily server-monitor backup
+
+[Timer]
+OnCalendar={{ backup_schedule_oncalendar }}
+RandomizedDelaySec=600
+Persistent=true
+
+[Install]
+WantedBy=timers.target

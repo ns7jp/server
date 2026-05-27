@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: app
+  author: server-monitor
+  description: Deploy the server-monitor Flask app and the supporting compose stack
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+  galaxy_tags:
+    - application
+    - compose
+dependencies: []

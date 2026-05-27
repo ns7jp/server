@@ -1,0 +1,98 @@
+---
+- name: Ensure install directory exists
+  ansible.builtin.file:
+    path: "{{ app_repo_target }}"
+    state: directory
+    owner: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    mode: '0750'
+
+- name: Sync application source from local checkout
+  ansible.posix.synchronize:
+    src: "{{ app_repo_source }}/"
+    dest: "{{ app_repo_target }}/"
+    delete: false
+    recursive: true
+    rsync_opts:
+      - "--exclude=.git"
+      - "--exclude=ansible"
+      - "--exclude=.venv"
+      - "--exclude=__pycache__"
+      - "--exclude=deploy/secrets/*.txt"
+      - "--exclude=deploy/tls/server.key"
+      - "--exclude=deploy/tls/server.crt"
+  when: server_monitor_source_mode == 'directory'
+
+- name: Clone repository for git mode
+  ansible.builtin.git:
+    repo: "{{ server_monitor_git_repo }}"
+    dest: "{{ app_repo_target }}"
+    version: "{{ server_monitor_git_version }}"
+    update: true
+    force: false
+  become: true
+  become_user: "{{ server_monitor_user }}"
+  when: server_monitor_source_mode == 'git'
+
+- name: Fix ownership of synced files
+  ansible.builtin.file:
+    path: "{{ app_repo_target }}"
+    state: directory
+    owner: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    recurse: true
+
+- name: Ensure secrets directory exists
+  ansible.builtin.file:
+    path: "{{ server_monitor_secrets_dir }}"
+    state: directory
+    owner: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    mode: '0700'
+
+- name: Render secret files from vault values
+  ansible.builtin.copy:
+    dest: "{{ server_monitor_secrets_dir }}/{{ item.name }}"
+    content: "{{ item.value }}"
+    owner: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    mode: '0600'
+  loop: "{{ app_secrets }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: true
+
+- name: Render optional Slack webhook secret
+  ansible.builtin.copy:
+    dest: "{{ server_monitor_secrets_dir }}/slack_webhook_url.txt"
+    content: "{{ slack_webhook_url }}"
+    owner: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    mode: '0600'
+  when: app_use_slack_overlay | bool
+  no_log: true
+
+- name: Render .env for compose
+  ansible.builtin.copy:
+    dest: "{{ app_repo_target }}/.env"
+    content: |
+      MONITOR_USERNAME={{ monitor_username }}
+      MONITOR_NODE_NAME={{ monitor_node_name }}
+      MONITOR_PORT={{ monitor_port }}
+      PROMETHEUS_PORT={{ prometheus_port }}
+      ALERTMANAGER_PORT={{ alertmanager_port }}
+      GRAFANA_PORT={{ grafana_port }}
+      LOKI_PORT={{ loki_port }}
+    owner: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    mode: '0640'
+
+- name: Bring the compose stack up
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_repo_target }}"
+    state: "{{ app_compose_state }}"
+    files: "{{ ['compose.yaml'] + (['compose.slack.yaml.example'] if app_use_slack_overlay else []) }}"
+    build: "{{ app_compose_build_policy }}"
+    pull: missing
+    remove_orphans: true
+  register: app_compose_result

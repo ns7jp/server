@@ -1,0 +1,21 @@
+#!/bin/bash
+# Ansible-managed. Do not edit on the host.
+set -euo pipefail
+
+TARGET_DIR="{{ backup_target_dir }}"
+PROJECT="{{ backup_compose_project }}"
+RETENTION_DAYS={{ backup_retention_days }}
+TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
+ARCHIVE_DIR="${TARGET_DIR}/${TIMESTAMP}"
+
+mkdir -p "${ARCHIVE_DIR}"
+{% for volume in backup_volumes %}
+docker run --rm \
+  -v "${PROJECT}_{{ volume }}:/data:ro" \
+  -v "${ARCHIVE_DIR}:/backup" \
+  alpine:3.20 \
+  tar czf "/backup/{{ volume }}.tgz" -C /data .
+{% endfor %}
+
+# 古いスナップショットを削除
+find "${TARGET_DIR}" -mindepth 1 -maxdepth 1 -type d -mtime +${RETENTION_DAYS} -exec rm -rf {} +
