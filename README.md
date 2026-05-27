@@ -24,7 +24,8 @@ Python / Flask で作成したサーバー状態表示アプリを、**認証、
 | ログ集約 | Loki + Promtail でコンテナログとホスト `/var/log` を収集、Grafana から横断検索 |
 | 障害対応 | アラートルール、停止ランブック、CPU 高負荷の模擬インシデント記録 |
 | 構成管理 | Ansible roles で OS / Docker / TLS / 監視設定 / アプリ配備 / バックアップを宣言的に管理 |
-| 品質確認 | pytest、GitHub Actions、Compose / Prometheus / Alertmanager / Loki / Promtail / Docker build 検証、ansible-lint、Molecule |
+| クラウド配備 | Terraform で AWS（VPC / ALB / EC2 / Backup / CloudWatch / CloudTrail / GuardDuty / Budgets）を IaC 化、5 モジュール + dev / prod 環境分離 |
+| 品質確認 | pytest、GitHub Actions、Compose / Prometheus / Alertmanager / Loki / Promtail / Docker build 検証、ansible-lint、Molecule、terraform fmt / validate、tfsec、checkov |
 
 ## 構成
 
@@ -57,6 +58,8 @@ flowchart LR
 | [CPU 高負荷演習記録](docs/incidents/cpu-high-drill.md) | 模擬障害の再現、確認、復旧、再発防止 |
 | [LogQL クエリ集](docs/loki-queries.md) | ダッシュボードと運用で使う LogQL の例 |
 | [Ansible 配備手順](docs/deployment-ansible.md) | 0 台から構築可能な playbook、roles 構成、Vault、Molecule |
+| [AWS / Terraform 設計](docs/aws-architecture.md) | VPC / ALB / EC2 / Backup / Monitoring の構成と Ansible との接続 |
+| [AWS コスト計画](docs/cost-report.md) | 月額試算、削減策、Budgets、実費記録 |
 
 ## ダッシュボード機能
 
@@ -92,6 +95,28 @@ ansible-playbook -i inventory/staging.yml playbooks/site.yml
 ```
 
 CI では `ansible-lint` と Molecule（`common` / `docker` / `nginx` / `monitoring`）が常時実行される。
+
+## クラウド配備（AWS / Terraform）
+
+`terraform/` 配下に AWS 上の同等構成を IaC として用意した。VPC からアラート通知まで
+5 モジュール（`network` / `compute` / `alb` / `monitoring` / `backup`）に責務を分離し、
+環境別（`dev` / `prod`）の `terraform/environments/<env>/` を呼び出すパターン。
+
+```bash
+cd terraform/environments/dev
+cp backend.hcl.example backend.hcl       # 実値を入れる（コミット禁止）
+cp terraform.tfvars.example terraform.tfvars
+terraform init -backend-config=backend.hcl
+terraform plan
+terraform apply
+```
+
+セキュリティ初期値：IMDSv2 強制、EBS / S3 暗号化（KMS）、VPC Flow Logs、CloudTrail
+全リージョン、GuardDuty 有効、ALB ingress は `allowed_ingress_cidrs` で制限、prod は
+`certificate_arn` 必須。CI は `terraform fmt / validate` + `tfsec` + `checkov` を毎回回す。
+
+詳細は [docs/aws-architecture.md](docs/aws-architecture.md) と
+[docs/cost-report.md](docs/cost-report.md) を参照。
 
 ## ログ集約
 

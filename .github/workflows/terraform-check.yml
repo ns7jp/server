@@ -1,0 +1,94 @@
+name: Terraform check
+
+on:
+  push:
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-check.yml'
+  pull_request:
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-check.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+        working-directory: terraform
+
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [dev, prod]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: terraform init (backend disabled)
+        run: terraform init -backend=false
+        working-directory: terraform/environments/${{ matrix.environment }}
+
+      - name: terraform validate
+        run: terraform validate -no-color
+        working-directory: terraform/environments/${{ matrix.environment }}
+
+  tfsec:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 自前で tfsec バイナリを取得して High 以上で fail させる。
+      - name: Install tfsec
+        run: |
+          curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 \
+            -o /usr/local/bin/tfsec
+          chmod +x /usr/local/bin/tfsec
+          tfsec --version
+
+      - name: tfsec scan (HIGH only)
+        run: tfsec --minimum-severity HIGH terraform/
+
+  checkov:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install checkov
+        run: pip install 'checkov>=3,<4'
+
+      # `terraform/.checkov.yml` に skip-check（理由付き）を集約している。
+      # ここを通過すれば残る指摘は HIGH 相当の真の問題のみ。
+      - name: Run checkov
+        run: |
+          checkov \
+            --config-file terraform/.checkov.yml \
+            --directory terraform/ \
+            --output cli

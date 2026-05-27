@@ -1,0 +1,52 @@
+---
+# Ansible 動的インベントリ: amazon.aws.aws_ec2 plugin
+#
+# 前提:
+#   ansible-galaxy collection install amazon.aws
+#   pip install boto3 botocore
+#
+# Terraform で作成した EC2 は次のタグを持つ:
+#   - Application = "server-monitor"
+#   - AnsibleHost = "true"
+#   - Environment = "dev" or "prod"
+#
+# SSM Session Manager 経由で接続する場合は ansible_connection を上書きする:
+#   ansible-playbook -i aws_ec2.yml \
+#     -e ansible_connection=aws_ssm \
+#     playbooks/site.yml
+
+plugin: amazon.aws.aws_ec2
+regions:
+  - ap-northeast-1
+
+filters:
+  tag:Application: server-monitor
+  tag:AnsibleHost: "true"
+  instance-state-name:
+    - running
+
+keyed_groups:
+  - key: tags.Environment
+    prefix: env
+  - key: placement.availability_zone
+    prefix: az
+  - key: tags.Application
+    prefix: app
+
+hostnames:
+  - tag:Name
+  - private-ip-address
+
+compose:
+  # 動的インベントリで Ansible 変数を組み立てる
+  ansible_host: private_ip_address
+  monitor_node_name: tags.Name
+  server_monitor_environment: tags.Environment | default('dev', true)
+
+# SSM Session Manager を既定にする場合は次をアンコメント:
+#   ansible_connection: '"aws_ssm"'
+#   ansible_aws_ssm_bucket_name: '"<REPLACE-WITH-SSM-BUCKET>"'
+#   ansible_aws_ssm_region: '"ap-northeast-1"'
+
+groups:
+  monitor: "'app_server-monitor' in group_names"

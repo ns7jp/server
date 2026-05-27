@@ -1,0 +1,21 @@
+region        = "ap-northeast-1"
+environment   = "dev"
+name_prefix   = "server-monitor-dev"
+vpc_cidr      = "10.10.0.0/16"
+azs           = ["ap-northeast-1a"]
+instance_type = "t3.small"
+
+# ACM 証明書 ARN を入れると ALB が HTTPS 終端する。未設定なら HTTP のみ。
+certificate_arn = ""
+
+# Budgets / アラームの通知先
+alarm_emails = ["noc@example.com"]
+
+# 月額予算（円）。AWS Budgets は USD で設定するが、jpy_per_usd で換算する。
+monthly_budget_jpy = 1500
+
+# 緊急 SSH 許可 CIDR。空にすると SSM Session Manager のみ。
+ssh_ingress_cidrs = []
+
+# ALB の HTTPS 着信元 CIDR。社内 NAT などに限定すること。
+allowed_ingress_cidrs = ["192.0.2.0/24"]
