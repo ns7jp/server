@@ -1,314 +1,169 @@
-# サーバー監視ダッシュボード
+# Server Monitor Infrastructure Lab
 
-![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python&logoColor=white)
-![Flask](https://img.shields.io/badge/Flask-3.0-000000?logo=flask&logoColor=white)
-![psutil](https://img.shields.io/badge/psutil-5.9-4CAF50)
-![Chart.js](https://img.shields.io/badge/Chart.js-4.4-FF6384?logo=chartdotjs&logoColor=white)
 [![Python check](https://github.com/ns7jp/server-monitor/actions/workflows/python-check.yml/badge.svg)](https://github.com/ns7jp/server-monitor/actions/workflows/python-check.yml)
+![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3-000000?logo=flask&logoColor=white)
+![Prometheus](https://img.shields.io/badge/Prometheus-monitoring-E6522C?logo=prometheus&logoColor=white)
+![Grafana](https://img.shields.io/badge/Grafana-dashboard-F46800?logo=grafana&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 
-Python（Flask）+ psutil + Chart.js で構築した、**リアルタイムサーバー監視ダッシュボード**です。
-ブラウザから動作中マシンのCPU・メモリ・ディスク・ネットワーク・プロセス情報を可視化します。
+Python / Flask で作成したサーバー状態表示アプリを、**認証、コンテナ配備、監視収集、アラート、運用手順まで含むインフラ構築・運用ラボ**へ拡張したポートフォリオです。
 
----
+単に画面を作るのではなく、「安全に公開範囲を制限できるか」「停止や高負荷をどう検知し、どう切り分けるか」を設計・検証対象にしています。
 
-## 概要
+## 実装したこと
 
-インフラ運用・SRE業務での「サーバーの状態を一目で把握する」ニーズを想定して制作しました。
-個人PCはもちろん、社内サーバーや自宅Linuxマシンに配置すれば、ブラウザだけで状態確認ができます。
+| 分野 | 実装・成果物 |
+| --- | --- |
+| アプリ監視 UI | Flask + psutil + Chart.js による CPU、メモリ、ディスク、ネットワーク、プロセス表示 |
+| アクセス制御 | UI / JSON API の Basic 認証、Prometheus metrics の Bearer token 認証 |
+| 情報保護 | ホスト名と OS ユーザー名を既定でマスク、秘密値を Docker secrets ファイルで管理 |
+| 稼働監視 | 情報を露出しない `/healthz`、保護された `/metrics` |
+| 配備 | 非 root `Dockerfile`、Nginx、Docker Compose、native Linux 用 systemd / TLS 設定例 |
+| 標準監視基盤 | Prometheus + node-exporter + Grafana + Alertmanager |
+| 障害対応 | アラートルール、停止ランブック、CPU 高負荷の模擬インシデント記録 |
+| 品質確認 | pytest、GitHub Actions、Compose / Prometheus / Alertmanager / Docker build 検証 |
 
-### 主な機能
+## 構成
 
-| 機能 | 概要 |
-|------|------|
-| 🖥 システム情報 | OS・ホスト名・アーキテクチャ・起動時刻・稼働時間 |
-| ⚡ CPU使用率 | 全体使用率（円形ゲージ）＋コア別バー＋周波数情報 |
-| 🧠 メモリ・スワップ | 使用率・使用量・空き容量・スワップ使用状況 |
-| 💾 ディスク | 全パーティションの使用率（しきい値で色分け） |
-| 🌐 ネットワークI/O | 累積送受信バイト・パケット数・**リアルタイム速度** |
-| 📊 履歴グラフ | CPU/メモリの直近60秒推移（Chart.js折れ線） |
-| 📋 プロセス一覧 | CPU使用率TOP15（PID・名前・ユーザー・CPU%・MEM%） |
-| 🚨 しきい値色分け | 使用率に応じて緑→黄→橙→赤に自動変化 |
-| 🔄 自動更新 | 統計：2秒ごと／プロセス：5秒ごと（fetch APIによる非同期取得） |
+```mermaid
+flowchart LR
+    Operator["運用担当者"] -->|"Basic 認証"| Nginx["Nginx<br/>loopback 公開"]
+    Nginx --> App["Flask + Gunicorn<br/>non-root"]
+    Prometheus -->|"Bearer token /metrics"| App
+    Prometheus --> Exporter["node-exporter"]
+    Exporter --> Host["Linux host"]
+    Prometheus --> Grafana
+    Prometheus --> Alertmanager
+    Alertmanager -.->|"秘密値設定後"| Slack["Slack"]
+```
 
----
+重要な点として、コンテナ化した Flask アプリの `psutil` 表示はアプリコンテナの状態です。Linux ホスト全体の監視は `node-exporter` と Grafana 側で扱い、役割を混同しない設計にしています。
 
-## スクリーンショット
+## ドキュメント
+
+| 文書 | 内容 |
+| --- | --- |
+| [インフラ監視ラボ設計](docs/architecture.md) | 構成図、設計判断、監視条件 |
+| [セキュリティ設計](docs/security.md) | 認証、秘密管理、公開範囲、残存リスク |
+| [構築・配備手順](docs/deployment.md) | Docker Compose と native Linux 配備例 |
+| [バックアップ・復旧設計](docs/backup-restore.md) | 永続データ、復元試験、復旧目標 |
+| [停止時ランブック](docs/runbooks/service-down.md) | アラート受信後の確認と復旧手順 |
+| [CPU 高負荷演習記録](docs/incidents/cpu-high-drill.md) | 模擬障害の再現、確認、復旧、再発防止 |
+
+## ダッシュボード機能
 
 ![Server Monitor Dashboard](docs/screenshot.png)
 
-ダークテーマ基調で、Grafana 等の運用ツールに似た雰囲気を意識したUIに仕上げています。CPU・メモリ・ディスクの使用率はしきい値（緑→黄→橙→赤）で自動配色されるため、異常時は一目で把握できます。
+| 機能 | 概要 |
+| --- | --- |
+| System Info | OS、論理ノード名、アーキテクチャ、起動時刻、稼働時間 |
+| CPU | 使用率、コア別表示、周波数 |
+| Memory / Swap | 使用率、使用量、空き容量 |
+| Disk | パーティション使用率と閾値表示 |
+| Network I/O | 累積送受信量と画面更新間隔内の速度 |
+| History | CPU / メモリの直近60秒グラフ |
+| Top Processes | CPU 使用率上位15件。ユーザー名は既定で非表示 |
 
----
+## セキュアな初期値
 
-## 使い方
+| エンドポイント | 認証 | 内容 |
+| --- | --- | --- |
+| `/healthz` | 不要 | 稼働確認のみ。ホスト情報は含まない |
+| `/`、`/api/stats`、`/api/processes` | Basic 認証 | ダッシュボードと表示用データ |
+| `/metrics` | Bearer token | Prometheus 収集専用 |
 
-### 1. 必要なもの
-- Python 3.9 以上
-- pip
+- 資格情報が未設定の場合、ダッシュボードと metrics は `503` で応答し、意図せず公開されません。
+- `MONITOR_SHOW_HOSTNAME=false` と `MONITOR_SHOW_USERNAMES=false` が既定です。
+- Compose 構成でブラウザ向けに公開するポートは `127.0.0.1` に限定しています。
 
-### 2. インストール
+## Docker Compose で起動
+
+対象は Linux 検証ホストです。`node-exporter` が Linux のホスト情報を読み取るため、Windows / macOS 上の Docker Desktop ではホスト監視結果が同一になりません。
 
 ```bash
-# プロジェクトをクローン or ダウンロード後
+git clone https://github.com/ns7jp/server-monitor.git
 cd server-monitor
-
-# 仮想環境（推奨）
-python -m venv venv
-# Windows
-venv\Scripts\activate
-# macOS / Linux
-source venv/bin/activate
-
-# 依存ライブラリをインストール
-pip install -r requirements.txt
+cp .env.example .env
+openssl rand -base64 32 > deploy/secrets/dashboard_password.txt
+openssl rand -base64 32 > deploy/secrets/metrics_token.txt
+openssl rand -base64 32 > deploy/secrets/grafana_admin_password.txt
+chmod 600 deploy/secrets/*.txt
+docker compose up -d --build
 ```
 
-### 3. 起動
+| 画面 | URL |
+| --- | --- |
+| Server Monitor UI | `http://127.0.0.1:8080/` |
+| Grafana | `http://127.0.0.1:3000/` |
+| Prometheus | `http://127.0.0.1:9090/` |
+| Alertmanager | `http://127.0.0.1:9093/` |
+
+詳細は [構築・配備手順](docs/deployment.md) を参照してください。
+
+## アプリ単体で起動
+
+開発時も既定では認証が必要です。
 
 ```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+export MONITOR_USERNAME=monitor
+export MONITOR_PASSWORD='replace-with-a-long-random-password'
+export MONITOR_METRICS_TOKEN='replace-with-a-long-random-token'
+export MONITOR_NODE_NAME='local-test-node'
 python app.py
 ```
 
-起動後、ブラウザで以下にアクセス：
+loopback での短時間の UI 開発に限り、`MONITOR_AUTH_DISABLED=true` で UI 認証を無効にできます。`0.0.0.0` で待ち受ける環境では使用しません。
 
-```
-http://localhost:5000/
-```
-
-### 4. 動作確認・テスト
-
-GitHub Actions では、Python の構文チェックと Flask API の簡単なテストを実行します。
-ローカルで確認する場合は、開発用依存関係を入れてから `pytest` を実行します。
+## テスト
 
 ```bash
 pip install -r requirements-dev.txt
-python -m compileall .
+python -m compileall app.py tests
 pytest
 ```
 
-このサンプルは学習用・ローカル確認用のため、初期設定では自分のPCからのみアクセスできる `127.0.0.1` で起動します。
+GitHub Actions では、API の認証・マスキング・metrics テストに加えて、Grafana dashboard JSON、Docker Compose、Prometheus / Alertmanager 設定、非 root アプリイメージの build を検証します。
 
-LAN内の他端末から確認する場合は、`app.py` 末尾の `host` を `0.0.0.0` に変更し、`debug=False` のまま起動してください。
+## ディレクトリ構成
 
-```
-http://<PC のIPアドレス>:5000/
-```
-
-インターネット上へ直接公開する用途は想定していません。公開環境で使う場合は、認証、ファイアウォール、リバースプロキシ、本番用WSGIサーバーなどを別途設定してください。
-
----
-
-## ファイル構成
-
-```
+```text
 server-monitor/
-├── app.py                    # Flask アプリケーション本体
-├── requirements.txt          # 依存ライブラリ一覧
-├── README.md                 # このファイル
-│
-├── templates/
-│   └── index.html            # ダッシュボード画面のHTMLテンプレート
-│
-└── static/
-    ├── css/
-    │   └── style.css         # ダークテーマのスタイル定義
-    └── js/
-        └── dashboard.js      # 自動更新・グラフ描画のクライアントロジック
+|-- app.py
+|-- Dockerfile
+|-- compose.yaml
+|-- deploy/
+|   |-- alertmanager/
+|   |-- grafana/provisioning/
+|   |-- nginx/
+|   |-- prometheus/
+|   |-- secrets/
+|   `-- systemd/
+|-- docs/
+|   |-- architecture.md
+|   |-- security.md
+|   |-- deployment.md
+|   |-- backup-restore.md
+|   |-- incidents/
+|   `-- runbooks/
+|-- static/
+|-- templates/
+`-- tests/
 ```
 
----
+## 現在の制約と次の拡張
 
-## 技術スタック
+- 単一ホストの検証構成であり、監視基盤の冗長化は対象外です。
+- Slack 通知は Webhook 秘密値をコミットしないため、`compose.slack.yaml.example` を重ねて利用環境で有効化する方式です。
+- 次の拡張候補は、複数 Linux ノードの収集、SSO / VPN 連携、リモートストレージへの長期 metrics 保存です。
 
-| 分類 | 採用技術 | 役割 |
-|------|---------|------|
-| 言語 | Python 3.9+ | バックエンド |
-| Webフレームワーク | Flask 3.0 | ルーティング・テンプレート描画・JSON API |
-| システム情報取得 | psutil 5.9 | CPU・メモリ・ディスク・ネットワーク・プロセスの取得 |
-| グラフ描画 | Chart.js 4.4 | CPU/メモリの時系列推移グラフ |
-| アイコン | Font Awesome 6.5 | UIアイコン |
-| 通信 | Fetch API | フロント→バックエンドの非同期通信 |
-
----
-
-## アーキテクチャ
-
-```
-┌──────────────┐    HTTP fetch    ┌──────────────┐    psutil    ┌────────┐
-│              │ ───────────────> │              │ ───────────> │   OS   │
-│   Browser    │                  │  Flask app   │              │ kernel │
-│ (dashboard)  │ <─────────────── │  (app.py)    │ <─────────── │        │
-│              │   JSON response  │              │   metrics    └────────┘
-└──────────────┘                  └──────────────┘
-   Chart.js                          /api/stats
-   DOM update                        /api/processes
-```
-
-- **2 秒ごと**：`/api/stats` を fetch → CPU/メモリ/ディスク/ネット/システム情報を更新
-- **5 秒ごと**：`/api/processes` を fetch → プロセス一覧を更新
-- 履歴グラフは過去30点（=60秒分）をローリング保持
-
----
-
-## カスタマイズのヒント
-
-### 更新間隔を変えたい
-`static/js/dashboard.js` の冒頭を編集：
-
-```javascript
-const STATS_INTERVAL = 2000;     // 2秒 → 1000(1秒) や 5000(5秒)に変更可
-const PROCESS_INTERVAL = 5000;   // プロセス取得間隔
-const HISTORY_LENGTH = 30;       // グラフ保持点数
-```
-
-### しきい値（色変化のタイミング）を変えたい
-`dashboard.js` の `getThresholdClass` を変更：
-
-```javascript
-function getThresholdClass(percent) {
-    if (percent >= 90) return 'danger';
-    if (percent >= 75) return 'alert';
-    if (percent >= 50) return 'warn';
-    return '';
-}
-```
-
-### 外部からアクセスさせたい
-初期設定は安全側に寄せて `host='127.0.0.1'`、`debug=False` にしています。
-LAN内で確認する場合のみ `host='0.0.0.0'` に変更してください。
-インターネット公開する場合は、Flask内蔵サーバーではなく **Nginx + Gunicorn** などで本番運用してください：
-
-````markdown
-```bash
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
-```
-### 本番運用する場合の参考設定
-長時間運用するなら、Flask 内蔵サーバーではなく **Gunicorn + systemd** で常駐化、必要に応じて **Nginx** で前段にリバースプロキシを置くのが定番です。
-#### Gunicorn での起動
-```bash
-pip install gunicorn
-gunicorn -w 2 -b 127.0.0.1:5000 app:app
-```
-#### systemd ユニットファイル例（Linux）
-`/etc/systemd/system/server-monitor.service`：
-```ini
-[Unit]
-Description=Server Monitor Dashboard
-After=network.target
-[Service]
-User=monitor
-WorkingDirectory=/opt/server-monitor
-ExecStart=/opt/server-monitor/venv/bin/gunicorn -w 2 -b 127.0.0.1:5000 app:app
-Restart=on-failure
-[Install]
-WantedBy=multi-user.target
-```
-```bash
-sudo systemctl enable --now server-monitor
-sudo systemctl status server-monitor
-```
-#### Nginx リバースプロキシ設定例
-```nginx
-server {
-    listen 80;
-    server_name monitor.example.local;
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-⚠️ **注意**：本ツールは認証機能を持っていません。インターネット公開する場合は、Basic 認証や VPN・SSO 経由のアクセス制限を必ず併用してください。
-
----
-
-## 学習ポイント
-
-1. **psutil でクロスプラットフォームなシステム情報取得**
-   - Windows / Linux / macOS で同じコードが動く
-2. **Flask の JSON API 設計**
-   - `jsonify()` で辞書をそのまま返す簡潔さ
-3. **Fetch API + 非同期JSによるリアルタイム更新**
-   - WebSocketを使わずポーリングで実装し、シンプルさを優先
-4. **Chart.js による時系列グラフ**
-   - ローリングウィンドウ方式で過去Nポイントだけ表示
-5. **しきい値ベースの可視化**
-   - 数値だけでなく色で「異常」を直感的に伝える設計
-
----
-
-## 制作中のトラブルと解決過程
-
-### 課題：CPU使用率が常に0%や100%で固定される
-psutil の `cpu_percent()` を `interval=0` で呼ぶと、**前回呼び出しからの差分**を返す仕様。
-初回呼び出し時は基準点がないため 0.0 が返る。
-
-### 解決
-最初の `cpu_percent` だけ `interval=0.5` を指定して0.5秒間サンプリング、
-コア別の取得は直後に `interval=0` で取得することで、正確な値を取得しつつレスポンスを高速化。
-
-````markdown
-```python
-cpu_percent = psutil.cpu_percent(interval=0.5)        # 全体（基準作り）
-cpu_per_core = psutil.cpu_percent(interval=0, percpu=True)  # コア別（直後の差分）
-```
-
-トラブルシューティング（利用者向け）
-実行時によくある問題と対処法をまとめました。
-
-Q. pip install -r requirements.txt で失敗する
-Python のバージョンが 3.9 未満の可能性があります。python --version で確認してください。
-Windows で psutil のビルドエラーが出る場合は、Microsoft C++ Build Tools が必要です。
-Q. python app.py で「Address already in use」と出る
-ポート 5000 が他のアプリ（AirPlay、別の Flask アプリなど）に使われています。
-app.py 末尾の port=5000 を 5050 などに変更して再起動してください。
-Q. ブラウザで「サイトに接続できません」と表示される
-ファイアウォールが Python を遮断していないか確認してください。
-127.0.0.1:5000 でアクセスしているか確認してください。
-Q. CPU やメモリの値が更新されない
-ブラウザの開発者ツール（F12）→ Network タブで /api/stats が 200 を返しているか確認。
-200 が返らない場合：Flask 側のターミナルにエラーが出ていないか確認。
-Q. プロセス一覧が表示されない／少ない
-macOS / Linux で他ユーザーのプロセスを表示したい場合は sudo python app.py で起動が必要です。
-Windows は基本ユーザーで全プロセスにアクセス可。
-Q. 別 PC からアクセスしたい
-app.py 末尾の host='127.0.0.1' を host='0.0.0.0' に変更して再起動。
-同 LAN 内の端末から http://<起動PCのIP>:5000/ でアクセス可能になります。
-ファイアウォールでポート 5000 の受信許可が必要な場合があります。
-
----
-
-## 想定する活用シーン
-
-- **個人PC・自宅サーバーの常時モニタ**：別タブで開いておき、重い処理をしているときに確認
-- **小規模Webサーバーの簡易監視**：Zabbix/Prometheus導入前の暫定モニタリング
-- **学習用教材**：psutil・Flask・Chart.js・しきい値設計の実践サンプル
-- **インフラ運用の入口**：監視ツール理解の第一歩として
-- **障害対応の補助**：「いつから負荷が高いのか」をグラフでざっくり把握
-
----
-
-## 今後追加したい機能（TODO）
-
-- [ ] Basic 認証 or トークンベース認証の追加
-- [ ] しきい値超過時のメール／Slack通知
-- [ ] 履歴データの SQLite 永続化（再起動後も振り返れる）
-- [ ] Docker イメージ化と docker-compose.yml の提供
-- [ ] 複数サーバーのリモート集約（エージェント方式）
-- [ ] PWA 化してスマホからも開きやすく
-
-学習を進めながら順次追加予定です。
-
----
-
-## ライセンス
+## License
 
 MIT License
 
-## 作者
+## Author
 
-**島田則幸（Noriyuki Shimada）**
-
-- 📧 net7jp@gmail.com
-- 📂 [GitHub @ns7jp](https://github.com/ns7jp)
+島田則幸 (Noriyuki Shimada)

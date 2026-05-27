@@ -1,0 +1,71 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "red"}, {"color": "green", "value": 1}]}}, "overrides": []},
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": {"calcs": ["lastNotNull"], "values": false}, "textMode": "value_and_name"},
+      "targets": [{"expr": "up{job=\"server-monitor\"}", "legendFormat": "server-monitor", "refId": "A"}],
+      "title": "Application Scrape Status",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"max": 100, "min": 0, "unit": "percent"}, "overrides": []},
+      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 0},
+      "id": 2,
+      "targets": [{"expr": "server_monitor_cpu_usage_percent", "legendFormat": "{{node}}", "refId": "A"}],
+      "title": "Application Container CPU",
+      "type": "gauge"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"max": 100, "min": 0, "unit": "percent"}, "overrides": []},
+      "gridPos": {"h": 5, "w": 6, "x": 12, "y": 0},
+      "id": 3,
+      "targets": [{"expr": "100 - (avg(rate(node_cpu_seconds_total{job=\"linux-node\",mode=\"idle\"}[5m])) * 100)", "legendFormat": "linux host", "refId": "A"}],
+      "title": "Linux Host CPU",
+      "type": "gauge"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"max": 100, "min": 0, "unit": "percent"}, "overrides": []},
+      "gridPos": {"h": 5, "w": 6, "x": 18, "y": 0},
+      "id": 4,
+      "targets": [{"expr": "(1 - node_memory_MemAvailable_bytes{job=\"linux-node\"} / node_memory_MemTotal_bytes{job=\"linux-node\"}) * 100", "legendFormat": "linux host", "refId": "A"}],
+      "title": "Linux Host Memory",
+      "type": "gauge"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "percent"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
+      "id": 5,
+      "targets": [{"expr": "server_monitor_cpu_usage_percent", "legendFormat": "CPU {{node}}", "refId": "A"}, {"expr": "server_monitor_memory_usage_percent", "legendFormat": "Memory {{node}}", "refId": "B"}],
+      "title": "Application Container Resource History",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "percent"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 5},
+      "id": 6,
+      "targets": [{"expr": "(1 - node_filesystem_avail_bytes{job=\"linux-node\",fstype!~\"tmpfs|overlay|squashfs\"} / node_filesystem_size_bytes{job=\"linux-node\",fstype!~\"tmpfs|overlay|squashfs\"}) * 100", "legendFormat": "{{mountpoint}}", "refId": "A"}],
+      "title": "Linux Host Filesystem Use",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 39,
+  "tags": ["infrastructure", "server-monitor"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Server Monitor Infrastructure Lab",
+  "uid": "server-monitor-lab",
+  "version": 1
+}

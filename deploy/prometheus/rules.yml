@@ -1,0 +1,49 @@
+groups:
+  - name: server-monitor-availability
+    rules:
+      - alert: ServerMonitorUnavailable
+        expr: up{job="server-monitor"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Server Monitor cannot be scraped"
+          description: "Prometheus has failed to scrape the monitoring application for two minutes."
+
+      - alert: LinuxNodeExporterUnavailable
+        expr: up{job="linux-node"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Linux host metrics are unavailable"
+          description: "node-exporter has not been reachable for two minutes."
+
+  - name: linux-node-capacity
+    rules:
+      - alert: LinuxNodeHighCpuUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{job="linux-node",mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sustained high CPU usage"
+          description: "CPU usage has remained above 85 percent for ten minutes."
+
+      - alert: LinuxNodeMemoryPressure
+        expr: (1 - (node_memory_MemAvailable_bytes{job="linux-node"} / node_memory_MemTotal_bytes{job="linux-node"})) * 100 > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Sustained memory pressure"
+          description: "Used memory has remained above 90 percent for ten minutes."
+
+      - alert: LinuxNodeFilesystemAlmostFull
+        expr: (1 - (node_filesystem_avail_bytes{job="linux-node",fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes{job="linux-node",fstype!~"tmpfs|overlay|squashfs"})) * 100 > 85
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Filesystem capacity is low"
+          description: "A persistent filesystem has remained above 85 percent usage for fifteen minutes."

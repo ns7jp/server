@@ -24,3 +24,25 @@ jobs:
 
       - name: Run tests
         run: pytest
+
+      - name: Validate dashboard JSON
+        run: |
+          python -m json.tool deploy/grafana/dashboards/server-monitor.json > /dev/null
+
+      - name: Validate Compose configuration
+        run: |
+          cp deploy/secrets/dashboard_password.txt.example deploy/secrets/dashboard_password.txt
+          cp deploy/secrets/metrics_token.txt.example deploy/secrets/metrics_token.txt
+          cp deploy/secrets/grafana_admin_password.txt.example deploy/secrets/grafana_admin_password.txt
+          cp deploy/secrets/slack_webhook_url.txt.example deploy/secrets/slack_webhook_url.txt
+          docker compose config --quiet
+          docker compose -f compose.yaml -f compose.slack.yaml.example config --quiet
+
+      - name: Validate monitoring configuration
+        run: |
+          docker run --rm --entrypoint /bin/promtool -v "$PWD/deploy/prometheus:/etc/prometheus:ro" -v "$PWD/deploy/secrets/metrics_token.txt.example:/run/secrets/metrics_token:ro" prom/prometheus:v2.55.1 check config /etc/prometheus/prometheus.yml
+          docker run --rm --entrypoint /bin/promtool -v "$PWD/deploy/prometheus:/etc/prometheus:ro" prom/prometheus:v2.55.1 check rules /etc/prometheus/rules.yml
+          docker run --rm --entrypoint /bin/amtool -v "$PWD/deploy/alertmanager:/etc/alertmanager:ro" prom/alertmanager:v0.27.0 check-config /etc/alertmanager/alertmanager.yml
+
+      - name: Build non-root application image
+        run: docker build -t server-monitor:ci .

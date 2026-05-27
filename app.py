@@ -1,189 +1,252 @@
-# =========================================================================
-# ファイル名 : app.py
-# 役割       : サーバー監視ダッシュボードのバックエンド（Flaskアプリ）
-# 概要       : 動作中のPC・サーバーのリソース情報（CPU・メモリ・ディスク・
-#              ネットワーク・プロセス）を psutil で取得し、JSON APIとして
-#              フロントエンド（ブラウザ）に返す。
-#
-# 使い方     :
-#   1) 依存ライブラリをインストール
-#        pip install -r requirements.txt
-#   2) このファイルを実行
-#        python app.py
-#   3) ブラウザで http://localhost:5000/ にアクセス
-# =========================================================================
+"""Secure server monitoring dashboard and Prometheus exporter."""
 
-# ===== 必要なライブラリのインポート =====
-# Flask         ：軽量なWebアプリフレームワーク
-# render_template：HTMLテンプレートを描画する関数
-# jsonify       ：Python辞書をJSON形式に変換するヘルパー
-from flask import Flask, render_template, jsonify
+from __future__ import annotations
 
-# psutil ：CPU・メモリ・ディスクなどシステム情報を取得するライブラリ
+import datetime
+import hmac
+import os
+import platform
+import socket
+from pathlib import Path
+
 import psutil
-
-# Python標準ライブラリ
-import platform   # OS情報やマシン情報の取得
-import datetime   # 日時の取り扱い
-import socket     # ホスト名の取得
+from flask import Flask, Response, jsonify, render_template, request
+from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Gauge, generate_latest
 
 
-# ===== Flaskアプリのインスタンス生成 =====
-# __name__ は現在のファイル名を表す特殊変数。
-# Flaskが静的ファイル・テンプレートの場所を判定するのに使う。
-app = Flask(__name__)
+def _bool_env(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.lower() in {"1", "true", "yes", "on"}
 
 
-# =========================================================================
-#  ルーティング定義
-# =========================================================================
-
-# ----- トップページ：ダッシュボード本体を返す -----
-# @app.route('/') は「URLが / にアクセスされたら、この関数を実行」という宣言。
-@app.route('/')
-def index():
-    # templates/index.html を描画してブラウザに返す
-    return render_template('index.html')
-
-
-# ----- API：リソース情報をJSONで返す -----
-# フロントエンドのJSが定期的にこのURLを叩いて最新情報を取得する。
-@app.route('/api/stats')
-def stats():
-    """
-    システム全体のリソース使用状況を取得し、JSONとして返す。
-    """
-    # ===== CPU情報 =====
-    # cpu_percent(interval=0.5) は0.5秒間サンプリングしてCPU使用率(%)を返す
-    cpu_percent = psutil.cpu_percent(interval=0.5)
-    # 論理コア数（ハイパースレッディング含む）と物理コア数
-    cpu_count_logical = psutil.cpu_count(logical=True)
-    cpu_count_physical = psutil.cpu_count(logical=False)
-    # コアごとの使用率（リストで返ってくる）
-    cpu_per_core = psutil.cpu_percent(interval=0, percpu=True)
-
-    # CPU周波数（取得できない環境ではNoneが返るのでtryで保護）
-    try:
-        freq = psutil.cpu_freq()
-        cpu_freq_current = round(freq.current, 0) if freq else 0
-        cpu_freq_max = round(freq.max, 0) if freq else 0
-    except Exception:
-        cpu_freq_current = 0
-        cpu_freq_max = 0
-
-    # ===== メモリ情報 =====
-    # 物理メモリ（RAM）
-    mem = psutil.virtual_memory()
-    # スワップ（仮想メモリ）
-    swap = psutil.swap_memory()
-
-    # ===== ディスク情報 =====
-    # 接続されている全パーティションを順番に確認し、使用状況を取得
-    disk_partitions = []
-    for part in psutil.disk_partitions(all=False):
+def _secret_value(value_name: str, file_name: str, default: str = "") -> str:
+    path = os.getenv(file_name)
+    if path:
         try:
-            usage = psutil.disk_usage(part.mountpoint)
-            disk_partitions.append({
-                'device': part.device,           # 例：C:\, /dev/sda1
-                'mountpoint': part.mountpoint,   # マウントポイント
-                'fstype': part.fstype,           # ファイルシステム（NTFS, ext4など）
-                'total': usage.total,            # 総容量(byte)
-                'used': usage.used,              # 使用量(byte)
-                'free': usage.free,              # 空き容量(byte)
-                'percent': usage.percent         # 使用率(%)
-            })
+            return Path(path).read_text(encoding="utf-8").strip()
+        except OSError:
+            return default
+    return os.getenv(value_name, default)
+
+
+app = Flask(__name__)
+app.config.update(
+    MONITOR_AUTH_DISABLED=_bool_env("MONITOR_AUTH_DISABLED"),
+    MONITOR_USERNAME=_secret_value("MONITOR_USERNAME", "MONITOR_USERNAME_FILE", "monitor"),
+    MONITOR_PASSWORD=_secret_value("MONITOR_PASSWORD", "MONITOR_PASSWORD_FILE"),
+    MONITOR_METRICS_TOKEN=_secret_value("MONITOR_METRICS_TOKEN", "MONITOR_METRICS_TOKEN_FILE"),
+    MONITOR_NODE_NAME=os.getenv("MONITOR_NODE_NAME", "monitored-node"),
+    MONITOR_SHOW_HOSTNAME=_bool_env("MONITOR_SHOW_HOSTNAME"),
+    MONITOR_SHOW_USERNAMES=_bool_env("MONITOR_SHOW_USERNAMES"),
+)
+
+
+def _secure_equals(left: str | None, right: str) -> bool:
+    return left is not None and hmac.compare_digest(left, right)
+
+
+def _dashboard_authenticated() -> bool:
+    if app.config["MONITOR_AUTH_DISABLED"]:
+        return True
+    auth = request.authorization
+    return bool(
+        auth
+        and _secure_equals(auth.username, app.config["MONITOR_USERNAME"])
+        and _secure_equals(auth.password, app.config["MONITOR_PASSWORD"])
+    )
+
+
+@app.before_request
+def protect_sensitive_routes() -> Response | None:
+    """Require credentials before returning host or metric information."""
+    if request.path == "/healthz":
+        return None
+
+    if request.path == "/metrics":
+        token = app.config["MONITOR_METRICS_TOKEN"]
+        if not token:
+            return Response("metrics token is not configured\n", status=503, mimetype="text/plain")
+        expected = f"Bearer {token}"
+        if not _secure_equals(request.headers.get("Authorization"), expected):
+            return Response(
+                "metrics authentication required\n",
+                status=401,
+                headers={"WWW-Authenticate": "Bearer"},
+                mimetype="text/plain",
+            )
+        return None
+
+    if not app.config["MONITOR_AUTH_DISABLED"] and not app.config["MONITOR_PASSWORD"]:
+        return Response("dashboard credentials are not configured\n", status=503, mimetype="text/plain")
+
+    if not _dashboard_authenticated():
+        return Response(
+            "authentication required\n",
+            status=401,
+            headers={"WWW-Authenticate": 'Basic realm="server-monitor"'},
+            mimetype="text/plain",
+        )
+    return None
+
+
+def _collect_stats() -> dict:
+    cpu_percent = psutil.cpu_percent(interval=0.1)
+    cpu_per_core = psutil.cpu_percent(interval=0, percpu=True)
+    try:
+        frequency = psutil.cpu_freq()
+        cpu_frequency_current = round(frequency.current, 0) if frequency else 0
+        cpu_frequency_max = round(frequency.max, 0) if frequency else 0
+    except Exception:
+        cpu_frequency_current = 0
+        cpu_frequency_max = 0
+
+    memory = psutil.virtual_memory()
+    swap = psutil.swap_memory()
+    disks = []
+    for partition in psutil.disk_partitions(all=False):
+        try:
+            usage = psutil.disk_usage(partition.mountpoint)
         except (PermissionError, OSError):
-            # 取得できないディスクはスキップ（CDドライブ等）
             continue
+        disks.append(
+            {
+                "device": partition.device,
+                "mountpoint": partition.mountpoint,
+                "fstype": partition.fstype,
+                "total": usage.total,
+                "used": usage.used,
+                "free": usage.free,
+                "percent": usage.percent,
+            }
+        )
 
-    # ===== ネットワーク情報 =====
-    # 起動からの累積送受信バイト数を取得
-    net = psutil.net_io_counters()
-
-    # ===== システム情報 =====
-    # 起動時刻と稼働時間（uptime）の計算
+    network = psutil.net_io_counters()
     boot_time = datetime.datetime.fromtimestamp(psutil.boot_time())
     uptime = datetime.datetime.now() - boot_time
+    hostname = (
+        socket.gethostname()
+        if app.config["MONITOR_SHOW_HOSTNAME"]
+        else app.config["MONITOR_NODE_NAME"]
+    )
 
-    # ===== レスポンスをJSON化して返す =====
-    return jsonify({
-        'cpu': {
-            'percent': cpu_percent,
-            'count_logical': cpu_count_logical,
-            'count_physical': cpu_count_physical,
-            'per_core': cpu_per_core,
-            'freq_current': cpu_freq_current,
-            'freq_max': cpu_freq_max,
+    return {
+        "cpu": {
+            "percent": cpu_percent,
+            "count_logical": psutil.cpu_count(logical=True),
+            "count_physical": psutil.cpu_count(logical=False),
+            "per_core": cpu_per_core,
+            "freq_current": cpu_frequency_current,
+            "freq_max": cpu_frequency_max,
         },
-        'memory': {
-            'total': mem.total,
-            'used': mem.used,
-            'available': mem.available,
-            'percent': mem.percent,
+        "memory": {
+            "total": memory.total,
+            "used": memory.used,
+            "available": memory.available,
+            "percent": memory.percent,
         },
-        'swap': {
-            'total': swap.total,
-            'used': swap.used,
-            'percent': swap.percent,
+        "swap": {"total": swap.total, "used": swap.used, "percent": swap.percent},
+        "disk": disks,
+        "network": {
+            "bytes_sent": network.bytes_sent,
+            "bytes_recv": network.bytes_recv,
+            "packets_sent": network.packets_sent,
+            "packets_recv": network.packets_recv,
         },
-        'disk': disk_partitions,
-        'network': {
-            'bytes_sent': net.bytes_sent,
-            'bytes_recv': net.bytes_recv,
-            'packets_sent': net.packets_sent,
-            'packets_recv': net.packets_recv,
+        "system": {
+            "os": platform.system(),
+            "os_release": platform.release(),
+            "hostname": hostname,
+            "machine": platform.machine(),
+            "processor": platform.processor() or "N/A",
+            "python_version": platform.python_version(),
+            "boot_time": boot_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "uptime_seconds": int(uptime.total_seconds()),
         },
-        'system': {
-            'os': platform.system(),                         # Windows / Linux / Darwin
-            'os_release': platform.release(),                # OSのリリース番号
-            'hostname': socket.gethostname(),                # マシン名
-            'machine': platform.machine(),                   # アーキテクチャ（x86_64など）
-            'processor': platform.processor() or 'N/A',      # CPU名（取得できない場合はN/A）
-            'python_version': platform.python_version(),
-            'boot_time': boot_time.strftime('%Y-%m-%d %H:%M:%S'),
-            'uptime_seconds': int(uptime.total_seconds()),
-        },
-        # 取得した時刻（フロント側で「最終更新」として表示する用）
-        'timestamp': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-    })
+        "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
 
 
-# ----- API：プロセス一覧を返す（CPU使用率順、上位15件） -----
-@app.route('/api/processes')
-def processes():
-    """
-    実行中プロセスのうち、CPU使用率が高い順に上位15件を返す。
-    """
-    procs = []
+@app.get("/healthz")
+def healthz() -> tuple[dict[str, str], int]:
+    """Liveness endpoint: it intentionally exposes no system information."""
+    return {"status": "ok"}, 200
 
-    # process_iter() は実行中の全プロセスを順番に返すジェネレータ。
-    # 引数attrsで取得したい情報だけ指定しておくと高速。
-    for proc in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent', 'username']):
+
+@app.get("/")
+def index() -> str:
+    return render_template("index.html")
+
+
+@app.get("/api/stats")
+def stats() -> Response:
+    return jsonify(_collect_stats())
+
+
+@app.get("/api/processes")
+def processes() -> Response:
+    show_usernames = app.config["MONITOR_SHOW_USERNAMES"]
+    attributes = ["pid", "name", "cpu_percent", "memory_percent"]
+    if show_usernames:
+        attributes.append("username")
+
+    process_list = []
+    for process in psutil.process_iter(attributes):
         try:
-            info = proc.info
-            procs.append({
-                'pid': info['pid'],
-                'name': info['name'] or 'Unknown',
-                # NoneのときはJSの数値計算で困るので0に変換
-                'cpu_percent': round(info['cpu_percent'] or 0, 1),
-                'memory_percent': round(info['memory_percent'] or 0, 2),
-                'username': info['username'] or 'N/A',
-            })
+            info = process.info
+            process_list.append(
+                {
+                    "pid": info["pid"],
+                    "name": info["name"] or "Unknown",
+                    "cpu_percent": round(info["cpu_percent"] or 0, 1),
+                    "memory_percent": round(info["memory_percent"] or 0, 2),
+                    "username": (info.get("username") or "N/A") if show_usernames else "hidden",
+                }
+            )
         except (psutil.NoSuchProcess, psutil.AccessDenied):
-            # プロセスが既に終了している、または権限不足でアクセス不可の場合はスキップ
             continue
 
-    # CPU使用率の高い順（降順）に並び替えて、上位15件だけ返す
-    procs.sort(key=lambda p: p['cpu_percent'], reverse=True)
-    return jsonify(procs[:15])
+    process_list.sort(key=lambda process: process["cpu_percent"], reverse=True)
+    return jsonify(process_list[:15])
 
 
-# =========================================================================
-#  エントリーポイント
-# =========================================================================
-# このファイルが直接実行されたとき（python app.py）だけ動く。
-# 他ファイルからimportされた場合は実行されない。
-if __name__ == '__main__':
-    # 学習用・ローカル確認用のため、安全側の初期値として自分のPCからのみアクセス可能にする。
-    # LAN内へ公開する場合はREADMEの注意事項を確認し、debug=Falseのままhostを調整する。
-    app.run(host='127.0.0.1', port=5000, debug=False)
+@app.get("/metrics")
+def metrics() -> Response:
+    data = _collect_stats()
+    registry = CollectorRegistry()
+    labels = ["node"]
+    node = app.config["MONITOR_NODE_NAME"]
+
+    Gauge(
+        "server_monitor_cpu_usage_percent",
+        "CPU usage percentage sampled by server-monitor.",
+        labels,
+        registry=registry,
+    ).labels(node).set(data["cpu"]["percent"])
+    Gauge(
+        "server_monitor_memory_usage_percent",
+        "Memory usage percentage sampled by server-monitor.",
+        labels,
+        registry=registry,
+    ).labels(node).set(data["memory"]["percent"])
+    Gauge(
+        "server_monitor_uptime_seconds",
+        "Monitored system uptime in seconds.",
+        labels,
+        registry=registry,
+    ).labels(node).set(data["system"]["uptime_seconds"])
+    disk_gauge = Gauge(
+        "server_monitor_disk_usage_percent",
+        "Disk usage percentage; paths are deliberately not exported as labels.",
+        ["node", "disk"],
+        registry=registry,
+    )
+    for index, disk in enumerate(data["disk"]):
+        disk_gauge.labels(node, f"disk_{index}").set(disk["percent"])
+
+    return Response(generate_latest(registry), content_type=CONTENT_TYPE_LATEST)
+
+
+if __name__ == "__main__":
+    app.run(host="127.0.0.1", port=5000, debug=False)
