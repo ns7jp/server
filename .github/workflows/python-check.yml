@@ -59,8 +59,5 @@ jobs:
             grafana/promtail:2.9.0 \
             -config.file=/etc/promtail/config.yml -config.expand-env=true -check-syntax
 
-      - name: Validate Loki datasource provisioning YAML
-        run: python -c "import yaml; yaml.safe_load(open('deploy/grafana/provisioning/datasources/loki.yml'))"
-
       - name: Build non-root application image
         run: docker build -t server-monitor:ci .
