@@ -4,8 +4,10 @@
 
 | 対象 | 永続化方法 | バックアップ要否 |
 | --- | --- | --- |
-| アプリコード、Nginx、監視ルール、Grafana dashboard | Git リポジトリ | GitHub を正として復元 |
+| アプリコード、Nginx、監視ルール、Grafana dashboard、Loki / Promtail 設定 | Git リポジトリ | GitHub を正として復元 |
 | Prometheus 履歴 | `prometheus_data` volume、既定15日保持 | 学習環境では任意。本番相当では必要 |
+| Loki 履歴 | `loki_data` volume、既定30日保持 | 学習環境では任意。インシデント記録を保全する場合は対象 |
+| Promtail 読み込み位置 | `promtail_data` volume の `positions.yaml` | 復元不要（喪失時は古いログを再送し重複が出るが運用継続可） |
 | Grafana 設定 | dashboard / datasource はプロビジョニング | 手動変更を禁止すれば volume 復元不要 |
 | 資格情報、Slack Webhook | `deploy/secrets/*.txt` または OS の秘密管理 | Git 外の安全な保管先へバックアップ |
 
@@ -14,12 +16,14 @@
 検証環境で履歴を残す必要がある場合は、サービス停止時間を確保した上で volume をアーカイブする。
 
 ```bash
-docker compose stop prometheus grafana
+docker compose stop prometheus grafana loki
 docker run --rm -v server-monitor-lab_prometheus_data:/data -v "$PWD/backup:/backup" alpine \
   tar czf /backup/prometheus-data.tgz -C /data .
 docker run --rm -v server-monitor-lab_grafana_data:/data -v "$PWD/backup:/backup" alpine \
   tar czf /backup/grafana-data.tgz -C /data .
-docker compose start prometheus grafana
+docker run --rm -v server-monitor-lab_loki_data:/data -v "$PWD/backup:/backup" alpine \
+  tar czf /backup/loki-data.tgz -C /data .
+docker compose start prometheus grafana loki
 ```
 
 秘密値は別の秘密管理先に保存し、バックアップアーカイブや Git へ混入させない。

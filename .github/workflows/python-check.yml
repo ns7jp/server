@@ -44,5 +44,20 @@ jobs:
           docker run --rm --entrypoint /bin/promtool -v "$PWD/deploy/prometheus:/etc/prometheus:ro" prom/prometheus:v2.55.1 check rules /etc/prometheus/rules.yml
           docker run --rm --entrypoint /bin/amtool -v "$PWD/deploy/alertmanager:/etc/alertmanager:ro" prom/alertmanager:v0.27.0 check-config /etc/alertmanager/alertmanager.yml
 
+      - name: Validate Loki configuration
+        run: |
+          docker run --rm \
+            -v "$PWD/deploy/loki/loki-config.yml:/etc/loki/loki-config.yml:ro" \
+            grafana/loki:2.9.0 \
+            -config.file=/etc/loki/loki-config.yml -verify-config
+
+      - name: Validate Promtail configuration
+        run: |
+          docker run --rm \
+            -e MONITOR_NODE_NAME=linux-lab-01 \
+            -v "$PWD/deploy/promtail/promtail-config.yml:/etc/promtail/config.yml:ro" \
+            grafana/promtail:2.9.0 \
+            -config.file=/etc/promtail/config.yml -config.expand-env=true -check-syntax
+
       - name: Build non-root application image
         run: docker build -t server-monitor:ci .

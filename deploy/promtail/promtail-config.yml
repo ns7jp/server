@@ -1,0 +1,64 @@
+server:
+  http_listen_port: 9080
+  log_level: info
+
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    backoff_config:
+      min_period: 500ms
+      max_period: 5m
+      max_retries: 10
+    batchwait: 1s
+    batchsize: 1048576
+
+scrape_configs:
+  # ホスト上のテキストログ（Debian / Ubuntu / RHEL の代表的なパス）
+  - job_name: varlogs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: varlogs
+          host: ${MONITOR_NODE_NAME}
+          __path__: /var/log/{syslog,auth.log,messages,secure}
+    pipeline_stages:
+      - match:
+          selector: '{job="varlogs"}'
+          stages:
+            - regex:
+                expression: '^(?P<timestamp>\S+\s+\d+\s+\d+:\d+:\d+)\s+(?P<hostname>\S+)\s+(?P<process>[^\[\s:]+)(?:\[\d+\])?:\s+(?P<message>.*)$'
+            - labels:
+                process:
+
+  # Compose 上のコンテナのログ（Docker SD で自動発見）
+  - job_name: containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.+)'
+        target_label: container
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: service
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        target_label: compose_project
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: stream
+      - target_label: job
+        replacement: containers
+    pipeline_stages:
+      - docker: {}
+      # Nginx の access.log 形式を簡易にラベリングする。動的値（IP / URL / リクエスト ID 等）は
+      # ラベルにせずログ本文に残し、カーディナリティ爆発を避ける。
+      - match:
+          selector: '{service="nginx"}'
+          stages:
+            - regex:
+                expression: '^\S+ \S+ \S+ \[[^\]]+\] "(?P<method>\S+) [^"]*" (?P<status>\d{3}) '
+            - labels:
+                method:
+                status:

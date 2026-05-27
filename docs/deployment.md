@@ -36,6 +36,7 @@ docker compose ps
 | Grafana | `http://127.0.0.1:3000/` | `admin` と `grafana_admin_password.txt` |
 | Prometheus | `http://127.0.0.1:9090/` | loopback 限定 |
 | Alertmanager | `http://127.0.0.1:9093/` | loopback 限定 |
+| Loki API | `http://127.0.0.1:3100/` | loopback 限定（ブラウザ UI なし、Grafana 経由で閲覧） |
 
 ### 3. 検証
 
@@ -43,9 +44,19 @@ docker compose ps
 curl http://127.0.0.1:8080/healthz
 curl -u "monitor:$(cat deploy/secrets/dashboard_password.txt)" http://127.0.0.1:8080/api/stats
 curl -H "Authorization: Bearer $(cat deploy/secrets/metrics_token.txt)" http://127.0.0.1:8080/metrics
+curl http://127.0.0.1:3100/ready
 ```
 
-Prometheus の `Status > Targets` で `server-monitor` と `linux-node` が `UP` となり、Grafana の `Infrastructure Lab / Server Monitor Infrastructure Lab` に履歴が表示されれば構築完了である。
+Prometheus の `Status > Targets` で `server-monitor` と `linux-node` が `UP` となり、Grafana の `Infrastructure Lab / Server Monitor Infrastructure Lab` に履歴が表示され、同ダッシュボード下部の Logs パネルに `compose_project="server-monitor-lab"` のログが流れていれば構築完了である。
+
+Loki が取り込んでいるラベル一覧は次で確認できる。
+
+```bash
+curl -s http://127.0.0.1:3100/loki/api/v1/labels | python -m json.tool
+curl -s 'http://127.0.0.1:3100/loki/api/v1/label/container/values' | python -m json.tool
+```
+
+LogQL の代表例は [LogQL クエリ集](loki-queries.md) を参照する。
 
 ### 4. Slack 通知を有効化する場合
 
