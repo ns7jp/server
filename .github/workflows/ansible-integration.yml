@@ -1,0 +1,39 @@
+name: Ansible integration evidence
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  molecule-test:
+    name: Molecule test (${{ matrix.role }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        role:
+          - common
+          - docker
+          - nginx
+          - monitoring
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible and Molecule
+        run: |
+          python -m pip install --upgrade pip
+          pip install 'ansible' 'molecule' 'molecule-plugins[docker]' 'docker'
+
+      - name: Run full Molecule lifecycle
+        working-directory: ansible/roles/${{ matrix.role }}
+        env:
+          ANSIBLE_ROLES_PATH: ${{ github.workspace }}/ansible/roles
+        run: molecule test

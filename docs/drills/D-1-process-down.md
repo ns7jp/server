@@ -91,12 +91,12 @@ RTO 5 分以内なら合格。これを超える場合はランブック / 設�
 
 ## 7. 想定発見事項のヒント
 
-過去演習で見つかった例。新規の発見はテンプレートに沿って追記する。
+演習で確認する候補。実際に見つかった事項だけをテンプレートに沿って追記する。
 
 - compose healthcheck の `interval` を短くすると Prometheus への影響が早く出る
 - `nginx` を kill した場合、`app` の depends_on で待つため復旧が遅れることがある
 - macOS の Docker Desktop と Linux ホストで再起動時間に差がある
-- Loki / Promtail が並走しているとログから再起動の前後が遡れる
+- Loki / Grafana Alloy が並走しているとログから再起動の前後が遡れる
 
 ## 8. 振り返り
 

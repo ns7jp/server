@@ -18,7 +18,7 @@
 | 実行権限 | アプリコンテナは `monitor` ユーザー、`read_only`、`no-new-privileges` で実行 |
 | ネットワーク露出 | Compose で公開するポートはすべて `127.0.0.1` にバインド |
 | リバースプロキシ | Nginx で基本的なセキュリティヘッダーを付与し、TLS 配備例も同梱 |
-| ログ収集の権限分離 | Promtail は `/var/log`、`/var/lib/docker/containers`、Docker socket を **読み取り専用** でマウントし、`no-new-privileges` で起動 |
+| ログ収集の権限分離 | Grafana Alloy は `/var/log`、`/var/lib/docker/containers`、Docker socket を **読み取り専用** でマウントし、`no-new-privileges` で起動 |
 | ログラベルの最小化 | ラベルにはクライアント IP / URL / リクエスト ID 等の高カーディナリティ値を入れず、ログ本文に残す |
 
 ## 設定値
@@ -44,5 +44,5 @@
 - Basic 認証はユーザー管理や MFA を持たない。複数利用者や業務利用では SSO / VPN 側に認証を移す。
 - Compose ラボは単一ホスト構成であり、ホスト故障時には監視基盤自体も停止する。
 - UI 表示用のディスク情報は認証済み利用者には見える。必要に応じ API 出力の制限を追加する。
-- Promtail は Docker socket をマウントするためコンテナ列挙の権限を持つ。socket は `:ro` で渡しているが、Docker daemon の API は読み取りでも機密情報（環境変数、ラベル等）を含む。同一ホストで信頼境界を越える別テナントを動かさないこと。
+- Alloy は Docker socket をマウントするためコンテナ列挙の権限を持つ。socket は `:ro` で渡しているが、Docker daemon の API は読み取りでも機密情報（環境変数、ラベル等）を含む。同一ホストで信頼境界を越える別テナントを動かさないこと。
 - Loki は無認証である。`127.0.0.1:3100` のみで待ち受けるため、ホスト上の他ユーザーから到達可能な場合は LAN への露出と同等のリスクになる。多人数ホストでは Grafana 側でアクセス制御し、Loki ポートはコンテナ内部に閉じる構成を検討する。

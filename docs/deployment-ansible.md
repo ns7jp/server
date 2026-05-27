@@ -26,7 +26,7 @@ ansible/
     ├── common/      # OS 共通設定（timezone、UFW、SSH、unattended-upgrades）
     ├── docker/      # Docker Engine + Compose plugin + daemon.json
     ├── nginx/       # ホスト側の TLS 準備（Nginx 本体は compose 内）
-    ├── monitoring/  # Prometheus / Loki / Promtail / Alertmanager / Grafana 設定の同期
+    ├── monitoring/  # Prometheus / Loki / Grafana Alloy / Alertmanager / Grafana 設定の同期
     ├── app/         # アプリ同期、秘密値レンダリング、`docker compose up -d`
     └── backup/      # systemd timer で日次バックアップ
 ```
@@ -147,9 +147,9 @@ GitHub Actions（`.github/workflows/ansible-check.yml`）では次を検証す�
 | `lint` | `ansible-lint --offline` と全 playbook の `--syntax-check` |
 | `molecule (common/docker/nginx/monitoring)` | `molecule list` で各 scenario を読み込み、`converge.yml` / `verify.yml` の `--syntax-check` を実行 |
 
-Molecule のフル実行を CI で行うには共有ランナー上の Docker daemon と
-systemd-in-container の組み合わせが安定しないため、CI ではシナリオの
-妥当性のみを検証する。実環境での収束 / 冪等性確認は上記のローカル実行で行う。
+通常の PR CI はシナリオの妥当性のみを検証する。実コンテナでの収束 / 冪等性確認は
+上記のローカル実行に加え、`.github/workflows/ansible-integration.yml` を手動実行
+して確認できる。結果は `docs/evidence/` に記録してから実績として扱う。
 
 ## 10. 既存 docker-compose 環境からの移行
 

@@ -53,9 +53,9 @@ variable "alarm_emails" {
 }
 
 variable "monthly_budget_jpy" {
-  description = "月額予算（円）。"
+  description = "24h 稼働の設計試算を踏まえた AWS Budgets 通知閾値（円）。"
   type        = number
-  default     = 5000
+  default     = 15000
 }
 
 variable "ssh_ingress_cidrs" {

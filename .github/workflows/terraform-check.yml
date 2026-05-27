@@ -62,7 +62,7 @@ jobs:
       # 自前で tfsec バイナリを取得して High 以上で fail させる。
       - name: Install tfsec
         run: |
-          curl -sSL https://github.com/aquasecurity/tfsec/releases/latest/download/tfsec-linux-amd64 \
+          curl -sSL https://github.com/aquasecurity/tfsec/releases/download/v1.28.14/tfsec-linux-amd64 \
             -o /usr/local/bin/tfsec
           chmod +x /usr/local/bin/tfsec
           tfsec --version

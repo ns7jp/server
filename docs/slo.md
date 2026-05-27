@@ -11,6 +11,17 @@
 | クリティカリティ | 「監視の監視」のため、停止すると一次障害に気づけない |
 | 計画停止 | 早朝 / 週末で 1 時間 / 月まで許容（事前周知） |
 
+### 観測境界
+
+現在実装している blackbox-exporter は Compose 内で Nginx を probe するラボ用の
+観測点である。アプリ停止の演習は観測できるが、ホスト全体または Compose 全体が
+停止した場合は observer も停止し、外部利用者から見た停止時間を完全には測定できない。
+
+AWS の可用性 SLO として採用する場合は、ALB の CloudWatch metric に加え、
+CloudWatch Synthetics 等の対象 EC2 外の probe を追加し、そのデータを正本として
+記録する。従って、以下の 99.5% は現在はラボ内の品質目標であり、AWS 稼働実績の
+主張ではない。
+
 ## 2. SLI / SLO 定義
 
 ### 2.1 可用性
@@ -140,6 +151,9 @@ Grafana の **Server Monitor SLO** ダッシュボード（uid: `slo-overview`�
 | 2 | SLO ダッシュボードを Grafana プロビジョニング JSON で追加 | ✅ |
 | 3 | Burn rate alert + 各アラートに runbook_url annotation | ✅ |
 | 4 | 初回月次レビューの議事録テンプレートを設置 | ✅ |
+
+実測証跡の有無は [検証証跡台帳](evidence/README.md) で管理する。D-1 / D-2 の
+実行結果が記録されるまでは、ランブックと自動化コードの整備完了としてのみ扱う。
 
 ## 8. 参考文献
 

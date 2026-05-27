@@ -11,8 +11,9 @@ certificate_arn = ""
 # Budgets / アラームの通知先
 alarm_emails = ["noc@example.com"]
 
-# 月額予算（円）。AWS Budgets は USD で設定するが、jpy_per_usd で換算する。
-monthly_budget_jpy = 1500
+# 短時間の apply/destroy 検証向け警戒値。常時稼働の月額見積ではない。
+# NAT Gateway と ALB を含むため、常時稼働時は docs/cost-report.md の下限を参照する。
+monthly_budget_jpy = 3000
 
 # 緊急 SSH 許可 CIDR。空にすると SSM Session Manager のみ。
 ssh_ingress_cidrs = []
