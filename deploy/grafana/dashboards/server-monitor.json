@@ -56,16 +56,62 @@
       "targets": [{"expr": "(1 - node_filesystem_avail_bytes{job=\"linux-node\",fstype!~\"tmpfs|overlay|squashfs\"} / node_filesystem_size_bytes{job=\"linux-node\",fstype!~\"tmpfs|overlay|squashfs\"}) * 100", "legendFormat": "{{mountpoint}}", "refId": "A"}],
       "title": "Linux Host Filesystem Use",
       "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "loki"},
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 13},
+      "id": 7,
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "{compose_project=\"server-monitor-lab\"} |~ \"(?i)error|warn|fail|critical|denied|exception\"",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "title": "Recent Errors and Warnings (Loki)",
+      "type": "logs",
+      "description": "compose_project=server-monitor-lab のコンテナログから ERROR / WARN / FAIL / CRITICAL / DENIED / EXCEPTION のいずれかを含む行を表示する。"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "loki"},
+      "fieldConfig": {"defaults": {"unit": "logs/sec"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 23},
+      "id": 8,
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "loki", "uid": "loki"},
+          "expr": "sum by (container) (rate({compose_project=\"server-monitor-lab\"} |~ \"(?i)error|exception|fail|critical\" [5m]))",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "title": "Error log rate by container (5m)",
+      "type": "timeseries",
+      "description": "compose_project=server-monitor-lab のコンテナごとのエラー行頻度。スパイクとアラートの突き合わせに使う。"
     }
   ],
   "refresh": "15s",
   "schemaVersion": 39,
-  "tags": ["infrastructure", "server-monitor"],
+  "tags": ["infrastructure", "server-monitor", "logs"],
   "templating": {"list": []},
   "time": {"from": "now-1h", "to": "now"},
   "timepicker": {},
   "timezone": "browser",
   "title": "Server Monitor Infrastructure Lab",
   "uid": "server-monitor-lab",
-  "version": 1
+  "version": 2
 }

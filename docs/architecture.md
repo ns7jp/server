@@ -2,7 +2,7 @@
 
 ## 目的
 
-小規模な Linux サーバーの監視を題材に、構築、アクセス制御、可視化、アラート、障害対応を一連で検証できる構成を作る。Flask ダッシュボードはアプリケーション実装の題材、Prometheus / Grafana / Alertmanager は運用を想定した監視基盤として役割を分ける。
+小規模な Linux サーバーの監視を題材に、構築、アクセス制御、可視化、アラート、障害対応を一連で検証できる構成を作る。Flask ダッシュボードはアプリケーション実装の題材、Prometheus / Grafana / Alertmanager / Loki は運用を想定した監視・ログ基盤として役割を分ける。
 
 ## 構成図
 
@@ -18,6 +18,10 @@ flowchart LR
     Prom --> Grafana["Grafana dashboard"]
     Prom --> Alert["Alertmanager"]
     Alert -.->|"秘密値投入後に有効化"| Slack["Slack notification"]
+
+    Promtail["Promtail<br/>ログ収集"] -->|"/var/log + Docker SD<br/>read-only"| Host
+    Promtail --> Loki["Loki<br/>30日保持"]
+    Loki -->|"LogQL"| Grafana
 ```
 
 ## コンポーネント
@@ -29,7 +33,9 @@ flowchart LR
 | node-exporter | Linux ホストの CPU、メモリ、ファイルシステム収集 | Docker 内部ネットワーク |
 | Prometheus | 収集、ルール評価、15日分の履歴保持 | `127.0.0.1:9090` |
 | Alertmanager | アラートの集約、通知ルーティング | `127.0.0.1:9093` |
-| Grafana | 運用向けダッシュボード | `127.0.0.1:3000` |
+| Grafana | 運用向けダッシュボード（Prometheus + Loki データソース） | `127.0.0.1:3000` |
+| Promtail | コンテナログと `/var/log` の収集、Loki への転送 | Docker 内部ネットワーク |
+| Loki | ログの保存とクエリ、30日分の履歴保持 | `127.0.0.1:3100`（API のみ） |
 
 ## 重要な設計判断
 
@@ -42,6 +48,9 @@ flowchart LR
 | Compose の公開ポートは loopback のみ | 学習環境で誤って LAN / Internet に露出しないため |
 | ホスト監視には node-exporter を採用 | コンテナ内の `psutil` だけではホスト全体の監視にならないため |
 | 履歴は Prometheus TSDB に保持 | UI の短期グラフではなく、障害調査で遡れる履歴を残すため |
+| ログは Loki に集約 | アラートで気づいた異常の原因を、同じ Grafana 画面で即時に追跡するため |
+| ログラベルは固定値のみ | カーディナリティ爆発を避け、Loki の単一ホスト構成を安定動作させるため |
+| Promtail は読み取り専用マウント | ホストの `/var/log` と Docker socket / メタデータを侵害時に書き換えられないため |
 
 ## 収集とアラート
 
@@ -55,6 +64,18 @@ flowchart LR
 
 `server-monitor` の `/metrics` は CPU / メモリ / 稼働秒数 / Load Average (1m, 5m, 15m) / プロセス数 / アプリプロセス起動時刻 / ディスク使用率を Prometheus に提供する。ホスト全体の詳細な収集は `node-exporter` 側に集約する。
 
+## ログ収集とラベル設計
+
+| 対象 | ジョブ | 主なラベル |
+| --- | --- | --- |
+| Compose 上のコンテナ stdout / stderr | `containers` | `container`、`service`、`compose_project`、`stream` |
+| Nginx access log（pipeline 抽出） | `containers`（`service="nginx"`） | 上記 + `method`、`status` |
+| ホストの `/var/log/{syslog,auth.log,messages,secure}` | `varlogs` | `job`、`host`、`process` |
+
+ラベルにしないもの：クライアント IP、URL パス、リクエスト ID、ユーザー ID、その他高カーディナリティの値。LogQL の本文検索 `|=` / `|~` で絞り込む。リテンションは Loki `limits_config.retention_period: 720h`（30 日）で開始し、ディスク使用量を測定したうえで調整する。
+
+ログ起点のアラートを追加する場合、Loki Ruler が同じ Alertmanager (`http://alertmanager:9093`) にルーティングする設計のため、Prometheus 由来のアラートと統一の通知経路で扱える。
+
 ## 可用性と拡張
 
-このラボは単一ホストでの学習・検証を対象とし、冗長化は行わない。本番相当へ拡張する場合は、TLS 終端、VPN または SSO、外部永続ストレージ、複数 node-exporter の収集、通知先の当番運用を追加する。
+このラボは単一ホストでの学習・検証を対象とし、冗長化は行わない。本番相当へ拡張する場合は、TLS 終端、VPN または SSO、外部永続ストレージ（Prometheus は remote_write、Loki は S3 互換のチャンクストア）、複数 node-exporter / Promtail の収集、通知先の当番運用を追加する。

@@ -92,6 +92,7 @@ services:
     restart: unless-stopped
     depends_on:
       - prometheus
+      - loki
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD__FILE: /run/secrets/grafana_admin_password
@@ -106,6 +107,49 @@ services:
       - grafana_admin_password
     networks:
       - monitoring
+    security_opt:
+      - no-new-privileges:true
+
+  loki:
+    image: grafana/loki:2.9.0
+    restart: unless-stopped
+    command:
+      - -config.file=/etc/loki/loki-config.yml
+    ports:
+      - "127.0.0.1:${LOKI_PORT:-3100}:3100"
+    volumes:
+      - ./deploy/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    networks:
+      - monitoring
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+
+  promtail:
+    image: grafana/promtail:2.9.0
+    restart: unless-stopped
+    depends_on:
+      - loki
+    command:
+      - -config.file=/etc/promtail/config.yml
+      - -config.expand-env=true
+    environment:
+      MONITOR_NODE_NAME: ${MONITOR_NODE_NAME:-linux-lab-01}
+    volumes:
+      - ./deploy/promtail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - promtail_data:/var/lib/promtail
+    networks:
+      - monitoring
+    read_only: true
+    tmpfs:
+      - /tmp
     security_opt:
       - no-new-privileges:true
 
@@ -147,3 +191,5 @@ networks:
 volumes:
   prometheus_data:
   grafana_data:
+  loki_data:
+  promtail_data:
