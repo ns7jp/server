@@ -57,7 +57,7 @@ flowchart LR
 
 | 機能 | 概要 |
 | --- | --- |
-| System Info | OS、論理ノード名、アーキテクチャ、起動時刻、稼働時間 |
+| System Info | OS、論理ノード名、アーキテクチャ、起動時刻、稼働時間、Load Average、プロセス数 |
 | CPU | 使用率、コア別表示、周波数 |
 | Memory / Swap | 使用率、使用量、空き容量 |
 | Disk | パーティション使用率と閾値表示 |

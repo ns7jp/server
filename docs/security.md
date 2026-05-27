@@ -13,6 +13,7 @@
 | Fail closed | パスワードまたは metrics token 未設定時は対象エンドポイントを `503` で停止 |
 | ヘルスチェック | `/healthz` のみ無認証で `{"status":"ok"}` を返し、ホスト情報を返さない |
 | 機微情報の最小化 | ホスト名は論理ノード名に置換、プロセスのユーザー名は `hidden` が既定 |
+| レスポンスヘッダー | `X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`、`Referrer-Policy: no-referrer`、`/healthz` を除き `Cache-Control: no-store` を付与 |
 | 秘密管理 | Compose secrets の実体 `*.txt` は `.gitignore` 対象。リポジトリには例のみ保存 |
 | 実行権限 | アプリコンテナは `monitor` ユーザー、`read_only`、`no-new-privileges` で実行 |
 | ネットワーク露出 | Compose で公開するポートはすべて `127.0.0.1` にバインド |

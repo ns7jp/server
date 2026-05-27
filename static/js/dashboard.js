@@ -33,13 +33,13 @@
 
     /**
      * バイト数を人間が読みやすい単位（KB / MB / GB など）に変換
-     * @param {number} bytes バイト数
+     * @param {number} bytes バイト数（負値はカウンタリセット時に発生し得るので 0 として扱う）
      * @returns {string} "1.23 GB" のような文字列
      */
     function formatBytes(bytes) {
-        if (bytes === 0 || bytes == null) return '0 B';
+        if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
         const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
         const value = bytes / Math.pow(1024, i);
         return value.toFixed(2) + ' ' + units[i];
     }
@@ -85,13 +85,21 @@
     // ============================================================
     //  DOM更新：システム情報
     // ============================================================
-    function updateSystemInfo(sys) {
+    function updateSystemInfo(sys, loadAvg) {
         document.getElementById('sys-os').textContent = `${sys.os} ${sys.os_release}`;
         document.getElementById('sys-hostname').textContent = sys.hostname;
         document.getElementById('sys-machine').textContent = sys.machine;
         document.getElementById('sys-processor').textContent = sys.processor;
         document.getElementById('sys-boot').textContent = sys.boot_time;
         document.getElementById('sys-uptime').textContent = formatUptime(sys.uptime_seconds);
+        document.getElementById('sys-processes').textContent =
+            sys.process_count != null ? sys.process_count.toLocaleString() : '--';
+        const loadEl = document.getElementById('sys-loadavg');
+        if (loadAvg && typeof loadAvg['1m'] === 'number') {
+            loadEl.textContent = `${loadAvg['1m'].toFixed(2)} / ${loadAvg['5m'].toFixed(2)} / ${loadAvg['15m'].toFixed(2)}`;
+        } else {
+            loadEl.textContent = 'N/A';
+        }
     }
 
 
@@ -361,7 +369,7 @@
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
 
-            updateSystemInfo(data.system);
+            updateSystemInfo(data.system, data.load_average);
             updateCpu(data.cpu);
             updateMemory(data.memory, data.swap);
             updateDisks(data.disk);

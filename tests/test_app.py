@@ -59,9 +59,13 @@ def test_stats_api_masks_hostname_by_default():
     data = response.get_json()
 
     assert response.status_code == 200
-    assert {"cpu", "memory", "swap", "disk", "network", "system", "timestamp"} <= data.keys()
+    assert {"cpu", "memory", "swap", "disk", "network", "system", "load_average", "timestamp"} <= data.keys()
     assert isinstance(data["cpu"]["percent"], (int, float))
     assert data["system"]["hostname"] == "test-node"
+    assert isinstance(data["system"]["process_count"], int)
+    assert data["system"]["process_count"] >= 0
+    assert {"1m", "5m", "15m"} <= data["load_average"].keys()
+    assert all(isinstance(data["load_average"][w], (int, float)) for w in ("1m", "5m", "15m"))
 
 
 def test_processes_api_masks_usernames_by_default():
@@ -82,8 +86,13 @@ def test_metrics_requires_bearer_token():
     response = client.get("/metrics", headers={"Authorization": "Bearer metrics-secret"})
 
     assert response.status_code == 200
-    assert "server_monitor_cpu_usage_percent" in response.get_data(as_text=True)
-    assert 'node="test-node"' in response.get_data(as_text=True)
+    body = response.get_data(as_text=True)
+    assert "server_monitor_cpu_usage_percent" in body
+    assert "server_monitor_process_count" in body
+    assert "server_monitor_process_start_time_seconds" in body
+    assert "server_monitor_load_average" in body
+    assert 'window="1m"' in body
+    assert 'node="test-node"' in body
 
 
 def test_missing_credentials_fail_closed():
@@ -100,3 +109,29 @@ def test_explicit_local_development_mode_can_disable_dashboard_authentication():
     app.config["MONITOR_AUTH_DISABLED"] = True
 
     assert app.test_client().get("/").status_code == 200
+
+
+def test_security_headers_applied_to_authenticated_response():
+    response = app.test_client().get("/api/stats", headers=_basic_auth())
+
+    assert response.status_code == 200
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Referrer-Policy"] == "no-referrer"
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_security_headers_applied_to_unauthenticated_response():
+    response = app.test_client().get("/")
+
+    assert response.status_code == 401
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Cache-Control"] == "no-store"
+
+
+def test_healthz_does_not_force_no_store():
+    response = app.test_client().get("/healthz")
+
+    assert response.status_code == 200
+    assert response.headers.get("Cache-Control", "") != "no-store"

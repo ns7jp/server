@@ -7,11 +7,14 @@ import hmac
 import os
 import platform
 import socket
+import time
 from pathlib import Path
 
 import psutil
 from flask import Flask, Response, jsonify, render_template, request
 from prometheus_client import CONTENT_TYPE_LATEST, CollectorRegistry, Gauge, generate_latest
+
+_PROCESS_START_TIME = time.time()
 
 
 def _bool_env(name: str, default: bool = False) -> bool:
@@ -91,6 +94,17 @@ def protect_sensitive_routes() -> Response | None:
     return None
 
 
+@app.after_request
+def apply_security_headers(response: Response) -> Response:
+    """Defense in depth: headers protect even when no reverse proxy is in front."""
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    if request.path != "/healthz":
+        response.headers.setdefault("Cache-Control", "no-store")
+    return response
+
+
 def _collect_stats() -> dict:
     cpu_percent = psutil.cpu_percent(interval=0.1)
     cpu_per_core = psutil.cpu_percent(interval=0, percpu=True)
@@ -131,6 +145,16 @@ def _collect_stats() -> dict:
         else app.config["MONITOR_NODE_NAME"]
     )
 
+    try:
+        load_1, load_5, load_15 = os.getloadavg()
+    except (AttributeError, OSError):
+        load_1 = load_5 = load_15 = 0.0
+
+    try:
+        process_count = len(psutil.pids())
+    except OSError:
+        process_count = 0
+
     return {
         "cpu": {
             "percent": cpu_percent,
@@ -139,6 +163,11 @@ def _collect_stats() -> dict:
             "per_core": cpu_per_core,
             "freq_current": cpu_frequency_current,
             "freq_max": cpu_frequency_max,
+        },
+        "load_average": {
+            "1m": round(load_1, 2),
+            "5m": round(load_5, 2),
+            "15m": round(load_15, 2),
         },
         "memory": {
             "total": memory.total,
@@ -163,6 +192,7 @@ def _collect_stats() -> dict:
             "python_version": platform.python_version(),
             "boot_time": boot_time.strftime("%Y-%m-%d %H:%M:%S"),
             "uptime_seconds": int(uptime.total_seconds()),
+            "process_count": process_count,
         },
         "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
@@ -236,6 +266,26 @@ def metrics() -> Response:
         labels,
         registry=registry,
     ).labels(node).set(data["system"]["uptime_seconds"])
+    Gauge(
+        "server_monitor_process_count",
+        "Total number of processes visible to server-monitor.",
+        labels,
+        registry=registry,
+    ).labels(node).set(data["system"]["process_count"])
+    Gauge(
+        "server_monitor_process_start_time_seconds",
+        "Unix epoch start time of the server-monitor application process.",
+        labels,
+        registry=registry,
+    ).labels(node).set(_PROCESS_START_TIME)
+    load_gauge = Gauge(
+        "server_monitor_load_average",
+        "System load average sampled by server-monitor.",
+        ["node", "window"],
+        registry=registry,
+    )
+    for window, value in data["load_average"].items():
+        load_gauge.labels(node, window).set(value)
     disk_gauge = Gauge(
         "server_monitor_disk_usage_percent",
         "Disk usage percentage; paths are deliberately not exported as labels.",
