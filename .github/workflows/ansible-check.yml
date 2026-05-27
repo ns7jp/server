@@ -81,4 +81,5 @@ jobs:
         env:
           ANSIBLE_FORCE_COLOR: "1"
           PY_COLORS: "1"
-        run: molecule test
+          MOLECULE_NO_LOG: "false"
+        run: molecule --debug test
