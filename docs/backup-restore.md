@@ -4,10 +4,10 @@
 
 | 対象 | 永続化方法 | バックアップ要否 |
 | --- | --- | --- |
-| アプリコード、Nginx、監視ルール、Grafana dashboard、Loki / Promtail 設定 | Git リポジトリ | GitHub を正として復元 |
+| アプリコード、Nginx、監視ルール、Grafana dashboard、Loki / Grafana Alloy 設定 | Git リポジトリ | GitHub を正として復元 |
 | Prometheus 履歴 | `prometheus_data` volume、既定15日保持 | 学習環境では任意。本番相当では必要 |
 | Loki 履歴 | `loki_data` volume、既定30日保持 | 学習環境では任意。インシデント記録を保全する場合は対象 |
-| Promtail 読み込み位置 | `promtail_data` volume の `positions.yaml` | 復元不要（喪失時は古いログを再送し重複が出るが運用継続可） |
+| Alloy 読み込み位置 | `alloy_data` volume の positions data | 復元不要（喪失時は古いログを再送し重複が出るが運用継続可） |
 | Grafana 設定 | dashboard / datasource はプロビジョニング | 手動変更を禁止すれば volume 復元不要 |
 | 資格情報、Slack Webhook | `deploy/secrets/*.txt` または OS の秘密管理 | Git 外の安全な保管先へバックアップ |
 
@@ -89,7 +89,10 @@ GitHub Secret `AWS_BACKUP_VERIFY_ROLE_ARN` が設定された環境でのみ動�
 
 ## 演習履歴
 
+実行した演習のログはまだ収録されていない。下表は記録先の形式であり、実績値ではない。
+実施後は [検証証跡台帳](evidence/README.md) の記録ルールに従って追加する。
+
 | 日付 | 演習 | RTO 実績 | 結果 | 記録 |
 | --- | --- | --- | --- | --- |
-| YYYY-MM-DD | D-1 | XX 秒 | PASS / FAIL | `docs/drills/logs/YYYY-MM-DD-D-1.md` |
-| YYYY-MM-DD | D-2 | XX 分 | PASS / FAIL | `docs/drills/logs/YYYY-MM-DD-D-2.md` |
+| 未実施 | D-1 | 未測定 | 未実施 | `docs/drills/logs/YYYY-MM-DD-D-1.md` |
+| 未実施 | D-2 | 未測定 | 未実施 | `docs/drills/logs/YYYY-MM-DD-D-2.md` |

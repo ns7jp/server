@@ -19,8 +19,8 @@ flowchart LR
     Prom --> Alert["Alertmanager"]
     Alert -.->|"秘密値投入後に有効化"| Slack["Slack notification"]
 
-    Promtail["Promtail<br/>ログ収集"] -->|"/var/log + Docker SD<br/>read-only"| Host
-    Promtail --> Loki["Loki<br/>30日保持"]
+    Alloy["Grafana Alloy<br/>ログ収集"] -->|"/var/log + Docker discovery<br/>read-only"| Host
+    Alloy --> Loki["Loki<br/>30日保持"]
     Loki -->|"LogQL"| Grafana
 ```
 
@@ -34,7 +34,7 @@ flowchart LR
 | Prometheus | 収集、ルール評価、15日分の履歴保持 | `127.0.0.1:9090` |
 | Alertmanager | アラートの集約、通知ルーティング | `127.0.0.1:9093` |
 | Grafana | 運用向けダッシュボード（Prometheus + Loki データソース） | `127.0.0.1:3000` |
-| Promtail | コンテナログと `/var/log` の収集、Loki への転送 | Docker 内部ネットワーク |
+| Grafana Alloy | コンテナログと `/var/log` の収集、Loki への転送 | Docker 内部ネットワーク |
 | Loki | ログの保存とクエリ、30日分の履歴保持 | `127.0.0.1:3100`（API のみ） |
 
 ## 重要な設計判断
@@ -50,7 +50,7 @@ flowchart LR
 | 履歴は Prometheus TSDB に保持 | UI の短期グラフではなく、障害調査で遡れる履歴を残すため |
 | ログは Loki に集約 | アラートで気づいた異常の原因を、同じ Grafana 画面で即時に追跡するため |
 | ログラベルは固定値のみ | カーディナリティ爆発を避け、Loki の単一ホスト構成を安定動作させるため |
-| Promtail は読み取り専用マウント | ホストの `/var/log` と Docker socket / メタデータを侵害時に書き換えられないため |
+| Alloy は読み取り専用マウント | ホストの `/var/log` と Docker socket / メタデータを侵害時に書き換えられないため |
 
 ## 収集とアラート
 
@@ -115,8 +115,11 @@ OS 設定、Docker / Compose スタック、監視配付物、秘密値、バッ
 | `app` | リポジトリ同期、Vault 由来の `deploy/secrets/*.txt` 生成、`docker compose up -d` |
 | `backup` | systemd timer による Prometheus / Grafana / Loki volume の日次スナップショット |
 
-CI（`.github/workflows/ansible-check.yml`）で `ansible-lint` と Molecule を実行し、roles の構文と冪等性、verify アサーションを確認する。詳細手順は [Ansible 配備手順](deployment-ansible.md) を参照。
+CI（`.github/workflows/ansible-check.yml`）で `ansible-lint` と Molecule scenario の
+構文を確認する。冪等性と verify を含む完全な `molecule test` は手動 workflow
+（`.github/workflows/ansible-integration.yml`）の実行結果を証跡として残す。
+詳細手順は [Ansible 配備手順](deployment-ansible.md) を参照。
 
 ## 可用性と拡張
 
-このラボは単一ホストでの学習・検証を対象とし、冗長化は行わない。本番相当へ拡張する場合は、TLS 終端、VPN または SSO、外部永続ストレージ（Prometheus は remote_write、Loki は S3 互換のチャンクストア）、複数 node-exporter / Promtail の収集、通知先の当番運用を追加する。
+このラボは単一ホストでの学習・検証を対象とし、冗長化は行わない。本番相当へ拡張する場合は、TLS 終端、VPN または SSO、対象ホスト外からの probe、外部永続ストレージ（Prometheus は remote_write、Loki は S3 互換のチャンクストア）、複数 node-exporter / Alloy の収集、通知先の当番運用を追加する。

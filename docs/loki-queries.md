@@ -6,7 +6,7 @@ Grafana > Explore > データソース `Loki` で実行する。ダッシュボ�
 
 ## 1. server-monitor-lab 全体のエラー / 警告ライブストリーム
 
-ダッシュボードに常設する想定。`compose_project` ラベルは Promtail の Docker SD で自動付与される。
+ダッシュボードに常設する想定。`compose_project` ラベルは Alloy の Docker discovery で自動付与される。
 
 ```logql
 {compose_project="server-monitor-lab"} |~ "(?i)error|warn|fail|critical|denied|exception"
@@ -28,7 +28,7 @@ Grafana > Explore > データソース `Loki` で実行する。ダッシュボ�
 
 ## 3. Nginx の 5xx 応答を時系列で数える
 
-Promtail の `pipeline_stages` で `status` を抽出済みのため、ラベル比較で絞り込める。
+Alloy の `loki.process` で `status` を抽出済みのため、ラベル比較で絞り込める。
 
 ```logql
 sum by (status) (rate({service="nginx", status=~"5.."}[5m]))
@@ -39,7 +39,7 @@ sum by (status) (rate({service="nginx", status=~"5.."}[5m]))
 
 ## 4. ホストの認証失敗（auth.log / secure）
 
-Promtail の `varlogs` ジョブが `/var/log/auth.log` 等を取り込んでいる。`process` ラベルは pipeline で抽出した `sshd` 等になる。
+Alloy の `varlogs` source が `/var/log/auth.log` 等を取り込んでいる。`process` ラベルは pipeline で抽出した `sshd` 等になる。
 
 ```logql
 {job="varlogs"} |~ "(?i)authentication failure|failed password|invalid user"

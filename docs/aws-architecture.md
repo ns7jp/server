@@ -4,6 +4,13 @@
 v2.0 で Terraform 化した。Ansible（v1.2）は EC2 内部の設定担当として残し、
 Terraform は VPC からモニタリング基盤までを宣言的に管理する。
 
+## 実装範囲と検証状態
+
+`terraform/` は AWS リソースを作成する構成コードとして実装済みである。一方、
+実 AWS アカウントでの `terraform apply`、障害試験、実費測定の証跡は現時点では
+未収録である。実行結果は [検証証跡台帳](evidence/README.md) に沿って記録し、
+コードが存在することを稼働実績として表現しない。
+
 ## 全体構成
 
 ```mermaid
@@ -19,10 +26,10 @@ flowchart TB
         subgraph Public_c[Public Subnet AZ-1c]
         end
         subgraph Private_a[Private Subnet AZ-1a]
-            EC2_a[EC2 t3.small<br/>compose スタック]
+            EC2_a[EC2 t3.small<br/>app target + local lab stack]
         end
         subgraph Private_c[Private Subnet AZ-1c]
-            EC2_c[EC2 t3.small<br/>compose スタック]
+            EC2_c[EC2 t3.small<br/>app target + local lab stack]
         end
 
         ALB --> EC2_a
@@ -34,8 +41,8 @@ flowchart TB
     NAT --> IGW[Internet Gateway]
     IGW --> Internet[Internet]
 
-    EC2_a -.metrics + logs.-> CW[CloudWatch]
-    EC2_c -.metrics + logs.-> CW
+    EC2_a -.AWS metrics.-> CW[CloudWatch<br/>external alarms]
+    EC2_c -.AWS metrics.-> CW
 
     CW --> SNS[SNS topic]
     SNS --> Email[アラート通知先メール]
@@ -46,8 +53,25 @@ flowchart TB
     CT[CloudTrail<br/>全リージョン] --> S3CT[(S3 bucket<br/>CloudTrail logs)]
     GD[GuardDuty]
 
-    Budgets[AWS Budgets<br/>3,000 円 / 月] --> SNS
+    Budgets[AWS Budgets<br/>環境別の警戒値] --> SNS
 ```
+
+## 観測境界
+
+ALB の target は Flask / Nginx のサービス入口（`:8080`）であり、各 EC2 に
+同居する Prometheus / Loki / Grafana のローカルデータを ALB 配下で一つの
+監視基盤として扱わない。2 台の node-local TSDB / ログ履歴は互いに独立しており、
+どちらの Grafana に接続したかで見える履歴が変わるためである。
+
+| 用途 | 現時点の位置付け | 本番相当で追加すべきもの |
+| --- | --- | --- |
+| ローカル学習 | Compose 上の Prometheus / Loki / Grafana / Alloy | 追加なし |
+| AWS アプリ可用性の外部観測 | ALB / EC2 の CloudWatch alarm を Terraform で定義 | CloudWatch Synthetics 等、対象ホスト外からの `/healthz` probe |
+| 中央 metrics / logs | 未実装。node-local データは正本にしない | AMP `remote_write`、CloudWatch Logs または object storage backed Loki |
+
+Compose 内の blackbox-exporter はラボでの SLI 計算には有効だが、同じホストが
+停止すると probe 自体も止まる。AWS で外形 SLO を主張するには、ホスト外の probe
+と中央保存された観測結果の証跡を追加する。
 
 ## モジュール責務
 
@@ -108,7 +132,7 @@ SSH ではなく SSM Session Manager 経由で接続する場合は `ansible_con
 
 | 障害想定 | 期待動作 | 検出 |
 | --- | --- | --- |
-| EC2 1 台故障 | ALB が他 AZ EC2 に振り分け継続 | `UnHealthyHostCount` アラーム |
+| EC2 1 台故障 | ALB が他 AZ EC2 に振り分け継続（適用後に要検証） | `UnHealthyHostCount` アラーム |
 | EC2 全台異常 | ALB 5xx 急増 → アラート、運用者が確認 | `HTTPCode_ELB_5XX_Count` アラーム |
 | EBS 故障 | AWS Backup の最新スナップショットから復元 | EC2 ステータスチェック失敗アラーム |
 | 設定誤りで EC2 停止 | EC2 ステータスチェック failed → 通知 → 復旧 | `StatusCheckFailed` アラーム |
@@ -117,6 +141,8 @@ SSH ではなく SSM Session Manager 経由で接続する場合は `ansible_con
 
 ## 拡張余地
 
+- CloudWatch Synthetics などを使い、監視対象ホスト外から `/healthz` を測定する
+- Metrics / logs の正本を AMP / CloudWatch Logs または中央 Loki に移し、EC2 ごとの履歴分断を解消する
 - `single_nat_gateway = false` で NAT を AZ ごとに作り、NAT 障害時の冗長性を確保する
 - EC2 を Auto Scaling Group + Launch Template に置き換え、Self-healing を導入する
 - Prometheus の long-term storage を `remote_write` で AWS Managed Prometheus (AMP) に転送する

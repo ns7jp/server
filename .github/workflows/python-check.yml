@@ -59,13 +59,13 @@ jobs:
             grafana/loki:2.9.0 \
             -config.file=/etc/loki/loki-config.yml -verify-config
 
-      - name: Validate Promtail configuration
+      - name: Validate Alloy configuration
         run: |
           docker run --rm \
             -e MONITOR_NODE_NAME=linux-lab-01 \
-            -v "$PWD/deploy/promtail/promtail-config.yml:/etc/promtail/config.yml:ro" \
-            grafana/promtail:2.9.0 \
-            -config.file=/etc/promtail/config.yml -config.expand-env=true -check-syntax
+            -v "$PWD/deploy/alloy/config.alloy:/etc/alloy/config.alloy:ro" \
+            grafana/alloy:v1.16.1 \
+            validate /etc/alloy/config.alloy
 
       - name: Build non-root application image
         run: docker build -t server-monitor:ci .

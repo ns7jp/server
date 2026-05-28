@@ -21,13 +21,13 @@ Python / Flask で作成したサーバー状態表示アプリを、**認証、
 | 稼働監視 | 情報を露出しない `/healthz`、保護された `/metrics` |
 | 配備 | 非 root `Dockerfile`、Nginx、Docker Compose、native Linux 用 systemd / TLS 設定例 |
 | 標準監視基盤 | Prometheus + node-exporter + Grafana + Alertmanager |
-| ログ集約 | Loki + Promtail でコンテナログとホスト `/var/log` を収集、Grafana から横断検索 |
+| ログ集約 | Loki + Grafana Alloy でコンテナログとホスト `/var/log` を収集、Grafana から横断検索 |
 | 障害対応 | アラートルール、停止ランブック、CPU 高負荷の模擬インシデント記録 |
 | 構成管理 | Ansible roles で OS / Docker / TLS / 監視設定 / アプリ配備 / バックアップを宣言的に管理 |
-| クラウド配備 | Terraform で AWS（VPC / ALB / EC2 / Backup / CloudWatch / CloudTrail / GuardDuty / Budgets）を IaC 化、5 モジュール + dev / prod 環境分離 |
-| SLO 運用 | blackbox-exporter による `/healthz` プロービング、Multi-Window Multi-Burn-Rate アラート、Grafana SLO ダッシュボード、月次レビュー運用 |
-| 復旧演習 | D-1（月次、プロセスダウン自動復旧）/ D-2（四半期、ホスト障害 → スナップ復元）、ランブックと演習テンプレ、日次バックアップ検証 CI |
-| 品質確認 | pytest、GitHub Actions、Compose / Prometheus / Alertmanager / Loki / Promtail / blackbox / Docker build 検証、ansible-lint、Molecule、terraform fmt / validate、tfsec、checkov、shellcheck（バックアップスクリプト）|
+| クラウド配備 | Terraform で AWS（VPC / ALB / EC2 / Backup / CloudWatch / CloudTrail / GuardDuty / Budgets）を IaC 化。実 AWS への適用証跡は未収録 |
+| SLO 運用 | ラボ内 blackbox-exporter による `/healthz` プロービング、Multi-Window Multi-Burn-Rate アラート、Grafana SLO ダッシュボード |
+| 復旧演習 | D-1 / D-2 のランブック、テンプレート、日次バックアップ検証 CI。実測演習ログは未収録 |
+| 品質確認 | pytest、構成検証、ansible-lint、Molecule 構文検証、任意実行の完全 Molecule、Terraform 検証、Trivy / pip-audit、Dependabot |
 
 ## 構成
 
@@ -41,8 +41,8 @@ flowchart LR
     Prometheus --> Grafana
     Prometheus --> Alertmanager
     Alertmanager -.->|"秘密値設定後"| Slack["Slack"]
-    Promtail["Promtail<br/>ログ収集"] -->|"/var/log + Docker SD"| Host
-    Promtail --> Loki["Loki<br/>ログ保存"]
+    Alloy["Grafana Alloy<br/>ログ収集"] -->|"/var/log + Docker discovery"| Host
+    Alloy --> Loki["Loki<br/>ログ保存"]
     Loki -->|"LogQL"| Grafana
 ```
 
@@ -70,6 +70,7 @@ flowchart LR
 | [スナップショット命名規則](docs/backup-naming.md) | バックアップアーティファクトのタグと命名 |
 | [インシデント周知テンプレ](docs/incident-comms.md) | Slack へ流す状態遷移ごとの定型文 |
 | [スナップ復元ランブック](docs/runbooks/restore-from-snapshot.md) | D-2 ホスト障害復旧の正本手順 |
+| [検証証跡台帳](docs/evidence/README.md) | コード実装と実環境での実測を区別する検証状況 |
 
 ## ダッシュボード機能
 
@@ -104,7 +105,8 @@ ansible-galaxy collection install -r requirements.yml
 ansible-playbook -i inventory/staging.yml playbooks/site.yml
 ```
 
-CI では `ansible-lint` と Molecule（`common` / `docker` / `nginx` / `monitoring`）が常時実行される。
+CI では `ansible-lint` と Molecule scenario の構文検証を常時実行する。完全な
+`molecule test` は `ansible-integration.yml` の手動 workflow で実行し、結果を証跡へ残す。
 
 ## クラウド配備（AWS / Terraform）
 
@@ -125,14 +127,19 @@ terraform apply
 全リージョン、GuardDuty 有効、ALB ingress は `allowed_ingress_cidrs` で制限、prod は
 `certificate_arn` 必須。CI は `terraform fmt / validate` + `tfsec` + `checkov` を毎回回す。
 
-詳細は [docs/aws-architecture.md](docs/aws-architecture.md) と
-[docs/cost-report.md](docs/cost-report.md) を参照。
+このコードが AWS で稼働した実績や実費を意味するものではない。ALB 配下の各 EC2 に
+同居するローカル監視データは中央の正本とせず、本番相当では外部 probe と中央保存を
+追加する。詳細は [docs/aws-architecture.md](docs/aws-architecture.md)、
+[docs/cost-report.md](docs/cost-report.md)、[docs/evidence/README.md](docs/evidence/README.md) を参照。
 
 ## SLO / エラーバジェット
 
 `server-monitor` のサービス品質目標を SLI / SLO として明文化し、エラーバジェットを
-連続的に観測する。blackbox-exporter が Nginx 経由で `/healthz` を 30 秒間隔で probe し、
+連続的に観測する。ラボ内の blackbox-exporter が Nginx 経由で `/healthz` を 30 秒間隔で probe し、
 Prometheus が 30 日窓の成功率からバジェット消費率を計算する。
+
+この SLI は Compose ホスト自体の停止を外側から観測できないため、AWS の外形 SLO と
+して利用するには対象ホスト外の synthetic probe を追加する必要がある。
 
 | 項目 | 目標 | 期間 |
 | --- | --- | --- |
@@ -159,7 +166,8 @@ Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可�
 ## 復旧演習
 
 「バックアップではなく、リストアが運用できることが価値」のため、演習を月次・四半期で
-回し、実時間 RTO / RPO を実測する。
+回し、実時間 RTO / RPO を実測する設計である。実行ログが追加されるまでは、
+演習手順と自動化コードが整備済みという範囲で提示する。
 
 | 演習 | 頻度 | 想定時間 | 環境 | 自動化 |
 | --- | --- | --- | --- | --- |
@@ -182,17 +190,18 @@ Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可�
 
 ## ログ集約
 
-`Loki + Promtail` でメトリクスと同じ Grafana 画面からログを参照する。アラートで「異常が起きた」と分かった後、ログで「何が起きたか」を即座に確認するための層である。
+`Loki + Grafana Alloy` でメトリクスと同じ Grafana 画面からログを参照する。Promtail は
+2026 年 3 月 2 日に EOL となったため、収集エージェントは Alloy に移行した。
 
 | 要素 | 役割 | 公開範囲 |
 | --- | --- | --- |
-| Promtail | コンテナログ（Docker SD）と `/var/log/{syslog,auth.log,messages,secure}` を Loki に転送 | Docker 内部ネットワーク |
+| Grafana Alloy | コンテナログ（Docker discovery）と `/var/log/{syslog,auth.log,messages,secure}` を Loki に転送 | Docker 内部ネットワーク |
 | Loki | ログの保存とクエリ。リテンション 30 日、ファイルシステムストレージ | `127.0.0.1:3100`（API のみ、ブラウザ用 UI はない） |
 | Grafana | Loki データソースとして登録。Server Monitor ダッシュボードに Logs パネルを内蔵 | `127.0.0.1:3000` |
 
 ラベル設計は **「集計に使う固定値だけラベル化、それ以外は本文に残す」** とし、カーディナリティの爆発を避ける。クエリ例は [LogQL クエリ集](docs/loki-queries.md) に整理した。
 
-- Promtail は `/var/log` と `/var/lib/docker/containers`、`/var/run/docker.sock` を **読み取り専用** でマウントする。Docker socket は権限が強いため、Promtail コンテナは `no-new-privileges` で起動する。詳細は [セキュリティ設計](docs/security.md) を参照。
+- Alloy は `/var/log` と `/var/lib/docker/containers`、`/var/run/docker.sock` を **読み取り専用** でマウントする。Docker socket は権限が強いため、Alloy コンテナは `no-new-privileges` で起動する。詳細は [セキュリティ設計](docs/security.md) を参照。
 - Loki のポート 3100 は loopback のみに公開する。Loki 自体には認証がないため、外部公開しない設計である。
 - ログ量が増えた場合は `deploy/loki/loki-config.yml` の `limits_config.retention_period` と `compactor` で調整する。
 
@@ -258,7 +267,7 @@ python -m compileall app.py tests
 pytest
 ```
 
-GitHub Actions では、API の認証・マスキング・metrics テストに加えて、Grafana dashboard JSON、Docker Compose、Prometheus / Alertmanager 設定、非 root アプリイメージの build を検証します。
+GitHub Actions では、API の認証・マスキング・metrics テストに加えて、Grafana dashboard JSON、Docker Compose、Prometheus / Alertmanager / Loki / Alloy 設定、非 root アプリイメージの build を検証します。依存・秘密値・構成のスキャンは `security-scan.yml`、更新提案は Dependabot が担います。
 
 ## ディレクトリ構成
 
@@ -268,6 +277,7 @@ server-monitor/
 |-- Dockerfile
 |-- compose.yaml
 |-- deploy/
+|   |-- alloy/
 |   |-- alertmanager/
 |   |-- grafana/provisioning/
 |   |-- nginx/
@@ -289,6 +299,7 @@ server-monitor/
 ## 現在の制約と次の拡張
 
 - 単一ホストの検証構成であり、監視基盤の冗長化は対象外です。
+- AWS Terraform は構成コードを実装済みですが、apply / destroy、費用、復元試験の実測証跡はまだありません。
 - Slack 通知は Webhook 秘密値をコミットしないため、`compose.slack.yaml.example` を重ねて利用環境で有効化する方式です。
 - 次の拡張候補は、複数 Linux ノードの収集、SSO / VPN 連携、リモートストレージへの長期 metrics 保存です。
 

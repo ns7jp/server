@@ -47,9 +47,9 @@ variable "alarm_emails" {
 }
 
 variable "monthly_budget_jpy" {
-  description = "月額予算（円）。"
+  description = "短時間検証の削除忘れを検知する AWS Budgets 警戒値（円）。常時稼働の月額見積ではない。"
   type        = number
-  default     = 1500
+  default     = 3000
 }
 
 variable "ssh_ingress_cidrs" {

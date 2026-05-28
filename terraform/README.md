@@ -16,8 +16,8 @@ terraform/
 │   ├── monitoring/      # CloudWatch Alarms / SNS / CloudTrail / GuardDuty / Budgets
 │   └── backup/          # AWS Backup vault / plan / S3 archive
 └── environments/
-    ├── dev/             # 単一 AZ・EC2 1 台・Budgets 1,500 円
-    └── prod/            # マルチ AZ・EC2 2 台・Budgets 5,000 円
+    ├── dev/             # 単一 AZ・EC2 1 台・短時間検証用 Budgets 3,000 円
+    └── prod/            # マルチ AZ・EC2 2 台・Budgets 15,000 円
 ```
 
 すべて Tokyo (`ap-northeast-1`) を既定とする。
@@ -54,6 +54,8 @@ Terraform で作成された EC2 のプライベート IP に対し、SSM Sessio
 
 ## コスト
 
-設計上の月額目標は **3,000 円以内**。NAT Gateway は単一 AZ、EC2 は
-EventBridge スケジュールで夜間停止する設計で実現する。詳細試算は
-[docs/cost-report.md](../docs/cost-report.md) を参照。
+この構成は NAT Gateway と ALB を含むため、dev であっても常時作成した場合の
+月額は **少なくとも約 7,000 円** となる。dev の 3,000 円は短時間検証で削除忘れを
+検知する警戒値であり、月額見積ではない。実 AWS での適用・費用の証跡は未収録である。
+詳細試算と記録ルールは [docs/cost-report.md](../docs/cost-report.md) および
+[docs/evidence/README.md](../docs/evidence/README.md) を参照。

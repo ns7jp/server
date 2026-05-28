@@ -1,0 +1,100 @@
+logging {
+  level = "info"
+}
+
+local.file_match "varlogs" {
+  path_targets = [{
+    __address__ = "localhost",
+    __path__    = "/var/log/{syslog,auth.log,messages,secure}",
+    job         = "varlogs",
+    host        = sys.env("MONITOR_NODE_NAME"),
+  }]
+}
+
+loki.source.file "varlogs" {
+  targets    = local.file_match.varlogs.targets
+  forward_to = [loki.process.varlogs.receiver]
+}
+
+loki.process "varlogs" {
+  stage.regex {
+    expression = "^(?P<timestamp>\\S+\\s+\\d+\\s+\\d+:\\d+:\\d+)\\s+(?P<hostname>\\S+)\\s+(?P<process>[^\\[\\s:]+)(?:\\[\\d+\\])?:\\s+(?P<message>.*)$"
+  }
+
+  stage.labels {
+    values = {
+      process = "",
+    }
+  }
+
+  forward_to = [loki.write.local.receiver]
+}
+
+discovery.docker "containers" {
+  host             = "unix:///var/run/docker.sock"
+  refresh_interval = "5s"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.+)"
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "compose_project"
+  }
+
+  rule {
+    source_labels = ["__meta_docker_container_log_stream"]
+    target_label  = "stream"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "containers"
+  }
+}
+
+loki.source.docker "containers" {
+  host             = "unix:///var/run/docker.sock"
+  targets          = discovery.relabel.containers.output
+  forward_to       = [loki.process.containers.receiver]
+  refresh_interval = "5s"
+}
+
+loki.process "containers" {
+  stage.docker {}
+
+  stage.match {
+    selector = "{service=\"nginx\"}"
+
+    stage.regex {
+      expression = "^\\S+ \\S+ \\S+ \\[[^\\]]+\\] \"(?P<method>\\S+) [^\"]*\" (?P<status>\\d{3}) "
+    }
+
+    stage.labels {
+      values = {
+        method = "",
+        status = "",
+      }
+    }
+  }
+
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
