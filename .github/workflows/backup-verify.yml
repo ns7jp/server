@@ -148,7 +148,7 @@ jobs:
       MAX_AGE_HOURS: ${{ vars.AWS_BACKUP_MAX_AGE_HOURS || '25' }}
     steps:
       - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_BACKUP_VERIFY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
