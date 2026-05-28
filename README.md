@@ -62,6 +62,7 @@ flowchart LR
 | [Ansible 配備手順](docs/deployment-ansible.md) | 0 台から構築可能な playbook、roles 構成、Vault、Molecule |
 | [AWS / Terraform 設計](docs/aws-architecture.md) | VPC / ALB / EC2 / Backup / Monitoring の構成と Ansible との接続 |
 | [AWS コスト計画](docs/cost-report.md) | 月額試算、削減策、Budgets、実費記録 |
+| [外部 probe / 中央 telemetry 設計](docs/external-probe-central-telemetry.md) | 利用者視点 SLO と中央 metrics / logs の追加設計 |
 | [SLO / SLI / エラーバジェット設計](docs/slo.md) | 可用性 99.5% / レイテンシ p95 < 500ms、Multi-Window Multi-Burn-Rate、月次レビュー |
 | [latency-spike ランブック](docs/runbooks/latency-spike.md) | `/healthz` p95 が 500ms を越えた際の切り分け |
 | [監視の監視ランブック](docs/runbooks/alertmanager-down.md) | Alertmanager / blackbox-exporter 停止時の対応 |
@@ -301,7 +302,7 @@ server-monitor/
 - 単一ホストの検証構成であり、監視基盤の冗長化は対象外です。
 - AWS Terraform は構成コードを実装済みですが、apply / destroy、費用、復元試験の実測証跡はまだありません。
 - Slack 通知は Webhook 秘密値をコミットしないため、`compose.slack.yaml.example` を重ねて利用環境で有効化する方式です。
-- 次の拡張候補は、複数 Linux ノードの収集、SSO / VPN 連携、リモートストレージへの長期 metrics 保存です。
+- 次の拡張候補は、外部 probe、中央 telemetry、SSO / VPN 連携、リモートストレージへの長期 metrics 保存です。
 
 ## License
 

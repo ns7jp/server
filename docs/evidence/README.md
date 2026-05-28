@@ -12,6 +12,7 @@
 | Ansible roles | `ansible/`、`ansible-check.yml` | 構文検証あり。フル `molecule test` は `ansible-integration.yml` の実行結果を採録する |
 | Terraform AWS 構成 | `terraform/`、`terraform-check.yml` | `terraform plan/apply/destroy` と Cost Explorer 実測は未収録 |
 | SLO / 復旧演習 | `docs/slo.md`、`docs/drills/`、`scripts/drills/` | D-1 / D-2 の実測ログは未収録 |
+| 外部 probe / 中央 telemetry | `docs/external-probe-central-telemetry.md` | 外部 probe と中央保存先の実測は未収録 |
 
 ## 記録ルール
 
@@ -34,5 +35,17 @@
 | D-2 AWS 復元 | `docs/drills/logs/YYYY-MM-DD-D-2.md` |
 | AWS 短時間 apply/destroy | `docs/evidence/YYYY-MM-DD-aws-validation.md` |
 | Molecule フル実行 | `docs/evidence/YYYY-MM-DD-molecule.md` |
+
+## 採録テンプレート
+
+| 用途 | テンプレート |
+| --- | --- |
+| AWS 短時間検証 | [templates/aws-validation.md](templates/aws-validation.md) |
+| Molecule フル実行 | [templates/molecule.md](templates/molecule.md) |
+| D-1 プロセスダウン | [../drills/logs/TEMPLATE-D-1-process-down.md](../drills/logs/TEMPLATE-D-1-process-down.md) |
+| D-2 ホスト障害復旧 | [../drills/logs/TEMPLATE-D-2-host-failure.md](../drills/logs/TEMPLATE-D-2-host-failure.md) |
+
+外部 probe と中央 telemetry の設計は
+[外部 probe / 中央 telemetry 設計](../external-probe-central-telemetry.md) にまとめる。
 
 現時点で空の欄があるのは未検証を意味する。実測値は、実際に実行した PR でのみ追加する。
