@@ -13,6 +13,7 @@
 | Terraform AWS 構成 | `terraform/`、`terraform-check.yml` | `terraform plan/apply/destroy` と Cost Explorer 実測は未収録 |
 | SLO / 復旧演習 | `docs/slo.md`、`docs/drills/`、`scripts/drills/` | D-1 / D-2 の実測ログは未収録 |
 | 外部 probe / 中央 telemetry | `docs/external-probe-central-telemetry.md` | 外部 probe と中央保存先の実測は未収録 |
+| 変更管理 | `.github/pull_request_template.md`、`.github/ISSUE_TEMPLATE/`、`docs/change-management.md` | PR ごとに検証・ロールバック・証跡リンクを残す |
 
 ## 記録ルール
 
@@ -35,15 +36,24 @@
 | D-2 AWS 復元 | `docs/drills/logs/YYYY-MM-DD-D-2.md` |
 | AWS 短時間 apply/destroy | `docs/evidence/YYYY-MM-DD-aws-validation.md` |
 | Molecule フル実行 | `docs/evidence/YYYY-MM-DD-molecule.md` |
+| Grafana / Loki / Alertmanager ローカル採録 | `docs/evidence/YYYY-MM-DD-local-observability.md` |
+| スクリーンショット | `docs/evidence/screenshots/<kind>_<commit>_<yyyymmdd>.png` |
 
 ## 採録テンプレート
 
 | 用途 | テンプレート |
 | --- | --- |
+| ローカル Grafana / Loki / Alertmanager | [templates/local-observability.md](templates/local-observability.md) |
 | AWS 短時間検証 | [templates/aws-validation.md](templates/aws-validation.md) |
 | Molecule フル実行 | [templates/molecule.md](templates/molecule.md) |
 | D-1 プロセスダウン | [../drills/logs/TEMPLATE-D-1-process-down.md](../drills/logs/TEMPLATE-D-1-process-down.md) |
 | D-2 ホスト障害復旧 | [../drills/logs/TEMPLATE-D-2-host-failure.md](../drills/logs/TEMPLATE-D-2-host-failure.md) |
+
+## 採録手順
+
+まずは [ローカル証跡採録ガイド](local-evidence-quickstart.md) に沿って、無料で完結する
+Grafana dashboard、Loki / Alloy ログ検索、Alertmanager 通知、D-1 復旧演習を採録する。
+動画化する場合は [2〜3 分デモ収録ガイド](../demo-capture-guide.md) を使う。
 
 外部 probe と中央 telemetry の設計は
 [外部 probe / 中央 telemetry 設計](../external-probe-central-telemetry.md) にまとめる。
