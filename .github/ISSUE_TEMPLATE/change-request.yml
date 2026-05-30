@@ -1,0 +1,50 @@
+name: Change request
+description: 運用変更を小さく記録するためのテンプレート
+title: "change: "
+labels: ["change"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        変更前後の確認、ロールバック、証跡リンクを残すための軽量な Change Enablement です。
+  - type: textarea
+    id: purpose
+    attributes:
+      label: 目的
+      description: 何を、なぜ変更するか。
+      placeholder: 例：Alertmanager の通知文面を改善し、一次対応者がランブックへ到達しやすくする。
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 影響範囲
+      description: 影響するコンポーネント、利用者、監視、秘密値、コスト。
+      placeholder: 例：deploy/alertmanager、Slack 通知、runbook_url annotation。
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: 検証計画
+      description: 実行するコマンド、確認する画面、採録するログやスクリーンショット。
+      placeholder: |
+        - docker compose config --quiet
+        - promtool check rules deploy/prometheus/rules.yml deploy/prometheus/slo-rules.yml
+        - Alertmanager で FIRING / RESOLVED を確認
+    validations:
+      required: true
+  - type: textarea
+    id: rollback
+    attributes:
+      label: ロールバック
+      description: 変更を戻す手順と、戻した後の確認。
+      placeholder: 例：直前の設定ファイルへ revert し、docker compose up -d alertmanager 後に /-/ready を確認。
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 証跡
+      description: PR、docs/evidence、docs/drills/logs、スクリーンショットへのリンク。
+      placeholder: 例：docs/evidence/2026-05-30-alertmanager-notification.md

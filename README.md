@@ -27,6 +27,7 @@ Python / Flask で作成したサーバー状態表示アプリを、**認証、
 | クラウド配備 | Terraform で AWS（VPC / ALB / EC2 / Backup / CloudWatch / CloudTrail / GuardDuty / Budgets）を IaC 化。実 AWS への適用証跡は未収録 |
 | SLO 運用 | ラボ内 blackbox-exporter による `/healthz` プロービング、Multi-Window Multi-Burn-Rate アラート、Grafana SLO ダッシュボード |
 | 復旧演習 | D-1 / D-2 のランブック、テンプレート、日次バックアップ検証 CI。実測演習ログは未収録 |
+| 変更管理 | PR テンプレート、Change request Issue、確認・ロールバック・証跡リンクを残す軽量 Change Enablement |
 | 品質確認 | pytest、構成検証、ansible-lint、Molecule 構文検証、任意実行の完全 Molecule、Terraform 検証、Trivy / pip-audit、Dependabot |
 
 ## 構成
@@ -64,6 +65,7 @@ flowchart LR
 | [AWS コスト計画](docs/cost-report.md) | 月額試算、削減策、Budgets、実費記録 |
 | [外部 probe / 中央 telemetry 設計](docs/external-probe-central-telemetry.md) | 利用者視点 SLO と中央 metrics / logs の追加設計 |
 | [SLO / SLI / エラーバジェット設計](docs/slo.md) | 可用性 99.5% / レイテンシ p95 < 500ms、Multi-Window Multi-Burn-Rate、月次レビュー |
+| [変更管理ミニ運用](docs/change-management.md) | PR / Issue で目的、影響範囲、検証、ロールバック、証跡リンクを残す運用 |
 | [latency-spike ランブック](docs/runbooks/latency-spike.md) | `/healthz` p95 が 500ms を越えた際の切り分け |
 | [監視の監視ランブック](docs/runbooks/alertmanager-down.md) | Alertmanager / blackbox-exporter 停止時の対応 |
 | [SLO 月次レビュー](docs/slo-reviews/) | 各月のバジェット消費・インシデント振り返り |
@@ -72,6 +74,8 @@ flowchart LR
 | [インシデント周知テンプレ](docs/incident-comms.md) | Slack へ流す状態遷移ごとの定型文 |
 | [スナップ復元ランブック](docs/runbooks/restore-from-snapshot.md) | D-2 ホスト障害復旧の正本手順 |
 | [検証証跡台帳](docs/evidence/README.md) | コード実装と実環境での実測を区別する検証状況 |
+| [ローカル証跡採録ガイド](docs/evidence/local-evidence-quickstart.md) | Grafana / Loki / Alertmanager / D-1 演習を実測証跡に変える最短手順 |
+| [2〜3 分デモ収録ガイド](docs/demo-capture-guide.md) | デプロイ、故障注入、通知、復旧を短尺動画にする収録手順 |
 
 ## ダッシュボード機能
 
@@ -188,6 +192,18 @@ Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可�
 
 実施計画と振り返りテンプレは [docs/drills/](docs/drills/) を、演習由来の改善履歴は
 [docs/backup-restore.md](docs/backup-restore.md) を参照。
+
+## 変更管理
+
+運用変更は PR と Issue に、目的、影響範囲、検証、ロールバック、証跡リンクを残す。
+個人ラボでも「いつ、何を、なぜ変え、どう戻せるか」を追えるよう、
+[PR テンプレート](.github/pull_request_template.md) と
+[Change request Issue](.github/ISSUE_TEMPLATE/change-request.yml) を用意した。
+
+監視、通知、Nginx、Ansible、Terraform、AWS 費用に影響する変更は、実装前に
+[変更管理ミニ運用](docs/change-management.md) のチェック項目を使う。証跡採録は
+[Evidence capture Issue](.github/ISSUE_TEMPLATE/evidence-capture.yml) と
+[ローカル証跡採録ガイド](docs/evidence/local-evidence-quickstart.md) に沿って記録する。
 
 ## ログ集約
 

@@ -1,0 +1,70 @@
+name: Evidence capture
+description: 実機スクリーンショット、ログ、演習結果を採録するためのテンプレート
+title: "evidence: "
+labels: ["evidence"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        未実施の見込み値は書かず、実際に実行した結果だけを記録します。
+  - type: dropdown
+    id: category
+    attributes:
+      label: 種別
+      options:
+        - Grafana dashboard
+        - Slack / Alertmanager notification
+        - Loki / Alloy log query
+        - D-1 process-down drill
+        - D-2 host recovery drill
+        - Molecule full test
+        - AWS apply / destroy / cost
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: commit
+    attributes:
+      label: 対象 commit
+      placeholder: 例：7649710
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 実行環境
+      description: OS、Docker、Ansible、Terraform、AWS リージョンなど。
+      placeholder: 例：Ubuntu 24.04 / Docker 27.x / local Linux host
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: 実行コマンド
+      render: shell
+      placeholder: |
+        docker compose up -d --build
+        docker compose ps
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: 結果
+      description: PASS / FAIL、所要時間、RTO / RPO、通知到達時間など。
+    validations:
+      required: true
+  - type: checkboxes
+    id: masking
+    attributes:
+      label: マスキング
+      options:
+        - label: 秘密値、公開 IP、AWS account ID、個人名、webhook URL をマスク済み
+          required: true
+        - label: スクリーンショットに不要な個人情報が写っていない
+          required: true
+  - type: textarea
+    id: links
+    attributes:
+      label: 証跡リンク
+      description: "`docs/evidence/`、`docs/drills/logs/`、スクリーンショット、PR へのリンク。"
