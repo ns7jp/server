@@ -11,6 +11,14 @@ Python / Flask で作成したサーバー状態表示アプリを、**認証、
 
 単に画面を作るのではなく、「安全に公開範囲を制限できるか」「停止や高負荷をどう検知し、どう切り分けるか」を設計・検証対象にしています。
 
+## 採用ご担当者向け：最初に見る 3 点
+
+1. [Linux サーバー構築案件パック](docs/build-package/README.md) — 基本設計、パラメータ、構築、試験、引き渡しを工程順に確認できます。
+2. [検証証跡台帳](docs/evidence/README.md) — コード・手順の完成と、実機での実測結果を混同せず確認できます。
+3. [二セグメント ネットワーク障害ラボ](labs/network-troubleshooting/README.md) — 通信断を再現し、経路・名前解決・network membership を切り分けて復旧します。
+
+> 現在、実 AWS の `apply / destroy`、Linux Docker ホストでの全構成起動、D-1 / D-2 の実測ログは未収録です。実行ログが追加されるまでは「設計・構成コード・試験手順を実装済み」と表現します。
+
 ## 実装したこと
 
 | 分野 | 実装・成果物 |
@@ -53,6 +61,7 @@ flowchart LR
 
 | 文書 | 内容 |
 | --- | --- |
+| [Linux サーバー構築案件パック](docs/build-package/README.md) | 基本・詳細設計、パラメータ、ネットワーク、構築、試験、引き渡し |
 | [インフラ監視ラボ設計](docs/architecture.md) | 構成図、設計判断、監視条件 |
 | [セキュリティ設計](docs/security.md) | 認証、秘密管理、公開範囲、残存リスク |
 | [構築・配備手順](docs/deployment.md) | Docker Compose と native Linux 配備例 |

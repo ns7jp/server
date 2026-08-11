@@ -38,6 +38,10 @@ jobs:
           cp deploy/secrets/slack_webhook_url.txt.example deploy/secrets/slack_webhook_url.txt
           docker compose config --quiet
           docker compose -f compose.yaml -f compose.slack.yaml.example config --quiet
+          docker compose -f labs/network-troubleshooting/compose.yaml config --quiet
+
+      - name: Validate network drill script
+        run: bash -n labs/network-troubleshooting/run-drill.sh
 
       - name: Validate monitoring configuration
         run: |
