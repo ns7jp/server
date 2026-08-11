@@ -113,7 +113,7 @@ ansible-playbook -i inventory/staging.yml playbooks/deploy.yml
 
 ## 8. バックアップ
 
-`backup` ロールが `server-monitor-backup.timer`（systemd）を導入し、既定で **毎日 03:30 UTC** に Prometheus / Grafana / Loki の Docker volume をスナップショットする。保持期間は 14 日。
+`backup` ロールが `server-monitor-backup.timer`（systemd）を導入し、既定で **毎日 03:30（ホストの timezone。標準構成では Asia/Tokyo）** に Prometheus / Grafana / Loki の Docker volume をスナップショットする。保持期間は 14 日。
 
 ```bash
 systemctl list-timers server-monitor-backup.timer

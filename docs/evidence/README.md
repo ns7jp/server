@@ -8,12 +8,15 @@
 | 対象 | リポジトリで確認できる成果物 | 実行証跡 |
 | --- | --- | --- |
 | アプリ/API の認証・マスキング | `tests/`、`python-check.yml` | CI 実行結果を PR で確認 |
+| ローカル Python / 成果物検査 | `tests/` | [2026-08-11: 14 tests PASS](2026-08-11-local-code-validation.md) |
 | Compose / Prometheus / Loki / Alloy 設定 | `compose.yaml`、`deploy/`、`python-check.yml` | Linux Docker ホストでの起動記録は未収録 |
 | Ansible roles | `ansible/`、`ansible-check.yml` | 構文検証あり。フル `molecule test` は `ansible-integration.yml` の実行結果を採録する |
 | Terraform AWS 構成 | `terraform/`、`terraform-check.yml` | `terraform plan/apply/destroy` と Cost Explorer 実測は未収録 |
 | SLO / 復旧演習 | `docs/slo.md`、`docs/drills/`、`scripts/drills/` | D-1 / D-2 の実測ログは未収録 |
 | 外部 probe / 中央 telemetry | `docs/external-probe-central-telemetry.md` | 外部 probe と中央保存先の実測は未収録 |
 | 変更管理 | `.github/pull_request_template.md`、`.github/ISSUE_TEMPLATE/`、`docs/change-management.md` | PR ごとに検証・ロールバック・証跡リンクを残す |
+| 構築工程成果物 | `docs/build-package/` | 設計・構築・試験様式を整備。実機結果は各検証ログへ記録 |
+| 二セグメント障害ラボ | `labs/network-troubleshooting/` | 再現スクリプトを整備。実行ログは未収録 |
 
 ## 記録ルール
 
@@ -37,6 +40,8 @@
 | AWS 短時間 apply/destroy | `docs/evidence/YYYY-MM-DD-aws-validation.md` |
 | Molecule フル実行 | `docs/evidence/YYYY-MM-DD-molecule.md` |
 | Grafana / Loki / Alertmanager ローカル採録 | `docs/evidence/YYYY-MM-DD-local-observability.md` |
+| Linux 新規構築・試験 | `docs/evidence/YYYY-MM-DD-build-validation.md` |
+| 二セグメント通信障害 | `docs/evidence/YYYY-MM-DD-network-drill.md` |
 | スクリーンショット | `docs/evidence/screenshots/<kind>_<commit>_<yyyymmdd>.png` |
 
 ## 採録テンプレート
