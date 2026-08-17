@@ -65,6 +65,7 @@
     name: docker
     state: started
     enabled: true
+  when: docker_manage_service | bool
 
 - name: Ensure application user is in docker group
   ansible.builtin.user:

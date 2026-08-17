@@ -1,6 +1,10 @@
 ---
 common_timezone: "{{ server_monitor_timezone | default('Asia/Tokyo') }}"
 common_required_packages:
+  # tzdata がないと timezone 設定が "not available" で失敗する。
+  # Ubuntu Server の既定インストールには含まれるが、最小構成イメージには
+  # 含まれないことがあるため、ロール側で明示的に導入する。
+  - tzdata
   - ca-certificates
   - curl
   - git

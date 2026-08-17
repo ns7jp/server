@@ -1,5 +1,9 @@
 ---
 docker_apt_release_channel: stable
+# 実ホストでは true。Molecule のコンテナ内では docker daemon を起動できないため
+# scenario 側で false にし、導入と設定内容の検証だけを行う
+# （monitoring ロールの monitoring_run_validation と同じ方針）。
+docker_manage_service: true
 docker_packages:
   - docker-ce
   - docker-ce-cli
