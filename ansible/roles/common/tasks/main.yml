@@ -15,6 +15,7 @@
     name: chrony
     state: started
     enabled: true
+  when: common_manage_services | bool
 
 - name: Configure UFW default incoming policy
   community.general.ufw:

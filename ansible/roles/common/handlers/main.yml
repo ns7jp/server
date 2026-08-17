@@ -3,6 +3,7 @@
   ansible.builtin.service:
     name: ssh
     state: restarted
+  when: common_manage_services | bool
 
 - name: Reload ufw
   community.general.ufw:
