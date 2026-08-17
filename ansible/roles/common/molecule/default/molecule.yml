@@ -30,5 +30,10 @@ provisioner:
         server_monitor_install_dir: /opt/server-monitor
         server_monitor_timezone: Asia/Tokyo
         common_password_authentication: false
+        # コンテナ内では chrony / sshd のデーモン操作ができないため無効化する。
+        # verify.yml は timezone・sshd_config の内容・user・ディレクトリを
+        # 確認しており、デーモンの稼働を前提にしていないため検証範囲は落ちない。
+        # UFW の設定は意図的に有効なままにし、実際に適用できるか検証する。
+        common_manage_services: false
 verifier:
   name: ansible

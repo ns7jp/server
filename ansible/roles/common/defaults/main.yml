@@ -1,5 +1,10 @@
 ---
 common_timezone: "{{ server_monitor_timezone | default('Asia/Tokyo') }}"
+# 実ホストでは true。コンテナはホストの時計と ssh をそのまま使うため、
+# 中で chrony を動かしたり sshd を再起動したりできない。Molecule では
+# false にし、設定内容の正しさと冪等性だけを検証する
+# （docker ロールの docker_manage_service と同じ方針）。
+common_manage_services: true
 common_required_packages:
   # tzdata がないと timezone 設定が "not available" で失敗する。
   # Ubuntu Server の既定インストールには含まれるが、最小構成イメージには
