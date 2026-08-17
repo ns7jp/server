@@ -3,6 +3,14 @@
 設計を「動かした証拠」に変えるための最短手順。Linux + Docker のローカル環境で、
 Grafana、Loki、Alertmanager、D-1 復旧演習の証跡を採録する。
 
+> **先に済ませられるものがある**: Linux 環境の用意が障壁になっている場合、
+> [Molecule を GitHub Actions で実行する](molecule-via-github-actions.md) は
+> **ブラウザだけで 15 分**で採録できる。本ガイドに着手する前に、そちらを先に消化してよい。
+>
+> なお本ガイドの手順は **WSL2 上の Ubuntu でも実行できる**。専用マシンや VM の新規構築は必須ではない。
+> 「1 で撮る Grafana 画面が、ポートフォリオ内で初めての Linux 上の実行画面になる」ことに留意する
+> （現在掲載されている `docs/screenshot.png` は Windows 端末で撮影したもの）。
+
 ---
 
 ## 0. 事前準備
