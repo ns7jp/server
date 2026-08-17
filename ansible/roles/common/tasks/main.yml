@@ -28,14 +28,16 @@
     rule: allow
     port: "{{ item }}"
     proto: tcp
-  loop: "{{ common_ufw_allowed_tcp_ports }}"
+  loop: "{{ common_ufw_allowed_tcp_ports | map('int') | list | difference(common_ufw_rate_limited_ports) }}"
 
-- name: Rate-limit SSH on port 22
+- name: Rate-limit SSH instead of plain allow
   community.general.ufw:
     rule: limit
-    port: 22
+    port: "{{ common_ufw_ssh_port }}"
     proto: tcp
-  when: 22 in common_ufw_allowed_tcp_ports
+  when:
+    - common_ufw_limit_ssh | bool
+    - (common_ufw_ssh_port | int) in (common_ufw_allowed_tcp_ports | map('int') | list)
 
 - name: Disable root SSH login
   ansible.builtin.lineinfile:

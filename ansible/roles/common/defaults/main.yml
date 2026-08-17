@@ -22,3 +22,10 @@ common_disable_root_ssh: true
 common_password_authentication: false
 common_ufw_default_incoming: deny
 common_ufw_allowed_tcp_ports: "{{ server_monitor_allowed_tcp_ports | default([22]) }}"
+# SSH は allow ではなく limit で開放し、総当たりを抑止する。
+# 同じ port へ allow と limit の両方を適用すると ufw 上で互いを上書きし、
+# 実行のたびに changed となって冪等性が壊れる。そのため limit 対象の port は
+# allow のループから除外する。
+common_ufw_limit_ssh: true
+common_ufw_ssh_port: 22
+common_ufw_rate_limited_ports: "{{ [common_ufw_ssh_port | int] if (common_ufw_limit_ssh | bool) else [] }}"
