@@ -1,9 +1,8 @@
 ---
 common_timezone: "{{ server_monitor_timezone | default('Asia/Tokyo') }}"
-# 実ホストでは true。コンテナはホストの時計と ssh をそのまま使うため、
-# 中で chrony を動かしたり sshd を再起動したりできない。Molecule では
-# false にし、設定内容の正しさと冪等性だけを検証する
-# （docker ロールの docker_manage_service と同じ方針）。
+# サービスの起動・再起動を行うかどうか。既定 true。
+# 構築とサービス起動を分けたい場面（イメージ作成時など）のための切り替えで、
+# Molecule では true のまま chrony 起動と sshd 再起動を実際に検証する。
 common_manage_services: true
 common_required_packages:
   # tzdata がないと timezone 設定が "not available" で失敗する。

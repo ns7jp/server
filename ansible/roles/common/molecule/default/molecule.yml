@@ -12,6 +12,12 @@ platforms:
     pre_build_image: true
     privileged: true
     cgroupns_mode: host
+    # molecule の docker driver は既定で
+    #   bash -c "while true; do sleep 10000; done"
+    # を command に流し込み、イメージの CMD を上書きする。指定しないと
+    # systemd が PID 1 にならず、privileged / cgroupns_mode / cgroup mount を
+    # 揃えても service モジュールと timedatectl が一切動作しない。
+    command: /lib/systemd/systemd
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
 provisioner:
@@ -30,10 +36,5 @@ provisioner:
         server_monitor_install_dir: /opt/server-monitor
         server_monitor_timezone: Asia/Tokyo
         common_password_authentication: false
-        # コンテナ内では chrony / sshd のデーモン操作ができないため無効化する。
-        # verify.yml は timezone・sshd_config の内容・user・ディレクトリを
-        # 確認しており、デーモンの稼働を前提にしていないため検証範囲は落ちない。
-        # UFW の設定は意図的に有効なままにし、実際に適用できるか検証する。
-        common_manage_services: false
 verifier:
   name: ansible

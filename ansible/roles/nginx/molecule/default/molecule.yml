@@ -12,6 +12,12 @@ platforms:
     pre_build_image: true
     privileged: true
     cgroupns_mode: host
+    # molecule の docker driver は既定で
+    #   bash -c "while true; do sleep 10000; done"
+    # を command に流し込み、イメージの CMD を上書きする。指定しないと
+    # systemd が PID 1 にならず、privileged / cgroupns_mode / cgroup mount を
+    # 揃えても service モジュールと timedatectl が一切動作しない。
+    command: /lib/systemd/systemd
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
 provisioner:

@@ -12,6 +12,12 @@ platforms:
     pre_build_image: true
     privileged: true
     cgroupns_mode: host
+    # molecule の docker driver は既定で
+    #   bash -c "while true; do sleep 10000; done"
+    # を command に流し込み、イメージの CMD を上書きする。指定しないと
+    # systemd が PID 1 にならず、privileged / cgroupns_mode / cgroup mount を
+    # 揃えても service モジュールと timedatectl が一切動作しない。
+    command: /lib/systemd/systemd
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
 provisioner:
@@ -28,7 +34,7 @@ provisioner:
         server_monitor_user: monitor
         server_monitor_group: monitor
         server_monitor_install_dir: /opt/server-monitor
-        # コンテナ内では docker daemon を起動できないため、サービス起動は行わない。
+        # docker daemon の起動には入れ子のコンテナランタイム構成が要るため行わない。
         # verify.yml は binary / compose plugin / daemon.json / group 所属を確認しており、
         # daemon の稼働を前提にしていないため、検証範囲は落ちない。
         docker_manage_service: false
