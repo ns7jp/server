@@ -6,6 +6,10 @@ updates:
       interval: weekly
     labels:
       - dependencies
+    groups:
+      github-actions:
+        patterns:
+          - "*"
 
   - package-ecosystem: pip
     directory: /
@@ -21,16 +25,31 @@ updates:
     labels:
       - dependencies
 
+  # Terraform の provider 制約は root / environments / modules の 8 ファイルに
+  # 分散して宣言されている。以前は environments/{dev,prod} だけを監視していた
+  # ため、Dependabot が env 側だけを更新し、modules 側が古い制約のまま残った。
+  # その結果 `~> 5.50, ~> 6.58` のように両立しない制約となり、terraform init が
+  # 必ず失敗していた（PR #44 / #45）。
+  #
+  # 対策として、
+  #   1. version 制約を宣言している全ディレクトリを `directories` で登録し、
+  #   2. `groups` で 1 つの PR にまとめる
+  # ことで、provider 更新が常に整合した状態で届くようにする。
   - package-ecosystem: terraform
-    directory: /terraform/environments/dev
+    directories:
+      - /terraform
+      - /terraform/environments/dev
+      - /terraform/environments/prod
+      - /terraform/modules/alb
+      - /terraform/modules/backup
+      - /terraform/modules/compute
+      - /terraform/modules/monitoring
+      - /terraform/modules/network
     schedule:
       interval: weekly
     labels:
       - dependencies
-
-  - package-ecosystem: terraform
-    directory: /terraform/environments/prod
-    schedule:
-      interval: weekly
-    labels:
-      - dependencies
+    groups:
+      terraform-providers:
+        patterns:
+          - "*"

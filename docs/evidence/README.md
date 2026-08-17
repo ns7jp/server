@@ -3,6 +3,24 @@
 このディレクトリは、設計資料や構成コードが存在することと、実環境で確認した結果を
 混同しないための台帳である。実行していない検証を成功実績として記載しない。
 
+## 要約（2026-08-17 時点）
+
+**この台帳に記録された実測記録は 1 件のみであり、その内容は Windows 端末での `pytest` 14 件 PASS である。
+Linux ホスト上で本構成を起動した記録は 1 件も無い。**
+
+| 区分 | 状態 |
+| --- | --- |
+| CI による自動検証 | ✅ 継続的に実行中（構文・設定整合・依存脆弱性・秘密値混入・バックアップスクリプト） |
+| 実測記録（手動採録） | ⚠ **1 件**（Windows 上の Python テストのみ） |
+| Linux での起動記録 | ❌ **なし** |
+| [試験仕様書](../build-package/06-test-specification.md)の結合・セキュリティ試験 | ❌ **全項目 `NOT RUN`** |
+
+従来この状態を「未収録」とだけ表現していたが、不足の深刻さが読み手に伝わらないため記載を改めた。
+Linux サーバー構築を志望する以上、**ここが最優先で解消すべき欠陥である**。
+
+次に採るべき証跡は
+[Molecule を GitHub Actions で実行する](molecule-via-github-actions.md)（Linux 環境不要・15 分・0 円）。
+
 ## 現在の証跡状態
 
 | 対象 | リポジトリで確認できる成果物 | 実行証跡 |
@@ -10,7 +28,7 @@
 | アプリ/API の認証・マスキング | `tests/`、`python-check.yml` | CI 実行結果を PR で確認 |
 | ローカル Python / 成果物検査 | `tests/` | [2026-08-11: 14 tests PASS](2026-08-11-local-code-validation.md) |
 | Compose / Prometheus / Loki / Alloy 設定 | `compose.yaml`、`deploy/`、`python-check.yml` | Linux Docker ホストでの起動記録は未収録 |
-| Ansible roles | `ansible/`、`ansible-check.yml` | 構文検証あり。フル `molecule test` は `ansible-integration.yml` の実行結果を採録する |
+| Ansible roles | `ansible/`、`ansible-check.yml` | 構文・lint 検証あり。フル `molecule test` は **未実行**（`ansible-integration.yml` の実行履歴 0 件）。[実行手順](molecule-via-github-actions.md) |
 | Terraform AWS 構成 | `terraform/`、`terraform-check.yml` | `terraform plan/apply/destroy` と Cost Explorer 実測は未収録 |
 | SLO / 復旧演習 | `docs/slo.md`、`docs/drills/`、`scripts/drills/` | D-1 / D-2 の実測ログは未収録 |
 | 外部 probe / 中央 telemetry | `docs/external-probe-central-telemetry.md` | 外部 probe と中央保存先の実測は未収録 |
@@ -56,9 +74,20 @@
 
 ## 採録手順
 
-まずは [ローカル証跡採録ガイド](local-evidence-quickstart.md) に沿って、無料で完結する
-Grafana dashboard、Loki / Alloy ログ検索、Alertmanager 通知、D-1 復旧演習を採録する。
-動画化する場合は [2〜3 分デモ収録ガイド](../demo-capture-guide.md) を使う。
+**必要な環境が軽い順**に進める。
+
+1. **[Molecule を GitHub Actions で実行する](molecule-via-github-actions.md)** — ブラウザのみ・15 分。
+   手元に Linux も Docker も要らない。現時点で最も着手コストが低い実行証跡。
+2. **既存 CI の成功ログを本台帳へ記録する** — ブラウザのみ・30 分。
+   `Backup verify` は毎日自動実行されて成功が蓄積しており、CI の累計実行回数は 400 回を超えているが、
+   本台帳に一度も記載がないため読み手に見えていない。**新しく実行するのではなく、既にある結果を拾う作業**。
+3. **[ローカル証跡採録ガイド](local-evidence-quickstart.md)** — Linux + Docker（WSL2 可）・1 晩。
+   Grafana dashboard、Loki / Alloy ログ検索、Alertmanager 通知、D-1 復旧演習を採録する。
+4. 動画化する場合は [2〜3 分デモ収録ガイド](../demo-capture-guide.md) を使う。
+
+> 1 と 2 は CI による機械検証であり、**実機の実測証跡の代わりにはならない**。
+> CI で担保できるのは構文・設定の整合・依存の脆弱性までで、
+> 起動・疎通・復旧時間は 3 以降でしか確認できない。台帳にもこの区別を明記する。
 
 外部 probe と中央 telemetry の設計は
 [外部 probe / 中央 telemetry 設計](../external-probe-central-telemetry.md) にまとめる。
