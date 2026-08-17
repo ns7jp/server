@@ -1,8 +1,9 @@
 ---
-dependency:
-  name: galaxy
-  options:
-    requirements-file: ../../../../requirements.yml
+# collections は CI / 構築手順書側で `ansible-galaxy collection install -r
+# ansible/requirements.yml` により導入する。molecule の galaxy dependency は
+# roles を `role-file`、collections を `requirements-file` という別々のキーで
+# 探し、いずれも scenario ディレクトリ基準で解決するため、ここから
+# ../../../../requirements.yml を指す指定は実際には読まれていなかった。
 driver:
   name: docker
 platforms:
@@ -17,7 +18,10 @@ provisioner:
   name: ansible
   config_options:
     defaults:
-      stdout_callback: yaml
+      # community.general.yaml は community.general 12.0.0 で削除された。
+      # 後継は ansible.builtin.default + result_format: yaml（core 2.13 以降）。
+      stdout_callback: ansible.builtin.default
+      callback_result_format: yaml
   inventory:
     group_vars:
       all:
