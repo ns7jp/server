@@ -5,21 +5,22 @@
 
 ## 要約（2026-08-17 時点）
 
-**この台帳に記録された実測記録は 1 件のみであり、その内容は Windows 端末での `pytest` 14 件 PASS である。
-Linux ホスト上で本構成を起動した記録は 1 件も無い。**
+**Ansible ロールについては、Linux 上で実際に適用し、冪等性と適用結果まで検証した実測証跡がある。**
+一方、監視スタック全体の起動、復旧演習、AWS 適用は未採録。
 
 | 区分 | 状態 |
 | --- | --- |
 | CI による自動検証 | ✅ 継続的に実行中（構文・設定整合・依存脆弱性・秘密値混入・バックアップスクリプト） |
-| 実測記録（手動採録） | ⚠ **1 件**（Windows 上の Python テストのみ） |
-| Linux での起動記録 | ❌ **なし** |
-| [試験仕様書](../build-package/06-test-specification.md)の結合・セキュリティ試験 | ❌ **全項目 `NOT RUN`** |
+| Ansible ロールの適用・冪等性・検証 | ✅ **4 ロール完走**（[2026-08-17](2026-08-17-molecule.md)、Ubuntu 22.04 コンテナ） |
+| 監視スタック全体の起動（Grafana / Loki / 通知） | ❌ 未採録 |
+| D-1 / D-2 復旧演習の実測 | ❌ 未採録 |
+| AWS `apply` / `destroy` と実費 | ❌ 未採録 |
+| [試験仕様書](../build-package/06-test-specification.md)の結合・セキュリティ試験 | ⚠ 大半が `NOT RUN` |
 
-従来この状態を「未収録」とだけ表現していたが、不足の深刻さが読み手に伝わらないため記載を改めた。
-Linux サーバー構築を志望する以上、**ここが最優先で解消すべき欠陥である**。
+> **この証跡が示す範囲を広げて解釈しない。** 確認できたのは「ロールが適用でき、冪等で、期待した状態になる」
+> ところまでであり、実 VM での挙動、複数ホスト間の疎通、スタック全体の動作、復旧時間（RTO）は含まない。
 
-次に採るべき証跡は
-[Molecule を GitHub Actions で実行する](molecule-via-github-actions.md)（Linux 環境不要・15 分・0 円）。
+次に採るべき証跡は [ローカル証跡採録ガイド](local-evidence-quickstart.md)（Linux + Docker、WSL2 可・1 晩・0 円）。
 
 ## 現在の証跡状態
 
@@ -28,7 +29,7 @@ Linux サーバー構築を志望する以上、**ここが最優先で解消す
 | アプリ/API の認証・マスキング | `tests/`、`python-check.yml` | CI 実行結果を PR で確認 |
 | ローカル Python / 成果物検査 | `tests/` | [2026-08-11: 14 tests PASS](2026-08-11-local-code-validation.md) |
 | Compose / Prometheus / Loki / Alloy 設定 | `compose.yaml`、`deploy/`、`python-check.yml` | Linux Docker ホストでの起動記録は未収録 |
-| Ansible roles | `ansible/`、`ansible-check.yml` | 構文・lint 検証あり。フル `molecule test` は **未実行**（`ansible-integration.yml` の実行履歴 0 件）。[実行手順](molecule-via-github-actions.md) |
+| Ansible roles | `ansible/`、`ansible-check.yml` | 構文・lint 検証に加え、[2026-08-17: 4 ロールの `molecule test` 完走](2026-08-17-molecule.md)（create → converge → idempotence → verify）。[実行手順](molecule-via-github-actions.md) |
 | Terraform AWS 構成 | `terraform/`、`terraform-check.yml` | `terraform plan/apply/destroy` と Cost Explorer 実測は未収録 |
 | SLO / 復旧演習 | `docs/slo.md`、`docs/drills/`、`scripts/drills/` | D-1 / D-2 の実測ログは未収録 |
 | 外部 probe / 中央 telemetry | `docs/external-probe-central-telemetry.md` | 外部 probe と中央保存先の実測は未収録 |
@@ -56,7 +57,6 @@ Linux サーバー構築を志望する以上、**ここが最優先で解消す
 | D-1 プロセスダウン | `docs/drills/logs/YYYY-MM-DD-D-1.md` |
 | D-2 AWS 復元 | `docs/drills/logs/YYYY-MM-DD-D-2.md` |
 | AWS 短時間 apply/destroy | `docs/evidence/YYYY-MM-DD-aws-validation.md` |
-| Molecule フル実行 | `docs/evidence/YYYY-MM-DD-molecule.md` |
 | Grafana / Loki / Alertmanager ローカル採録 | `docs/evidence/YYYY-MM-DD-local-observability.md` |
 | Linux 新規構築・試験 | `docs/evidence/YYYY-MM-DD-build-validation.md` |
 | 二セグメント通信障害 | `docs/evidence/YYYY-MM-DD-network-drill.md` |
