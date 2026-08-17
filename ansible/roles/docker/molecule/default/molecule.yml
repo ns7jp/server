@@ -28,5 +28,9 @@ provisioner:
         server_monitor_user: monitor
         server_monitor_group: monitor
         server_monitor_install_dir: /opt/server-monitor
+        # コンテナ内では docker daemon を起動できないため、サービス起動は行わない。
+        # verify.yml は binary / compose plugin / daemon.json / group 所属を確認しており、
+        # daemon の稼働を前提にしていないため、検証範囲は落ちない。
+        docker_manage_service: false
 verifier:
   name: ansible
