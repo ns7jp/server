@@ -40,7 +40,7 @@ jobs:
           python --version
           ansible --version
           molecule --version
-          ansible-galaxy collection list community.general community.docker ansible.posix
+          ansible-galaxy collection list
 
       # molecule の galaxy dependency は roles を role-file、collections を
       # requirements-file という別々のキーで、かつ scenario ディレクトリ基準で
