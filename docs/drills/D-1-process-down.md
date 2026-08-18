@@ -37,19 +37,32 @@
 スクリプトは次を自動で行う。
 
 1. 対象コンテナの稼働確認
-2. `docker compose kill -s KILL <service>` で強制終了（演習用に SIGKILL）
+2. コンテナのホスト側 PID に対して直接 `kill -9`（`docker compose kill` ではない。理由は下記コラム）
 3. 復旧開始時刻を記録
 4. ヘルスチェック (`curl /healthz`) が 200 を返すまで poll
 5. 各イベントの所要秒数を表示
+
+> **なぜ `docker compose kill` を使わないか**
+>
+> `docker compose kill` / `docker kill` は Docker Engine の kill API を経由するため、実際にプロセスは
+> 死ぬが、デーモン内部で「手動停止」フラグが立ち、`restart: unless-stopped` による自動復旧が**無効化**
+> される（Docker の仕様。再起動ポリシーは「明示的に stop/kill された」場合と「予期せず落ちた」場合を
+> 区別しており、Engine の kill/stop API を通ったものはすべて前者として扱われる）。
+> 代わりに `docker exec <container> kill -9 1` のように PID 名前空間の内側から送っても、カーネルが
+> 「同一名前空間内から init（PID 1）へ送られた、ハンドラ未設定のシグナル」を黙って破棄するため、
+> そもそも届かない（`man 7 pid_namespaces`）。両方を回避するため、`d1-process-down.sh` はコンテナ
+> プロセスのホスト側 PID（`docker inspect -f '{{.State.Pid}}'`）に対して直接 `kill -9` を実行する。
 
 ## 4. 手動でやる場合
 
 スクリプトを使わずに体感したい場合の手順。
 
 ```bash
-# 1. 障害発生
+# 1. 障害発生（ホスト側 PID への直接 kill。理由は上のコラム参照）
+CID=$(docker compose ps -q app)
+HOST_PID=$(docker inspect -f '{{.State.Pid}}' "$CID")
 START=$(date -u +%s)
-docker compose kill -s KILL app
+sudo kill -9 "$HOST_PID"
 date -u +%H:%M:%SZ
 
 # 2. 自動復旧を待つ

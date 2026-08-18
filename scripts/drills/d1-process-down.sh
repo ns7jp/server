@@ -48,6 +48,7 @@ require_cmd() {
 
 require_cmd docker
 require_cmd curl
+require_cmd sudo
 
 # docker compose v2 plugin を想定（v1 docker-compose も後方互換）
 if docker compose version >/dev/null 2>&1; then
@@ -68,15 +69,34 @@ if ! curl -fsS --max-time 5 "$HEALTHZ_URL" >/dev/null; then
   exit 2
 fi
 
-# 復元前の restart count
-BEFORE_RESTART=$($COMPOSE ps --format json "$SERVICE" 2>/dev/null \
-  | (command -v jq >/dev/null && jq -r '.RestartCount // 0' || echo "?"))
+CID=$($COMPOSE ps -q "$SERVICE")
+if [[ -z "$CID" ]]; then
+  echo "コンテナが見つからない: ${SERVICE}" >&2
+  exit 2
+fi
+
+restart_count() {
+  docker inspect -f '{{.RestartCount}}' "$CID"
+}
+
+BEFORE_RESTART=$(restart_count)
 log "事前 restart_count(${SERVICE})=${BEFORE_RESTART}"
 
-# 1. 障害発生: SIGKILL
+# 1. 障害発生: コンテナ内部の PID 1 を、ホスト側の名前空間から直接 kill する。
+#
+# `docker compose kill` / `docker kill` は Docker Engine の kill API を経由するため
+# 実際にプロセスは死ぬが、デーモン内部で「手動停止」フラグが立ち、unless-stopped に
+# よる自動復旧が無効化されてしまう（Docker の仕様。再起動ポリシーは「明示的に
+# stop/kill された」場合と「予期せず落ちた」場合を区別しており、Engine の kill/stop
+# API を通ったものはすべて前者として扱われる）。
+# 代わりに `docker exec <container> kill -9 1` のように PID 名前空間の内側から送っても、
+# カーネルが「同一名前空間内から init(PID 1) へ送られた、ハンドラ未設定のシグナル」を
+# 黙って破棄するため、そもそも届かない（man 7 pid_namespaces）。
+# 両方を回避するため、コンテナプロセスのホスト側 PID に対して直接 kill(1) を実行する。
+HOST_PID=$(docker inspect -f '{{.State.Pid}}' "$CID")
 KILL_TS_EPOCH=$(date -u +%s)
-log "障害発生: ${COMPOSE} kill -s KILL ${SERVICE}"
-$COMPOSE kill -s KILL "$SERVICE" >/dev/null
+log "障害発生: kill -9 ${HOST_PID} (${SERVICE} のホスト側 PID)"
+sudo kill -9 "$HOST_PID"
 
 # 2. 復旧待ち
 ATTEMPT=0
@@ -110,8 +130,7 @@ else
 fi
 
 # 4. ポストチェック: restart count とコンテナ状態
-AFTER_RESTART=$($COMPOSE ps --format json "$SERVICE" 2>/dev/null \
-  | (command -v jq >/dev/null && jq -r '.RestartCount // 0' || echo "?"))
+AFTER_RESTART=$(restart_count)
 log "事後 restart_count(${SERVICE})=${AFTER_RESTART}"
 
 # 5. 評価
