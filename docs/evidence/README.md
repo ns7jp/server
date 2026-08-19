@@ -16,7 +16,7 @@
 | 監視スタック全体の起動（Grafana / Loki） | ✅ [2026-08-18](2026-08-18-local-observability.md)（Alertmanager 通知配信は未採録） |
 | D-1 復旧演習の実測 | ✅ [2026-08-19](../drills/logs/2026-08-19-D-1.md)（RTO 13 秒） ／ D-2 は未採録 |
 | AWS `apply` / `destroy` と実費 | ❌ 未採録 |
-| [試験仕様書](../build-package/06-test-specification.md)の結合・セキュリティ試験 | ⚠ 大半が `NOT RUN` |
+| [試験仕様書](../build-package/06-test-specification.md)の結合・セキュリティ試験 | ⚠ [2026-08-19時点の結果票](2026-08-19-build-validation.md): 10/21 PASS、残り NOT RUN |
 
 > **この証跡が示す範囲を広げて解釈しない。** 確認できたのは「ロールが適用でき、冪等で、期待した状態になる」
 > こと、「監視スタックが Linux 上で実際に起動し、Grafana / Loki が実データを表示する」こと、
@@ -29,7 +29,7 @@
 
 | 対象 | リポジトリで確認できる成果物 | 実行証跡 |
 | --- | --- | --- |
-| アプリ/API の認証・マスキング | `tests/`、`python-check.yml` | CI 実行結果を PR で確認 |
+| アプリ/API の認証・マスキング | `tests/`、`python-check.yml` | CI 実行結果を PR で確認。[2026-08-19: 4 workflow の直近成功ログを台帳化](2026-08-19-ci-baseline.md) |
 | ローカル Python / 成果物検査 | `tests/` | [2026-08-11: 14 tests PASS](2026-08-11-local-code-validation.md) |
 | Compose / Prometheus / Loki / Alloy 設定 | `compose.yaml`、`deploy/`、`python-check.yml` | [2026-08-18: Linux(WSL2)上での起動・Grafana実画面・Lokiログ検索を採録](2026-08-18-local-observability.md) |
 | Ansible roles | `ansible/`、`ansible-check.yml` | 構文・lint 検証に加え、[2026-08-17: 4 ロールの `molecule test` 完走](2026-08-17-molecule.md)（create → converge → idempotence → verify）。[実行手順](molecule-via-github-actions.md) |
