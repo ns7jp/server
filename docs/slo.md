@@ -89,8 +89,8 @@ flowchart TD
 
 ### 3.3 月次レビュー
 
-毎月 1 日に前月のエラーバジェット消費を集計し、`docs/slo-reviews/YYYY-MM.md` に
-議事録を残す。テンプレートは `docs/slo-reviews/TEMPLATE.md`。
+毎月 1 日に前月のエラーバジェット消費を集計し、`docs/roadmap/slo-reviews/YYYY-MM.md` に
+議事録を残す。テンプレートは `docs/roadmap/slo-reviews/TEMPLATE.md`。
 
 - バジェット内で完了 → 通常運用継続
 - バジェット超過 → 原因分析 → 改善計画策定 → 翌月の SLO 見直し（緩めるか、改善するか）
@@ -141,7 +141,7 @@ Grafana の **Server Monitor SLO** ダッシュボード（uid: `slo-overview`�
 計画停止を SLI 計算から除外したい場合は、blackbox-exporter のスクレイプを一時的に
 停止する（`docker compose stop blackbox`）か、ダッシュボード上で対象期間を annotation
 として除外する。実装はまだ自動化していないため、停止計画と実績を
-[docs/slo-reviews/](slo-reviews/) で記録する運用とする。
+[docs/roadmap/slo-reviews/](roadmap/slo-reviews/) で記録する運用とする。
 
 ## 7. 段階的導入の振り返り
 

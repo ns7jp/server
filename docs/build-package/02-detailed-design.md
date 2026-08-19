@@ -46,6 +46,6 @@
 
 - Prometheus、Grafana、Loki の named volume を日次で tar 化します。
 - 構成変更は Git の直前 commit へ戻し、Ansible の `deploy.yml` を再適用します。
-- データ破損時は [スナップショット復元ランブック](../runbooks/restore-from-snapshot.md)を使用します。
+- データ破損時は [スナップショット復元ランブック](../roadmap/restore-from-snapshot.md)を使用します。
 - 復旧後は必ず `verify.yml` と必須試験を再実行します。
 

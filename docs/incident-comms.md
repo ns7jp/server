@@ -84,7 +84,7 @@ RPO 実績: <時間> (目標 <時間>)
 :test_tube: [DRILL] D-2 ホスト障害 開始
 時刻: 2026-06-15 14:00:00 JST
 環境: staging
-シナリオ: docs/drills/D-2-host-failure.md
+シナリオ: docs/roadmap/D-2-host-failure.md
 観測役: @alice  操作役: @bob
 RTO 目標: 60 分  RPO 目標: 24 時間
 スレッドで時系列を残します。

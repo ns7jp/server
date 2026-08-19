@@ -44,7 +44,7 @@
 | `docs/evidence/README.md` | 動画、スクリーンショット、対象 commit、実行日時を追記 |
 | `docs/drills/logs/YYYY-MM-DD-D-1.md` | RTO、通知到達時間、改善点を記録 |
 | `README.md` | デモ動画リンクを上部へ追加 |
-| `docs/slo-reviews/YYYY-MM.md` | 演習で消費したバジェットや気づきを記録 |
+| `docs/roadmap/slo-reviews/YYYY-MM.md` | 演習で消費したバジェットや気づきを記録 |
 
 ---
 

@@ -45,7 +45,7 @@ docker compose start prometheus grafana loki
 | 障害種別 | RTO | RPO | 関連ランブック / 演習 |
 | --- | --- | --- | --- |
 | プロセスダウン | 5 分 | 0 | [docs/drills/D-1-process-down.md](drills/D-1-process-down.md) |
-| ホスト障害（OS 起動不能） | 60 分 | 24 時間 | [docs/runbooks/restore-from-snapshot.md](runbooks/restore-from-snapshot.md) / [docs/drills/D-2-host-failure.md](drills/D-2-host-failure.md) |
+| ホスト障害（OS 起動不能） | 60 分 | 24 時間 | [復元ランブック](roadmap/restore-from-snapshot.md) / [D-2 演習シナリオ](roadmap/D-2-host-failure.md)（いずれも AWS staging 環境待ち） |
 | AZ 障害（v2.x 以降の冗長化前提）| 15 分 | 0 | （未演習）|
 | リージョン障害 | 24 時間 | 24 時間 | （未演習・Terraform 別リージョン適用）|
 | 操作ミスでデータ削除 | 30 分 | 24 時間 | （D-3 別 PR で追加予定）|

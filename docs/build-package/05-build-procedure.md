@@ -72,7 +72,7 @@ ssh monitor-01 'ufw status verbose'
 
 ## 7. ロールバック
 
-構成変更が原因の場合は変更前 commit を checkout した作業ブランチから `playbooks/deploy.yml` を適用します。データ破損の場合は[復元ランブック](../runbooks/restore-from-snapshot.md)を使います。復旧後は `verify.yml` と影響範囲の試験を再実行します。
+構成変更が原因の場合は変更前 commit を checkout した作業ブランチから `playbooks/deploy.yml` を適用します。データ破損の場合は[復元ランブック](../roadmap/restore-from-snapshot.md)を使います。復旧後は `verify.yml` と影響範囲の試験を再実行します。
 
 ## 8. 作業終了
 

@@ -63,7 +63,7 @@
 
 - ランブック: <docs/runbooks/...>
 - 直近の同種演習: <docs/drills/logs/...>
-- 関連 SLO レビュー: <docs/slo-reviews/YYYY-MM.md>
+- 関連 SLO レビュー: <docs/roadmap/slo-reviews/YYYY-MM.md>
 
 ## 振り返り会メモ（任意）
 

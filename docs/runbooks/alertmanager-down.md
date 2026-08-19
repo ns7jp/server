@@ -79,7 +79,7 @@ curl http://blackbox:9115/metrics  # コンテナ内 / Prometheus からの確�
    その間に発生したインシデントを Loki / Prometheus の履歴から **後追い** で洗う。
 2. 同一原因の再発を防ぐため、設定の lint や CI 検証（`amtool check-config` を CI に
    追加するなど）を強化する。
-3. 月次レビュー（`docs/slo-reviews/`）に「アラート到達 SLO」の達成状況として記録する。
+3. 月次レビュー（`docs/roadmap/slo-reviews/`）に「アラート到達 SLO」の達成状況として記録する。
 
 ## 参考
 
