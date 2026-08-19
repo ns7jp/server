@@ -31,7 +31,7 @@ docker compose start prometheus grafana loki
 ## 復旧試験
 
 1. 新しい Linux ホストへリポジトリを取得する。
-2. 秘密管理先から `deploy/secrets/*.txt` を復元し、`chmod 600` を設定する。
+2. 秘密管理先から `deploy/secrets/*.txt` を復元し、`chmod 644` を設定する（`600` だとコンテナ内の別 UID から読めず起動しないコンテナがある。実機で確認済み）。
 3. 必要な volume を作り、バックアップを展開する。
 4. `docker compose up -d --build` を実行する。
 5. `/healthz`、Prometheus targets、Grafana dashboard、Alertmanager の順に確認する。

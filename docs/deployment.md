@@ -20,7 +20,9 @@ mkdir -p deploy/secrets
 openssl rand -base64 32 > deploy/secrets/dashboard_password.txt
 openssl rand -base64 32 > deploy/secrets/metrics_token.txt
 openssl rand -base64 32 > deploy/secrets/grafana_admin_password.txt
-chmod 600 deploy/secrets/*.txt
+# 600 だと、コンテナ内で別 UID（例: Grafana は 472）で読むコンテナが
+# Permission denied で起動できない（実機で確認済み）。644 にする。
+chmod 644 deploy/secrets/*.txt
 ```
 
 秘密値のファイルは `.gitignore` で除外される。`.example` ファイルは構成を理解するためのダミーであり、運用に利用しない。
@@ -66,7 +68,7 @@ LogQL の代表例は [LogQL クエリ集](loki-queries.md) を参照する。
 
 ```bash
 printf '%s' 'https://hooks.slack.com/services/REPLACE/ME' > deploy/secrets/slack_webhook_url.txt
-chmod 600 deploy/secrets/slack_webhook_url.txt
+chmod 644 deploy/secrets/slack_webhook_url.txt
 docker compose -f compose.yaml -f compose.slack.yaml.example up -d alertmanager
 ```
 

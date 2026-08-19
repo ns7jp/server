@@ -35,7 +35,7 @@
 
 1. Internet に直接公開しない。遠隔利用は VPN、SSH ポートフォワード、または組織の SSO 対応プロキシを前段に置く。
 2. Basic 認証を loopback 以外で使用する場合は必ず HTTPS を終端する。
-3. `deploy/secrets/*.txt` と `/etc/server-monitor/server-monitor.env` のパーミッションを所有者のみ読み取り可能にする。
+3. `deploy/secrets/*.txt` は `644` にする（コンテナ内の別 UID から読む必要があるため、所有者のみ読み取り可能な `600` では該当コンテナが起動しない。実機で確認済み）。`/etc/server-monitor/server-monitor.env` は所有者のみ読み取り可能（`600`）にする。
 4. 認証無効化を設定した状態で `0.0.0.0` に bind しない。
 5. アラート通知の Webhook URL は Git にコミットせず、秘密ファイルとして配置する。
 
