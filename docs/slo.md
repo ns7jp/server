@@ -71,45 +71,34 @@ Prometheus rule で連続的に算出する。
 
 ### 3.2 運用ルール
 
-```mermaid
-flowchart TD
-    A[月初: バジェット 100%] --> B{現時点の<br/>消費量}
-    B -- 〜 50% --> C[通常運用<br/>新機能リリース可]
-    B -- 50 〜 80% --> D[要警戒<br/>リリース前にレビュー必須]
-    B -- 80 〜 100% --> E[凍結警戒<br/>クリティカルでない変更を控える]
-    B -- 100% 超過 --> F[リリース凍結<br/>信頼性改善のみ実施]
-```
+バジェットの消費量に応じて、変更への慎重さを変える。
 
 | 消費量 | 行動 |
 | --- | --- |
-| 〜 50% | 通常運用。リリース可 |
-| 50 〜 80% | 要警戒。リリース前に必ずレビューを通す |
-| 80 〜 100% | 凍結警戒。クリティカルでない変更を控える |
-| 100% 超過 | リリース凍結。信頼性改善のみを実施 |
+| 〜 80% | 通常運用 |
+| 80% 超過 | 変更は一旦止め、原因調査を優先する |
 
 ### 3.3 月次レビュー
 
-毎月 1 日に前月のエラーバジェット消費を集計し、`docs/slo-reviews/YYYY-MM.md` に
-議事録を残す。テンプレートは `docs/slo-reviews/TEMPLATE.md`。
+毎月 1 日に前月のエラーバジェット消費を集計し、`docs/roadmap/slo-reviews/YYYY-MM.md` に
+議事録を残す。テンプレートは `docs/roadmap/slo-reviews/TEMPLATE.md`。
 
 - バジェット内で完了 → 通常運用継続
 - バジェット超過 → 原因分析 → 改善計画策定 → 翌月の SLO 見直し（緩めるか、改善するか）
 
 ## 4. アラート設計
 
-「CPU 80%」のような閾値型ではなく、**SLO 消費速度（バーンレート）** でアラートする。
-出典: [Google SRE Workbook — Alerting on SLOs](https://sre.google/workbook/alerting-on-slos/)
+「CPU 80%」のような単純な閾値ではなく、**バジェットの消費ペース**でアラートする。
+短い時間窓と長い時間窓の両方が同時にしきい値を超えたときだけ発火させ、瞬間的な
+スパイクだけで誤って通知が飛ばないようにしている（この考え方は参考文献のパターンを
+踏襲したもので、独自に編み出したものではない）。
 
-### 4.1 Multi-Window Multi-Burn-Rate
-
-| アラート | 短窓 / 長窓 | バーンレート | 意味 |
+| アラート | 短窓 / 長窓 | 消費ペース | 意味 |
 | --- | --- | --- | --- |
-| `SLOFastBurnRateAvailability` | 5 分 / 1 時間 | 14.4 | 1 時間でバジェットの 2% を消費（即対応） |
-| `SLOSlowBurnRateAvailability` | 30 分 / 6 時間 | 6 | 6 時間でバジェットの 5% を消費（業務時間中対応） |
-| `SLOErrorBudgetExhausted` | — | — | バジェットを完全に使い切った（リリース凍結） |
+| `SLOFastBurnRateAvailability` | 5 分 / 1 時間 | 速い | 1 時間でバジェットの 2% を消費（即対応） |
+| `SLOSlowBurnRateAvailability` | 30 分 / 6 時間 | ゆるやか | 6 時間でバジェットの 5% を消費（業務時間中対応） |
+| `SLOErrorBudgetExhausted` | — | — | バジェットを使い切った（変更を止めて調査） |
 | `SLOLatencyHigh` | 1 時間 p95 | — | p95 が 500ms を超えた状態が 10 分継続 |
-
-短窓と長窓の両方が同時にしきい値を超えたときだけ発火させ、瞬間スパイクでの誤発火を防ぐ。
 
 ### 4.2 ランブック連動
 
@@ -119,7 +108,7 @@ flowchart TD
 | `SLOSlowBurnRateAvailability` | [service-down.md](runbooks/service-down.md) |
 | `SLOLatencyHigh` | [latency-spike.md](runbooks/latency-spike.md) |
 | `AlertmanagerDown` / `BlackboxExporterDown` | [alertmanager-down.md](runbooks/alertmanager-down.md) |
-| `SLOErrorBudgetExhausted` | この `slo.md`（運用ルールに従いリリース凍結） |
+| `SLOErrorBudgetExhausted` | この `slo.md`（運用ルールに従い変更を止めて調査） |
 
 すべてのアラートには `annotations.runbook_url` を付与し、通知先からワンクリックで
 ランブックに到達できるようにしている。
@@ -141,7 +130,7 @@ Grafana の **Server Monitor SLO** ダッシュボード（uid: `slo-overview`�
 計画停止を SLI 計算から除外したい場合は、blackbox-exporter のスクレイプを一時的に
 停止する（`docker compose stop blackbox`）か、ダッシュボード上で対象期間を annotation
 として除外する。実装はまだ自動化していないため、停止計画と実績を
-[docs/slo-reviews/](slo-reviews/) で記録する運用とする。
+[docs/roadmap/slo-reviews/](roadmap/slo-reviews/) で記録する運用とする。
 
 ## 7. 段階的導入の振り返り
 

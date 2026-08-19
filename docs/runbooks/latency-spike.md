@@ -52,7 +52,7 @@ Grafana の `Server Monitor SLO` ダッシュボードを開き、`Probe Duratio
 
 ## 事後対応
 
-1. レイテンシ SLO（p95 < 500ms）のバジェット消費を [docs/slo-reviews/](../slo-reviews/) に追記する。
+1. レイテンシ SLO（p95 < 500ms）のバジェット消費を [docs/roadmap/slo-reviews/](../roadmap/slo-reviews/) に追記する。
 2. 同一原因が再発し得るなら、Prometheus alert / dashboard / テストの追加で再発を検出可能にする。
 3. SLO 自体の見直しが必要か（目標値の調整、計測ポイントの変更）月次レビューで議論する。
 

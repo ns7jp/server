@@ -13,7 +13,7 @@ EC2 ホストが応答しなくなった状態を再現し、**AWS Backup の re
 | 環境 | AWS staging（**本番では実施しない**） |
 | RTO 目標 | **60 分以内**（[docs/backup-restore.md](../backup-restore.md) 参照）|
 | RPO 目標 | **24 時間以内**（AWS Backup 日次プラン） |
-| 関連ランブック | [docs/runbooks/restore-from-snapshot.md](../runbooks/restore-from-snapshot.md) |
+| 関連ランブック | [restore-from-snapshot.md](./restore-from-snapshot.md) |
 | 関連 SLO | 可用性 99.5%（[docs/slo.md](../slo.md)）|
 
 ## 2. 事前準備
@@ -35,7 +35,7 @@ EC2 ホストが応答しなくなった状態を再現し、**AWS Backup の re
 
 ## 4. 復旧手順
 
-[docs/runbooks/restore-from-snapshot.md](../runbooks/restore-from-snapshot.md) を
+[restore-from-snapshot.md](./restore-from-snapshot.md) を
 正本として参照する。タイムライン上のコマンドはランブックからコピーする。
 
 主なステップ:
@@ -83,4 +83,4 @@ EC2 ホストが応答しなくなった状態を再現し、**AWS Backup の re
 
 [docs/drill-template.md](../drill-template.md) のフォーマットで
 `docs/drills/logs/YYYY-MM-DD-D-2.md` に記録。改善アクションは Issue or PR を起こし、
-翌月の SLO レビュー（[docs/slo-reviews/](../slo-reviews/)）で進捗を確認する。
+翌月の SLO レビュー（[docs/roadmap/slo-reviews/](./slo-reviews/)）で進捗を確認する。

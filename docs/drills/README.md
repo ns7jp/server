@@ -8,7 +8,7 @@
 | # | シナリオ | 頻度 | 想定時間 | 環境 | 詳細 |
 | --- | --- | --- | --- | --- | --- |
 | D-1 | プロセスダウン → 自動復旧確認 | 月次 | 15 分 | ローカル Docker | [D-1-process-down.md](D-1-process-down.md) |
-| D-2 | ホスト障害 → 別ホストに復元 | 四半期 | 2 時間 | AWS staging | [D-2-host-failure.md](D-2-host-failure.md) |
+| D-2 | ホスト障害 → 別ホストに復元 | 四半期 | 2 時間 | AWS staging（環境待ち） | [roadmap/D-2-host-failure.md](../roadmap/D-2-host-failure.md) |
 | D-3 | 操作ミス（メトリクス削除）→ スナップから復元 | 四半期 | 1 時間 | AWS staging | （別 PR で追加予定）|
 | D-4 | AZ 障害シミュレーション | 半期 | 3 時間 | AWS staging | （v2.x で追加）|
 | D-5 | リージョン障害（Terraform 別リージョン再適用） | 年次 | 半日 | 別 AWS account | （v2.x で追加）|

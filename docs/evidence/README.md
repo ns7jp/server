@@ -32,7 +32,7 @@
 | Ansible roles | `ansible/`、`ansible-check.yml` | 構文・lint 検証に加え、[2026-08-17: 4 ロールの `molecule test` 完走](2026-08-17-molecule.md)（create → converge → idempotence → verify）。[実行手順](molecule-via-github-actions.md) |
 | Terraform AWS 構成 | `terraform/`、`terraform-check.yml` | `terraform plan/apply/destroy` と Cost Explorer 実測は未収録 |
 | SLO / 復旧演習 | `docs/slo.md`、`docs/drills/`、`scripts/drills/` | D-1 / D-2 の実測ログは未収録 |
-| 外部 probe / 中央 telemetry | `docs/external-probe-central-telemetry.md` | 外部 probe と中央保存先の実測は未収録 |
+| 外部 probe / 中央 telemetry | `docs/roadmap/external-probe-central-telemetry.md` | 外部 probe と中央保存先の実測は未収録 |
 | 変更管理 | `.github/pull_request_template.md`、`.github/ISSUE_TEMPLATE/`、`docs/change-management.md` | PR ごとに検証・ロールバック・証跡リンクを残す |
 | 構築工程成果物 | `docs/build-package/` | 設計・構築・試験様式を整備。実機結果は各検証ログへ記録 |
 | 二セグメント障害ラボ | `labs/network-troubleshooting/` | 再現スクリプトを整備。実行ログは未収録 |
@@ -90,6 +90,6 @@
 > 起動・疎通・復旧時間は 3 以降でしか確認できない。台帳にもこの区別を明記する。
 
 外部 probe と中央 telemetry の設計は
-[外部 probe / 中央 telemetry 設計](../external-probe-central-telemetry.md) にまとめる。
+[外部 probe / 中央 telemetry 設計](../roadmap/external-probe-central-telemetry.md) にまとめる。
 
 現時点で空の欄があるのは未検証を意味する。実測値は、実際に実行した PR でのみ追加する。

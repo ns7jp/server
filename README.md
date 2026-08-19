@@ -37,10 +37,10 @@ Python / Flask で作成したサーバー状態表示アプリを、**認証、
 | ログ集約 | Loki + Grafana Alloy でコンテナログとホスト `/var/log` を収集、Grafana から横断検索 |
 | 障害対応 | アラートルール、停止ランブック、CPU 高負荷の模擬インシデント記録 |
 | 構成管理 | Ansible roles で OS / Docker / TLS / 監視設定 / アプリ配備 / バックアップを宣言的に管理 |
-| クラウド配備 | Terraform で AWS（VPC / ALB / EC2 / Backup / CloudWatch / CloudTrail / GuardDuty / Budgets）を IaC 化。実 AWS への適用証跡は未収録 |
-| SLO 運用 | ラボ内 blackbox-exporter による `/healthz` プロービング、Multi-Window Multi-Burn-Rate アラート、Grafana SLO ダッシュボード |
+| クラウド配備 | Terraform で AWS 上に同等構成をコード化（[詳細](docs/aws-architecture.md)。apply 未実施） |
+| SLO 運用 | `/healthz` の定期チェックと、しきい値を超えたときのアラート通知（[詳細](docs/slo.md)） |
 | 復旧演習 | D-1 / D-2 のランブック、テンプレート、日次バックアップ検証 CI。実測演習ログは未収録 |
-| 変更管理 | PR テンプレート、Change request Issue、確認・ロールバック・証跡リンクを残す軽量 Change Enablement |
+| 変更管理 | PR ごとに目的・影響範囲・ロールバック手順を書いて残す運用（[詳細](docs/change-management.md)） |
 | 品質確認 | pytest、構成検証、ansible-lint、Molecule 構文検証、任意実行の完全 Molecule、Terraform 検証、Trivy / pip-audit、Dependabot |
 
 ## 構成
@@ -64,32 +64,39 @@ flowchart LR
 
 ## ドキュメント
 
+### まず読む文書
+
 | 文書 | 内容 |
 | --- | --- |
 | [Linux サーバー構築案件パック](docs/build-package/README.md) | 基本・詳細設計、パラメータ、ネットワーク、構築、試験、引き渡し |
 | [インフラ監視ラボ設計](docs/architecture.md) | 構成図、設計判断、監視条件 |
 | [セキュリティ設計](docs/security.md) | 認証、秘密管理、公開範囲、残存リスク |
 | [構築・配備手順](docs/deployment.md) | Docker Compose と native Linux 配備例 |
+| [Ansible 配備手順](docs/deployment-ansible.md) | 0 台から構築可能な playbook、roles 構成、Vault、Molecule |
 | [バックアップ・復旧設計](docs/backup-restore.md) | 永続データ、復元試験、復旧目標 |
 | [停止時ランブック](docs/runbooks/service-down.md) | アラート受信後の確認と復旧手順 |
 | [CPU 高負荷演習記録](docs/incidents/cpu-high-drill.md) | 模擬障害の再現、確認、復旧、再発防止 |
+| [復旧演習一覧](docs/drills/README.md) | D-1（実施可能）と、環境待ちの演習の整理 |
 | [LogQL クエリ集](docs/loki-queries.md) | ダッシュボードと運用で使う LogQL の例 |
-| [Ansible 配備手順](docs/deployment-ansible.md) | 0 台から構築可能な playbook、roles 構成、Vault、Molecule |
-| [AWS / Terraform 設計](docs/aws-architecture.md) | VPC / ALB / EC2 / Backup / Monitoring の構成と Ansible との接続 |
-| [AWS コスト計画](docs/cost-report.md) | 月額試算、削減策、Budgets、実費記録 |
-| [外部 probe / 中央 telemetry 設計](docs/external-probe-central-telemetry.md) | 利用者視点 SLO と中央 metrics / logs の追加設計 |
-| [SLO / SLI / エラーバジェット設計](docs/slo.md) | 可用性 99.5% / レイテンシ p95 < 500ms、Multi-Window Multi-Burn-Rate、月次レビュー |
-| [変更管理ミニ運用](docs/change-management.md) | PR / Issue で目的、影響範囲、検証、ロールバック、証跡リンクを残す運用 |
-| [latency-spike ランブック](docs/runbooks/latency-spike.md) | `/healthz` p95 が 500ms を越えた際の切り分け |
-| [監視の監視ランブック](docs/runbooks/alertmanager-down.md) | Alertmanager / blackbox-exporter 停止時の対応 |
-| [SLO 月次レビュー](docs/slo-reviews/) | 各月のバジェット消費・インシデント振り返り |
-| [復旧演習一覧](docs/drills/README.md) | D-1〜D-5 のシナリオと頻度 |
-| [スナップショット命名規則](docs/backup-naming.md) | バックアップアーティファクトのタグと命名 |
-| [インシデント周知テンプレ](docs/incident-comms.md) | Slack へ流す状態遷移ごとの定型文 |
-| [スナップ復元ランブック](docs/runbooks/restore-from-snapshot.md) | D-2 ホスト障害復旧の正本手順 |
 | [検証証跡台帳](docs/evidence/README.md) | コード実装と実環境での実測を区別する検証状況 |
 | [ローカル証跡採録ガイド](docs/evidence/local-evidence-quickstart.md) | Grafana / Loki / Alertmanager / D-1 演習を実測証跡に変える最短手順 |
 | [2〜3 分デモ収録ガイド](docs/demo-capture-guide.md) | デプロイ、故障注入、通知、復旧を短尺動画にする収録手順 |
+
+### 発展的な設計・将来構想
+
+まだ実機で試していない、または個人ラボの規模を超えた設計。コードや文書は用意しているが、
+実務経験として語れる段階ではないものとして区別している。
+
+| 文書 | 内容 |
+| --- | --- |
+| [AWS / Terraform 設計](docs/aws-architecture.md) | VPC / ALB / EC2 などの構成コード（apply 未実施） |
+| [AWS コスト計画](docs/cost-report.md) | 月額試算、Budgets |
+| [SLO / SLI / エラーバジェット設計](docs/slo.md) | サービス品質目標の決め方とアラート条件 |
+| [変更管理ミニ運用](docs/change-management.md) | PR / Issue で目的、影響範囲、ロールバックを記録する運用 |
+| [latency-spike ランブック](docs/runbooks/latency-spike.md) | `/healthz` p95 が 500ms を越えた際の切り分け |
+| [監視の監視ランブック](docs/runbooks/alertmanager-down.md) | Alertmanager / blackbox-exporter 停止時の対応 |
+| [スナップショット命名規則](docs/backup-naming.md) | バックアップアーティファクトのタグと命名 |
+| [インシデント周知テンプレ](docs/incident-comms.md) | Slack へ流す状態遷移ごとの定型文 |
 
 ## ダッシュボード機能
 
@@ -148,9 +155,9 @@ terraform plan
 terraform apply
 ```
 
-セキュリティ初期値：IMDSv2 強制、EBS / S3 暗号化（KMS）、VPC Flow Logs、CloudTrail
-全リージョン、GuardDuty 有効、ALB ingress は `allowed_ingress_cidrs` で制限、prod は
-`certificate_arn` 必須。CI は `terraform fmt / validate` + `tfsec` + `checkov` を毎回回す。
+通信の暗号化、アクセス範囲の制限、監査ログの有効化など、基本的なセキュリティ初期値を
+コードに含めている。CI では `terraform fmt / validate` に加えて静的スキャンを毎回実行する。
+個々の設定内容は [docs/aws-architecture.md](docs/aws-architecture.md) を参照。
 
 このコードが AWS で稼働した実績や実費を意味するものではない。ALB 配下の各 EC2 に
 同居するローカル監視データは中央の正本とせず、本番相当では外部 probe と中央保存を
@@ -159,12 +166,9 @@ terraform apply
 
 ## SLO / エラーバジェット
 
-`server-monitor` のサービス品質目標を SLI / SLO として明文化し、エラーバジェットを
-連続的に観測する。ラボ内の blackbox-exporter が Nginx 経由で `/healthz` を 30 秒間隔で probe し、
-Prometheus が 30 日窓の成功率からバジェット消費率を計算する。
-
-この SLI は Compose ホスト自体の停止を外側から観測できないため、AWS の外形 SLO と
-して利用するには対象ホスト外の synthetic probe を追加する必要がある。
+`server-monitor` のサービス品質の目標値を数値で決め、達成状況を継続的に観測している。
+ラボ内の blackbox-exporter が Nginx 経由で `/healthz` を 30 秒間隔で probe し、
+Prometheus が 30 日窓の成功率を計算する。
 
 | 項目 | 目標 | 期間 |
 | --- | --- | --- |
@@ -172,21 +176,12 @@ Prometheus が 30 日窓の成功率からバジェット消費率を計算す�
 | `/healthz` p95 | < 500ms | 28 日 |
 | アラート到達時間 | < 2 分 | 月次手動テスト |
 
-アラートは Google SRE Workbook の Multi-Window Multi-Burn-Rate パターン。
+目標を下回りそうなペースになったらアラートで知らせる仕組みを Prometheus / Alertmanager
+に実装している。仕組みの詳細（アラートの条件設計や参考にした考え方）は
+[docs/slo.md](docs/slo.md) にまとめた。
 
-| アラート | 短窓 / 長窓 | バーンレート | 対応緊急度 |
-| --- | --- | --- | --- |
-| `SLOFastBurnRateAvailability` | 5m / 1h | 14.4 | 即対応 |
-| `SLOSlowBurnRateAvailability` | 30m / 6h | 6 | 業務時間内 |
-| `SLOErrorBudgetExhausted` | — | — | リリース凍結 |
-| `SLOLatencyHigh` | 1h p95 | — | 業務時間内 |
-
-各アラートの `annotations.runbook_url` に対応ランブックを紐付け、Slack 通知から
-ワンクリックで手順に到達できるようにしている。詳細とエラーバジェット運用ルールは
-[docs/slo.md](docs/slo.md) を参照。
-
-Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可用性、バジェット
-残量、バーンレート、`/healthz` のレイテンシ、監視の監視を 1 画面で見られる。
+Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可用性、目標消費の
+残量、`/healthz` のレイテンシを 1 画面で見られる。
 
 ## 復旧演習
 

@@ -36,7 +36,7 @@
 時刻: 2026-MM-DD HH:MM:SS JST
 環境: staging
 シナリオ: docs/drills/D-<N>-...md
-観測役: @observer  操作役: @operator
+実施者: @you
 RTO 目標: <分>  RPO 目標: <時間>
 スレッドで時系列を残します。
 ```
@@ -75,7 +75,7 @@ RPO 実績: <時間> (目標 <時間>)
 | --- | --- |
 | 検知前に運用者が気づいた | `:bell:` の代わりに `:eyes:` を使い、検知アラートが発火しなかった旨を明記。アラート設計の改善対象 |
 | 複数並行インシデント | スレッドは別、本文の `関連:` で相互リンク |
-| 演習中に本物のインシデントが発生 | 演習を即時中断し、`:rotating_light:` 付きで切替を宣言。観測役は時刻だけ控える |
+| 演習中に本物のインシデントが発生 | 演習を即時中断し、`:rotating_light:` 付きで切替を宣言。演習側は時刻だけ控える |
 | Alertmanager 自身が停止 | 通知が来ない前提で、ダッシュボードを定常監視している運用者が手動投稿（`docs/runbooks/alertmanager-down.md` 参照） |
 
 ## 4. 例（演習 D-2 抜粋）
@@ -84,8 +84,8 @@ RPO 実績: <時間> (目標 <時間>)
 :test_tube: [DRILL] D-2 ホスト障害 開始
 時刻: 2026-06-15 14:00:00 JST
 環境: staging
-シナリオ: docs/drills/D-2-host-failure.md
-観測役: @alice  操作役: @bob
+シナリオ: docs/roadmap/D-2-host-failure.md
+実施者: @shimada
 RTO 目標: 60 分  RPO 目標: 24 時間
 スレッドで時系列を残します。
 ```
