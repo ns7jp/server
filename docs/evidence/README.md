@@ -13,7 +13,7 @@
 | CI による自動検証 | ✅ 継続的に実行中（構文・設定整合・依存脆弱性・秘密値混入・バックアップスクリプト） |
 | Ansible ロールの適用・冪等性・検証 | ✅ **4 ロール完走**（[2026-08-17](2026-08-17-molecule.md)、Ubuntu 22.04 コンテナ） |
 | 監視スタック全体の起動（Grafana / Loki / 通知） | ❌ 未採録 |
-| D-1 / D-2 復旧演習の実測 | ❌ 未採録 |
+| D-1 復旧演習の実測 | ✅ [2026-08-19](../drills/logs/2026-08-19-D-1.md)（RTO 13 秒） ／ D-2 は未採録 |
 | AWS `apply` / `destroy` と実費 | ❌ 未採録 |
 | [試験仕様書](../build-package/06-test-specification.md)の結合・セキュリティ試験 | ⚠ 大半が `NOT RUN` |
 
@@ -31,7 +31,7 @@
 | Compose / Prometheus / Loki / Alloy 設定 | `compose.yaml`、`deploy/`、`python-check.yml` | Linux Docker ホストでの起動記録は未収録 |
 | Ansible roles | `ansible/`、`ansible-check.yml` | 構文・lint 検証に加え、[2026-08-17: 4 ロールの `molecule test` 完走](2026-08-17-molecule.md)（create → converge → idempotence → verify）。[実行手順](molecule-via-github-actions.md) |
 | Terraform AWS 構成 | `terraform/`、`terraform-check.yml` | `terraform plan/apply/destroy` と Cost Explorer 実測は未収録 |
-| SLO / 復旧演習 | `docs/slo.md`、`docs/drills/`、`scripts/drills/` | D-1 / D-2 の実測ログは未収録 |
+| SLO / 復旧演習 | `docs/slo.md`、`docs/drills/`、`scripts/drills/` | [2026-08-19: D-1 `app` プロセスダウン、RTO 13 秒で復旧](../drills/logs/2026-08-19-D-1.md)。D-2 は未収録 |
 | 外部 probe / 中央 telemetry | `docs/roadmap/external-probe-central-telemetry.md` | 外部 probe と中央保存先の実測は未収録 |
 | 変更管理 | `.github/pull_request_template.md`、`.github/ISSUE_TEMPLATE/`、`docs/change-management.md` | PR ごとに検証・ロールバック・証跡リンクを残す |
 | 構築工程成果物 | `docs/build-package/` | 設計・構築・試験様式を整備。実機結果は各検証ログへ記録 |
