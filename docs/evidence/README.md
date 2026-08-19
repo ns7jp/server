@@ -5,8 +5,8 @@
 
 ## 要約（2026-08-19 時点）
 
-**Ansible ロールの適用・冪等性、監視スタック全体の Linux 上での起動、D-1 復旧演習について、
-実測証跡がある。**
+**Ansible ロールの適用・冪等性、監視スタック全体の Linux 上での起動、D-1 復旧演習、
+二セグメント障害ラボについて、実測証跡がある。**
 一方、Alertmanager から Slack への実配信、D-2 復旧演習、AWS 適用は未採録。
 
 | 区分 | 状態 |
@@ -15,6 +15,7 @@
 | Ansible ロールの適用・冪等性・検証 | ✅ **4 ロール完走**（[2026-08-17](2026-08-17-molecule.md)、Ubuntu 22.04 コンテナ） |
 | 監視スタック全体の起動（Grafana / Loki） | ✅ [2026-08-18](2026-08-18-local-observability.md)（Alertmanager 通知配信は未採録） |
 | D-1 復旧演習の実測 | ✅ [2026-08-19](../drills/logs/2026-08-19-D-1.md)（RTO 13 秒） ／ D-2 は未採録 |
+| 二セグメント障害ラボの実測 | ✅ [2026-08-19](2026-08-19-network-drill.md)（障害注入→切り分け→復旧、PASS） |
 | AWS `apply` / `destroy` と実費 | ❌ 未採録 |
 | [試験仕様書](../build-package/06-test-specification.md)の結合・セキュリティ試験 | ⚠ [2026-08-19時点の結果票](2026-08-19-build-validation.md): 10/21 PASS、残り NOT RUN |
 
@@ -38,7 +39,7 @@
 | 外部 probe / 中央 telemetry | `docs/roadmap/external-probe-central-telemetry.md` | 外部 probe と中央保存先の実測は未収録 |
 | 変更管理 | `.github/pull_request_template.md`、`.github/ISSUE_TEMPLATE/`、`docs/change-management.md` | PR ごとに検証・ロールバック・証跡リンクを残す |
 | 構築工程成果物 | `docs/build-package/` | 設計・構築・試験様式を整備。実機結果は各検証ログへ記録 |
-| 二セグメント障害ラボ | `labs/network-troubleshooting/` | 再現スクリプトを整備。実行ログは未収録 |
+| 二セグメント障害ラボ | `labs/network-troubleshooting/` | [2026-08-19: 障害注入→切り分け→復旧を実測、PASS](2026-08-19-network-drill.md) |
 
 ## 記録ルール
 
