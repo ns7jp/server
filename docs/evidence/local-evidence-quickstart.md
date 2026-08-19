@@ -34,7 +34,9 @@ cp .env.example .env
 openssl rand -base64 32 > deploy/secrets/dashboard_password.txt
 openssl rand -base64 32 > deploy/secrets/metrics_token.txt
 openssl rand -base64 32 > deploy/secrets/grafana_admin_password.txt
-chmod 600 deploy/secrets/*.txt
+# 600 にすると、コンテナ内で別 UID(例: Grafana は 472)で読むコンテナが
+# Permission denied で起動できない(実機で確認済み)。644 にする。
+chmod 644 deploy/secrets/*.txt
 docker compose up -d --build
 docker compose ps
 curl -i http://127.0.0.1:8080/healthz
