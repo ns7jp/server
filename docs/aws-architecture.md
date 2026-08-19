@@ -11,6 +11,9 @@ Terraform は VPC からモニタリング基盤までを宣言的に管理す�
 未収録である。実行結果は [検証証跡台帳](evidence/README.md) に沿って記録し、
 コードが存在することを稼働実績として表現しない。
 
+この設計は AWS のベストプラクティス集や公式ドキュメントを参考に組み立てたもので、
+実務での AWS 運用経験に基づくものではない。
+
 ## 全体構成
 
 ```mermaid
@@ -75,13 +78,13 @@ Compose 内の blackbox-exporter はラボでの SLI 計算には有効だが、
 
 ## モジュール責務
 
-| モジュール | 担当範囲 | 主リソース |
-| --- | --- | --- |
-| `network` | VPC、Subnet、IGW、NAT、Route Table、VPC Flow Logs | `aws_vpc` / `aws_subnet` / `aws_nat_gateway` / `aws_flow_log` |
-| `compute` | EC2、IMDSv2、IAM、EBS（KMS 暗号化）、夜間停止スケジュール | `aws_instance` / `aws_kms_key.ebs` / `aws_scheduler_schedule` |
-| `alb` | ALB、Target Group、Listener、ACM、アクセスログ S3 | `aws_lb` / `aws_lb_listener` / `aws_lb_target_group` / `aws_s3_bucket.access_logs` |
-| `monitoring` | CloudWatch アラーム、SNS、CloudTrail、GuardDuty、AWS Budgets | `aws_cloudwatch_metric_alarm` / `aws_sns_topic` / `aws_cloudtrail` / `aws_guardduty_detector` / `aws_budgets_budget` |
-| `backup` | AWS Backup Vault、Plan、Selection、長期アーカイブ S3 | `aws_backup_vault` / `aws_backup_plan` / `aws_s3_bucket.archive` |
+| モジュール | 担当範囲 |
+| --- | --- |
+| `network` | VPC、Subnet、IGW、NAT、Route Table |
+| `compute` | EC2、IAM、EBS、夜間停止スケジュール |
+| `alb` | ALB、Target Group、Listener、ACM |
+| `monitoring` | CloudWatch アラーム、SNS、費用アラート |
+| `backup` | AWS Backup Vault、Plan、Selection |
 
 ALB と Compute の **循環依存** を避けるため、`aws_lb_target_group_attachment` は
 モジュール内ではなく `environments/<env>/main.tf` で配線する。
@@ -90,16 +93,11 @@ ALB と Compute の **循環依存** を避けるため、`aws_lb_target_group_a
 
 | 領域 | 実装 |
 | --- | --- |
-| 公開範囲 | EC2 はプライベートサブネットのみ。インターネットへの egress は NAT 経由。ALB のみパブリック |
-| ALB ingress | `allowed_ingress_cidrs` で制限。prod は validation で 1 件以上必須 |
-| ALB TLS | `ELBSecurityPolicy-TLS13-1-2-2021-06`、prod は `certificate_arn` 必須 |
-| EC2 認証 | SSH は既定で閉じ、SSM Session Manager のみ。インスタンスプロファイルで SSM 権限付与 |
-| IMDS | v2 強制（`http_tokens = "required"`） |
-| EBS | gp3、暗号化（顧客管理 KMS）、ルートも含めて all encrypted |
-| S3 | アクセスログ用バケットは AES256（ALB の仕様）、CloudTrail / Archive は KMS。すべて Public Access Block 有効、Versioning 有効、`aws:SecureTransport=false` 拒否 |
-| KMS | EBS / Flow Logs / 監査ログ / Backup の 4 系統で分離。すべて自動ローテーション有効 |
-| 監査 | CloudTrail（全リージョン、ログ検証、KMS 暗号化、CloudWatch Logs 連携）+ GuardDuty + VPC Flow Logs |
-| デフォルト SG | `aws_default_security_group` を空ルールでロックし、誤って使われないようにする |
+| 公開範囲 | EC2 はプライベートサブネットのみに置き、ALB だけをインターネットに公開する |
+| 通信の暗号化 | ALB は TLS 終端、EC2 のディスク（EBS）は暗号化して保存する |
+| EC2 への接続 | SSH は開けず、SSM Session Manager 経由でのみ接続する |
+| 監査ログ | CloudTrail と VPC Flow Logs で API 呼び出しと通信ログを記録し、GuardDuty で不審な挙動を検知する |
+| 未使用のデフォルト設定 | 既定のセキュリティグループは空ルールでロックし、誤って使われないようにする |
 
 ## Ansible との接続
 
@@ -139,12 +137,9 @@ SSH ではなく SSM Session Manager 経由で接続する場合は `ansible_con
 | 予期せぬ課金 | Budgets 80% / 100% で SNS 通知 | `aws_budgets_budget` |
 | 不審 API コール | GuardDuty findings | GuardDuty + 後続のレビュー |
 
-## 拡張余地
+## 拡張余地（将来構想）
 
-- CloudWatch Synthetics などを使い、監視対象ホスト外から `/healthz` を測定する
-- Metrics / logs の正本を AMP / CloudWatch Logs または中央 Loki に移し、EC2 ごとの履歴分断を解消する
-- `single_nat_gateway = false` で NAT を AZ ごとに作り、NAT 障害時の冗長性を確保する
-- EC2 を Auto Scaling Group + Launch Template に置き換え、Self-healing を導入する
-- Prometheus の long-term storage を `remote_write` で AWS Managed Prometheus (AMP) に転送する
-- Route 53 + ACM で公開 FQDN を構成する
-- WAF を ALB の前段に追加し、SQL injection / XSS の基本的な保護を入れる
+現時点では実装していない、思いついている改善案。
+
+- ホスト外からの死活監視、メトリクス・ログの一元化（[docs/roadmap/external-probe-central-telemetry.md](roadmap/external-probe-central-telemetry.md)）
+- NAT・EC2 の冗長化、公開 FQDN、WAF などの本番運用向け強化

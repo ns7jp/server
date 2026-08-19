@@ -85,10 +85,11 @@ flowchart LR
     Alert -.通知.-> Slack
 ```
 
-Multi-Window Multi-Burn-Rate アラートは Prometheus の recording rule
+バジェットの消費ペースは Prometheus の recording rule
 （`slo:burn_rate:rate{5m,30m,1h,6h}`）で計算し、各アラートには対応するランブック URL
-を `annotations.runbook_url` で付与する。「監視の監視」として Alertmanager と
-blackbox-exporter 自身の `up` も監視対象に含める。
+を `annotations.runbook_url` で付与する。Alertmanager と blackbox-exporter 自身の
+`up` も監視対象に含め、監視の仕組み自体が止まっていないかも確認できるようにしている。
+詳細は [docs/slo.md](slo.md) を参照。
 
 ## ログ収集とラベル設計
 

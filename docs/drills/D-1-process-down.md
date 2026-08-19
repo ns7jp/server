@@ -21,7 +21,7 @@
 
 1. `docker compose ps` でスタックが healthy であることを確認
 2. Slack 演習チャンネルでキックオフを宣言（[docs/incident-comms.md](../incident-comms.md)）
-3. 観測役は Grafana の `Server Monitor SLO` ダッシュボードを別タブで開く
+3. Grafana の `Server Monitor SLO` ダッシュボードを別タブで開いておく
 4. 復旧手順とランブック URL を手元に開く
 
 ## 3. 演習スクリプト
@@ -44,14 +44,10 @@
 
 > **なぜ `docker compose kill` を使わないか**
 >
-> `docker compose kill` / `docker kill` は Docker Engine の kill API を経由するため、実際にプロセスは
-> 死ぬが、デーモン内部で「手動停止」フラグが立ち、`restart: unless-stopped` による自動復旧が**無効化**
-> される（Docker の仕様。再起動ポリシーは「明示的に stop/kill された」場合と「予期せず落ちた」場合を
-> 区別しており、Engine の kill/stop API を通ったものはすべて前者として扱われる）。
-> 代わりに `docker exec <container> kill -9 1` のように PID 名前空間の内側から送っても、カーネルが
-> 「同一名前空間内から init（PID 1）へ送られた、ハンドラ未設定のシグナル」を黙って破棄するため、
-> そもそも届かない（`man 7 pid_namespaces`）。両方を回避するため、`d1-process-down.sh` はコンテナ
-> プロセスのホスト側 PID（`docker inspect -f '{{.State.Pid}}'`）に対して直接 `kill -9` を実行する。
+> `docker compose kill` は Docker 側に「意図的に止めた」と伝わってしまい、
+> `restart: unless-stopped` による自動復旧が働かなくなる（実際に試して確認した）。
+> 「突然落ちた」状態を再現するため、`d1-process-down.sh` はコンテナのホスト側 PID
+> （`docker inspect -f '{{.State.Pid}}'`）に対して直接 `kill -9` を実行している。
 
 ## 4. 手動でやる場合
 
