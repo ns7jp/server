@@ -19,9 +19,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      # 0.35.0 is the immutable safe release identified in GHSA-69fq-xp46-6x23.
+      # v0.36.0 (commit ed142fd) is a direct, linear descendant of the 0.35.0 commit
+      # that GHSA-69fq-xp46-6x23 identified as the immutable safe release, released
+      # after the 2026-03 tag-hijack incident was remediated. Pinned by commit SHA
+      # (not a movable tag) so a future tag repoint cannot silently swap this out.
       - name: Scan dependencies, secrets, and configuration
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
