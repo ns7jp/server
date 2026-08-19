@@ -98,7 +98,7 @@ Server Monitor アプリ自身の画面で、Linux（WSL2）上で動作して�
 - [ ] Alertmanager の FIRING 画面を再度キャプチャして採録する
 - [ ] Slack への実際の通知配信を確認する（優先 4、未着手）
 - [ ] DISK USAGE パネルの `/dev/sdd` 重複表示を `app.py` で確認する
-- [ ] `docs/screenshot.png` を本ファイルのアプリ画面に差し替える
+- [x] `docs/screenshot.png` を本ファイルのアプリ画面に差し替える → **2026-08-19 完了**（島田さん本人がリポジトリへ直接反映）
 
 ## 関連
 
