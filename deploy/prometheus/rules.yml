@@ -65,7 +65,7 @@ groups:
         annotations:
           summary: "Sustained memory pressure"
           description: "Used memory has remained above 90 percent for ten minutes."
-          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/service-down.md"
+          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/memory-pressure.md"
 
       - alert: LinuxNodeFilesystemAlmostFull
         expr: (1 - (node_filesystem_avail_bytes{job="linux-node",fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes{job="linux-node",fstype!~"tmpfs|overlay|squashfs"})) * 100 > 85
@@ -75,4 +75,4 @@ groups:
         annotations:
           summary: "Filesystem capacity is low"
           description: "A persistent filesystem has remained above 85 percent usage for fifteen minutes."
-          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/service-down.md"
+          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/disk-full.md"
