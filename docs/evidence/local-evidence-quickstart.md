@@ -8,8 +8,8 @@ Grafana、Loki、Alertmanager、D-1 復旧演習の証跡を採録する。
 > **ブラウザだけで 15 分**で採録できる。本ガイドに着手する前に、そちらを先に消化してよい。
 >
 > なお本ガイドの手順は **WSL2 上の Ubuntu でも実行できる**。専用マシンや VM の新規構築は必須ではない。
-> 「1 で撮る Grafana 画面が、ポートフォリオ内で初めての Linux 上の実行画面になる」ことに留意する
-> （現在掲載されている `docs/screenshot.png` は Windows 端末で撮影したもの）。
+> Grafana / Loki / D-1 の採録は [2026-08-18](2026-08-18-local-observability.md) ／ [2026-08-19](../drills/logs/2026-08-19-D-1.md) に完了済み。
+> `docs/screenshot.png` も Linux(WSL2) 上の実行画面へ差し替え済み。未採録なのは Alertmanager → Slack の実配信と D-2 のみ。
 
 ---
 

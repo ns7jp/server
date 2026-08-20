@@ -40,7 +40,7 @@
 | IT-08 | alert | test alert を発火 | 2 分以内に通知 | NOT RUN | Alertmanager UI 上の FIRING 表示は別の機会に確認したが、証跡ファイルが残っていない。Slack 等の実通知配信も未確認 |
 | IT-09 | D-1 復旧 | app process を停止 | 検知・自動復旧・正常化 | **PASS** | [D-1 演習記録 2026-08-19](../drills/logs/2026-08-19-D-1.md)（RTO 13 秒、`RestartCount` 0→1） |
 | IT-10 | backup restore | snapshot を別 volume へ復元 | 内容一致 | NOT RUN | — |
-| IT-11 | network fault | 二セグメントラボを実行 | 失敗、原因特定、復旧 | NOT RUN | `labs/network-troubleshooting/` は整備済みだが実行ログは未収録 |
+| IT-11 | network fault | 二セグメントラボを実行 | 失敗、原因特定、復旧 | **PASS** | [二セグメント障害ラボ証跡 2026-08-19](2026-08-19-network-drill.md)（`proxy` を `backend` から切断→502確認→`docker network inspect`/`ip route`で原因特定→再接続で復旧、6段階すべてPASS） |
 
 ## セキュリティ試験
 
@@ -54,8 +54,8 @@
 
 ## 終了判定
 
-必須 ID（UT-01〜04、IT-01〜09、ST-01〜05）のうち、**UT-01〜05、IT-06・07・09、ST-03・05 は PASS**。
-IT-01・02・03・04・05・08・10・11、ST-01・02・04 は **NOT RUN** のまま残っている。
+必須 ID（UT-01〜04、IT-01〜09、ST-01〜05）のうち、**UT-01〜05、IT-06・07・09・11、ST-03・05 は PASS**（21 項目中 11 項目）。
+IT-01・02・03・04・05・08・10、ST-01・02・04 は **NOT RUN** のまま残っている。
 
 **この状態を「構築完了」とは判定しない。** 特に IT-01/02（`site.yml` を通した複数ロール一括適用）が
 未実施である点は、個々のロールが Molecule で検証済みであることと混同してはならない。

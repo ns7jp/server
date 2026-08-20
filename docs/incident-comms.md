@@ -78,11 +78,13 @@ RPO 実績: <時間> (目標 <時間>)
 | 演習中に本物のインシデントが発生 | 演習を即時中断し、`:rotating_light:` 付きで切替を宣言。演習側は時刻だけ控える |
 | Alertmanager 自身が停止 | 通知が来ない前提で、ダッシュボードを定常監視している運用者が手動投稿（`docs/runbooks/alertmanager-down.md` 参照） |
 
-## 4. 例（演習 D-2 抜粋）
+## 4. 記入例（架空データ・D-2 演習は未実施）
+
+D-2（ホスト障害復旧演習）はまだ実施していない。以下は投稿形式のイメージであり、時刻・所要時間は架空の値である。実施後は実測値に置き換えて `docs/drills/logs/YYYY-MM-DD-D-2.md` へ記録する。
 
 ```
 :test_tube: [DRILL] D-2 ホスト障害 開始
-時刻: 2026-06-15 14:00:00 JST
+時刻: YYYY-MM-DD HH:MM:SS JST
 環境: staging
 シナリオ: docs/roadmap/D-2-host-failure.md
 実施者: @shimada
@@ -90,16 +92,16 @@ RTO 目標: 60 分  RPO 目標: 24 時間
 スレッドで時系列を残します。
 ```
 
-スレッド返信:
+スレッド返信（記入例）:
 
 ```
-14:00:42 :bell: AlertmanagerDown 発火、Slack 到達。検知 OK
-14:02:15 :hammer_and_wrench: aws ec2 describe-instance-status: stopped
-14:09:48 :hammer_and_wrench: 最新スナップショット特定 (prod-monitor-...-20260615T0230Z)
-14:24:12 :hammer_and_wrench: terraform apply -var "recovery_volume_id=..." 完了
-14:38:03 :hammer_and_wrench: ansible-playbook site.yml 完了
-14:41:09 :white_check_mark: /healthz 200。Grafana / Prometheus UI も OK
-14:47:00 :memo: RTO 実績 47 分 / 目標 60 分。ログを docs/drills/logs/2026-06-15-D-2.md に追記
+HH:MM:SS :bell: AlertmanagerDown 発火、Slack 到達。検知 OK
+HH:MM:SS :hammer_and_wrench: aws ec2 describe-instance-status: stopped
+HH:MM:SS :hammer_and_wrench: 最新スナップショット特定 (prod-monitor-...-<snapshot-id>)
+HH:MM:SS :hammer_and_wrench: terraform apply -var "recovery_volume_id=..." 完了
+HH:MM:SS :hammer_and_wrench: ansible-playbook site.yml 完了
+HH:MM:SS :white_check_mark: /healthz 200。Grafana / Prometheus UI も OK
+HH:MM:SS :memo: RTO 実績 <分> / 目標 60 分。ログを docs/drills/logs/YYYY-MM-DD-D-2.md に追記
 ```
 
 ## 5. 関連ドキュメント
