@@ -61,6 +61,9 @@ jobs:
       - name: bash -n on D-1 drill script
         run: bash -n scripts/drills/d1-process-down.sh
 
+      - name: bash -n on daily-check script
+        run: bash -n scripts/ops/daily-check.sh
+
       - name: Install shellcheck
         run: sudo apt-get update && sudo apt-get install -y shellcheck
 
@@ -69,6 +72,9 @@ jobs:
 
       - name: shellcheck D-1 drill script
         run: shellcheck scripts/drills/d1-process-down.sh
+
+      - name: shellcheck daily-check script
+        run: shellcheck scripts/ops/daily-check.sh
 
   # ---------------------------------------------------------------------------
   # 2. ローカルでのバックアップ取得を smoke test する。

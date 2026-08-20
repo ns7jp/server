@@ -27,7 +27,7 @@
 
 | 頻度 | 作業 | 記録先 |
 | --- | --- | --- |
-| 日次 | backup timer / failed unit / alert 確認 | 運用ログ |
+| 日次 | backup timer / failed unit / alert 確認（[scripts/ops/daily-check.sh](../../scripts/ops/daily-check.sh)） | 運用ログ |
 | 週次 | disk 増加、未処理 alert、更新状況 | 週次レビュー |
 | 月次 | D-1、SLO、通知試験 | drill / SLO review |
 | 四半期 | 復元試験、アクセス棚卸し | D-2 記録 |
