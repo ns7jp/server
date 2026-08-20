@@ -1,8 +1,8 @@
 ---
-- name: Restart sshd
+- name: Reload sshd
   ansible.builtin.service:
     name: ssh
-    state: restarted
+    state: reloaded
   when: common_manage_services | bool
 
 - name: Reload ufw
