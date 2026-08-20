@@ -23,14 +23,18 @@ docker compose ps --format 'table {{.Service}}\t{{.Status}}'
 
 | 確認 | 結果 | 証跡 |
 | --- | --- | --- |
-| `docker compose ps` | 9 サービス（alertmanager / alloy / app / blackbox / grafana / loki / nginx / node-exporter / prometheus）すべて `Up`。`app` は `Up 16 minutes (healthy)` | 上記コマンドの実行結果（スクリーンショット） |
+| `docker compose ps` | 9 サービス（alertmanager / alloy / app / blackbox / grafana / loki / nginx / node-exporter / prometheus）すべて `Up`。`app` は `Up 16 minutes (healthy)` | 上記コマンドの実行結果（[スクリーンショット](screenshots/compose-ps_aab2fcc_20260818.png)） |
 | `/healthz` | 200（`127.0.0.1:8080` 経由。`frontend` / `monitoring` ネットワークが `internal: true` のため、host からの直接到達には socat リレーの併用が必要 — 詳細は [D-1 演習記録](../drills/logs/2026-08-19-D-1.md) 参照） | 別途確認済み |
 | Prometheus targets | 未確認（このラウンドでは実施していない） | — |
 | Grafana dashboard | 実データ表示を確認（下記） | スクリーンショット（下記） |
 
+![docker compose ps の実行結果、9 サービスすべて Up（2026-08-18）](screenshots/compose-ps_aab2fcc_20260818.png)
+
 ## Grafana 実画面
 
 ### Server Monitor Infrastructure Lab（表示期間: Last 1 hour）
+
+![Server Monitor Infrastructure Lab ダッシュボード実画面（2026-08-18）](screenshots/grafana-server-monitor_aab2fcc_20260818.png)
 
 | パネル | 値 |
 | --- | --- |
@@ -42,6 +46,8 @@ docker compose ps --format 'table {{.Service}}\t{{.Status}}'
 「Application Container Resource History」では 13:05 頃に一時的な CPU スパイクが記録されている（手元操作に起因するものと推測、原因の追跡はしていない）。「Linux Host Filesystem Use」は `/`・`/mnt/c`・`/var/lib/docker`・`/mnt/wsl/drivers`・`/init` の各マウントポイントを表示。
 
 ### Server Monitor SLO（表示期間: Last 6 hours）
+
+![Server Monitor SLO ダッシュボード実画面（2026-08-18）](screenshots/grafana-slo_aab2fcc_20260818.png)
 
 | パネル | 値 |
 | --- | --- |
@@ -92,6 +98,7 @@ Server Monitor アプリ自身の画面で、Linux（WSL2）上で動作して�
 - [x] AWS account ID — 該当なし
 - [x] 個人名 — アプリ内表示は "Noriyuki Shimada"（フッターの著作権表記、公開情報）のみ
 - [x] webhook URL — 画面内に表示なし
+- [x] `docker compose ps` のターミナルキャプチャ — プロンプトに Windows の自動生成ホスト名（`DESKTOP-19F10FT`）とユーザー名（`usr722`）が表示されるが、いずれも個人を特定する情報ではないため許容
 
 ## 後続対応
 
@@ -99,6 +106,7 @@ Server Monitor アプリ自身の画面で、Linux（WSL2）上で動作して�
 - [ ] Slack への実際の通知配信を確認する（優先 4、未着手）
 - [ ] DISK USAGE パネルの `/dev/sdd` 重複表示を `app.py` で確認する
 - [x] `docs/screenshot.png` を本ファイルのアプリ画面に差し替える → **2026-08-19 完了**（島田さん本人がリポジトリへ直接反映）
+- [x] Grafana 実画面（Infrastructure Lab / SLO）と `docker compose ps` 実行結果のスクリーンショットを採録 → **2026-08-20 完了**（島田さん本人がリポジトリへ直接反映）
 
 ## 関連
 
