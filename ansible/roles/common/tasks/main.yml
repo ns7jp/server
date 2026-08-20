@@ -46,7 +46,8 @@
     line: 'PermitRootLogin no'
     create: false
     state: present
-  notify: Restart sshd
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: Reload sshd
   when: common_disable_root_ssh | bool
 
 - name: Disable SSH password authentication
@@ -56,7 +57,8 @@
     line: 'PasswordAuthentication no'
     create: false
     state: present
-  notify: Restart sshd
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: Reload sshd
   when: not (common_password_authentication | bool)
 
 - name: Enable unattended security upgrades
