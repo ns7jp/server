@@ -7,7 +7,7 @@
 
 **Ansible ロールの適用・冪等性、監視スタック全体の Linux 上での起動、D-1 復旧演習、
 二セグメント障害ラボについて、実測証跡がある。**
-一方、Alertmanager から Slack への実配信、D-2 復旧演習、AWS 適用は未採録。
+一方、Alertmanager から Slack への実配信、D-2 復旧演習、AWS 適用、`site.yml` を通した新規構築（IT-01/02）は未採録。
 
 | 区分 | 状態 |
 | --- | --- |
@@ -17,7 +17,7 @@
 | D-1 復旧演習の実測 | ✅ [2026-08-19](../drills/logs/2026-08-19-D-1.md)（RTO 13 秒） ／ D-2 は未採録 |
 | 二セグメント障害ラボの実測 | ✅ [2026-08-19](2026-08-19-network-drill.md)（障害注入→切り分け→復旧、PASS） |
 | AWS `apply` / `destroy` と実費 | ❌ 未採録 |
-| [試験仕様書](../build-package/06-test-specification.md)の結合・セキュリティ試験 | ⚠ [2026-08-19時点の結果票](2026-08-19-build-validation.md): 10/21 PASS、残り NOT RUN |
+| [試験仕様書](../build-package/06-test-specification.md)の結合・セキュリティ試験 | ⚠ [2026-08-19時点の結果票](2026-08-19-build-validation.md): 11/21 PASS、残り NOT RUN |
 
 > **この証跡が示す範囲を広げて解釈しない。** 確認できたのは「ロールが適用でき、冪等で、期待した状態になる」
 > こと、「監視スタックが Linux 上で実際に起動し、Grafana / Loki が実データを表示する」こと、
@@ -83,8 +83,8 @@
 1. **[Molecule を GitHub Actions で実行する](molecule-via-github-actions.md)** — ブラウザのみ・15 分。
    手元に Linux も Docker も要らない。現時点で最も着手コストが低い実行証跡。
 2. **既存 CI の成功ログを本台帳へ記録する** — ブラウザのみ・30 分。
-   `Backup verify` は毎日自動実行されて成功が蓄積しており、CI の累計実行回数は 400 回を超えているが、
-   本台帳に一度も記載がないため読み手に見えていない。**新しく実行するのではなく、既にある結果を拾う作業**。
+   `Backup verify` は毎日自動実行されて成功が蓄積しており（[2026-08-19 時点で 102 回](2026-08-19-ci-baseline.md)）、
+   その実績が本台帳に反映されていないことがある。**新しく実行するのではなく、既にある結果を拾う作業**。
 3. **[ローカル証跡採録ガイド](local-evidence-quickstart.md)** — Linux + Docker（WSL2 可）・1 晩。
    Grafana dashboard、Loki / Alloy ログ検索、Alertmanager 通知、D-1 復旧演習を採録する。
 4. 動画化する場合は [2〜3 分デモ収録ガイド](../demo-capture-guide.md) を使う。

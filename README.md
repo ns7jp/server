@@ -17,11 +17,13 @@ Python / Flask で作成したサーバー状態表示アプリを、**認証、
 2. [検証証跡台帳](docs/evidence/README.md) — コード・手順の完成と、実機での実測結果を混同せず確認できます。
 3. [二セグメント ネットワーク障害ラボ](labs/network-troubleshooting/README.md) — 通信断を再現し、経路・名前解決・network membership を切り分けて復旧します。
 
-> **実測の現状（2026-08-17）**: 構文・設定整合・依存脆弱性・秘密値混入の検査は CI で継続的に自動実行していますが、
-> **Linux ホスト上で本構成を起動した記録はまだありません**。実 AWS の `apply / destroy`、
-> 全構成起動、D-1 / D-2 の実測ログも未収録で、[試験仕様書](docs/build-package/06-test-specification.md)の
-> 結合試験・セキュリティ試験は全項目 `NOT RUN` です。
-> 実行ログが追加されるまでは「設計・構成コード・試験手順を実装済み」と表現します。
+> **実測の現状（2026-08-19）**: 構文・設定整合・依存脆弱性・秘密値混入の検査は CI で継続的に自動実行しています。
+> **Linux(WSL2) ホスト上で監視スタック 9 サービスを起動し、Grafana / Loki の実データ表示、D-1 復旧演習（RTO 13 秒 PASS）、
+> 二セグメント障害ラボ（障害注入→切り分け→復旧 PASS）まで実測済み**です。
+> 一方、実 AWS の `apply / destroy`、Alertmanager → Slack の実配信、D-2 の実測ログは未収録で、
+> [試験仕様書](docs/build-package/06-test-specification.md)の結合試験・セキュリティ試験は
+> [21 項目中 11 項目が PASS](docs/evidence/2026-08-19-build-validation.md)、残りは `NOT RUN` です。
+> 実行ログが無い項目は「設計・構成コード・試験手順を実装済み」と表現します。
 > 詳細な境界は [検証証跡台帳](docs/evidence/README.md) を参照してください。
 
 ## 実装したこと
@@ -100,12 +102,9 @@ flowchart LR
 
 ## ダッシュボード機能
 
-![Server Monitor Dashboard（Windows 端末での開発時画面）](docs/screenshot.png)
+![Server Monitor Dashboard（Linux(WSL2) 上での実行画面、2026-08-18）](docs/screenshot.png)
 
-> **この画像について**: 上の画面は **Windows 11 端末で開発中に撮影したもの**であり、
-> アプリケーションが動作することは示すが、**Linux サーバーを構築・運用した証跡ではない**。
-> Linux ホストで本構成を起動した画面が採録でき次第、差し替える
-> （[ローカル証跡採録ガイド](docs/evidence/local-evidence-quickstart.md)）。
+> **この画像について**: 上の画面は **Linux(WSL2) 上で実際に起動して撮影したもの**（[実測証跡](docs/evidence/2026-08-18-local-observability.md)）。
 > 実測済みと未実測の境界は [検証証跡台帳](docs/evidence/README.md) を参照。
 
 | 機能 | 概要 |
@@ -260,7 +259,7 @@ cp .env.example .env
 openssl rand -base64 32 > deploy/secrets/dashboard_password.txt
 openssl rand -base64 32 > deploy/secrets/metrics_token.txt
 openssl rand -base64 32 > deploy/secrets/grafana_admin_password.txt
-chmod 600 deploy/secrets/*.txt
+chmod 644 deploy/secrets/*.txt
 docker compose up -d --build
 ```
 

@@ -89,10 +89,10 @@ GitHub Secret `AWS_BACKUP_VERIFY_ROLE_ARN` が設定された環境でのみ動�
 
 ## 演習履歴
 
-実行した演習のログはまだ収録されていない。下表は記録先の形式であり、実績値ではない。
+D-1 は実施済み。D-2 はまだ収録されていない（下表の該当行は記録先の形式であり、実績値ではない）。
 実施後は [検証証跡台帳](evidence/README.md) の記録ルールに従って追加する。
 
 | 日付 | 演習 | RTO 実績 | 結果 | 記録 |
 | --- | --- | --- | --- | --- |
-| 未実施 | D-1 | 未測定 | 未実施 | `docs/drills/logs/YYYY-MM-DD-D-1.md` |
+| 2026-08-19 | D-1 | 13 秒（目標 5 分以内） | PASS | [docs/drills/logs/2026-08-19-D-1.md](drills/logs/2026-08-19-D-1.md) |
 | 未実施 | D-2 | 未測定 | 未実施 | `docs/drills/logs/YYYY-MM-DD-D-2.md` |

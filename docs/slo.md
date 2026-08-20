@@ -22,6 +22,9 @@ CloudWatch Synthetics 等の対象 EC2 外の probe を追加し、そのデー�
 記録する。従って、以下の 99.5% は現在はラボ内の品質目標であり、AWS 稼働実績の
 主張ではない。
 
+30 日窓のクエリを計算できるようにするため、Prometheus の保持期間（`compose.yaml` の
+`--storage.tsdb.retention.time`）は 30 日より長い **35 日**にしている。
+
 ## 2. SLI / SLO 定義
 
 ### 2.1 可用性
