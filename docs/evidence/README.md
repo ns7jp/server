@@ -3,7 +3,7 @@
 このディレクトリは、設計資料や構成コードが存在することと、実環境で確認した結果を
 混同しないための台帳である。実行していない検証を成功実績として記載しない。
 
-## 要約（証跡は 2026-08-19 時点、文書構成は 2026-08-21 更新）
+## 要約（証跡は 2026-08-21 時点、文書構成は 2026-08-21 更新）
 
 **Ansible ロールの適用・冪等性、監視スタック全体の Linux 上での起動、D-1 復旧演習、
 二セグメント障害ラボについて、実測証跡がある。**
@@ -16,6 +16,7 @@
 | 監視スタック全体の起動（Grafana / Loki） | ✅ [2026-08-18](2026-08-18-local-observability.md)（Alertmanager 通知配信は未採録） |
 | D-1 復旧演習の実測 | ✅ [2026-08-19](../drills/logs/2026-08-19-D-1.md)（RTO 13 秒） ／ D-2 は未採録 |
 | 二セグメント障害ラボの実測 | ✅ [2026-08-19](2026-08-19-network-drill.md)（障害注入→切り分け→復旧、PASS） |
+| ネットワーク切り分けの一次メモ（クライアント視点） | ⚠ [2026-08-21](2026-08-21-network-firstlook.md)：`ss` / `docker port` / `docker inspect` で `internal: true` ネットワークのポート公開不具合を発見・原因特定。当初想定していたクライアント視点の `dig` / `traceroute` / `tcpdump` は未実施 |
 | 実 VM の network / UFW 検証 | ❌ **NOT RUN**（[手順](../build-package/09-network-validation-procedure.md)と[結果票テンプレート](templates/network-host-validation.md)のみ） |
 | AWS `apply` / `destroy` と実費 | ❌ 未採録 |
 | [試験仕様書](../build-package/06-test-specification.md)の結合・セキュリティ試験 | ⚠ [2026-08-19時点の結果票](2026-08-19-build-validation.md): 11/21 PASS、残り NOT RUN |
