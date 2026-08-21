@@ -1,5 +1,7 @@
 # 試験仕様書・結果票
 
+[要件定義書](00-requirements.md)の受け入れ条件を、再実行できるコマンドと期待結果へ展開した原本です。
+
 ## 記録情報
 
 | 項目 | 値 |
@@ -37,6 +39,7 @@
 | IT-09 | D-1 復旧 | app process を停止 | 検知・自動復旧・正常化 | NOT RUN | — |
 | IT-10 | backup restore | snapshot を別 volume へ復元 | 内容一致 | NOT RUN | — |
 | IT-11 | network fault | 二セグメントラボを実行 | 失敗、原因特定、復旧 | NOT RUN | — |
+| IT-12 | 実ホスト network | [NW-01〜09](09-network-validation-procedure.md)を実行 | IP / DNS / route / listen / HTTP / packet / FW が設計どおり | NOT RUN | [結果票テンプレート](../evidence/templates/network-host-validation.md) |
 
 ## セキュリティ試験
 
@@ -50,8 +53,11 @@
 
 ## 終了判定
 
-- 必須 ID: UT-01〜04、IT-01〜09、ST-01〜05
+- 必須 ID: UT-01〜04、IT-01〜09、IT-12、ST-01〜05
 - `FAIL` または `BLOCKED` が 1 件でもあれば構築完了としません。
+- 必須 ID に `NOT RUN` が残る場合も構築完了としません。
 - AWS を使用しない検証では UT-05 を `BLOCKED (AWS credentials not used)` とせず、ローカル `validate` の結果を記録します。
 - 結果はこの原本を直接上書きせず、`docs/evidence/YYYY-MM-DD-build-validation.md` にコピーして保存します。
+
+2026-08-19 の既存結果票は本項目追加前の履歴です。IT-12 を後から `PASS` とみなさず、実ホストで別途採録します。
 

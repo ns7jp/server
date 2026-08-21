@@ -25,7 +25,8 @@
 | UI listen | `127.0.0.1:8080` | `compose.yaml` |
 | hostname display | 既定 `false` | `.env.example` |
 | username display | 既定 `false` | `.env.example` |
-| secrets | Docker secrets file | `deploy/secrets/*.txt`（実値は非追跡） |
+| secrets directory | host `0700` | `ansible/roles/app/tasks/main.yml` |
+| secrets files | host `0644`（非 root container UID の読み取り用、親 directory で host access を制限） | `deploy/secrets/*.txt`（実値は非追跡） |
 
 ## 監視・ログ
 
@@ -33,7 +34,7 @@
 | --- | --- | --- |
 | global scrape interval | 15 秒 | `deploy/prometheus/prometheus.yml` |
 | blackbox scrape interval | 30 秒 | `deploy/prometheus/prometheus.yml` |
-| Prometheus retention | 15 日 | `compose.yaml` |
+| Prometheus retention | 35 日 | `compose.yaml` |
 | Loki retention | 720 時間（30 日） | `deploy/loki/loki-config.yml` |
 | 可用性 SLO | 99.5% / 30 日 | `docs/slo.md` |
 | latency SLO | p95 500 ms 未満 / 28 日 | `docs/slo.md` |

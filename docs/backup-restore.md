@@ -5,7 +5,7 @@
 | 対象 | 永続化方法 | バックアップ要否 |
 | --- | --- | --- |
 | アプリコード、Nginx、監視ルール、Grafana dashboard、Loki / Grafana Alloy 設定 | Git リポジトリ | GitHub を正として復元 |
-| Prometheus 履歴 | `prometheus_data` volume、既定15日保持 | 学習環境では任意。本番相当では必要 |
+| Prometheus 履歴 | `prometheus_data` volume、既定35日保持 | 学習環境では任意。本番相当では必要 |
 | Loki 履歴 | `loki_data` volume、既定30日保持 | 学習環境では任意。インシデント記録を保全する場合は対象 |
 | Alloy 読み込み位置 | `alloy_data` volume の positions data | 復元不要（喪失時は古いログを再送し重複が出るが運用継続可） |
 | Grafana 設定 | dashboard / datasource はプロビジョニング | 手動変更を禁止すれば volume 復元不要 |
@@ -31,7 +31,7 @@ docker compose start prometheus grafana loki
 ## 復旧試験
 
 1. 新しい Linux ホストへリポジトリを取得する。
-2. 秘密管理先から `deploy/secrets/*.txt` を復元し、`chmod 644` を設定する（`600` だとコンテナ内の別 UID から読めず起動しないコンテナがある。実機で確認済み）。
+2. 秘密管理先から `deploy/secrets/*.txt` を復元し、親 directory は `chmod 700 deploy/secrets`、file は `chmod 644 deploy/secrets/*.txt` を設定する（file が `600` だとコンテナ内の別 UID から読めず起動しないコンテナがある。実機で確認済み）。
 3. 必要な volume を作り、バックアップを展開する。
 4. `docker compose up -d --build` を実行する。
 5. `/healthz`、Prometheus targets、Grafana dashboard、Alertmanager の順に確認する。

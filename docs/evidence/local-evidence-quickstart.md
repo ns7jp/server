@@ -9,7 +9,11 @@ Grafana、Loki、Alertmanager、D-1 復旧演習の証跡を採録する。
 >
 > なお本ガイドの手順は **WSL2 上の Ubuntu でも実行できる**。専用マシンや VM の新規構築は必須ではない。
 > Grafana / Loki / D-1 の採録は [2026-08-18](2026-08-18-local-observability.md) ／ [2026-08-19](../drills/logs/2026-08-19-D-1.md) に完了済み。
-> `docs/screenshot.png` も Linux(WSL2) 上の実行画面へ差し替え済み。未採録なのは Alertmanager → Slack の実配信と D-2 のみ。
+> `docs/screenshot.png` も Linux(WSL2) 上の実行画面へ差し替え済み。本ガイド内で未採録なのは Alertmanager → Slack の実配信です。
+> リポジトリ全体では、D-2 に加えて `site.yml` による新規 VM の一括構築・冪等性、実 VM の待受 / UFW / network、
+> container user の実行時確認、backup restore、AWS `apply / destroy` が未採録です。[証跡台帳](README.md)を正本としてください。
+
+実 VM の network / UFW は本ガイドの Docker Compose 起動確認では代替できません。[実ホスト検証手順](../build-package/09-network-validation-procedure.md)を別途実行します。
 
 ---
 
@@ -36,6 +40,7 @@ openssl rand -base64 32 > deploy/secrets/metrics_token.txt
 openssl rand -base64 32 > deploy/secrets/grafana_admin_password.txt
 # 600 にすると、コンテナ内で別 UID(例: Grafana は 472)で読むコンテナが
 # Permission denied で起動できない(実機で確認済み)。644 にする。
+chmod 700 deploy/secrets
 chmod 644 deploy/secrets/*.txt
 docker compose up -d --build
 docker compose ps
