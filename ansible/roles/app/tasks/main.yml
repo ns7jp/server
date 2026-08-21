@@ -56,7 +56,10 @@
     content: "{{ item.value }}"
     owner: "{{ server_monitor_user }}"
     group: "{{ server_monitor_group }}"
-    mode: '0600'
+    # Compose file-backed secrets retain the host file mode. Grafana (UID 472) and
+    # other non-root container users must be able to read the mounted file.
+    # The parent secrets directory remains 0700, so unrelated host users cannot traverse it.
+    mode: '0644'
   loop: "{{ app_secrets }}"
   loop_control:
     label: "{{ item.name }}"
@@ -68,7 +71,8 @@
     content: "{{ slack_webhook_url }}"
     owner: "{{ server_monitor_user }}"
     group: "{{ server_monitor_group }}"
-    mode: '0600'
+    # Alertmanager also reads this file as a non-root container user.
+    mode: '0644'
   when: app_use_slack_overlay | bool
   no_log: true
 

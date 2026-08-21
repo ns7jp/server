@@ -4,16 +4,19 @@
 
 ## 最短レビュー順
 
-1. [基本設計書](01-basic-design.md) — 目的、対象範囲、構成、非機能要件
-2. [パラメータシート](03-parameter-sheet.md) — OS・SSH・FW・Docker・監視の設定値
-3. [構築手順書](05-build-procedure.md) — Ubuntu 1 台を Ansible で構築する手順
-4. [試験仕様書・結果票](06-test-specification.md) — 合否基準と実測結果の記入先
-5. [検証証跡台帳](../evidence/README.md) — 実測済み・未実測の境界
+1. [要件定義書](00-requirements.md) — 案件範囲、要件 ID、受け入れ条件
+2. [基本設計書](01-basic-design.md) — 対象構成と非機能設計
+3. [パラメータシート](03-parameter-sheet.md) — OS・SSH・FW・Docker・監視の設定値
+4. [構築手順書](05-build-procedure.md) — Ubuntu 1 台を Ansible で構築する手順
+5. [試験仕様書・結果票](06-test-specification.md) — 合否基準と実測結果の記入先
+6. [ネットワーク実機検証手順](09-network-validation-procedure.md) — ping / DNS / route / listen / HTTP / packet / FW の確認
+7. [検証証跡台帳](../evidence/README.md) — 実測済み・未実測の境界
 
 ## 成果物一覧
 
 | 工程 | 成果物 | 状態 |
 | --- | --- | --- |
+| 要件定義 | [00-requirements.md](00-requirements.md) | 作成済み |
 | 要件・基本設計 | [01-basic-design.md](01-basic-design.md) | 作成済み |
 | 詳細設計 | [02-detailed-design.md](02-detailed-design.md) | 作成済み |
 | パラメータ設計 | [03-parameter-sheet.md](03-parameter-sheet.md) | 作成済み |
@@ -21,10 +24,16 @@
 | 構築 | [05-build-procedure.md](05-build-procedure.md) | 手順作成済み・実機結果は証跡台帳で管理 |
 | 試験 | [06-test-specification.md](06-test-specification.md) | 仕様作成済み・未実施欄は `NOT RUN` |
 | 引き渡し | [07-handover-checklist.md](07-handover-checklist.md) | 作成済み |
+| 変更・復旧 | [08-change-rollback-plan.md](08-change-rollback-plan.md) | 計画・記録様式作成済み、実施結果は `NOT RUN` |
+| ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | 手順作成済み、実ホスト証跡は `NOT RUN` |
+| ネットワーク結果票 | [実機検証テンプレート](../evidence/templates/network-host-validation.md) | テンプレート作成済み |
+| 一次切り分け記録 | [トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md) | テンプレート作成済み |
 
 ## 検証環境
 
 基準環境は Ubuntu Server 24.04 LTS の単一ホストです。構成コードは Ubuntu 22.04 LTS にも対応しますが、両バージョンでの実測を意味しません。AWS 構成は別の発展構成であり、実際の `apply / destroy` が記録されるまでは設計・コード実装済みとして扱います。
+
+二セグメント Docker ラボの実測は既にありますが、これは実 VM の NIC、DNS、UFW、待受 port を確認した証拠ではありません。実ホスト側の確認は日付付きの[ネットワーク結果票](../evidence/templates/network-host-validation.md)が保存されるまで `NOT RUN` とします。
 
 ## 完了の定義
 
@@ -35,4 +44,5 @@
 - [試験仕様書](06-test-specification.md)の必須項目がすべて `PASS`
 - Grafana、Loki、Alertmanager、D-1 復旧演習の証跡が commit SHA 付きで保存される
 - 未解決事項、秘密値の受け渡し方法、ロールバック方法が引き渡し記録に残る
+- 実ホストの名前解決、経路、待受、HTTP 疎通、UFW を確認し、実行出力を保存する
 

@@ -12,7 +12,7 @@ flowchart LR
     Nginx --> App["Flask dashboard<br/>Gunicorn / non-root"]
     App -->|"psutil: コンテナの状態"| Container["Application container"]
 
-    Prom["Prometheus<br/>15日保持"] -->|"Bearer token /metrics"| App
+    Prom["Prometheus<br/>35日保持"] -->|"Bearer token /metrics"| App
     Prom -->|"scrape :9100"| Node["node-exporter"]
     Node -->|"read-only"| Host["Linux host"]
     Prom --> Grafana["Grafana dashboard"]
@@ -31,7 +31,7 @@ flowchart LR
 | Nginx | ダッシュボードの入口、セキュリティヘッダー付与 | Compose では `127.0.0.1:8080` のみ |
 | Flask / Gunicorn | 独自 UI、API、独自 Prometheus metrics | Docker 内部ネットワーク |
 | node-exporter | Linux ホストの CPU、メモリ、ファイルシステム収集 | Docker 内部ネットワーク |
-| Prometheus | 収集、ルール評価、15日分の履歴保持 | `127.0.0.1:9090` |
+| Prometheus | 収集、ルール評価、35日分の履歴保持 | `127.0.0.1:9090` |
 | Alertmanager | アラートの集約、通知ルーティング | `127.0.0.1:9093` |
 | Grafana | 運用向けダッシュボード（Prometheus + Loki データソース） | `127.0.0.1:3000` |
 | Grafana Alloy | コンテナログと `/var/log` の収集、Loki への転送 | Docker 内部ネットワーク |

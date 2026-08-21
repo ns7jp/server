@@ -65,6 +65,8 @@ ansible-vault encrypt vault.yml --vault-password-file ../../.vault_pass
 
 `.vault_pass` はファイル単位の Vault パスワード。CI に渡す場合は GitHub Secrets に格納し、`ansible-playbook --vault-password-file <path>` で読み込ませる。
 
+Vault 原本と `.vault_pass` の権限は所有者だけに制限する。一方、app role が `/opt/server-monitor/deploy/secrets/*.txt` へレンダリングする Compose secrets は `0644` とする。Compose の file-backed secret は host mode を維持し、Grafana など別 UID の非 root container が読むためである。host 側は親 directory を `0700` にして、他 user の path traversal を防ぐ。
+
 ## 4. インベントリ
 
 `inventory/staging.yml` の `ansible_host` を実 IP に書き換える。本番は `inventory/production.yml` を編集し、ホスト名・SSO 連携・Let's Encrypt 有効化を行う。

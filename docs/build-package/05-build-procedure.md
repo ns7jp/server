@@ -7,6 +7,7 @@
 - 対象 IP、作業時間、ロールバック条件を記録済み
 - リポジトリの対象 commit SHA を固定済み
 - 実値の秘密情報を Issue、PR、端末ログへ貼らない
+- [要件定義書](00-requirements.md)と[変更・ロールバック計画](08-change-rollback-plan.md)の対象環境、Go / No-Go 条件を確認済み
 
 ## 1. 管理端末の準備
 
@@ -63,6 +64,8 @@ ssh monitor-01 'ufw status verbose'
 
 [試験仕様書](06-test-specification.md)の必須項目を実施し、スクリーンショットだけでなく再現コマンドと主要なテキストログを保存します。
 
+実ホストの IP、route、DNS、待受 address、HTTP、UFW は [ネットワーク実機検証手順](09-network-validation-procedure.md)に従い、Docker 障害ラボとは別の結果票へ記録します。
+
 ## 6. 障害・復旧試験
 
 1. D-1 の事前状態を確認します。
@@ -72,7 +75,7 @@ ssh monitor-01 'ufw status verbose'
 
 ## 7. ロールバック
 
-構成変更が原因の場合は変更前 commit を checkout した作業ブランチから `playbooks/deploy.yml` を適用します。データ破損の場合は[復元ランブック](../roadmap/restore-from-snapshot.md)を使います。復旧後は `verify.yml` と影響範囲の試験を再実行します。
+構成変更が原因の場合は、[変更・ロールバック計画](08-change-rollback-plan.md)に従って変更前 commit の別 checkout から `playbooks/deploy.yml` を適用します。データ破損の場合は[復元ランブック](../roadmap/restore-from-snapshot.md)を使います。復旧後は `verify.yml` と影響範囲の試験を再実行します。
 
 ## 8. 作業終了
 

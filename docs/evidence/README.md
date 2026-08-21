@@ -3,11 +3,11 @@
 このディレクトリは、設計資料や構成コードが存在することと、実環境で確認した結果を
 混同しないための台帳である。実行していない検証を成功実績として記載しない。
 
-## 要約（2026-08-19 時点）
+## 要約（証跡は 2026-08-19 時点、文書構成は 2026-08-21 更新）
 
 **Ansible ロールの適用・冪等性、監視スタック全体の Linux 上での起動、D-1 復旧演習、
 二セグメント障害ラボについて、実測証跡がある。**
-一方、Alertmanager から Slack への実配信、D-2 復旧演習、AWS 適用、`site.yml` を通した新規構築（IT-01/02）は未採録。
+一方、Alertmanager から Slack への実配信、D-2 復旧演習、AWS 適用、`site.yml` を通した新規構築（IT-01/02）、実 VM の network / UFW 検証（IT-12）は未採録。
 
 | 区分 | 状態 |
 | --- | --- |
@@ -16,6 +16,7 @@
 | 監視スタック全体の起動（Grafana / Loki） | ✅ [2026-08-18](2026-08-18-local-observability.md)（Alertmanager 通知配信は未採録） |
 | D-1 復旧演習の実測 | ✅ [2026-08-19](../drills/logs/2026-08-19-D-1.md)（RTO 13 秒） ／ D-2 は未採録 |
 | 二セグメント障害ラボの実測 | ✅ [2026-08-19](2026-08-19-network-drill.md)（障害注入→切り分け→復旧、PASS） |
+| 実 VM の network / UFW 検証 | ❌ **NOT RUN**（[手順](../build-package/09-network-validation-procedure.md)と[結果票テンプレート](templates/network-host-validation.md)のみ） |
 | AWS `apply` / `destroy` と実費 | ❌ 未採録 |
 | [試験仕様書](../build-package/06-test-specification.md)の結合・セキュリティ試験 | ⚠ [2026-08-19時点の結果票](2026-08-19-build-validation.md): 11/21 PASS、残り NOT RUN |
 
@@ -40,6 +41,7 @@
 | 変更管理 | `.github/pull_request_template.md`、`.github/ISSUE_TEMPLATE/`、`docs/change-management.md` | PR ごとに検証・ロールバック・証跡リンクを残す |
 | 構築工程成果物 | `docs/build-package/` | 設計・構築・試験様式を整備。実機結果は各検証ログへ記録 |
 | 二セグメント障害ラボ | `labs/network-troubleshooting/` | [2026-08-19: 障害注入→切り分け→復旧を実測、PASS](2026-08-19-network-drill.md) |
+| 実 VM の NIC / DNS / route / listen / HTTP / packet / UFW | `docs/build-package/09-network-validation-procedure.md` | **NOT RUN**。テンプレートだけでは実績に数えない |
 
 ## 記録ルール
 
@@ -64,6 +66,8 @@
 | Grafana / Loki / Alertmanager ローカル採録 | `docs/evidence/YYYY-MM-DD-local-observability.md` |
 | Linux 新規構築・試験 | `docs/evidence/YYYY-MM-DD-build-validation.md` |
 | 二セグメント通信障害 | `docs/evidence/YYYY-MM-DD-network-drill.md` |
+| Linux 実ホスト network / UFW | `docs/evidence/YYYY-MM-DD-network-host-validation.md` |
+| 仮説検証を含む一次切り分け | `docs/evidence/YYYY-MM-DD-troubleshooting-<slug>.md` |
 | スクリーンショット | `docs/evidence/screenshots/<kind>_<commit>_<yyyymmdd>.png` |
 
 ## 採録テンプレート
@@ -73,6 +77,8 @@
 | ローカル Grafana / Loki / Alertmanager | [templates/local-observability.md](templates/local-observability.md) |
 | AWS 短時間検証 | [templates/aws-validation.md](templates/aws-validation.md) |
 | Molecule フル実行 | [templates/molecule.md](templates/molecule.md) |
+| Linux 実ホスト network / UFW | [templates/network-host-validation.md](templates/network-host-validation.md) |
+| 仮説 → コマンド → 結果 → 学び | [templates/troubleshooting-worklog.md](templates/troubleshooting-worklog.md) |
 | D-1 プロセスダウン | [../drills/logs/TEMPLATE-D-1-process-down.md](../drills/logs/TEMPLATE-D-1-process-down.md) |
 | D-2 ホスト障害復旧 | [../drills/logs/TEMPLATE-D-2-host-failure.md](../drills/logs/TEMPLATE-D-2-host-failure.md) |
 

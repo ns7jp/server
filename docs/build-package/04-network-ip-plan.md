@@ -31,6 +31,8 @@ flowchart LR
 
 ## 3. 実環境で確認する項目
 
+実行順、期待結果、採録方法は [ネットワーク実機検証手順](09-network-validation-procedure.md)を正本とします。二セグメント障害ラボの成功を、実 VM の NIC / UFW 検証の代用にはしません。
+
 - `ip -br addr` で interface と CIDR を確認
 - `ip route` で default gateway と経路を確認
 - `ss -lntup` で listen address を確認
@@ -38,4 +40,6 @@ flowchart LR
 - `curl -v` で HTTP の接続先と status を確認
 - `tcpdump -nn -i any port 8080` で必要時だけ packet を確認
 - UFW と cloud security group の許可範囲が一致することを確認
+
+実機結果は [結果票テンプレート](../evidence/templates/network-host-validation.md)から日付付き evidence を作成するまで `NOT RUN` です。
 

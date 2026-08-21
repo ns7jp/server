@@ -22,6 +22,8 @@ docker_log_max_file: 5
 # - directory: 既存チェックアウトを synchronize する
 # - git: GitHub から clone する
 server_monitor_source_mode: directory
-server_monitor_source_path: "{{ playbook_dir }}/.."
+# playbook_dir は <repo>/ansible/playbooks。リポジトリ正本（compose.yaml、deploy/、app.py 等）を
+# 配備するため 2 階層上を参照する。1 階層上では ansible/ だけが同期対象になってしまう。
+server_monitor_source_path: "{{ playbook_dir }}/../.."
 server_monitor_git_repo: https://github.com/ns7jp/server-monitor.git
 server_monitor_git_version: main

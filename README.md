@@ -20,9 +20,10 @@ Python / Flask で作成したサーバー状態表示アプリを、**認証、
 > **実測の現状（2026-08-19）**: 構文・設定整合・依存脆弱性・秘密値混入の検査は CI で継続的に自動実行しています。
 > **Linux(WSL2) ホスト上で監視スタック 9 サービスを起動し、Grafana / Loki の実データ表示、D-1 復旧演習（RTO 13 秒 PASS）、
 > 二セグメント障害ラボ（障害注入→切り分け→復旧 PASS）まで実測済み**です。
-> 一方、実 AWS の `apply / destroy`、Alertmanager → Slack の実配信、D-2 の実測ログは未収録で、
+> 一方、実 AWS の `apply / destroy`、Alertmanager → Slack の実配信、D-2、`site.yml` による新規 VM 構築・冪等性、
+> 実 VM の待受 / UFW / network、backup restore の実測ログは未収録で、
 > [試験仕様書](docs/build-package/06-test-specification.md)の結合試験・セキュリティ試験は
-> [21 項目中 11 項目が PASS](docs/evidence/2026-08-19-build-validation.md)、残りは `NOT RUN` です。
+> [2026-08-19 時点の 21 項目中 11 項目が PASS](docs/evidence/2026-08-19-build-validation.md)、残りは `NOT RUN` です。
 > 実行ログが無い項目は「設計・構成コード・試験手順を実装済み」と表現します。
 > 詳細な境界は [検証証跡台帳](docs/evidence/README.md) を参照してください。
 
@@ -41,7 +42,7 @@ Python / Flask で作成したサーバー状態表示アプリを、**認証、
 | 構成管理 | Ansible roles で OS / Docker / TLS / 監視設定 / アプリ配備 / バックアップを宣言的に管理 |
 | クラウド配備 | Terraform で AWS 上に同等構成をコード化（[詳細](docs/aws-architecture.md)。apply 未実施） |
 | SLO 運用 | `/healthz` の定期チェックと、しきい値を超えたときのアラート通知（[詳細](docs/slo.md)） |
-| 復旧演習 | D-1 / D-2 のランブック、テンプレート、日次バックアップ検証 CI。実測演習ログは未収録 |
+| 復旧演習 | D-1 は実測済み（RTO 13 秒、[記録](docs/drills/logs/2026-08-19-D-1.md)）。D-2 はランブック・テンプレートのみで未実測 |
 | 変更管理 | PR ごとに目的・影響範囲・ロールバック手順を書いて残す運用（[詳細](docs/change-management.md)） |
 | 品質確認 | pytest、構成検証、ansible-lint、Molecule 構文検証、任意実行の完全 Molecule、Terraform 検証、Trivy / pip-audit、Dependabot |
 
@@ -78,7 +79,7 @@ flowchart LR
 | [バックアップ・復旧設計](docs/backup-restore.md) | 永続データ、復元試験、復旧目標 |
 | [停止時ランブック](docs/runbooks/service-down.md) | アラート受信後の確認と復旧手順 |
 | [CPU 高負荷演習記録](docs/incidents/cpu-high-drill.md) | 模擬障害の再現、確認、復旧、再発防止 |
-| [復旧演習一覧](docs/drills/README.md) | D-1（実施可能）と、環境待ちの演習の整理 |
+| [復旧演習一覧](docs/drills/README.md) | D-1（実測済み）と、環境待ちの D-2 の整理 |
 | [LogQL クエリ集](docs/loki-queries.md) | ダッシュボードと運用で使う LogQL の例 |
 | [検証証跡台帳](docs/evidence/README.md) | コード実装と実環境での実測を区別する検証状況 |
 | [ローカル証跡採録ガイド](docs/evidence/local-evidence-quickstart.md) | Grafana / Loki / Alertmanager / D-1 演習を実測証跡に変える最短手順 |
@@ -187,13 +188,14 @@ Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可�
 ## 復旧演習
 
 「バックアップではなく、リストアが運用できることが価値」のため、演習を月次・四半期で
-回し、実時間 RTO / RPO を実測する設計である。実行ログが追加されるまでは、
+回し、実時間 RTO / RPO を実測する設計である。D-1 は 2026-08-19 に実行し、RTO 13 秒で
+復旧した[実測ログ](docs/drills/logs/2026-08-19-D-1.md)がある。D-2 は実行ログがないため、
 演習手順と自動化コードが整備済みという範囲で提示する。
 
 | 演習 | 頻度 | 想定時間 | 環境 | 自動化 |
 | --- | --- | --- | --- | --- |
-| **D-1** プロセスダウン → 自動復旧 | 月次 | 15 分 | ローカル Docker | `scripts/drills/d1-process-down.sh` |
-| **D-2** ホスト障害 → 別ホストに復元 | 四半期 | 2 時間 | AWS staging | 手動（ランブック化）|
+| **D-1** プロセスダウン → 自動復旧 | 月次 | 15 分 | ローカル Docker | 実測済み（RTO 13 秒） / `scripts/drills/d1-process-down.sh` |
+| **D-2** ホスト障害 → 別ホストに復元 | 四半期 | 2 時間 | AWS staging | 未実測 / 手動（ランブック化）|
 
 ```bash
 # D-1 を実行
@@ -261,6 +263,7 @@ cp .env.example .env
 openssl rand -base64 32 > deploy/secrets/dashboard_password.txt
 openssl rand -base64 32 > deploy/secrets/metrics_token.txt
 openssl rand -base64 32 > deploy/secrets/grafana_admin_password.txt
+chmod 700 deploy/secrets
 chmod 644 deploy/secrets/*.txt
 docker compose up -d --build
 ```
@@ -333,6 +336,7 @@ server-monitor/
 
 - 単一ホストの検証構成であり、監視基盤の冗長化は対象外です。
 - AWS Terraform は構成コードを実装済みですが、apply / destroy、費用、復元試験の実測証跡はまだありません。
+- `site.yml` による新規 VM の一括構築・冪等性、実 VM の network / UFW / 待受、backup restore は未採録です。
 - Slack 通知は Webhook 秘密値をコミットしないため、`compose.slack.yaml.example` を重ねて利用環境で有効化する方式です。
 - 次の拡張候補は、外部 probe、中央 telemetry、SSO / VPN 連携、リモートストレージへの長期 metrics 保存です。
 

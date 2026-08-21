@@ -34,3 +34,7 @@ docker compose down
 
 この README とスクリプトの存在だけでは実施実績になりません。実行ログが `docs/evidence/` に追加されて初めて実測済みとして扱います。
 
+## 実ホスト検証との境界
+
+このラボは Docker network の障害再現であり、実 VM の NIC、default gateway、外部 DNS、待受 address、UFW を検証しません。実ホストは [`docs/build-package/09-network-validation-procedure.md`](../../docs/build-package/09-network-validation-procedure.md)を実行し、別の結果票へ記録します。
+

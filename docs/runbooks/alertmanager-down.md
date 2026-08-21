@@ -42,7 +42,7 @@ curl http://127.0.0.1:9093/-/healthy
 | --- | --- | --- |
 | コンテナが exit | `docker compose ps` / `docker compose logs` | exit code と直近ログから原因特定 |
 | 設定 syntax error | `docker run --rm -v $PWD/deploy/alertmanager:/etc/alertmanager prom/alertmanager:v0.27.0 amtool check-config /etc/alertmanager/alertmanager.yml` | 該当行を修正 → コミット → 再起動 |
-| KMS / Secret 読み込み失敗 | `slack_webhook_url` などの secret マウント | secrets ファイルの存在と権限 (`0600`) を確認 |
+| KMS / Secret 読み込み失敗 | `slack_webhook_url` などの secret マウント | 親 directory が `0700`、Compose secrets ファイルが `0644` であることを確認（`0600` ではコンテナ内の別 UID が読めない） |
 | ホスト全体停止 | `docker ps`、ホスト電源、ディスク | ホスト復旧手順に移行 |
 | blackbox 設定エラー | `docker compose logs blackbox` | `deploy/blackbox/blackbox.yml` の構文を確認 |
 | Prometheus からスクレイプ不可 | Prometheus `/targets` 画面 | ネットワーク（`monitoring` / `frontend`）と DNS、SG 設定 |
