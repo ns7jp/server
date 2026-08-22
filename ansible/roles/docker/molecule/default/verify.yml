@@ -37,12 +37,17 @@
           - "'max-size' in (daemon_json.content | b64decode)"
           - "'live-restore' in (daemon_json.content | b64decode)"
 
-    - name: Check that monitor user is in docker group
-      ansible.builtin.command: id -nG monitor
+    - name: Inspect application user group membership
+      ansible.builtin.command:
+        argv:
+          - id
+          - -nG
+          - "{{ server_monitor_user }}"
       register: monitor_groups
       changed_when: false
 
-    - name: Assert monitor user has docker group
+    - name: Assert application user is not in root-equivalent docker group
       ansible.builtin.assert:
         that:
-          - "'docker' in monitor_groups.stdout.split()"
+          - "'docker' not in monitor_groups.stdout.split()"
+          - "'monitor-observer' in monitor_groups.stdout.split()"

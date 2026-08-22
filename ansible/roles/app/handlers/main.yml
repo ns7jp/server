@@ -10,3 +10,6 @@
          + (['compose.slack.yaml.example'] if app_use_slack_overlay else [])
          + ['compose.ansible.yaml']
          + app_compose_additional_files }}
+  when:
+    - not ansible_check_mode
+    - app_compose_state == 'present'

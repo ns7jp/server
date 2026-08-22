@@ -4,6 +4,10 @@
   hosts: monitor
   become: true
   gather_facts: false
+  pre_tasks:
+    - name: Skip runtime verification during check mode
+      ansible.builtin.meta: end_play
+      when: ansible_check_mode
   tasks:
     - name: Wait for Flask app /healthz
       ansible.builtin.uri:

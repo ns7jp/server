@@ -1,4 +1,14 @@
 ---
+- name: Validate unprivileged application account before host mutation
+  ansible.builtin.assert:
+    that:
+      - (server_monitor_user | string) != 'root'
+      - (server_monitor_group | string) != 'root'
+      - (server_monitor_group | string) != 'docker'
+    fail_msg: >-
+      server_monitor_user and server_monitor_group must not be root, and the
+      primary group must not be docker. Docker group membership is root-equivalent.
+
 - name: Ensure prerequisites are installed
   ansible.builtin.apt:
     name:
@@ -43,6 +53,42 @@
     name: "{{ docker_packages }}"
     state: present
 
+# The dedicated service account never invokes Docker. Remove only the
+# root-equivalent docker membership left by older role versions, preserving
+# unrelated supplementary groups that an operator may have assigned.
+- name: Inspect application user supplementary groups
+  ansible.builtin.command:
+    argv:
+      - id
+      - -nG
+      - "{{ server_monitor_user }}"
+  check_mode: false
+  changed_when: false
+  register: docker_application_user_groups
+  when: not ansible_check_mode
+
+- name: Inspect application user primary group
+  ansible.builtin.command:
+    argv:
+      - id
+      - -gn
+      - "{{ server_monitor_user }}"
+  check_mode: false
+  changed_when: false
+  register: docker_application_user_primary_group
+  when: not ansible_check_mode
+
+- name: Remove legacy docker group membership from application user
+  ansible.builtin.user:
+    name: "{{ server_monitor_user }}"
+    groups: >-
+      {{ docker_application_user_groups.stdout.split()
+         | difference([docker_application_user_primary_group.stdout, 'docker']) }}
+    append: false
+  when:
+    - not ansible_check_mode
+    - "'docker' in docker_application_user_groups.stdout.split()"
+
 - name: Ensure /etc/docker exists
   ansible.builtin.file:
     path: /etc/docker
@@ -66,12 +112,6 @@
     state: started
     enabled: true
   when: docker_manage_service | bool
-
-- name: Ensure application user is in docker group
-  ansible.builtin.user:
-    name: "{{ server_monitor_user }}"
-    groups: docker
-    append: true
 
 # daemon.json の変更を compose 起動後まで遅延させると、daemon restart が
 # 稼働中 container の published port を失わせる場合がある。workload 配備前に

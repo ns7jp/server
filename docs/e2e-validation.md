@@ -15,7 +15,8 @@ Actions runはDocker roleの収束と設定を検証しますが「Docker未導�
 
 1. `site.yml` を新しい GitHub-hosted runner へ適用し、exit 0 を確認する
 2. 同じ `site.yml` を再適用し、play recap の `changed=0 / failed=0` を確認する
-3. core 9 services、health/readiness、Prometheus target、UI/metrics 認証を確認する
+3. core 10 services、health/readiness、Prometheus target、UI/metrics 認証を確認し、
+   Docker API proxy経由の固有Nginx logがLokiへ届き、POSTは拒否されることを確認する
 4. synthetic alert を Alertmanager へ送り、ローカル webhook sink の
    `FIRING / RESOLVED` 受信を確認する
 5. app process を予期しない形で終了し、自動再起動と RTO を計測する
@@ -29,14 +30,18 @@ Actions runはDocker roleの収束と設定を検証しますが「Docker未導�
 | 実施日 | commit | 結果 | Actions / artifact | 日付付き証跡 |
 | --- | --- | --- | --- | --- |
 | 2026-08-22 | `f4ea31993d6d5e3b8478789f8f0d008ed5f44961` | **23/23 ID PASS** | [run 32563104045](https://github.com/ns7jp/server-monitor/actions/runs/32563104045) / `full-stack-e2e-32563104045-1` | [環境・判定表・境界](evidence/2026-08-22-full-stack-e2e.md) |
+| 2026-08-22 | `43d36ee674f090108153b09451e825e3383494c1`（PR #74 merge後の`main`） | **workflow success（23 ID gate）** | [run 32566169574](https://github.com/ns7jp/server-monitor/actions/runs/32566169574) | [feature runとの区別と5 workflow一覧](evidence/2026-08-22-full-stack-e2e.md#main-merge後の再検証) |
+| 2026-08-22 | `7622a9da974f694ae75e0173135923701be9e5a5`（PR #75 runtime変更最終commit） | **23/23 ID PASS** | [run 32572409469](https://github.com/ns7jp/server-monitor/actions/runs/32572409469) / `full-stack-e2e-32572409469-1` | [proxy・source配備hardening後の再検証](evidence/2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証) |
 
-artifactは2026-09-21に期限切れとなるため、判定表、version、RTO、restore結果、
-terminal castのhashを日付付き証跡にも転記しています。
+最初のfeature runのartifactは2026-09-21に期限切れとなるため、判定表、version、RTO、
+restore結果、terminal castのhashを日付付き証跡にも転記しています。最初の2 runは
+Docker API proxy導入前の履歴です。3番目のrunでproxyとsource配備hardeningを含む構成を
+再検証し、初回適用`changed=30 / failed=0`、2回目`changed=0 / failed=0`を確認しました。
 
 ## 実行方法
 
 GitHub の `Actions` → `Full-stack Ansible E2E` → `Run workflow` を実行します。
-main で対象ファイルが変わった場合と、毎月1日にも自動実行されます。
+対象ファイルを変更するpull request、mainへのpush、毎月1日のscheduleでも自動実行されます。
 
 成功・失敗にかかわらず、run の `Artifacts` から
 `full-stack-e2e-<run id>-<attempt>` を取得します。重要なファイルは次のとおりです。
@@ -48,6 +53,8 @@ main で対象ファイルが変わった場合と、毎月1日にも自動実�
 | `ansible-first.log` | 新規一括適用のraw log |
 | `ansible-second.log` | 2回目の冪等性判定元 |
 | `network-*.txt` | NIC / route / DNS / listen / packet / UFW |
+| `docker-proxy-ping.txt` / `docker-proxy-denied-post.txt` | proxyのGET成功とPOST拒否の判定元 |
+| `docker-proxy-loki-query.json` | container/network read APIからAlloyを経由した固有Docker logのLoki到達 |
 | `alert-webhook-events.json` | secretを含まないローカル通知受信結果 |
 | `d1-process-down.log` | 障害注入とRTO |
 | `backup-restore.log` | checksum検証と別volume復元 |

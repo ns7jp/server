@@ -11,7 +11,8 @@
 | Alertmanager | route / inhibit | Prometheus | `/-/ready` が 200 |
 | node-exporter | host metrics | Linux host | `up{job="linux-node"}=1` |
 | blackbox-exporter | HTTP probe | Nginx | `probe_success=1` |
-| Alloy | Docker / host log collection | Docker socket、`/var/log` | Loki でログ検索可能 |
+| Alloy | Docker / host log collection | Docker API proxy、`/var/log` | Loki でログ検索可能 |
+| Docker API proxy | container/network APIのGET/HEAD限定中継 | host Docker socket | 固有Nginx logがLokiへ到達、POSTは403 |
 | Loki | filesystem store | Alloy | `/ready` が 200 |
 
 ## 配備設計

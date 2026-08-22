@@ -1,4 +1,49 @@
 ---
+- name: Validate install directory syntax before any host mutation
+  ansible.builtin.assert:
+    that:
+      - (server_monitor_user | string) != 'root'
+      - (server_monitor_group | string) != 'root'
+      - (server_monitor_group | string) != 'docker'
+      - >-
+        (server_monitor_install_dir | string)
+        is match('^/(opt|srv)/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$')
+      - "'/./' not in ((server_monitor_install_dir | string) ~ '/')"
+      - "'/../' not in ((server_monitor_install_dir | string) ~ '/')"
+    fail_msg: >-
+      The application account and primary group must not be root, and the
+      primary group must not be docker. server_monitor_install_dir must be a dedicated absolute directory
+      below /opt or /srv and must not contain dot segments.
+
+- name: Resolve install directory through parent path components
+  ansible.builtin.command:  # noqa: command-instead-of-module
+    argv:
+      - realpath
+      - -m
+      - --
+      - "{{ server_monitor_install_dir }}"
+  check_mode: false
+  changed_when: false
+  register: common_install_realpath
+
+- name: Inspect install directory without following final symlink
+  ansible.builtin.stat:
+    path: "{{ server_monitor_install_dir }}"
+    follow: false
+  register: common_install_path
+
+- name: Refuse non-canonical or non-directory install target
+  ansible.builtin.assert:
+    that:
+      - common_install_realpath.stdout == (server_monitor_install_dir | string)
+      - >-
+        not common_install_path.stat.exists
+        or (common_install_path.stat.isdir and not common_install_path.stat.islnk)
+    fail_msg: >-
+      Refusing deployment because {{ server_monitor_install_dir }} resolves to
+      {{ common_install_realpath.stdout | default('unknown') }} or is not a real
+      directory. No package, account, or filesystem mutation has been made.
+
 - name: Ensure required packages are installed
   ansible.builtin.apt:
     name: "{{ common_required_packages }}"
@@ -101,3 +146,4 @@
     owner: "{{ server_monitor_user }}"
     group: "{{ server_monitor_group }}"
     mode: '0750'
+    follow: false

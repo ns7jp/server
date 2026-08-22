@@ -19,7 +19,7 @@ ansible/
 │   └── host_vars/
 │       └── monitor-01.yml
 ├── playbooks/
-│   ├── site.yml         # 0 台から構築する完全プレイブック
+│   ├── site.yml         # Ubuntu hostを一括構築する完全プレイブック
 │   ├── bootstrap.yml    # 新規ホストの OS 初期化のみ
 │   ├── deploy.yml       # アプリと監視設定だけを更新
 │   └── verify.yml       # 配備後の健全性検証
@@ -36,7 +36,7 @@ ansible/
 
 - 対象ホストは Ubuntu 22.04 LTS（Jammy）または 24.04 LTS（Noble）
 - ローカルから対象ホストへ鍵認証 SSH 可能（`ansible_user` は sudo 権限を持つこと）
-- ローカル側に Python 3.10+ と `pipx` 推奨
+- Ansible controller側にPython 3.10+、Git、rsync、tar（`pipx`推奨）
 
 ```bash
 pipx install ansible-core
@@ -77,7 +77,37 @@ Vault 原本と `.vault_pass` の権限は所有者だけに制限する。一�
 | ラボ / staging | `inventory/staging.yml` | `nginx_letsencrypt_enabled: false`、自己署名証明書、UFW で 22 のみ |
 | production | `inventory/production.yml` | `nginx_letsencrypt_enabled: true`、本番 FQDN、UFW で 22/443 |
 
-## 5. 0 台から構築
+### 配備するsourceを固定する
+
+既定の`directory` modeは、Ansible controller上のcleanなGit checkoutから指定SHAの
+`git archive`を一時展開し、Git追跡fileだけを同期します。未commit・未追跡のfileがある場合は
+操作ミスを避けるため適用前に停止し、ignoredのTerraform credential/stateやcacheはarchiveへ
+入りません。Git submoduleはarchiveからcontentが欠落するため、gitlinkを検出した時点で明示的に
+停止します。archiveは`tar.umask=0022`でgroup書き込みを許さないmodeに正規化し、同期時は
+checksumでも内容を照合して、配備先に残った旧managed fileを削除します。host側で生成する`.env`、
+`.artifacts`、secret、TLS鍵、Alertmanager設定などだけを明示的に保持します。配備後のSHAは
+Compose reconciliationと通知済みhandlerまで成功した後、SHAを
+`/opt/server-monitor/.server-monitor-deploy-revision`に改行付きで記録します。
+
+`git` modeでもbranch名や`main`ではなく40桁commit SHAをinventoryに指定します。
+Ansible controllerの一時directoryへそのSHAをfetchし、取得結果が指定値と一致することをassertして
+`git archive`を作ります。その後はdirectory modeと同じtracked-release syncを使うため、対象hostが
+非emptyでも配備でき、targetに`.git`やignored credential/stateを残しません。`.env`、`.artifacts`、
+secret、TLS鍵、Alertmanager設定、revision markerだけをroot-relative ruleで保持します。
+保持した`deploy/secrets/*.txt`は、現在の`app_secrets`と有効なSlack overlayだけをallowlistとして
+再照合し、設定から外れたsecretを残しません。
+
+```yaml
+server_monitor_source_mode: git
+server_monitor_git_version: "43d36ee674f090108153b09451e825e3383494c1"
+```
+
+`server_monitor_install_dir`は`/opt`または`/srv`配下の専用directoryだけを受け付けます。
+`/`などの危険な値、配下のTLS・deploy・secret pathの上書き、symlinkによるtree外へのredirectは
+各roleのdirectory作成やfile生成より前に拒否します。`app_secrets`のnameは重複しない安全な
+`.txt` basenameだけを許可し、Slack用filenameは専用設定に予約します。
+
+## 5. Ubuntu hostを一括構築
 
 ```bash
 cd ansible
@@ -85,7 +115,17 @@ ansible-playbook -i inventory/staging.yml playbooks/site.yml --check --diff
 ansible-playbook -i inventory/staging.yml playbooks/site.yml
 ```
 
-`--check --diff` で差分を見てから実適用する。実行が成功すれば `site.yml` の末尾で `verify.yml` が呼ばれ、`/healthz`、Prometheus `/-/ready`、Loki `/ready`、Grafana `/api/health`、`/metrics` の認証可否を順に確認する。
+`--check --diff`は変数・path/account guard、controller側release取得、各moduleが示す差分を
+確認するbest-effort preflightです。fresh hostではrsyncやDockerを実際には導入せず、後続moduleが
+前提binary不足で停止する場合もあるため、bootstrap成功の証跡にはしません。Compose操作、handler、
+endpointのruntime verifyもcheck mode中は明示的にskipします。構文はCIのsyntax-check、完全な
+構築は使い捨てhost E2Eで確認します。実適用が成功した場合だけ、
+`site.yml`末尾の`verify.yml`が`/healthz`、Prometheus `/-/ready`、Loki `/ready`、
+Grafana `/api/health`、`/metrics`の認証可否を順に確認します。
+
+2026-08-22のhost全体E2Eは、Dockerが事前導入された使い捨てUbuntu 24.04 runnerで
+実施しました。Docker roleの設定収束は確認済みですが、Docker未導入の最小OSからのpackage導入は
+まだ実測していません。対象環境と結果の境界は[日付付き証跡](evidence/2026-08-22-full-stack-e2e.md)を参照してください。
 
 ## 6. 冪等性の確認
 
@@ -114,7 +154,7 @@ ansible-playbook -i inventory/staging.yml playbooks/deploy.yml
 
 実装手順は次のとおり。
 
-1. `deploy/` 配下を rsync で同期（既存の `secrets/*.txt` は除外）
+1. controllerでGit追跡fileだけのrelease archiveを作り、旧managed driftを削除しつつtargetへ同期（host生成fileだけ保持）
 2. Vault から秘密値を取り出して `deploy/secrets/*.txt` を再生成
 3. 環境別 Alertmanager 設定を追跡対象外の `alertmanager.ansible.yml` に生成
 4. `compose.yaml` と `compose.ansible.yaml` を重ねて `docker compose up -d --build --pull missing` で適用
@@ -131,6 +171,9 @@ ls -lah /var/backups/server-monitor
 ```
 
 `backup_enabled: false` で無効化できる。リテンションとスケジュールは `inventory/group_vars/monitor/main.yml` で変更する。
+backup先は`/var/backups`または`/srv/backups`配下の専用・非symlink directory、retentionは
+1〜3650日、project/volume/service名は保守的な文字集合に制限します。retention削除は
+`YYYYMMDDTHHMMSSZ`形式の完了snapshotだけを対象にし、一時directoryや別用途directoryを削除しません。
 
 ## 9. ローカル検証（Molecule）
 
@@ -154,7 +197,7 @@ GitHub Actions（`.github/workflows/ansible-check.yml`）では次を検証す�
 | ジョブ | 内容 |
 | --- | --- |
 | `lint` | `ansible-lint --offline` と全 playbook の `--syntax-check` |
-| `molecule (common/docker/nginx/monitoring)` | `molecule list` で各 scenario を読み込み、`converge.yml` / `verify.yml` の `--syntax-check` を実行 |
+| `molecule (common/docker/nginx/monitoring)` | `molecule list`でscenarioを読み込み、存在する`prepare.yml`と`converge.yml` / `verify.yml`を`--syntax-check` |
 
 通常の PR CI はシナリオの妥当性のみを検証する。実コンテナでの収束 / 冪等性確認は
 上記のローカル実行に加え、`.github/workflows/ansible-integration.yml` を手動実行

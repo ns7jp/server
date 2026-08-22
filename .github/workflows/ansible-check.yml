@@ -88,5 +88,8 @@ jobs:
         env:
           ANSIBLE_ROLES_PATH: ${{ github.workspace }}/ansible/roles
         run: |
+          if [[ -f molecule/default/prepare.yml ]]; then
+            ansible-playbook molecule/default/prepare.yml --syntax-check
+          fi
           ansible-playbook molecule/default/converge.yml --syntax-check
           ansible-playbook molecule/default/verify.yml --syntax-check

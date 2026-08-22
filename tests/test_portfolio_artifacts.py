@@ -44,7 +44,7 @@ def test_main_stack_keeps_internal_segments_and_adds_loopback_host_access():
     compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
     e2e_override = (ROOT / "compose.e2e.yaml").read_text(encoding="utf-8")
 
-    assert compose.count("internal: true") == 2
+    assert compose.count("internal: true") == 3
     assert "host-access:\n    driver: bridge" in compose
     expected_mappings = (
         "127.0.0.1:${MONITOR_PORT:-8080}:8080",
@@ -59,7 +59,13 @@ def test_main_stack_keeps_internal_segments_and_adds_loopback_host_access():
         remainder = compose.split(f"  {service}:\n", 1)[1]
         section = re.split(r"\n(?=  [A-Za-z0-9_-]+:)", remainder, maxsplit=1)[0]
         assert "- host-access" in section
-    for service in ("app", "alloy", "blackbox", "node-exporter"):
+    for service in (
+        "app",
+        "alloy",
+        "blackbox",
+        "node-exporter",
+        "docker-socket-proxy",
+    ):
         remainder = compose.split(f"  {service}:\n", 1)[1]
         section = re.split(
             r"\n(?=  [A-Za-z0-9_-]+:)", remainder, maxsplit=1
@@ -77,15 +83,76 @@ def test_directory_sync_preserves_ansible_managed_metadata_and_secrets():
         encoding="utf-8"
     )
 
-    for setting in ("owner: false", "group: false", "perms: false"):
+    for setting in (
+        "owner: false",
+        "group: false",
+        "perms: true",
+        "checksum: true",
+    ):
         assert setting in task
+    assert "delete: true" in task
     for option in (
         '"--omit-dir-times"',
-        '"--exclude=.env"',
-        '"--exclude=deploy/secrets/*.txt"',
-        '"--exclude=deploy/alertmanager/alertmanager.ansible.yml"',
+        '"--exclude=/.env"',
+        '"--exclude=/.server-monitor-deploy-revision"',
+        '"--exclude=/deploy/secrets/*.txt"',
+        '"--exclude=/deploy/alertmanager/alertmanager.ansible.yml"',
     ):
         assert option in task
+    assert "Require a clean local checkout for directory mode" in task
+    assert "--untracked-files=normal" in task
+    assert ".server-monitor-deploy-revision" in task
+    assert "Archive only files tracked by the selected checkout revision" in task
+    assert "tar.umask=0022" in task
+    assert "- path: deploy/tls\n          mode: '0750'" in task
+    assert 'src: "{{ app_release_staging.path }}/release/"' in task
+    assert "Remove controller release staging directory" in task
+    assert "--exclude=/.artifacts/" in task
+    ownership_task = task.split("- name: Fix ownership of synced files", 1)[1].split(
+        "- name:", 1
+    )[0]
+    assert "recurse: true" in ownership_task
+    assert "follow: false" in ownership_task
+
+
+def test_git_deployment_fetches_immutable_tracked_release_on_controller():
+    group_vars = (
+        ROOT / "ansible" / "inventory" / "group_vars" / "all" / "main.yml"
+    ).read_text(encoding="utf-8")
+    tasks = (ROOT / "ansible" / "roles" / "app" / "tasks" / "main.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'server_monitor_git_version: ""' in group_vars
+    assert "^[0-9a-fA-F]{40}$" in tasks
+    assert tasks.index("Validate source deployment mode") < tasks.index(
+        "Ensure install directory exists"
+    )
+    assert tasks.index("Refuse a symlink or non-directory install target") < tasks.index(
+        "Ensure install directory exists"
+    )
+    assert "follow: false" in tasks
+    assert "app_target_realpath.stdout == app_repo_target" in tasks
+    assert "app_repo_target == server_monitor_install_dir" in tasks
+    assert "Fetch immutable release source for git mode" in tasks
+    assert "Assert fetched git release matches requested immutable revision" in tasks
+    assert "(app_git_checkout.after | lower)" in tasks
+    assert "recursive: false" in tasks
+    assert "Reject submodules that git archive cannot materialize" in tasks
+    assert "160000" in tasks
+    assert "delegate_to: localhost" in tasks
+    assert "Archive only files tracked by the selected checkout revision" in tasks
+    assert "- clean\n" not in tasks
+    for generated_path in (
+        "--exclude=/.env",
+        "--exclude=/.artifacts/",
+        "--exclude=/.server-monitor-deploy-revision",
+        "--exclude=/deploy/secrets/*.txt",
+        "--exclude=/deploy/alertmanager/alertmanager.ansible.yml",
+        "--exclude=/deploy/tls/server.key",
+        "--exclude=/deploy/tls/server.crt",
+    ):
+        assert generated_path in tasks
 
 
 def test_host_network_validation_covers_required_layers_without_claiming_execution():
@@ -126,7 +193,9 @@ def test_ansible_directory_source_resolves_from_playbooks_to_repository_root():
     # playbook_dir is <repo>/ansible/playbooks, so two parents are required.
     assert 'server_monitor_source_path: "{{ playbook_dir }}/../.."' in group_vars
     assert 'app_repo_source: "{{ server_monitor_source_path }}"' in app_defaults
-    assert 'src: "{{ app_repo_source }}/"' in app_tasks
+    assert "Archive only files tracked by the selected checkout revision" in app_tasks
+    assert "{{ app_repo_source" in app_tasks
+    assert "app_directory_source_toplevel.stdout == app_directory_source_realpath.stdout" in app_tasks
 
 
 def test_inventory_variables_live_beside_inventory_sources():
@@ -205,6 +274,122 @@ def test_full_stack_e2e_starts_as_not_run_and_requires_disposable_host_opt_in():
     assert "--return" not in workflow
     assert "demo-command-success.txt" in workflow
     assert "codex/full-stack-e2e-20260822" not in workflow
+    for app_input in (
+        "Dockerfile",
+        ".dockerignore",
+        "app.py",
+        "requirements.txt",
+        "templates/**",
+        "static/**",
+    ):
+        # Every application input must trigger both push and pull-request E2E.
+        assert workflow.count(f"- '{app_input}'") == 2
+
+
+def test_alloy_uses_restricted_private_docker_api_proxy():
+    compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+    alloy_config = (ROOT / "deploy" / "alloy" / "config.alloy").read_text(
+        encoding="utf-8"
+    )
+    runner = (ROOT / "scripts" / "e2e" / "run-full-stack.sh").read_text(
+        encoding="utf-8"
+    )
+    proxy_section = compose.split("  docker-socket-proxy:\n", 1)[1].split(
+        "\n  alloy:\n", 1
+    )[0]
+    alloy_section = compose.split("  alloy:\n", 1)[1].split(
+        "\n  blackbox:\n", 1
+    )[0]
+
+    assert compose.count("/var/run/docker.sock:/var/run/docker.sock:ro") == 1
+    assert "/var/run/docker.sock" not in alloy_section
+    assert "CONTAINERS: \"1\"" in proxy_section
+    assert "NETWORKS: \"1\"" in proxy_section
+    assert "POST: \"0\"" in proxy_section
+    assert "ports:" not in proxy_section
+    assert "- docker-api" in proxy_section
+    assert "- docker-api" in alloy_section
+    assert "docker-api:\n    internal: true" in compose
+    assert len(
+        re.findall(
+            r'host\s*=\s*"tcp://docker-socket-proxy:2375"', alloy_config
+        )
+    ) == 2
+    assert "docker-socket-proxy" in runner
+    assert "403 Forbidden" in runner
+    assert "docker-proxy-ping.txt" in runner
+    assert "docker-proxy-denied-post.txt" in runner
+    assert "docker-proxy-loki-query.json" in runner
+    assert "server-monitor-e2e-docker-log" in runner
+
+
+def test_application_user_is_not_granted_root_equivalent_docker_group():
+    docker_tasks = (
+        ROOT / "ansible" / "roles" / "docker" / "tasks" / "main.yml"
+    ).read_text(encoding="utf-8")
+    verify = (
+        ROOT
+        / "ansible"
+        / "roles"
+        / "docker"
+        / "molecule"
+        / "default"
+        / "verify.yml"
+    ).read_text(encoding="utf-8")
+    prepare = (
+        ROOT
+        / "ansible"
+        / "roles"
+        / "docker"
+        / "molecule"
+        / "default"
+        / "prepare.yml"
+    ).read_text(encoding="utf-8")
+
+    assert "Validate unprivileged application account before host mutation" in docker_tasks
+    assert "Inspect application user supplementary groups" in docker_tasks
+    assert "Inspect application user primary group" in docker_tasks
+    assert "Remove legacy docker group membership" in docker_tasks
+    assert "difference([docker_application_user_primary_group.stdout, 'docker'])" in docker_tasks
+    assert "append: false" in docker_tasks
+    assert "groups: docker" not in docker_tasks
+    assert "'docker' not in monitor_groups.stdout.split()" in verify
+    assert "'monitor-observer' in monitor_groups.stdout.split()" in verify
+    assert "Seed application user with legacy and harmless memberships" in prepare
+    assert "- docker" in prepare
+    assert "- monitor-observer" in prepare
+
+
+def test_fresh_host_check_mode_skips_runtime_only_operations():
+    docker_tasks = (
+        ROOT / "ansible" / "roles" / "docker" / "tasks" / "main.yml"
+    ).read_text(encoding="utf-8")
+    app_tasks = (ROOT / "ansible" / "roles" / "app" / "tasks" / "main.yml").read_text(
+        encoding="utf-8"
+    )
+    app_handler = (
+        ROOT / "ansible" / "roles" / "app" / "handlers" / "main.yml"
+    ).read_text(encoding="utf-8")
+    monitoring_tasks = (
+        ROOT / "ansible" / "roles" / "monitoring" / "tasks" / "main.yml"
+    ).read_text(encoding="utf-8")
+    verify = (ROOT / "ansible" / "playbooks" / "verify.yml").read_text(
+        encoding="utf-8"
+    )
+    ansible_workflow = (
+        ROOT / ".github" / "workflows" / "ansible-check.yml"
+    ).read_text(encoding="utf-8")
+
+    assert docker_tasks.count("when: not ansible_check_mode") >= 2
+    compose_task = app_tasks.split("- name: Bring the compose stack up", 1)[1].split(
+        "- name:", 1
+    )[0]
+    assert "when: not ansible_check_mode" in compose_task
+    assert "- not ansible_check_mode" in app_handler
+    assert monitoring_tasks.count("- not ansible_check_mode") >= 4
+    assert "Skip runtime verification during check mode" in verify
+    assert "ansible.builtin.meta: end_play" in verify
+    assert "molecule/default/prepare.yml --syntax-check" in ansible_workflow
 
 
 def test_successful_full_stack_e2e_is_recorded_with_scope_boundaries():
@@ -225,6 +410,24 @@ def test_successful_full_stack_e2e_is_recorded_with_scope_boundaries():
     ):
         assert fact in evidence
     assert "Slackへの実配信を示す`IT-08`へは\n読み替えません" in evidence
+
+
+def test_main_merge_workflow_revalidation_is_distinct_from_feature_evidence():
+    evidence = (
+        ROOT / "docs" / "evidence" / "2026-08-22-full-stack-e2e.md"
+    ).read_text(encoding="utf-8")
+
+    assert "main merge後の再検証" in evidence
+    assert "43d36ee674f090108153b09451e825e3383494c1" in evidence
+    for run_id in (
+        "32566169563",
+        "32566169574",
+        "32566169577",
+        "32566169582",
+        "32566169583",
+    ):
+        assert run_id in evidence
+    assert "AWS jobのskipをAWS実環境のPASSとして扱いません" in evidence
 
 
 def test_ci_overrides_are_host_vars_and_win_over_monitor_group_defaults():
@@ -249,8 +452,8 @@ def test_directory_sync_excludes_generated_evidence_and_managed_alert_config():
     )
 
     # Both otherwise change between first and second apply and break changed=0.
-    assert '"--exclude=.artifacts"' in tasks
-    assert '"--exclude=deploy/alertmanager/alertmanager.ansible.yml"' in tasks
+    assert '"--exclude=/.artifacts/"' in tasks
+    assert '"--exclude=/deploy/alertmanager/alertmanager.ansible.yml"' in tasks
     assert "Render environment-specific Alertmanager configuration" in tasks
 
 
@@ -354,6 +557,150 @@ def test_common_role_prepares_sshd_runtime_directory_before_validation():
     assert tasks.index(runtime_task) < tasks.index(validation_task)
 
 
+def test_install_path_and_account_are_validated_before_any_host_mutation():
+    common = (
+        ROOT / "ansible" / "roles" / "common" / "tasks" / "main.yml"
+    ).read_text(encoding="utf-8")
+    app = (ROOT / "ansible" / "roles" / "app" / "tasks" / "main.yml").read_text(
+        encoding="utf-8"
+    )
+    nginx = (
+        ROOT / "ansible" / "roles" / "nginx" / "tasks" / "main.yml"
+    ).read_text(encoding="utf-8")
+    monitoring = (
+        ROOT / "ansible" / "roles" / "monitoring" / "tasks" / "main.yml"
+    ).read_text(encoding="utf-8")
+    runner = (ROOT / "scripts" / "e2e" / "run-full-stack.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert common.index("Validate install directory syntax") < common.index(
+        "Ensure required packages are installed"
+    )
+    assert common.index("Refuse non-canonical or non-directory install target") < (
+        common.index("Ensure required packages are installed")
+    )
+    assert app.index("Validate source deployment mode") < app.index(
+        "Ensure install directory exists"
+    )
+    app_validation_task = app.split(
+        "Validate source deployment mode and target path before mutation", 1
+    )[1].split("- name:", 1)[0]
+    assert "\n  vars:\n" in app_validation_task
+    assert "\n    vars:\n" not in app_validation_task
+    assert nginx.index("Validate TLS path and account") < nginx.index(
+        "Ensure TLS directory exists"
+    )
+    assert monitoring.index("Validate monitoring paths and account") < monitoring.index(
+        "Ensure deploy target directory exists"
+    )
+    for text in (common, app, nginx, monitoring):
+        assert "'/./' not in" in text
+        assert "'/../' not in" in text
+        assert "realpath" in text
+        assert "!= 'root'" in text
+        assert "!= 'docker'" in text
+    assert "nginx_tls_dir == server_monitor_install_dir ~ '/deploy/tls'" in nginx
+    assert "Inspect TLS material without following leaf symlinks" in nginx
+    assert "Refuse unsafe or incomplete TLS material before OpenSSL" in nginx
+    assert "ansible.builtin.command:\n    argv:" in nginx
+    tls_directory = nginx.split("Ensure TLS directory exists", 1)[1].split(
+        "- name:", 1
+    )[0]
+    assert "state: directory" in tls_directory
+    assert "follow: false" in tls_directory
+    tls_generation = nginx.split("Generate self-signed TLS material", 1)[1].split(
+        "- name:", 1
+    )[0]
+    assert "- /usr/sbin/runuser" in tls_generation
+    assert '- "{{ server_monitor_user }}"' in tls_generation
+    assert "become_user:" not in tls_generation
+    tls_permissions = nginx.split("Tighten permissions on TLS material", 1)[1]
+    assert "state: file" in tls_permissions
+    assert "follow: false" in tls_permissions
+    assert "monitoring_deploy_target == server_monitor_install_dir ~ '/deploy'" in monitoring
+    assert "server_monitor_secrets_dir == monitoring_deploy_target ~ '/secrets'" in monitoring
+    assert "Inspect monitoring-managed paths without following final symlinks" in monitoring
+    assert "follow: false" in monitoring
+    assert "monitoring_deploy_target ~ '/alertmanager'" in monitoring
+    assert "Validate Docker bind sources before runtime checks" in monitoring
+    assert "Refuse missing, redirected, or incorrectly typed Docker bind sources" in monitoring
+    assert "server_monitor_secrets_dir == app_repo_target ~ '/deploy/secrets'" in app
+    assert "Refuse a symlinked or redirected secrets directory" in app
+    assert "install_dir_canonical=$(realpath -m" in runner
+    assert '== *"/../"*' in runner
+    assert '== *"/./"*' in runner
+
+    common_defaults = (
+        ROOT / "ansible" / "roles" / "common" / "defaults" / "main.yml"
+    ).read_text(encoding="utf-8")
+    assert "- util-linux" in common_defaults
+
+    guarded_directory_tasks = (
+        (common, "Ensure application install directory exists"),
+        (app, "Ensure install directory exists"),
+        (app, "Ensure secrets directory exists"),
+        (nginx, "Ensure TLS directory exists"),
+        (monitoring, "Ensure deploy target directory exists"),
+        (monitoring, "Ensure alertmanager directory exists"),
+    )
+    for role_tasks, task_name in guarded_directory_tasks:
+        task = role_tasks.split(task_name, 1)[1].split("- name:", 1)[0]
+        assert "state: directory" in task
+        assert "follow: false" in task
+
+    backup = (
+        ROOT / "ansible" / "roles" / "backup" / "tasks" / "main.yml"
+    ).read_text(encoding="utf-8")
+    backup_directory = backup.split("Ensure backup target directory exists", 1)[1].split(
+        "- name:", 1
+    )[0]
+    assert "state: directory" in backup_directory
+    assert "follow: false" in backup_directory
+
+
+def test_revision_marker_is_written_only_after_compose_reconciliation():
+    tasks = (ROOT / "ansible" / "roles" / "app" / "tasks" / "main.yml").read_text(
+        encoding="utf-8"
+    )
+
+    compose_index = tasks.index("Bring the compose stack up")
+    flush_index = tasks.index("Complete notified app handlers before recording the revision")
+    marker_index = tasks.index("Record successfully reconciled source revision")
+    assert compose_index < flush_index < marker_index
+    assert "ansible.builtin.meta: flush_handlers" in tasks[flush_index:marker_index]
+    marker_task = tasks.split(
+        "- name: Record successfully reconciled source revision", 1
+    )[1]
+    assert "content: |" in marker_task
+
+
+def test_alertmanager_handler_respects_absent_compose_state():
+    handlers = (
+        ROOT / "ansible" / "roles" / "app" / "handlers" / "main.yml"
+    ).read_text(encoding="utf-8")
+
+    assert "app_compose_state == 'present'" in handlers
+
+
+def test_generated_secrets_are_reconciled_to_an_explicit_allowlist():
+    tasks = (ROOT / "ansible" / "roles" / "app" / "tasks" / "main.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Remove Slack webhook secret when the overlay is disabled" in tasks
+    assert "Find generated secret files for allowlist reconciliation" in tasks
+    assert "Remove generated secret files that are no longer configured" in tasks
+    assert "app_configured_secret_names" in tasks
+    assert "app_secrets | map(attribute='name')" in tasks
+    assert "^[A-Za-z0-9._-]+[.]txt$" in tasks
+    assert "unique | list | length" in tasks
+    assert "'slack_webhook_url.txt' not in app_secret_names" in tasks
+    assert "file_type: any" in tasks
+    assert "hidden: true" in tasks
+    assert tasks.count("follow: false") >= 3
+
+
 def test_docker_daemon_restart_finishes_before_compose_workloads_start():
     tasks = (
         ROOT / "ansible" / "roles" / "docker" / "tasks" / "main.yml"
@@ -377,4 +724,34 @@ def test_backup_template_remains_renderable_by_plain_jinja_smoke_test():
 
     # backup-verify.yml renders this with standalone Jinja, without Ansible filters.
     assert "| bool" not in template
+    assert "-regextype posix-extended" in template
+    assert "[0-9]{8}T[0-9]{6}Z" in template
+
+
+def test_backup_role_validates_inputs_before_any_target_mutation():
+    tasks = (
+        ROOT / "ansible" / "roles" / "backup" / "tasks" / "main.yml"
+    ).read_text(encoding="utf-8")
+
+    assert tasks.index("Validate backup inputs and target") < tasks.index(
+        "Ensure backup target directory exists"
+    )
+    assert tasks.index("Refuse a symlinked or redirected backup target") < tasks.index(
+        "Ensure backup target directory exists"
+    )
+    backup_validation_task = tasks.split(
+        "Validate backup inputs and target before mutation", 1
+    )[1].split("- name:", 1)[0]
+    assert "\n  vars:\n" in backup_validation_task
+    assert "\n    vars:\n" not in backup_validation_task
+    assert "^/(var/backups|srv/backups)/" in tasks
+    assert "backup_compose_dir == server_monitor_install_dir" in tasks
+    assert "Refuse a missing, symlinked, or redirected backup Compose directory" in tasks
+    assert tasks.count("'/../' not in") >= 2
+    assert "backup_compose_realpath.stdout == backup_compose_dir" in tasks
+    assert "(backup_retention_days | int) >= 1" in tasks
+    assert "(backup_retention_days | int) <= 3650" in tasks
+    assert "backup_volume_names | unique" in tasks
+    assert "backup_service_names | unique" in tasks
+    assert "follow: false" in tasks
 

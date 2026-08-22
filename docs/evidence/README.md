@@ -9,6 +9,13 @@
 監視stack、認証、network/UFW、D-1、backup restoreまで実測証跡があります。**
 [2026-08-22 Full-stack E2E](2026-08-22-full-stack-e2e.md)では、使い捨てUbuntu 24.04 runner上で
 23 IDをすべてPASSとして採録しました（[Actions run 32563104045](https://github.com/ns7jp/server-monitor/actions/runs/32563104045)）。
+PR #74のmain merge commit `43d36ee674f090108153b09451e825e3383494c1`でも5 workflowを再確認し、
+さらにPR #75のruntime変更最終commit `7622a9da974f694ae75e0173135923701be9e5a5`では、
+[Full-stack E2E run 32572409469](https://github.com/ns7jp/server-monitor/actions/runs/32572409469)を
+含む5 workflowがすべてsuccessとなりました。後者ではDocker API proxyのGET成功・POST拒否・
+Loki log到達、source配備hardening、初回適用`changed=30 / failed=0`、2回目
+`changed=0 / failed=0`まで実測しています。commitごとの区別・全run IDは
+[日付付き証跡](2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証)に記録しています。
 
 > **履歴（2026-08-21時点）:** 当時はAnsible各ロール、WSL2上の監視stack、D-1、
 > 二セグメント障害ラボまでが実測済みで、`site.yml`一括構築（IT-01/02）、runner内
@@ -21,7 +28,7 @@ cloud firewallを含むproduction相当のnetwork検証は、現在も未採録�
 | 区分 | 状態 |
 | --- | --- |
 | CI による自動検証 | ✅ 継続的に実行中（構文・設定整合・依存脆弱性・秘密値混入・バックアップスクリプト） |
-| Full-stack E2E | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：新規構築、`changed=0`、10 containers、認証、local通知、network/UFW、D-1、3-volume restoreをPASS |
+| Full-stack E2E | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：新規構築、2回目`changed=0`、11 containers、認証、Docker API proxy、local通知、network/UFW、D-1、3-volume restoreを23/23 PASS |
 | Ansible ロールの適用・冪等性・検証 | ✅ **4 ロール完走**（[2026-08-17](2026-08-17-molecule.md)、Ubuntu 22.04 コンテナ） |
 | 監視スタック全体の起動（Grafana / Loki） | ✅ [2026-08-18](2026-08-18-local-observability.md)。local webhook通知は[2026-08-22 E2E](2026-08-22-full-stack-e2e.md)、Slack実配信は未採録 |
 | D-1 復旧演習の実測 | ✅ [2026-08-19](../drills/logs/2026-08-19-D-1.md) RTO 13秒 / [2026-08-22 E2E](2026-08-22-full-stack-e2e.md) RTO 1秒。D-2は未採録 |

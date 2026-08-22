@@ -18,7 +18,8 @@
 | 実行権限 | アプリコンテナは `monitor` ユーザー、`read_only`、`no-new-privileges` で実行 |
 | ネットワーク露出 | 内部通信は`frontend` / `monitoring`のinternal bridgeに分離。公開対象だけport転送用`host-access` bridgeにも接続し、すべて`127.0.0.1`にバインド |
 | リバースプロキシ | Nginx で基本的なセキュリティヘッダーを付与し、TLS 配備例も同梱 |
-| ログ収集の権限分離 | Grafana Alloy は `/var/log`、`/var/lib/docker/containers`、Docker socket を **読み取り専用** でマウントし、`no-new-privileges` で起動 |
+| ログ収集の権限分離 | Alloyは`/var/log`だけをread-only mountし、Docker discovery/log取得は専用proxyの`CONTAINERS=1` / `NETWORKS=1` / `POST=0` APIを使用。proxyとAlloyだけをprivate networkへ接続し、host portは公開しない |
+| hostユーザーの権限 | `root` account/groupと`docker` primary groupをhost mutation前に拒否。専用`monitor`ユーザーからroot相当のDocker補助groupだけを除去し、無関係な補助groupは保持 |
 | ログラベルの最小化 | ラベルにはクライアント IP / URL / リクエスト ID 等の高カーディナリティ値を入れず、ログ本文に残す |
 
 ## 設定値
@@ -44,6 +45,16 @@
 - Basic 認証はユーザー管理や MFA を持たない。複数利用者や業務利用では SSO / VPN 側に認証を移す。
 - Compose ラボは単一ホスト構成であり、ホスト故障時には監視基盤自体も停止する。
 - UI 表示用のディスク情報は認証済み利用者には見える。必要に応じ API 出力の制限を追加する。
-- Alloy は Docker socket をマウントするためコンテナ列挙の権限を持つ。socket は `:ro` で渡しているが、Docker daemon の API は読み取りでも機密情報（環境変数、ラベル等）を含む。同一ホストで信頼境界を越える別テナントを動かさないこと。
+- Docker socketを直接mountするのは`docker-socket-proxy`だけで、Alloyは
+  `tcp://docker-socket-proxy:2375`を使用する。socketの`:ro`はsocket経由のAPIを
+  read-onlyにする機構ではないため、proxy側で`POST=0`とし、container/network関連の
+  GET/HEADだけを許可する。E2Eは固有Nginx logがDocker APIとAlloy経由でLokiへ届くこと、
+  `/_ping`のGET成功、POSTの`403 Forbidden`を検査する。
+- proxy自体はDocker daemonへ到達する信頼対象であり、侵害時のroot相当リスクを完全には消せない。
+  imageはversionとmanifest digestを固定し、`cap_drop: ALL`、`no-new-privileges`、read-only rootfsで起動する。
+  Alloy以外を`docker-api` networkへ接続せず、host portも公開しない。Docker APIのGET応答にも
+  `/containers/*/json`、`logs`、`archive`など、metadata・log・container内fileやsecret mountを
+  読み得る強い権限が残る。POSTを止めることでroot相当の変更操作を低減する設計であり、完全な
+  least-privilegeではない。異なるtrust boundaryのtenantを同居させない。
 - Loki は無認証である。`127.0.0.1:3100` のみで待ち受けるため、ホスト上の他ユーザーから到達可能な場合は LAN への露出と同等のリスクになる。多人数ホストでは Grafana 側でアクセス制御し、Loki ポートはコンテナ内部に閉じる構成を検討する。
 - `host-access`はLinux hostへのport転送を成立させる非internal bridgeであり、接続した管理serviceには外向き経路も生じる。`app`、exporter、collectorは接続せず、管理portのloopback bindとUFW denyを配備後試験で継続確認する。

@@ -83,7 +83,7 @@ echo "Scope: local webhook notification; Slack is not part of this evidence."
 pause
 
 echo
-echo "[1/4] Ansible provisioned stack: core 9 services + test receiver"
+echo "[1/4] Ansible provisioned stack: core 10 services + test receiver"
 dcompose ps --format 'table {{.Service}}\t{{.Status}}'
 curl -fsS http://127.0.0.1:8080/healthz
 curl -fsS http://127.0.0.1:3000/api/health

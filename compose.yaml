@@ -135,11 +135,37 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  docker-socket-proxy:
+    # Alloy needs container discovery and log streaming, but must not receive the
+    # host Docker socket directly. The proxy exposes only GET/HEAD requests for
+    # the containers and networks APIs on a private network shared with Alloy.
+    image: ghcr.io/tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
+    restart: unless-stopped
+    environment:
+      CONTAINERS: "1"
+      NETWORKS: "1"
+      EVENTS: "0"
+      POST: "0"
+      LOG_LEVEL: warning
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - docker-api
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
   alloy:
     image: grafana/alloy:v1.16.1
     restart: unless-stopped
     depends_on:
       - loki
+      - docker-socket-proxy
     command:
       - run
       - --storage.path=/var/lib/alloy/data
@@ -149,11 +175,10 @@ services:
     volumes:
       - ./deploy/alloy/config.alloy:/etc/alloy/config.alloy:ro
       - /var/log:/var/log:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - alloy_data:/var/lib/alloy/data
     networks:
       - monitoring
+      - docker-api
     read_only: true
     tmpfs:
       - /tmp
@@ -214,6 +239,10 @@ networks:
   # 127.0.0.1へ明示bindする。app/exporter/collectorはinternal networkだけに残す。
   host-access:
     driver: bridge
+  # Docker API proxy is reachable only from Alloy. No host port is published and
+  # no other monitoring service joins this network.
+  docker-api:
+    internal: true
   frontend:
     internal: true
   monitoring:
