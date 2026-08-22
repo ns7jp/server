@@ -10,14 +10,14 @@ ARCHIVE_DIR="${TARGET_DIR}/${TIMESTAMP}"
 WORK_DIR=$(mktemp -d "${TARGET_DIR}/.backup-${TIMESTAMP}-XXXXXX")
 BACKUP_COMPLETE=0
 SERVICES_QUIESCED=0
-{% if backup_quiesce_services | default(false) | bool %}
+{% if backup_quiesce_services | default(false) %}
 COMPOSE_DIR="{{ backup_compose_dir }}"
 QUIESCE_SERVICES=({% for service in backup_quiesce_service_names %}"{{ service }}" {% endfor %})
 {% endif %}
 
 cleanup() {
   local exit_code=$?
-{% if backup_quiesce_services | default(false) | bool %}
+{% if backup_quiesce_services | default(false) %}
   if [[ "${SERVICES_QUIESCED}" -eq 1 ]]; then
     docker compose --project-directory "${COMPOSE_DIR}" start "${QUIESCE_SERVICES[@]}" || true
   fi
@@ -34,7 +34,7 @@ if [[ -e "${ARCHIVE_DIR}" ]]; then
   exit 1
 fi
 
-{% if backup_quiesce_services | default(false) | bool %}
+{% if backup_quiesce_services | default(false) %}
 # Set the cleanup guard before the multi-service stop. If Compose stops only a
 # subset and then returns non-zero, the EXIT trap must still start all targets.
 SERVICES_QUIESCED=1
@@ -57,7 +57,7 @@ docker run --rm \
 mv -- "${WORK_DIR}" "${ARCHIVE_DIR}"
 BACKUP_COMPLETE=1
 
-{% if backup_quiesce_services | default(false) | bool %}
+{% if backup_quiesce_services | default(false) %}
 docker compose --project-directory "${COMPOSE_DIR}" start "${QUIESCE_SERVICES[@]}"
 SERVICES_QUIESCED=0
 {% endif %}

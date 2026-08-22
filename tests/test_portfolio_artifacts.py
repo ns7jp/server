@@ -211,3 +211,28 @@ def test_authenticated_ansible_probes_do_not_log_credentials():
 
     assert verify.count("no_log: true") >= 2
 
+
+def test_common_role_prepares_sshd_runtime_directory_before_validation():
+    tasks = (
+        ROOT / "ansible" / "roles" / "common" / "tasks" / "main.yml"
+    ).read_text(encoding="utf-8")
+
+    runtime_task = "Ensure sshd runtime directory exists for configuration validation"
+    validation_task = "Disable root SSH login"
+    assert "path: /run/sshd" in tasks
+    assert tasks.index(runtime_task) < tasks.index(validation_task)
+
+
+def test_backup_template_remains_renderable_by_plain_jinja_smoke_test():
+    template = (
+        ROOT
+        / "ansible"
+        / "roles"
+        / "backup"
+        / "templates"
+        / "server-monitor-backup.sh.j2"
+    ).read_text(encoding="utf-8")
+
+    # backup-verify.yml renders this with standalone Jinja, without Ansible filters.
+    assert "| bool" not in template
+
