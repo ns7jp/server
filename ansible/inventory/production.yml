@@ -9,8 +9,11 @@ all:
           ansible_host: 198.51.100.10
           ansible_user: deploy
           ansible_python_interpreter: /usr/bin/python3
+          # host varsへ置き、group_vars/allのlab既定値より確実に優先する。
+          server_monitor_environment: production
+          server_monitor_source_mode: git
+          server_monitor_git_version: "replace-with-40-character-commit-sha"
   vars:
-    server_monitor_environment: production
     # 本番では HTTPS と Let's Encrypt を有効化する想定。
     nginx_letsencrypt_enabled: true
     nginx_letsencrypt_email: noc@example.com

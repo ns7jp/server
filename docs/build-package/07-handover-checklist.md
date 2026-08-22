@@ -8,6 +8,7 @@
 | ephemeral runner 新規構築 IT-01 / 冪等性 IT-02 | `PASS`（[2026-08-22 E2E](../evidence/2026-08-22-full-stack-e2e.md)） |
 | 引き渡し対象hostの新規構築 IT-01 / 冪等性 IT-02 | `NOT RUN`（対象host未指定） |
 | 引き渡し対象host/管理端末の network IT-12 | `NOT RUN` |
+| 構成commit / 設定rollback rehearsal | `NOT RUN`（[計画兼結果票](08-change-rollback-plan.md)のみ。D-1 / volume restoreとは別） |
 | 必須試験完了 | `NOT READY` |
 | 受領 | `NOT SET` |
 
@@ -25,7 +26,7 @@
 ## 運用
 
 - [ ] 起動・停止・状態確認コマンドを引き渡した
-- [ ] サービス停止と latency spike のランブックを確認した
+- [ ] [運用runbook索引](../runbooks/README.md)とservice停止 / latency spikeの手順を確認した
 - [ ] D-1 復旧演習を実施し、RTO を記録した
 - [ ] バックアップ日時、保持期間、復元手順を確認した
 - [ ] 変更申請、事前確認、ロールバックの流れを説明した
@@ -37,11 +38,12 @@
 | 目的 | コマンド / 正本 |
 | --- | --- |
 | 全体状態 | `sudo docker compose -f /opt/server-monitor/compose.yaml ps` |
-| endpoint smoke test | `ansible-playbook -i inventory/staging.yml playbooks/verify.yml` |
+| endpoint smoke test | `ansible-playbook -i inventory/staging.local.yml playbooks/verify.yml` |
 | failed unit | `systemctl --failed --no-pager` |
 | 当日の error log | `journalctl -p err --since today --no-pager` |
 | backup timer | `systemctl list-timers server-monitor-backup.timer` |
 | 日次確認 | [`scripts/ops/daily-check.sh`](../../scripts/ops/daily-check.sh) |
+| runbook一覧 / 共通前提 | [`docs/runbooks/README.md`](../runbooks/README.md) |
 | service 障害 | [`docs/runbooks/service-down.md`](../runbooks/service-down.md) |
 | disk / memory | [`disk-full.md`](../runbooks/disk-full.md) / [`memory-pressure.md`](../runbooks/memory-pressure.md) |
 | backup / restore | [`docs/backup-restore.md`](../backup-restore.md) |
@@ -62,7 +64,7 @@
 
 - [ ] 秘密値そのものではなく、安全な受け渡し・再発行方法を共有した
 - [ ] 不要な一時アカウント、テストデータ、firewall 許可を削除した
-- [ ] SSH、sudo、UFW、公開 port を確認した
+- [ ] SSH、sudo、UFW、公開 portを確認し、SSH許可元が上流FW / VPNまたはsource指定ruleで管理CIDRに限定されていることを採録した
 - [ ] 実ログとスクリーンショットから IP、account ID、秘密値をマスクした
 
 ## 定期作業

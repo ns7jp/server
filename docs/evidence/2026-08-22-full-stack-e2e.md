@@ -46,9 +46,13 @@ AWS jobのskipをAWS実環境のPASSとして扱いません。
 
 ## PR #75 hardening後の再検証
 
-Docker API proxy、controller側immutable source配備、path・symlink・型検証などを追加した
+Docker API proxy、`directory` modeのcontroller側immutable source配備、path・symlink・型検証などを追加した
 PR #75のruntime変更最終commit `7622a9da974f694ae75e0173135923701be9e5a5`に対し、
 pull request eventで再検証しました。
+
+このrunは`inventory/ci.yml`から`directory` modeを使ったため、tracked archive / syncのruntimeを
+示します。実hostで使う`git` modeのremote fetchから配備までのruntimeは`NOT RUN`であり、
+inventory解決値と静的検査の結果をこのrunへ読み替えません。
 
 | 項目 | 値 |
 | --- | --- |
@@ -123,7 +127,7 @@ artifactの`summary.md` / `results.tsv`では、対象23 IDがすべて`PASS`で
 `IT-08-local`はローカルwebhook sinkの検査名です。Slackへの実配信を示す`IT-08`へは
 読み替えません。
 
-## 復旧・restoreの測定値
+## 復旧・restoreの測定値（feature run 32563104045）
 
 - D-1: `2026-08-22T08:48:13Z`にapp processを停止し、1秒で復旧。
   `RestartCount`は`0 -> 1`、RTO目標300秒以内で`PASS`。
@@ -132,7 +136,7 @@ artifactの`summary.md` / `results.tsv`では、対象23 IDがすべて`PASS`で
   `sha256sum --check`がすべて`OK`。
 - restore: 既存volumeを上書きせず、別project名の3 volumesへ復元し、投入したmarkerが一致。
 
-## 保存された一次資料
+## 保存された一次資料（feature run 32563104045）
 
 | ファイル | 判定に使った内容 |
 | --- | --- |
@@ -170,6 +174,7 @@ credential、token、webhook secretはartifactへ記録していません。
 - AlertmanagerからSlackへの実配信
 - AWS `terraform apply / destroy`、Security Group / NACL、実費
 - D-2（host障害からの復旧）
+- 構成commit / 設定を前版へ戻すrollback rehearsal（D-1 / volume restoreとは別）
 - 長期稼働、host再起動後の永続性、production traffic
 - 実管理端末、組織DNS、別hostを含むproduction相当のnetwork検証
 - 公開サイト上で再生できる連続操作動画（`demo.cast`は期限付きartifact内のterminal記録）

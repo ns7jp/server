@@ -20,7 +20,7 @@
 1. `common` role でユーザー、timezone、SSH、UFW、更新を設定
 2. `docker` role で Docker Engine と Compose plugin を導入
 3. `nginx` role で TLS 前提を準備
-4. `app` role でリポジトリ root（`playbook_dir/../..`）を同期し、秘密値と環境別Alertmanager設定を生成して Compose stack を起動
+4. `app` role でcontroller上の選択commitからtracked release archiveを作り、checksum付きでtargetへ同期する。秘密値と環境別Alertmanager設定をtarget上で生成して Compose stack を起動
 5. `monitoring` role で配備済み監視設定を実コンテナにより構文検査
 6. `backup` role で systemd timer を登録
 7. `verify.yml` で配備後確認
@@ -52,4 +52,5 @@
 - 構成変更は Git の直前 commit へ戻し、Ansible の `deploy.yml` を再適用します。
 - データ破損時は [スナップショット復元ランブック](../roadmap/restore-from-snapshot.md)を使用します。
 - 復旧後は必ず `verify.yml` と必須試験を再実行します。
+- D-1 / volume restoreの実測と、構成commitを戻すrollback rehearsalは別試験です。後者は日付付き変更結果票が作られるまで`NOT RUN`です。
 

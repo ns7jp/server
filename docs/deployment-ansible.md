@@ -56,10 +56,10 @@ ansible-galaxy collection install -r requirements.yml
 
 ```bash
 cd inventory/group_vars/monitor
+umask 077
 cp vault.yml.example vault.yml
 $EDITOR vault.yml   # 3 つの秘密値を入れる
-openssl rand -base64 32   # 例。値の生成に使う
-echo 'change-me' > ../../../.vault_pass
+openssl rand -base64 48 > ../../../.vault_pass
 chmod 600 ../../../.vault_pass
 ansible-vault encrypt vault.yml --vault-password-file ../../../.vault_pass
 ```
@@ -70,16 +70,40 @@ Vault 原本と `.vault_pass` の権限は所有者だけに制限する。一�
 
 ## 4. インベントリ
 
-`inventory/staging.yml` の `ansible_host` を実 IP に書き換える。本番は `inventory/production.yml` を編集し、ホスト名・SSO 連携・Let's Encrypt 有効化を行う。
+tracked templateを直接編集せず、実host用は`*.local.yml`へコピーしてGit管理外で保持します。
+stagingは`inventory/staging.local.yml.example`、productionは`inventory/production.yml`を元にし、
+対象IP、SSH user、FQDNなどを編集します。local inventoryは`ansible/.gitignore`対象です。
 
 | 環境 | inventory ファイル | 既定の差分 |
 | --- | --- | --- |
-| ラボ / staging | `inventory/staging.yml` | `nginx_letsencrypt_enabled: false`、自己署名証明書、UFW で 22 のみ |
-| production | `inventory/production.yml` | `nginx_letsencrypt_enabled: true`、本番 FQDN、UFW で 22/443 |
+| ラボ / staging | `inventory/staging.local.yml` | `nginx_letsencrypt_enabled: false`、自己署名証明書、UFWでSSH 22をrate limit |
+| production | `inventory/production.local.yml` | `nginx_letsencrypt_enabled: true`、本番 FQDN。上流FW / VPNまたはsource指定ruleの設計が別途必要 |
+
+stagingを構築する場合:
+
+```bash
+cd ansible
+cp inventory/staging.local.yml.example inventory/staging.local.yml
+$EDITOR inventory/staging.local.yml
+git check-ignore inventory/staging.local.yml .vault_pass \
+  inventory/group_vars/monitor/vault.yml
+export ANSIBLE_VAULT_PASSWORD_FILE="$PWD/.vault_pass"
+```
+
+productionを構築する場合（上のstaging blockの代わりに実行）:
+
+```bash
+cd ansible
+cp inventory/production.yml inventory/production.local.yml
+$EDITOR inventory/production.local.yml
+git check-ignore inventory/production.local.yml .vault_pass \
+  inventory/group_vars/monitor/vault.yml
+export ANSIBLE_VAULT_PASSWORD_FILE="$PWD/.vault_pass"
+```
 
 ### 配備するsourceを固定する
 
-既定の`directory` modeは、Ansible controller上のcleanなGit checkoutから指定SHAの
+`directory` modeは、Ansible controller上のcleanなGit checkoutから指定SHAの
 `git archive`を一時展開し、Git追跡fileだけを同期します。未commit・未追跡のfileがある場合は
 操作ミスを避けるため適用前に停止し、ignoredのTerraform credential/stateやcacheはarchiveへ
 入りません。Git submoduleはarchiveからcontentが欠落するため、gitlinkを検出した時点で明示的に
@@ -89,7 +113,8 @@ checksumでも内容を照合して、配備先に残った旧managed fileを削
 Compose reconciliationと通知済みhandlerまで成功した後、SHAを
 `/opt/server-monitor/.server-monitor-deploy-revision`に改行付きで記録します。
 
-`git` modeでもbranch名や`main`ではなく40桁commit SHAをinventoryに指定します。
+実host用のignored local inventoryでは`git` modeを使い、branch名や`main`ではなく
+40桁commit SHAを指定します。これによりcontrollerのinventory変更をtarget releaseへ混入させません。
 Ansible controllerの一時directoryへそのSHAをfetchし、取得結果が指定値と一致することをassertして
 `git archive`を作ります。その後はdirectory modeと同じtracked-release syncを使うため、対象hostが
 非emptyでも配備でき、targetに`.git`やignored credential/stateを残しません。`.env`、`.artifacts`、
@@ -99,7 +124,7 @@ secret、TLS鍵、Alertmanager設定、revision markerだけをroot-relative rul
 
 ```yaml
 server_monitor_source_mode: git
-server_monitor_git_version: "43d36ee674f090108153b09451e825e3383494c1"
+server_monitor_git_version: "replace-with-40-character-commit-sha"
 ```
 
 `server_monitor_install_dir`は`/opt`または`/srv`配下の専用directoryだけを受け付けます。
@@ -111,8 +136,8 @@ server_monitor_git_version: "43d36ee674f090108153b09451e825e3383494c1"
 
 ```bash
 cd ansible
-ansible-playbook -i inventory/staging.yml playbooks/site.yml --check --diff
-ansible-playbook -i inventory/staging.yml playbooks/site.yml
+ansible-playbook -i inventory/staging.local.yml playbooks/site.yml --check --diff
+ansible-playbook -i inventory/staging.local.yml playbooks/site.yml
 ```
 
 `--check --diff`は変数・path/account guard、controller側release取得、各moduleが示す差分を
@@ -132,8 +157,8 @@ Grafana `/api/health`、`/metrics`の認証可否を順に確認します。
 2 回連続で同じ playbook を流し、2 回目の `changed=0` を確認する。
 
 ```bash
-ansible-playbook -i inventory/staging.yml playbooks/site.yml
-ansible-playbook -i inventory/staging.yml playbooks/site.yml | tail -5
+ansible-playbook -i inventory/staging.local.yml playbooks/site.yml
+ansible-playbook -i inventory/staging.local.yml playbooks/site.yml | tail -5
 # play recap で changed=0 / failed=0 が出ること
 ```
 
@@ -149,7 +174,7 @@ ansible-playbook -i inventory/staging.yml playbooks/site.yml | tail -5
 OS の再設定を含まないため、運用中のホストへの差分適用は短時間で完了する。
 
 ```bash
-ansible-playbook -i inventory/staging.yml playbooks/deploy.yml
+ansible-playbook -i inventory/staging.local.yml playbooks/deploy.yml
 ```
 
 実装手順は次のとおり。

@@ -34,7 +34,8 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 >
 > 2026-08-18/19のWSL2実測、D-1 RTO 13秒、二セグメント障害ラボ、
 > [21項目中11項目PASSの結果票](docs/evidence/2026-08-19-build-validation.md)は当時の履歴として保持します。
-> 今回のE2EはSlack実配信、AWS `apply / destroy`、D-2、長期稼働host、実管理端末・組織DNS・
+> 今回のE2EはSlack実配信、AWS `apply / destroy`、D-2、構成commit / 設定rollback rehearsal、
+> 長期稼働host、実管理端末・組織DNS・
 > cloud firewallを対象にしていません。実行ログが無い項目は実績として扱いません。
 > 詳細な境界は[検証証跡台帳](docs/evidence/README.md)を参照してください。
 
@@ -92,7 +93,7 @@ flowchart LR
 | [Ansible 配備手順](docs/deployment-ansible.md) | Ubuntu host向け一括構築playbook、roles 構成、Vault、Molecule |
 | [新規host一気通貫E2E](docs/e2e-validation.md) | `site.yml`適用、冪等性、network、D-1、backup restoreの自動検証と証跡境界 |
 | [バックアップ・復旧設計](docs/backup-restore.md) | 永続データ、復元試験、復旧目標 |
-| [停止時ランブック](docs/runbooks/service-down.md) | アラート受信後の確認と復旧手順 |
+| [運用ランブック索引](docs/runbooks/README.md) | 共通実行前提、停止・遅延・disk・memory・監視停止時の切り分け |
 | [CPU 高負荷演習記録](docs/incidents/cpu-high-drill.md) | 模擬障害の再現、確認、復旧、再発防止 |
 | [復旧演習一覧](docs/drills/README.md) | D-1（実測済み）と、環境待ちの D-2 の整理 |
 | [LogQL クエリ集](docs/loki-queries.md) | ダッシュボードと運用で使う LogQL の例 |
@@ -151,8 +152,21 @@ flowchart LR
 ```bash
 cd ansible
 ansible-galaxy collection install -r requirements.yml
-ansible-playbook -i inventory/staging.yml playbooks/site.yml
+cp inventory/staging.local.yml.example inventory/staging.local.yml
+$EDITOR inventory/staging.local.yml  # 対象IP、SSH user、40桁commit SHAへ置換
+umask 077
+cp inventory/group_vars/monitor/vault.yml.example inventory/group_vars/monitor/vault.yml
+$EDITOR inventory/group_vars/monitor/vault.yml  # 3種類の秘密値を設定
+openssl rand -base64 48 > .vault_pass
+chmod 600 .vault_pass inventory/group_vars/monitor/vault.yml
+ansible-vault encrypt inventory/group_vars/monitor/vault.yml --vault-password-file .vault_pass
+export ANSIBLE_VAULT_PASSWORD_FILE="$PWD/.vault_pass"
+ansible-playbook -i inventory/staging.local.yml playbooks/site.yml --check --diff
+ansible-playbook -i inventory/staging.local.yml playbooks/site.yml
 ```
+
+実hostへ適用する前に、[完全なAnsible配備手順](docs/deployment-ansible.md)の前提、
+fresh hostでのcheck modeの限界、実行後確認、rollback条件を確認する。
 
 CI では `ansible-lint` と Molecule scenario の構文検証を常時実行する。完全な
 `molecule test` は `ansible-integration.yml`、host全体の構築・冪等性・復旧は

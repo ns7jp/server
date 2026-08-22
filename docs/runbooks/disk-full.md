@@ -1,5 +1,7 @@
 # Runbook: ディスク使用率の逼迫
 
+> [共通の実行前提](README.md)を確認し、既定配備先`/opt/server-monitor`で実行します。
+
 ## 発火条件
 
 - Alert: `LinuxNodeFilesystemAlmostFull`
@@ -15,9 +17,10 @@
 ## 初動
 
 ```bash
+cd /opt/server-monitor
 date
 df -h
-docker system df
+sudo docker system df
 ```
 
 記録する項目:
@@ -33,22 +36,22 @@ docker system df
 
 | 症状 | 確認 | 対応 |
 | --- | --- | --- |
-| Docker イメージ / ビルドキャッシュの肥大化 | `docker system df -v` | 未使用分を確認して `docker system prune`（`-a` は影響範囲を確認してから） |
-| コンテナログの肥大化 | `du -sh /var/lib/docker/containers/*/*-json.log \| sort -h \| tail` | `compose.yaml` に `logging.options.max-size` が未設定のため、`json-file` ドライバの既定では無制限に増える。恒久対応として上限設定を追加する |
+| Docker イメージ / ビルドキャッシュの肥大化 | `sudo docker system df -v` | 未使用分を確認して `sudo docker system prune`（`-a` は影響範囲を確認してから） |
+| コンテナログの肥大化 | `sudo du -sh /var/lib/docker/containers/*/*-json.log \| sort -h \| tail` | Ansible既定は`json-file`、`max-size=10m`、`max-file=5`。`sudo cat /etc/docker/daemon.json`と`sudo docker inspect --format '{{.Name}} {{json .HostConfig.LogConfig}}' $(sudo docker ps -q)`で実containerへの反映を確認し、未反映なら変更管理下で再作成 |
 | ホストの journal 肥大化 | `journalctl --disk-usage` | `journalctl --vacuum-size=200M` |
 | バックアップアーカイブの滞留 | `du -sh` （バックアップ出力先ディレクトリ） | 世代管理・保持ポリシーの確認（[バックアップ命名規則](../backup-naming.md)） |
-| Prometheus / Loki のボリューム肥大化 | `docker system df -v` で該当ボリュームを特定 | retention 設定（`compose.yaml` の `--storage.tsdb.retention.time`、`loki-config.yml` の `retention_period`）を確認 |
+| Prometheus / Loki のボリューム肥大化 | `sudo docker system df -v` で該当ボリュームを特定 | retention 設定（`compose.yaml` の `--storage.tsdb.retention.time`、`loki-config.yml` の `retention_period`）を確認 |
 | 原因不明の急激な消費 | `du -xh --max-depth=1 / 2>/dev/null \| sort -rh \| head` | 該当ディレクトリをさらに掘り下げる |
 
 ## 復旧操作
 
-1. 上記切り分けで特定した不要データを削除する（`docker system prune`、ログローテーション、`journalctl --vacuum-size` 等）。
+1. 上記切り分けで特定した不要データを削除する（`sudo docker system prune`、ログローテーション、`journalctl --vacuum-size` 等）。
 2. `df -h` で使用率が 85% を下回ったことを確認する。
 3. Prometheus / Loki への書き込みが復帰しているか、Grafana ダッシュボードで確認する。
 
 ```bash
 df -h
-docker system df
+sudo docker system df
 ```
 
 復旧後は Alertmanager で `LinuxNodeFilesystemAlmostFull` が resolved になったことを確認する。

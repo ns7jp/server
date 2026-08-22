@@ -108,7 +108,7 @@ ssh "$TARGET_HOST" "sudo ss -lntp 'sport = :$TARGET_PORT'"
 確認点:
 
 - 8080、3000、9090、9093、3100 は `127.0.0.1` にだけ bind
-- 外部向けは承認された SSH 22/tcp だけ
+- 外部向けlistenerはSSH 22/tcpだけ。送信元制限はNW-08で別に確認
 - 想定しない `0.0.0.0` / `[::]` の listener がない
 
 `ss` の process 情報には PID や user が含まれます。共有用 evidence では必要な行だけ残します。
@@ -164,7 +164,8 @@ ssh "$TARGET_HOST" 'sudo nft list ruleset || sudo iptables -S'
 
 - `Status: active`
 - default incoming が deny
-- SSH 22/tcp の許可元が承認済みの管理 CIDR
+- repository既定ではSSH 22/tcpが全送信元に`LIMIT`。これは総当たり抑止でありCIDR制限ではない
+- production受入では上流security group / VPNまたはsource指定UFW ruleにより、許可元が承認済みの管理CIDRだけであること
 - 8080、3000、9090、9093、3100 の外部向け allow がない
 - cloud VM の場合は security group / NACL と UFW の両方を別途採録
 

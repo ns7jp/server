@@ -58,3 +58,4 @@
   least-privilegeではない。異なるtrust boundaryのtenantを同居させない。
 - Loki は無認証である。`127.0.0.1:3100` のみで待ち受けるため、ホスト上の他ユーザーから到達可能な場合は LAN への露出と同等のリスクになる。多人数ホストでは Grafana 側でアクセス制御し、Loki ポートはコンテナ内部に閉じる構成を検討する。
 - `host-access`はLinux hostへのport転送を成立させる非internal bridgeであり、接続した管理serviceには外向き経路も生じる。`app`、exporter、collectorは接続せず、管理portのloopback bindとUFW denyを配備後試験で継続確認する。
+- Docker API proxy以外のcontainer imageはversion tag、Python依存はversion rangeであり、manifest digestやlock fileによる完全なimmutable固定ではない。Dependabot、脆弱性scan、構成検査で更新を監視するが、tag差し替えのリスクは残る。更新時は対象digest / dependency解決結果を記録し、Full-stack E2Eを再実行する。

@@ -1,5 +1,7 @@
 # Runbook: Server Monitor が停止した場合
 
+> [共通の実行前提](README.md)を確認し、既定配備先`/opt/server-monitor`で実行します。
+
 ## 発火条件
 
 - Alert: `ServerMonitorUnavailable` / `LinuxNodeExporterUnavailable`
@@ -22,9 +24,10 @@ SLO 違反バーンレートの場合、原因が scrape 失敗とは限らな�
 ## 初動
 
 ```bash
+cd /opt/server-monitor
 date
-docker compose ps
-docker compose logs --tail=100 app nginx
+sudo docker compose ps
+sudo docker compose logs --tail=100 app nginx
 curl http://127.0.0.1:8080/healthz
 ```
 
@@ -41,7 +44,7 @@ curl http://127.0.0.1:8080/healthz
 
 | 症状 | 確認 | 対応 |
 | --- | --- | --- |
-| `app` が停止 | `docker compose logs app` | 設定値、依存関係、再起動回数を確認 |
+| `app` が停止 | `sudo docker compose logs app` | 設定値、依存関係、再起動回数を確認 |
 | `/healthz` は成功し scrape のみ失敗 | Prometheus targets と metrics token | token ファイルの一致とマウントを確認 |
 | `502 Bad Gateway` | Nginx ログ、`app` health | app 起動後に Nginx を再読み込み |
 | ホスト全体も停止 | SSH 到達性、ホスト電源、ディスク | ホスト復旧手順へ移行 |
@@ -49,12 +52,28 @@ curl http://127.0.0.1:8080/healthz
 ## 復旧操作
 
 ```bash
-docker compose up -d app nginx prometheus
-docker compose ps
+COMPOSE=(sudo docker compose --project-directory /opt/server-monitor \
+  -f /opt/server-monitor/compose.yaml)
+
+# Ansible生成設定がSlack secretを参照する環境では、同じoverlayを必ず重ねる。
+if sudo grep -q 'slack_api_url_file:' \
+  /opt/server-monitor/deploy/alertmanager/alertmanager.ansible.yml; then
+  sudo test -s /opt/server-monitor/deploy/secrets/slack_webhook_url.txt || {
+    echo 'Slack設定は有効だがwebhook secretがないため、再作成せずエスカレーションします' >&2
+    exit 1
+  }
+  COMPOSE+=(-f /opt/server-monitor/compose.slack.yaml.example)
+fi
+COMPOSE+=(-f /opt/server-monitor/compose.ansible.yaml)
+
+"${COMPOSE[@]}" up -d app nginx alertmanager prometheus
+"${COMPOSE[@]}" ps
 curl http://127.0.0.1:8080/healthz
 ```
 
 復旧後は Prometheus の `server-monitor` target が `UP` になり、Alertmanager で resolved になったことを確認する。
+Slack設定を有効化しているのにsecretが欠落している場合は、overlayを外して再作成せず、秘密値の
+承認済み復元元を確認して上位担当へエスカレーションします。
 
 ## 事後対応
 
