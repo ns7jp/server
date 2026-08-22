@@ -5,12 +5,14 @@
 | 項目 | 状態 |
 | --- | --- |
 | 文書パック | 作成済み |
-| 実ホスト新規構築 IT-01 / 冪等性 IT-02 | `NOT RUN`（最新 evidence を正本とする） |
-| 実ホスト network IT-12 | `NOT RUN` |
+| ephemeral runner 新規構築 IT-01 / 冪等性 IT-02 | `PASS`（[2026-08-22 E2E](../evidence/2026-08-22-full-stack-e2e.md)） |
+| 引き渡し対象hostの新規構築 IT-01 / 冪等性 IT-02 | `NOT RUN`（対象host未指定） |
+| 引き渡し対象host/管理端末の network IT-12 | `NOT RUN` |
 | 必須試験完了 | `NOT READY` |
 | 受領 | `NOT SET` |
 
-文書が存在するだけでは受領可能と判定しません。[試験仕様書](06-test-specification.md)の必須項目がすべて `PASS` になった日付付き結果票を確認してから更新します。
+文書やephemeral E2Eが存在するだけでは、未指定の引き渡し対象hostを受領可能と判定しません。
+[試験仕様書](06-test-specification.md)を対象hostで実施した日付付き結果票を確認してから更新します。
 
 ## 構成と状態
 

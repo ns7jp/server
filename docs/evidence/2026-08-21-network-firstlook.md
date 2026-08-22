@@ -211,3 +211,26 @@ TCP の 3-way handshake → `HTTP: GET /healthz HTTP/1.1` → `HTTP: HTTP/1.1 20
 - `frontend` の `internal: true` によりホスト公開ポート経由の検証ができないという制約自体は解消していない。ローカル検証用途に限り `internal: true` を外す・検証用の別ネットワークを足す、という compose.yaml 側の変更を検討する余地はあるが、本番相当の構成を崩すことになるため、変更するかどうかは要判断。
 
 > **AI 支援について**: この調査は本人が実機（WSL2）で実際にコマンドを実行し、Claude Code とのやり取りの中で次に確認すべきコマンドを提案してもらいながら進めた。`internal: true` が原因であるという結論は AI の提案によるものであり、本人が Docker のネットワーク仕様を独力で調べて辿り着いたものではない。この記録はその過程を正直に残したもの。
+
+## 2026-08-22 follow-up — 制約の解消と再検証
+
+上記は2026-08-21時点の観察として残し、翌日に構成を修正しました。`frontend` / `monitoring`の
+`internal: true`は内部通信用segmentとして維持し、hostへ公開する`nginx` / Prometheus /
+Alertmanager / Grafana / Lokiだけを、非internalの`host-access` bridgeにも接続しています。
+公開portはすべて`127.0.0.1` bindのままで、app / exporter / collectorは`host-access`へ接続していません。
+
+[Full-stack E2E run 32563104045](https://github.com/ns7jp/server-monitor/actions/runs/32563104045)で、
+次を再検証してすべてPASSになりました。詳細は
+[2026-08-22 Full-stack E2E証跡](2026-08-22-full-stack-e2e.md)に記録しています。
+
+- `docker compose ps`で管理5 portsが`127.0.0.1`へ公開される
+- `ss -lntp`で同5 portsにwildcard bindがない
+- host loopbackから`/healthz`へ到達できる
+- 別Docker namespaceからhost:8080へ直接到達できない
+- 別namespaceからSSH tunnelを通す場合だけ`/healthz`へ到達できる
+- loopback上のTCP/8080 headerを`tcpdump`で採録できる
+- UFWはactive / incoming deny / SSH limitで、管理portのALLOW ruleはない
+
+この構成で「内部service間の分離」と「host loopbackからの運用アクセス」を両立しました。
+なお、これはephemeral runner内の境界検証であり、独立した管理端末・組織DNS・cloud firewallを
+含むproduction相当のnetwork検証ではありません。

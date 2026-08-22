@@ -4,7 +4,11 @@
 
 管理端末から Ubuntu VM、VM の loopback、Docker service までを対象に、IP/CIDR、名前解決、経路、待受 port、HTTP、packet、firewall を順に確認します。
 
-[`labs/network-troubleshooting`](../../labs/network-troubleshooting/README.md) は二セグメント障害の再現用で、Docker network 内の経路と名前解決を確認するものです。本手順は実 VM の NIC と UFW を確認する別試験です。既存ラボが `PASS` でも、本手順の evidence がなければ IT-12、ST-01、ST-04 は `NOT RUN` です。
+[`labs/network-troubleshooting`](../../labs/network-troubleshooting/README.md) は二セグメント障害の再現用です。
+[2026-08-22 Full-stack E2E](../evidence/2026-08-22-full-stack-e2e.md)ではephemeral runner内の
+`IT-12 / ST-01 / ST-04`をPASSとして採録しました。本手順は、独立した管理端末と引き渡し対象VMの
+NIC / DNS / UFWを確認する別試験です。その対象hostの日付付き結果票がなければ、引き渡し判定では
+`NOT RUN`を維持します。
 
 ## 2. 安全条件
 

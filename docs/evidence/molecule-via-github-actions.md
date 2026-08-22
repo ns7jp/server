@@ -3,9 +3,9 @@
 `ansible-integration.yml` は `workflow_dispatch` で定義済みのため、**手元に Linux も Docker も
 用意せず、ブラウザだけで Ansible ロールの結合検証を実行できる**。所要 15 分・0 円。
 
-> **状態（2026-08-17 時点）**: このワークフローは **一度も実行されていない**（実行履歴 0 件）。
-> [証跡採録チェックリスト](https://github.com/ns7jp/ns7jp/blob/main/docs/evidence-capture-checklist.md)
-> の優先 1 に対応する。最も着手コストが低い実行証跡である。
+> **状態（2026-08-17 実測済み）**: 4ロールの`molecule test`を実行し、
+> create → converge → idempotence → verifyを完走しています。
+> run URL、version、各roleの結果は[実測記録](2026-08-17-molecule.md)を参照してください。
 
 ---
 

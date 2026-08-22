@@ -41,5 +41,7 @@ flowchart LR
 - `tcpdump -nn -i any port 8080` で必要時だけ packet を確認
 - UFW と cloud security group の許可範囲が一致することを確認
 
-実機結果は [結果票テンプレート](../evidence/templates/network-host-validation.md)から日付付き evidence を作成するまで `NOT RUN` です。
+ephemeral runner内の結果は[2026-08-22 E2E証跡](../evidence/2026-08-22-full-stack-e2e.md)に記録済みです。
+独立した引き渡し対象host/管理端末の結果は、
+[結果票テンプレート](../evidence/templates/network-host-validation.md)から日付付きevidenceを作成するまで`NOT RUN`です。
 

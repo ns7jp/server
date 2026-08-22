@@ -24,6 +24,15 @@ Actions runはDocker roleの収束と設定を検証しますが「Docker未導�
    管理portへ直接届かず、SSH tunnel経由なら届くことを確認する
 8. raw logと判定表をActions artifactとして30日保存し、E2E成功後は実terminal castも追加する
 
+## 検証済みrun
+
+| 実施日 | commit | 結果 | Actions / artifact | 日付付き証跡 |
+| --- | --- | --- | --- | --- |
+| 2026-08-22 | `f4ea31993d6d5e3b8478789f8f0d008ed5f44961` | **23/23 ID PASS** | [run 32563104045](https://github.com/ns7jp/server-monitor/actions/runs/32563104045) / `full-stack-e2e-32563104045-1` | [環境・判定表・境界](evidence/2026-08-22-full-stack-e2e.md) |
+
+artifactは2026-09-21に期限切れとなるため、判定表、version、RTO、restore結果、
+terminal castのhashを日付付き証跡にも転記しています。
+
 ## 実行方法
 
 GitHub の `Actions` → `Full-stack Ansible E2E` → `Run workflow` を実行します。

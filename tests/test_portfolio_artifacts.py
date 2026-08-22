@@ -204,6 +204,27 @@ def test_full_stack_e2e_starts_as_not_run_and_requires_disposable_host_opt_in():
     assert "if-no-files-found: error" in workflow
     assert "--return" not in workflow
     assert "demo-command-success.txt" in workflow
+    assert "codex/full-stack-e2e-20260822" not in workflow
+
+
+def test_successful_full_stack_e2e_is_recorded_with_scope_boundaries():
+    evidence = (
+        ROOT / "docs" / "evidence" / "2026-08-22-full-stack-e2e.md"
+    ).read_text(encoding="utf-8")
+
+    for fact in (
+        "32563104045",
+        "f4ea31993d6d5e3b8478789f8f0d008ed5f44961",
+        "23 ID",
+        "IT-08-local",
+        "changed=0 / failed=0",
+        "RTO目標300秒以内",
+        "Slackへの実配信",
+        "AWS `terraform apply / destroy`",
+        "D-2",
+    ):
+        assert fact in evidence
+    assert "Slackへの実配信を示す`IT-08`へは\n読み替えません" in evidence
 
 
 def test_ci_overrides_are_host_vars_and_win_over_monitor_group_defaults():

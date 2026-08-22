@@ -25,7 +25,7 @@
 | 試験 | [06-test-specification.md](06-test-specification.md) | 仕様作成済み・未実施欄は `NOT RUN` |
 | 引き渡し | [07-handover-checklist.md](07-handover-checklist.md) | 作成済み |
 | 変更・復旧 | [08-change-rollback-plan.md](08-change-rollback-plan.md) | 計画・記録様式作成済み、実施結果は `NOT RUN` |
-| ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | 手順作成済み、実ホスト証跡は `NOT RUN` |
+| ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | ephemeral runnerは[2026-08-22にPASS](../evidence/2026-08-22-full-stack-e2e.md)。独立した引き渡し対象host/管理端末は`NOT RUN` |
 | ネットワーク結果票 | [実機検証テンプレート](../evidence/templates/network-host-validation.md) | テンプレート作成済み |
 | 一次切り分け記録 | [トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md) | テンプレート作成済み |
 
@@ -33,7 +33,9 @@
 
 基準環境は Ubuntu Server 24.04 LTS の単一ホストです。構成コードは Ubuntu 22.04 LTS にも対応しますが、両バージョンでの実測を意味しません。AWS 構成は別の発展構成であり、実際の `apply / destroy` が記録されるまでは設計・コード実装済みとして扱います。
 
-二セグメント Docker ラボの実測は既にありますが、これは実 VM の NIC、DNS、UFW、待受 port を確認した証拠ではありません。実ホスト側の確認は日付付きの[ネットワーク結果票](../evidence/templates/network-host-validation.md)が保存されるまで `NOT RUN` とします。
+二セグメントDockerラボとephemeral runner E2Eの実測はありますが、独立した引き渡し対象VM・
+管理端末・組織DNSを確認した証拠ではありません。その対象host側は日付付きの
+[ネットワーク結果票](../evidence/templates/network-host-validation.md)が保存されるまで`NOT RUN`とします。
 
 ## 完了の定義
 

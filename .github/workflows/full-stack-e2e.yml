@@ -5,8 +5,6 @@ on:
   push:
     branches:
       - main
-      # Initial branch-only execution; removed after this first E2E is proven.
-      - codex/full-stack-e2e-20260822
     paths:
       - 'ansible/**'
       - 'compose.yaml'

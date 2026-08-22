@@ -16,24 +16,21 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 
 ## 採用ご担当者向け：最初に見る 3 点
 
-1. **2分15秒デモ** — [保存済み実測証跡リプレイ](https://ns7jp.github.io/demo.html)。2026-08-18/19のscreen shotとD-1 logを再構成した閲覧用映像で、実操作の連続録画ではありません。E2Eと後続demo stepが成功したrunは実terminalの`demo.cast`もartifact化します。
+1. **2分15秒デモ** — [保存済み実測証跡リプレイ](https://ns7jp.github.io/demo.html)。2026-08-18/19のscreen shotとD-1 logを再構成した閲覧用映像で、実操作の連続録画ではありません。[2026-08-22 E2E](docs/evidence/2026-08-22-full-stack-e2e.md)では実terminalの`demo.cast`もartifact化しました。
 2. **構成と構築工程** — [構成図](docs/architecture.md) / [Linux server構築案件pack](docs/build-package/README.md)。
 3. **実測証跡** — [検証証跡台帳](docs/evidence/README.md) / [新規host一気通貫E2E](docs/e2e-validation.md)。未実行をPASSにしません。
 
-> **実測の現状（2026-08-19）**: 構文・設定整合・依存脆弱性・秘密値混入の検査は CI で継続的に自動実行しています。
-> **Linux(WSL2) ホスト上で監視スタック 9 サービスを起動し、Grafana / Loki の実データ表示、D-1 復旧演習（RTO 13 秒 PASS）、
-> 二セグメント障害ラボ（障害注入→切り分け→復旧 PASS）まで実測済み**です。
-> 一方、実 AWS の `apply / destroy`、Alertmanager → Slack の実配信、D-2、`site.yml` による新規 VM 構築・冪等性、
-> 実 VM の待受 / UFW / network、backup restore の実測ログは未収録で、
-> [試験仕様書](docs/build-package/06-test-specification.md)の結合試験・セキュリティ試験は
-> [2026-08-19 時点の 21 項目中 11 項目が PASS](docs/evidence/2026-08-19-build-validation.md)、残りは `NOT RUN` です。
-> 実行ログが無い項目は「設計・構成コード・試験手順を実装済み」と表現します。
-> 詳細な境界は [検証証跡台帳](docs/evidence/README.md) を参照してください。
-
-> **新しいE2Eについて:** `site.yml`一括適用、2回目`changed=0`、runtime/network、D-1、
-> backup restoreを行う[workflow](.github/workflows/full-stack-e2e.yml)を追加しました。
-> 実績は上部badgeとActions artifactの`summary.md`で判断します。このworkflowを実装しただけで、
-> 上記2026-08-19の過去結果をPASSへ書き換えてはいません。
+> **実測の現状（2026-08-22）**: [Full-stack E2E run 32563104045](https://github.com/ns7jp/server-monitor/actions/runs/32563104045)で、
+> **使い捨てUbuntu 24.04 hostへの`site.yml`一括適用、2回目`changed=0`、10 containersの稼働、
+> 認証、Prometheus target、ローカルwebhook通知、loopback/UFW/SSH tunnel、D-1自動復旧（1秒）、
+> 3 volumesのchecksum付きbackup / 別volume restoreを全項目PASS**として採録しました。
+> 判定表・環境・raw log・実terminal castは[日付付き証跡](docs/evidence/2026-08-22-full-stack-e2e.md)に固定しています。
+>
+> 2026-08-18/19のWSL2実測、D-1 RTO 13秒、二セグメント障害ラボ、
+> [21項目中11項目PASSの結果票](docs/evidence/2026-08-19-build-validation.md)は当時の履歴として保持します。
+> 今回のE2EはSlack実配信、AWS `apply / destroy`、D-2、長期稼働host、実管理端末・組織DNS・
+> cloud firewallを対象にしていません。実行ログが無い項目は実績として扱いません。
+> 詳細な境界は[検証証跡台帳](docs/evidence/README.md)を参照してください。
 
 ## 実装したこと
 
@@ -50,10 +47,10 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 | 構成管理 | Ansible roles で OS / Docker / TLS / 監視設定 / アプリ配備 / バックアップを宣言的に管理 |
 | クラウド配備 | Terraform で AWS 上に同等構成をコード化（[詳細](docs/aws-architecture.md)。apply 未実施） |
 | SLO 運用 | `/healthz` の定期チェックと、しきい値を超えたときのアラート通知（[詳細](docs/slo.md)） |
-| 復旧演習 | D-1 は実測済み（RTO 13 秒、[記録](docs/drills/logs/2026-08-19-D-1.md)）。D-2 はランブック・テンプレートのみで未実測 |
+| 復旧演習 | D-1 はローカル実測RTO 13秒（[2026-08-19](docs/drills/logs/2026-08-19-D-1.md)）とE2E実測RTO 1秒（[2026-08-22](docs/evidence/2026-08-22-full-stack-e2e.md)）。D-2 はランブック・テンプレートのみで未実測 |
 | 変更管理 | PR ごとに目的・影響範囲・ロールバック手順を書いて残す運用（[詳細](docs/change-management.md)） |
 | 品質確認 | pytest、構成検証、ansible-lint、Molecule 構文検証、任意実行の完全 Molecule、Terraform 検証、Trivy / pip-audit、Dependabot |
-| 一気通貫 E2E | disposable Ubuntuへ`site.yml`を2回適用し、runtime/network/通知/障害/restoreのraw logと判定表をartifact化 |
+| 一気通貫 E2E | disposable Ubuntuへ`site.yml`を2回適用し、runtime/network/通知/障害/restoreを[2026-08-22に全項目PASS](docs/evidence/2026-08-22-full-stack-e2e.md)。raw logと判定表をartifact化 |
 
 ## 構成
 
@@ -199,13 +196,14 @@ Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可�
 ## 復旧演習
 
 「バックアップではなく、リストアが運用できることが価値」のため、演習を月次・四半期で
-回し、実時間 RTO / RPO を実測する設計である。D-1 は 2026-08-19 に実行し、RTO 13 秒で
-復旧した[実測ログ](docs/drills/logs/2026-08-19-D-1.md)がある。D-2 は実行ログがないため、
+回し、実時間 RTO / RPO を実測する設計である。D-1 はローカルでRTO 13秒
+（[2026-08-19](docs/drills/logs/2026-08-19-D-1.md)）、ephemeral E2EでRTO 1秒
+（[2026-08-22](docs/evidence/2026-08-22-full-stack-e2e.md)）を実測した。D-2は実行ログがないため、
 演習手順と自動化コードが整備済みという範囲で提示する。
 
 | 演習 | 頻度 | 想定時間 | 環境 | 自動化 |
 | --- | --- | --- | --- | --- |
-| **D-1** プロセスダウン → 自動復旧 | 月次 | 15 分 | ローカル Docker | 実測済み（RTO 13 秒） / `scripts/drills/d1-process-down.sh` |
+| **D-1** プロセスダウン → 自動復旧 | 月次 | 15 分 | ローカル Docker / ephemeral runner | 実測済み（RTO 13秒 / 1秒） / `scripts/drills/d1-process-down.sh` |
 | **D-2** ホスト障害 → 別ホストに復元 | 四半期 | 2 時間 | AWS staging | 未実測 / 手動（ランブック化）|
 
 ```bash
@@ -346,8 +344,8 @@ server-monitor/
 ## 現在の制約と次の拡張
 
 - 単一ホストの検証構成であり、監視基盤の冗長化は対象外です。
-- AWS Terraform は構成コードを実装済みですが、apply / destroy、費用、復元試験の実測証跡はまだありません。
-- `site.yml`一括構築・冪等性、runner内network/UFW/待受、backup restoreは自動E2Eを実装済みです。GitHub runner imageにはDocker等が事前導入されているため最小OSからの導入証跡とはせず、成功実績はworkflow badgeとartifactで確認します。実管理端末・組織DNS・cloud firewallを含むproduction相当のnetwork証跡とも区別します。
+- AWS Terraform は構成コードを実装済みですが、AWS上のapply / destroy、費用、復元試験の実測証跡はまだありません。
+- `site.yml`一括構築・冪等性、runner内network/UFW/待受、backup restoreは[2026-08-22の自動E2E](docs/evidence/2026-08-22-full-stack-e2e.md)でPASSです。GitHub runner imageにはDocker等が事前導入されていたため、最小OSからの導入証跡とはしません。実管理端末・組織DNS・cloud firewallを含むproduction相当のnetwork証跡とも区別します。
 - Slack 通知は Webhook 秘密値をコミットしないため、`compose.slack.yaml.example` を重ねて利用環境で有効化する方式です。
 - 次の拡張候補は、外部 probe、中央 telemetry、SSO / VPN 連携、リモートストレージへの長期 metrics 保存です。
 
