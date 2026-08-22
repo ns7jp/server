@@ -19,7 +19,7 @@
 
 | 項目 | 設定値 | 正本 |
 | --- | --- | --- |
-| install dir | `/opt/server-monitor` | `ansible/roles/app/defaults/main.yml` |
+| install dir | `/opt/server-monitor` | `ansible/inventory/group_vars/all/main.yml` |
 | restart policy | `unless-stopped` | `compose.yaml` |
 | app user | Dockerfile の非 root ユーザー | `Dockerfile` |
 | UI listen | `127.0.0.1:8080` | `compose.yaml` |
@@ -27,6 +27,25 @@
 | username display | 既定 `false` | `.env.example` |
 | secrets directory | host `0700` | `ansible/roles/app/tasks/main.yml` |
 | secrets files | host `0644`（非 root container UID の読み取り用、親 directory で host access を制限） | `deploy/secrets/*.txt`（実値は非追跡） |
+
+### コンテナ・アプリのversion基準
+
+| 対象 | 設定値 | 正本 |
+| --- | --- | --- |
+| app base | `python:3.12-slim` | `Dockerfile` |
+| app packages | Flask `>=3.0,<4`、psutil `>=5.9,<8`、prometheus-client `>=0.26.0,<1`、Gunicorn `>=22,<24` | `requirements.txt` |
+| Nginx | `nginx:1.27-alpine` | `compose.yaml` |
+| Prometheus | `prom/prometheus:v2.55.1` | `compose.yaml` |
+| Alertmanager | `prom/alertmanager:v0.27.0` | `compose.yaml` |
+| Grafana | `grafana/grafana:11.2.2` | `compose.yaml` |
+| Loki | `grafana/loki:2.9.0` | `compose.yaml` |
+| Grafana Alloy | `grafana/alloy:v1.16.1` | `compose.yaml` |
+| blackbox-exporter | `prom/blackbox-exporter:v0.25.0` | `compose.yaml` |
+| node-exporter | `prom/node-exporter:v1.8.2` | `compose.yaml` |
+| Docker API proxy | `ghcr.io/tecnativa/docker-socket-proxy:v0.5.0` + manifest digest | `compose.yaml` |
+
+Docker API proxyはtagとdigestを固定しています。その他はversion tagまたはpackage rangeであり、
+registry上のtag不変性まで保証するdigest固定ではありません。更新時はCIとFull-stack E2Eを再実行します。
 
 ## 監視・ログ
 
@@ -45,7 +64,7 @@
 
 | Port | Service | Bind | 用途 |
 | --- | --- | --- | --- |
-| 22/tcp | SSH | 管理元 CIDR に制限 | 構築・運用 |
+| 22/tcp | SSH | UFW `LIMIT`（全送信元）。production受入では上流FW / VPNまたはsource指定UFW ruleで管理元CIDRへ制限 | 構築・運用 |
 | 8080/tcp | Nginx | `127.0.0.1` | Server Monitor UI |
 | 3000/tcp | Grafana | `127.0.0.1` | 可視化 |
 | 9090/tcp | Prometheus | `127.0.0.1` | query / status |

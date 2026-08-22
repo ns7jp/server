@@ -18,9 +18,9 @@ docker_apt_release_channel: stable
 docker_log_max_size: "10m"
 docker_log_max_file: 5
 
-# repo の取得方法
-# - directory: 既存チェックアウトを synchronize する
-# - git: GitHub から clone する
+# repo の取得方法。どちらもcontroller上でtracked release archiveを作り、targetへ同期する。
+# - directory: controllerのcleanな既存checkoutのHEADをarchiveする
+# - git: controllerの一時checkoutへimmutable SHAを取得してarchiveする
 server_monitor_source_mode: directory
 # playbook_dir は <repo>/ansible/playbooks。リポジトリ正本（compose.yaml、deploy/、app.py 等）を
 # 配備するため 2 階層上を参照する。1 階層上では ansible/ だけが同期対象になってしまう。

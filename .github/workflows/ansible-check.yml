@@ -45,6 +45,16 @@ jobs:
           ansible-playbook -i inventory/staging.yml playbooks/verify.yml --syntax-check
           ansible-playbook -i inventory/ci.yml playbooks/site.yml --syntax-check
 
+      - name: Validate resolved real-host inventory values
+        working-directory: ansible
+        run: |
+          cp inventory/staging.local.yml.example inventory/staging-ci.yml
+          ansible-inventory -i inventory/staging-ci.yml --host monitor-01 \
+            | python -c 'import json, sys; value=json.load(sys.stdin); assert value["server_monitor_environment"] == "staging"; assert value["server_monitor_source_mode"] == "git"; assert value["server_monitor_git_version"] == "replace-with-40-character-commit-sha"'
+          ansible-inventory -i inventory/production.yml --host monitor-prod-01 \
+            | python -c 'import json, sys; value=json.load(sys.stdin); assert value["server_monitor_environment"] == "production"; assert value["server_monitor_source_mode"] == "git"; assert value["server_monitor_git_version"] == "replace-with-40-character-commit-sha"'
+          rm inventory/staging-ci.yml
+
   molecule:
     # フル `molecule test` は Docker-in-Docker + systemd で動作させるため共有
     # ランナーで不安定になりやすい。CI では Molecule シナリオ自身の妥当性

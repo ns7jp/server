@@ -1,5 +1,7 @@
 # Runbook: /healthz レイテンシ SLO の超過
 
+> [共通の実行前提](README.md)を確認し、既定配備先`/opt/server-monitor`で実行します。
+
 ## 発火条件
 
 - Alert: `SLOLatencyHigh`
@@ -15,8 +17,9 @@
 ## 初動
 
 ```bash
+cd /opt/server-monitor
 date
-docker compose ps
+sudo docker compose ps
 curl -o /dev/null -s -w "code=%{http_code} time=%{time_total}\n" http://127.0.0.1:8080/healthz
 curl -o /dev/null -s -w "code=%{http_code} time=%{time_total}\n" http://127.0.0.1:8080/healthz
 curl -o /dev/null -s -w "code=%{http_code} time=%{time_total}\n" http://127.0.0.1:8080/healthz
@@ -39,14 +42,14 @@ Grafana の `Server Monitor SLO` ダッシュボードを開き、`Probe Duratio
 | CPU 使用率も高い | `server_monitor_cpu_usage_percent` / Node Exporter | アプリ単体の負荷であれば worker 数 / 設定見直し |
 | メモリが逼迫 | `node_memory_MemAvailable_bytes` | OOM、キャッシュ、リーク疑い箇所を logs で確認 |
 | Disk I/O 待ち | node-exporter `iowait` | I/O ボトルネック調査（log rotation、不要書き込み） |
-| Nginx だけが遅い | `docker compose logs nginx` | upstream 待ち時間、worker_connections、再読み込み |
-| app の `/healthz` 自体が遅い | `docker compose exec app curl -s -w "%{time_total}\n" http://127.0.0.1:5000/healthz` | アプリ起動直後の cold start、依存サービス、GC 圧 |
+| Nginx だけが遅い | `sudo docker compose logs nginx` | upstream 待ち時間、worker_connections、再読み込み |
+| app の `/healthz` 自体が遅い | `sudo docker compose exec -T app python -c 'import time, urllib.request; t=time.monotonic(); r=urllib.request.urlopen("http://127.0.0.1:5000/healthz", timeout=5); print(f"code={r.status} time={time.monotonic()-t:.6f}")'` | app imageに`curl`はないためPython標準libraryで直接測定。cold start、依存service、GC圧を確認 |
 | 外部 (blackbox 側) の遅延 | `up{job="blackbox"}`、blackbox ホスト負荷 | blackbox-exporter の再起動 / リソース見直し |
 
 ## 復旧操作
 
 1. ボトルネックの根因を限定（CPU / I/O / メモリ / アプリ）
-2. 一過性であれば対象コンテナを再起動: `docker compose restart app nginx`
+2. 一過性であれば対象コンテナを再起動: `sudo docker compose restart app nginx`
 3. 構成変更が必要なら playbook / Terraform で対応し、コミットして再デプロイ
 4. 復旧後、Grafana の p95 が 500ms を下回り、Alertmanager で resolved になることを確認
 

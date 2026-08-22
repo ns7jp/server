@@ -13,8 +13,9 @@ PR #74のmain merge commit `43d36ee674f090108153b09451e825e3383494c1`でも5 wor
 さらにPR #75のruntime変更最終commit `7622a9da974f694ae75e0173135923701be9e5a5`では、
 [Full-stack E2E run 32572409469](https://github.com/ns7jp/server-monitor/actions/runs/32572409469)を
 含む5 workflowがすべてsuccessとなりました。後者ではDocker API proxyのGET成功・POST拒否・
-Loki log到達、source配備hardening、初回適用`changed=30 / failed=0`、2回目
-`changed=0 / failed=0`まで実測しています。commitごとの区別・全run IDは
+Loki log到達、`directory` modeのtracked archive / sync、初回適用`changed=30 / failed=0`、2回目
+`changed=0 / failed=0`まで実測しています。実host向け`git` modeはinventory解決値と静的検査までで、
+remote fetchから配備までのruntimeは`NOT RUN`です。commitごとの区別・全run IDは
 [日付付き証跡](2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証)に記録しています。
 
 > **履歴（2026-08-21時点）:** 当時はAnsible各ロール、WSL2上の監視stack、D-1、
@@ -37,14 +38,32 @@ cloud firewallを含むproduction相当のnetwork検証は、現在も未採録�
 | ephemeral VM の network / UFW | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：`NW-01〜09` / `IT-12` / `ST-01,04` PASS |
 | 独立した管理端末・対象hostでの network / UFW | ❌ **NOT RUN**（[手順](../build-package/09-network-validation-procedure.md)と[結果票テンプレート](templates/network-host-validation.md)のみ） |
 | AWS `apply` / `destroy` と実費 | ❌ 未採録 |
-| [試験仕様書](../build-package/06-test-specification.md)の結合・セキュリティ試験 | ⚠ [2026-08-19時点の結果票](2026-08-19-build-validation.md): 11/21 PASS、残り NOT RUN |
+| 構成commit / 設定rollback rehearsal | ❌ **NOT RUN**（[計画兼結果票](../build-package/08-change-rollback-plan.md)のみ。D-1 / volume restoreのPASSとは別） |
+| [試験仕様書](../build-package/06-test-specification.md)の2026-08-19結果 | ⚠ **日付付き履歴**: [11/21 PASS、残り NOT RUN](2026-08-19-build-validation.md)。現在のcoverageは下表で別管理 |
 
 > **この証跡が示す範囲を広げて解釈しない。** 2026-08-22 E2EはGitHub-hosted runnerと
 > 別Docker namespace内の自動実測です。独立した管理端末、複数host、組織DNS、
 > D-2、Slack実配信、AWS適用、長期運用の代替にはしません。
 
-次に採るべき証跡は、Slack実配信、独立した対象host/管理端末のnetwork検証、AWS短時間
-`apply / destroy`、D-2のいずれかです。
+## 試験IDと現在の証跡の対応
+
+[試験仕様書](../build-package/06-test-specification.md)は未指定の引き渡し対象host向け原本なので、
+初期値`NOT RUN`を上書きしません。次は、別の日付付き証跡がどの受入条件を確認したかの索引です。
+
+| 試験ID | 現在の証跡 | 境界 |
+| --- | --- | --- |
+| UT-01〜04、ST-03、ST-05 | [PR #75の5 workflow](2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証) | Python / Compose / monitoring config / Ansible / securityのCI。runtime試験の代替ではない |
+| UT-05 | [2026-08-19 Terraform check](2026-08-19-ci-baseline.md) | 当時commitの`fmt / validate / static scan`。AWS applyではなく、PR #75 commitの再検証でもない |
+| IT-01〜05、IT-09〜10、ST-01〜02、ST-04 | [2026-08-22 PR #75 E2E](2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証) | disposable Ubuntu runner内で実測 |
+| IT-06 | [2026-08-18 WSL2実画面](2026-08-18-local-observability.md) | PR #75 E2EはGrafana API healthまで。PR #75上の対話UI再採録ではない |
+| IT-07 | [PR #75 E2EのDocker log→Alloy→Loki gate](2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証) | `STACK` ID内で固有Nginx logのLogQL取得を実測。独立した`IT-07`結果IDではない |
+| IT-08 | [2026-08-22 `IT-08-local`](2026-08-22-full-stack-e2e.md#判定結果feature-run-32563104045) | local webhookのFIRING / RESOLVEDのみ。Slack実配信は`NOT RUN` |
+| IT-11 | [2026-08-19二セグメント障害ラボ](2026-08-19-network-drill.md) | Docker lab内の障害注入・切り分け・復旧 |
+| IT-12 | [2026-08-22 `NW-01〜09`](2026-08-22-full-stack-e2e.md#判定結果feature-run-32563104045) | runner + 別Docker namespace。独立した引き渡し対象host / 管理端末は`NOT RUN` |
+
+次にrepository内だけで採れる証跡は、構成commit / 設定rollback rehearsalです。外部環境が
+用意できた後は、Slack実配信、独立した対象host / 管理端末のnetwork検証、AWS短時間
+`apply / destroy`、D-2をそれぞれ別証跡として採録します。
 
 ## 現在の証跡状態
 
@@ -59,6 +78,7 @@ cloud firewallを含むproduction相当のnetwork検証は、現在も未採録�
 | SLO / 復旧演習 | `docs/slo.md`、`docs/drills/`、`scripts/drills/` | D-1は[2026-08-19: RTO 13秒](../drills/logs/2026-08-19-D-1.md) / [2026-08-22 E2E: RTO 1秒](2026-08-22-full-stack-e2e.md)。D-2は未収録 |
 | 外部 probe / 中央 telemetry | `docs/roadmap/external-probe-central-telemetry.md` | 外部 probe と中央保存先の実測は未収録 |
 | 変更管理 | `.github/pull_request_template.md`、`.github/ISSUE_TEMPLATE/`、`docs/change-management.md` | PR ごとに検証・ロールバック・証跡リンクを残す |
+| 構成commit / 設定rollback | `docs/build-package/08-change-rollback-plan.md` | rehearsal結果は**NOT RUN**。D-1 / volume restoreの証跡を読み替えない |
 | 構築工程成果物 | `docs/build-package/` | 設計・構築・試験様式を整備。実機結果は各検証ログへ記録 |
 | 二セグメント障害ラボ | `labs/network-troubleshooting/` | [2026-08-19: 障害注入→切り分け→復旧を実測、PASS](2026-08-19-network-drill.md) |
 | 独立した対象host/管理端末の NIC / DNS / route / listen / HTTP / packet / UFW | `docs/build-package/09-network-validation-procedure.md` | **NOT RUN**。ephemeral runner内のPASSは[別証跡](2026-08-22-full-stack-e2e.md)として区別 |
@@ -87,6 +107,7 @@ cloud firewallを含むproduction相当のnetwork検証は、現在も未採録�
 | Linux 新規構築・試験 | `docs/evidence/YYYY-MM-DD-build-validation.md` |
 | 二セグメント通信障害 | `docs/evidence/YYYY-MM-DD-network-drill.md` |
 | Linux 実ホスト network / UFW | `docs/evidence/YYYY-MM-DD-network-host-validation.md` |
+| 構成commit / 設定rollback rehearsal | `docs/evidence/YYYY-MM-DD-change-<ID>.md` |
 | 仮説検証を含む一次切り分け | `docs/evidence/YYYY-MM-DD-troubleshooting-<slug>.md` |
 | スクリーンショット | `docs/evidence/screenshots/<kind>_<commit>_<yyyymmdd>.png` |
 

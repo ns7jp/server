@@ -42,8 +42,16 @@ jobs:
           docker compose -f compose.yaml -f compose.ansible.yaml config --quiet
           docker compose -f labs/network-troubleshooting/compose.yaml config --quiet
 
-      - name: Validate network drill script
-        run: bash -n labs/network-troubleshooting/run-drill.sh
+      - name: Validate shell scripts and daily-check arguments
+        run: |
+          while IFS= read -r script; do
+            bash -n "$script"
+          done < <(git ls-files '*.sh')
+          bash scripts/ops/daily-check.sh --help > /dev/null
+          if bash scripts/ops/daily-check.sh --disk-threshold 0; then
+            echo 'daily-check accepted an unsafe threshold' >&2
+            exit 1
+          fi
 
       - name: Validate monitoring configuration
         run: |

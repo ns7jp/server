@@ -44,9 +44,9 @@ AFTER_SHA='replace-with-the-full-candidate-commit-sha'
 git rev-parse HEAD
 git diff --stat "$BEFORE_SHA..$AFTER_SHA"
 cd ansible
-ansible-inventory -i inventory/staging.yml --graph
-ansible all -i inventory/staging.yml -m ping
-ansible-playbook -i inventory/staging.yml playbooks/deploy.yml --check --diff
+ansible-inventory -i inventory/staging.local.yml --graph
+ansible all -i inventory/staging.local.yml -m ping
+ansible-playbook -i inventory/staging.local.yml playbooks/deploy.yml --check --diff
 ```
 
 ## 4. 変更手順
@@ -60,11 +60,11 @@ ansible-playbook -i inventory/staging.yml playbooks/deploy.yml --check --diff
 
 ```bash
 cd ansible
-ansible-playbook -i inventory/staging.yml playbooks/deploy.yml
-ansible-playbook -i inventory/staging.yml playbooks/verify.yml
-ansible monitor -i inventory/staging.yml -b -a \
+ansible-playbook -i inventory/staging.local.yml playbooks/deploy.yml
+ansible-playbook -i inventory/staging.local.yml playbooks/verify.yml
+ansible monitor -i inventory/staging.local.yml -b -a \
   'docker compose -f /opt/server-monitor/compose.yaml ps'
-ansible monitor -i inventory/staging.yml -b -a \
+ansible monitor -i inventory/staging.local.yml -b -a \
   'systemctl --failed --no-pager'
 ```
 
@@ -82,17 +82,48 @@ ansible monitor -i inventory/staging.yml -b -a \
 ## 6. コード・設定のロールバック
 
 作業中の checkout を `git reset --hard` で戻しません。変更前 commit を別の一時 checkout に展開し、対象版が明確な状態で再配備します。
+接続先inventoryはrollback worktree内のGit管理外fileへcopyし、秘密値は既存の暗号化Vaultを
+absolute pathで参照します。sourceは`git` modeと旧40桁SHAをCLIで上書きし、local inventory変更を
+releaseへ混ぜません。旧SHAがremote repositoryに存在し、その版が`git` modeをサポートすることを
+Go条件で確認します。
 
 ```bash
+set -euo pipefail
 ROLLBACK_SHA='replace-with-the-full-last-known-good-commit-sha'
-git worktree add --detach ../server-monitor-rollback "$ROLLBACK_SHA"
-cd ../server-monitor-rollback/ansible
-ansible-playbook -i inventory/staging.yml playbooks/deploy.yml --check --diff
-ansible-playbook -i inventory/staging.yml playbooks/deploy.yml
-ansible-playbook -i inventory/staging.yml playbooks/verify.yml
+ACTIVE_INVENTORY='/absolute/path/to/ansible/inventory/staging.local.yml'
+ACTIVE_VAULT='/absolute/path/to/ansible/inventory/group_vars/monitor/vault.yml'
+VAULT_PASSWORD_FILE='/absolute/path/to/ansible/.vault_pass'
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+ROLLBACK_WORKTREE="$(dirname "$REPO_ROOT")/server-monitor-rollback"
+[[ "$ROLLBACK_SHA" =~ ^[0-9a-f]{40}$ ]]
+test "$(git -C "$REPO_ROOT" rev-parse --verify "${ROLLBACK_SHA}^{commit}")" = "$ROLLBACK_SHA"
+test -f "$ACTIVE_INVENTORY"
+test -f "$ACTIVE_VAULT"
+test -f "$VAULT_PASSWORD_FILE"
+test ! -e "$ROLLBACK_WORKTREE"
+test ! -L "$ROLLBACK_WORKTREE"
+git -C "$REPO_ROOT" worktree add --detach "$ROLLBACK_WORKTREE" "$ROLLBACK_SHA"
+install -m 600 "$ACTIVE_INVENTORY" \
+  "$ROLLBACK_WORKTREE/ansible/inventory/rollback.local.yml"
+cd "$ROLLBACK_WORKTREE/ansible"
+ansible-playbook -i inventory/rollback.local.yml \
+  --vault-password-file "$VAULT_PASSWORD_FILE" -e "@$ACTIVE_VAULT" \
+  -e server_monitor_source_mode=git -e "server_monitor_git_version=$ROLLBACK_SHA" \
+  playbooks/deploy.yml --check --diff
+ansible-playbook -i inventory/rollback.local.yml \
+  --vault-password-file "$VAULT_PASSWORD_FILE" -e "@$ACTIVE_VAULT" \
+  -e server_monitor_source_mode=git -e "server_monitor_git_version=$ROLLBACK_SHA" \
+  playbooks/deploy.yml
+ansible-playbook -i inventory/rollback.local.yml \
+  --vault-password-file "$VAULT_PASSWORD_FILE" -e "@$ACTIVE_VAULT" \
+  playbooks/verify.yml
+ansible monitor -i inventory/rollback.local.yml -b -a \
+  'cat /opt/server-monitor/.server-monitor-deploy-revision'
 ```
 
-ロールバック後も、認証、待受 address、監視 targets、ログ取り込みを再試験します。不要になった一時 checkout の削除は、証跡を保存し対象 path を確認した後に別作業として行います。
+最後のrevision markerが`ROLLBACK_SHA`と一致することを記録します。ロールバック後も、認証、
+待受 address、監視 targets、ログ取り込みを再試験します。不要になった一時 checkoutの削除は、
+証跡を保存し対象pathを確認した後に別作業として行います。
 
 ## 7. データのロールバック
 

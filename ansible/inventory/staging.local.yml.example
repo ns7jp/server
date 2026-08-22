@@ -1,0 +1,17 @@
+---
+# 実host用にはこのfileをstaging.local.ymlへcopyして編集する。
+# staging.local.ymlはansible/.gitignore対象で、実IPやSSH userをcommitしない。
+all:
+  children:
+    monitor:
+      hosts:
+        monitor-01:
+          ansible_host: 192.0.2.10
+          ansible_user: ubuntu
+          ansible_python_interpreter: /usr/bin/python3
+          # host varsはgroup_vars/allより優先される。実host配備ではcontrollerの
+          # local inventory変更とrelease sourceを分離する。
+          server_monitor_environment: staging
+          server_monitor_source_mode: git
+          # branch / tagではなく、remoteに存在する40桁commit SHAへ必ず置換する。
+          server_monitor_git_version: "replace-with-40-character-commit-sha"

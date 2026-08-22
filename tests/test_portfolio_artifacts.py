@@ -1,5 +1,9 @@
 import re
+import os
+import shutil
+import subprocess
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -754,4 +758,259 @@ def test_backup_role_validates_inputs_before_any_target_mutation():
     assert "backup_volume_names | unique" in tasks
     assert "backup_service_names | unique" in tasks
     assert "follow: false" in tasks
+
+
+def test_internal_markdown_links_resolve_inside_the_repository():
+    documents = [ROOT / "README.md", *(ROOT / "docs").rglob("*.md")]
+    link_pattern = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
+    failures = []
+
+    for document in documents:
+        text = document.read_text(encoding="utf-8")
+        for raw_target in link_pattern.findall(text):
+            raw_target = raw_target.strip()
+            if raw_target.startswith("<") and ">" in raw_target:
+                target = raw_target[1 : raw_target.index(">")]
+            else:
+                target = raw_target.split(maxsplit=1)[0]
+
+            parsed = urlsplit(target)
+            if parsed.scheme or target.startswith(("#", "//")) or not parsed.path:
+                continue
+
+            candidate = (document.parent / unquote(parsed.path)).resolve()
+            try:
+                candidate.relative_to(ROOT.resolve())
+            except ValueError:
+                failures.append(f"{document.relative_to(ROOT)} -> outside repo: {target}")
+                continue
+            if not candidate.exists():
+                failures.append(f"{document.relative_to(ROOT)} -> missing: {target}")
+
+    assert not failures, "\n".join(failures)
+
+
+def test_daily_check_targets_the_deployed_project_and_detects_missing_services():
+    script = (ROOT / "scripts" / "ops" / "daily-check.sh").read_text(
+        encoding="utf-8"
+    )
+    workflow = (
+        ROOT / ".github" / "workflows" / "python-check.yml"
+    ).read_text(encoding="utf-8")
+
+    for expected in (
+        "--project-dir",
+        "SCRIPT_DIR=",
+        ".server-monitor-deploy-revision",
+        "--project-directory",
+        "compose.slack.yaml.example",
+        "compose.ansible.yaml",
+        "ps --all",
+        "--status running",
+        "must be an integer from 1 to 100",
+        "df --output=pcent,target",
+        "df-over-threshold.awk",
+        "配備対象にcompose.yamlがあるがDocker Compose commandを利用できない",
+    ):
+        assert expected in script
+    assert script.index("compose.slack.yaml.example") < script.index(
+        "compose.ansible.yaml"
+    )
+    assert "git ls-files '*.sh'" in workflow
+    assert "daily-check.sh --disk-threshold 0" in workflow
+
+
+def test_disk_usage_parser_preserves_spaces_and_detects_threshold_breach():
+    awk = shutil.which("awk")
+    if awk is None:
+        return
+
+    sample = "Use% Mounted on\n 95% /srv/data volume\n 20% /\n"
+    result = subprocess.run(
+        [
+            awk,
+            "-v",
+            "threshold=80",
+            "-f",
+            str(ROOT / "scripts" / "ops" / "df-over-threshold.awk"),
+        ],
+        input=sample,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "/srv/data volume 95%"
+
+
+def test_daily_check_reports_missing_service_and_preserves_overlay_order(tmp_path):
+    if os.name == "nt":
+        return
+    bash = shutil.which("bash")
+    if bash is None:
+        return
+
+    project = tmp_path / "project"
+    (project / "deploy" / "secrets").mkdir(parents=True)
+    (project / "deploy" / "alertmanager").mkdir(parents=True)
+    for relative in (
+        "compose.yaml",
+        "compose.slack.yaml.example",
+        "compose.ansible.yaml",
+        "deploy/secrets/slack_webhook_url.txt",
+        "deploy/alertmanager/alertmanager.ansible.yml",
+    ):
+        (project / relative).write_text("test\n", encoding="utf-8")
+
+    stub_dir = tmp_path / "bin"
+    stub_dir.mkdir()
+    docker_stub = stub_dir / "docker"
+    docker_stub.write_text(
+        """#!/usr/bin/env bash
+printf '%s\n' "$*" >> "${DOCKER_STUB_LOG:?}"
+if [[ "$1" == "info" || "$1 $2" == "compose version" ]]; then
+  exit 0
+fi
+if [[ " $* " == *" config --services "* ]]; then
+  printf 'app\nnginx\n'
+elif [[ " $* " == *" ps --services --status running "* ]]; then
+  printf 'app\n'
+elif [[ " $* " == *" ps --all --format table "* ]]; then
+  printf 'SERVICE STATUS\napp Up\n'
+elif [[ " $* " == *" ps --all --format "* ]]; then
+  printf 'app Up\n'
+else
+  exit 1
+fi
+""",
+        encoding="utf-8",
+    )
+    docker_stub.chmod(0o755)
+    docker_log = tmp_path / "docker-args.log"
+    env = os.environ.copy()
+    env["PATH"] = f"{stub_dir}{os.pathsep}{env['PATH']}"
+    env["DOCKER_STUB_LOG"] = str(docker_log)
+
+    result = subprocess.run(
+        [
+            bash,
+            str(ROOT / "scripts" / "ops" / "daily-check.sh"),
+            "--project-dir",
+            str(project),
+        ],
+        text=True,
+        capture_output=True,
+        check=False,
+        env=env,
+    )
+
+    assert result.returncode != 0
+    assert "runningでないservice:" in result.stdout
+    assert "nginx" in result.stdout
+    compose_call = next(
+        line for line in docker_log.read_text(encoding="utf-8").splitlines()
+        if "config --services" in line
+    )
+    assert compose_call.index("compose.yaml") < compose_call.index(
+        "compose.slack.yaml.example"
+    ) < compose_call.index("compose.ansible.yaml")
+
+
+def test_real_host_inventory_templates_pin_an_immutable_git_release():
+    templates = (
+        ROOT / "ansible" / "inventory" / "staging.local.yml.example",
+        ROOT / "ansible" / "inventory" / "production.yml",
+    )
+
+    for template in templates:
+        text = template.read_text(encoding="utf-8")
+        assert "server_monitor_source_mode: git" in text
+        assert 'server_monitor_git_version: "replace-with-40-character-commit-sha"' in text
+
+    workflow = (ROOT / ".github" / "workflows" / "ansible-check.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "cp inventory/staging.local.yml.example inventory/staging-ci.yml" in workflow
+    assert "ansible-inventory -i inventory/staging-ci.yml --host monitor-01" in workflow
+    assert "ansible-inventory -i inventory/production.yml --host monitor-prod-01" in workflow
+    assert 'value["server_monitor_source_mode"] == "git"' in workflow
+    assert 'value["server_monitor_environment"] == "production"' in workflow
+
+
+def test_runbooks_use_commands_available_in_the_deployed_stack():
+    runbook_dir = ROOT / "docs" / "runbooks"
+    index = (runbook_dir / "README.md").read_text(encoding="utf-8")
+    service_down = (runbook_dir / "service-down.md").read_text(encoding="utf-8")
+    latency = (runbook_dir / "latency-spike.md").read_text(encoding="utf-8")
+    disk = (runbook_dir / "disk-full.md").read_text(encoding="utf-8")
+    memory = (runbook_dir / "memory-pressure.md").read_text(encoding="utf-8")
+    alertmanager = (runbook_dir / "alertmanager-down.md").read_text(
+        encoding="utf-8"
+    )
+
+    for filename in (
+        "service-down.md",
+        "latency-spike.md",
+        "disk-full.md",
+        "memory-pressure.md",
+        "alertmanager-down.md",
+    ):
+        assert filename in index
+    assert "compose.ansible.yaml" in index
+    assert "sudo docker compose" in service_down
+    assert "slack_api_url_file:" in service_down
+    assert "sudo test -s" in service_down
+    assert service_down.index("compose.slack.yaml.example") < service_down.index(
+        "compose.ansible.yaml"
+    )
+    assert "python -c 'import time, urllib.request" in latency
+    assert "docker compose exec app curl" not in latency
+    assert "max-size=10m" in disk
+    assert "未設定のため" not in disk
+    assert "docker compose stats --no-stream prometheus loki" in memory
+    assert "docker stats --no-stream prometheus loki" not in memory
+    assert "api/v1/query" in alertmanager
+    assert "http://blackbox:9115" not in alertmanager
+    assert "Secret mount" in alertmanager
+
+
+def test_rollback_verify_reuses_the_external_vault_inputs():
+    rollback = (
+        ROOT / "docs" / "build-package" / "08-change-rollback-plan.md"
+    ).read_text(encoding="utf-8")
+    rollback_section = rollback.split("## 6. コード・設定のロールバック", 1)[1]
+    verify_command = rollback_section.rsplit("playbooks/deploy.yml\n", 1)[1].split(
+        "ansible monitor", 1
+    )[0]
+
+    assert '--vault-password-file "$VAULT_PASSWORD_FILE"' in verify_command
+    assert '-e "@$ACTIVE_VAULT"' in verify_command
+    assert "playbooks/verify.yml" in verify_command
+    assert "set -euo pipefail" in rollback_section
+    assert 'REPO_ROOT="$(git rev-parse --show-toplevel)"' in rollback_section
+    assert 'test ! -e "$ROLLBACK_WORKTREE"' in rollback_section
+
+
+def test_current_docs_separate_rollback_and_external_acceptance_boundaries():
+    evidence = (ROOT / "docs" / "evidence" / "README.md").read_text(
+        encoding="utf-8"
+    )
+    handover = (
+        ROOT / "docs" / "build-package" / "07-handover-checklist.md"
+    ).read_text(encoding="utf-8")
+    parameters = (
+        ROOT / "docs" / "build-package" / "03-parameter-sheet.md"
+    ).read_text(encoding="utf-8")
+    network = (
+        ROOT / "docs" / "build-package" / "04-network-ip-plan.md"
+    ).read_text(encoding="utf-8")
+
+    assert "構成commit / 設定rollback rehearsal" in evidence
+    assert "YYYY-MM-DD-change-<ID>.md" in evidence
+    assert "構成commit / 設定rollback rehearsal" in handover
+    assert "Docker API proxy" in parameters
+    assert "manifest digest" in parameters
+    assert "全送信元" in parameters
+    assert "rate limitをsource制限の証跡にはしません" in network
 

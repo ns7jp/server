@@ -23,31 +23,44 @@ ansible-galaxy collection install -r ansible/requirements.yml
 
 ## 2. inventory と秘密値
 
-1. `ansible/inventory/staging.yml` の対象 IP と SSH user を設定します。
-2. `ansible/inventory/group_vars/monitor/vault.yml.example` を `vault.yml` にコピーします。
-3. 3 種類のランダムな秘密値を設定し、`ansible-vault encrypt` で暗号化します。
-4. `.vault_pass` の権限を `600` にし、Git 管理外であることを確認します。
+1. `ansible/inventory/staging.local.yml.example`をGit管理外の`staging.local.yml`へコピーし、
+   対象IP、SSH user、`git rev-parse HEAD`で確認した40桁commit SHAを設定します。
+2. 実hostでは`server_monitor_source_mode: git`を使い、local inventory変更と配備releaseを分離します。
+   `directory` modeはclean checkoutを使うCI / local lab向けです。
+3. `ansible/inventory/group_vars/monitor/vault.yml.example` を `vault.yml` にコピーします。
+4. 3 種類のランダムな秘密値を設定し、`ansible-vault encrypt` で暗号化します。
+5. `ansible/.vault_pass` の権限を`600`にし、inventory / VaultとともにGit管理外であることを確認します。
 
 ```bash
+cp ansible/inventory/staging.local.yml.example ansible/inventory/staging.local.yml
+# $EDITOR ansible/inventory/staging.local.yml
 git status --short
-ansible-inventory -i ansible/inventory/staging.yml --graph
-ansible all -i ansible/inventory/staging.yml -m ping
+git check-ignore ansible/inventory/staging.local.yml ansible/.vault_pass \
+  ansible/inventory/group_vars/monitor/vault.yml
+export ANSIBLE_VAULT_PASSWORD_FILE="$PWD/ansible/.vault_pass"
+ansible-inventory -i ansible/inventory/staging.local.yml --graph
+ansible all -i ansible/inventory/staging.local.yml -m ping
 ```
 
 ## 3. 事前確認と構築
 
 ```bash
 cd ansible
-ansible-playbook -i inventory/staging.yml playbooks/site.yml --check --diff
-ansible-playbook -i inventory/staging.yml playbooks/site.yml
+ansible-playbook -i inventory/staging.local.yml playbooks/site.yml --check --diff
+ansible-playbook -i inventory/staging.local.yml playbooks/site.yml
 ```
+
+fresh hostの`--check --diff`は、path/account guard、controller側release取得、moduleが示す差分を
+確認するbest-effort preflightです。package、rsync、Docker、directory、serviceを実際には作らないため、
+後続moduleが前提不足で停止する場合があります。bootstrap成功の証跡にはせず、構文はCI、完全な構築は
+[使い捨てhost E2E](../e2e-validation.md)または対象hostへの実適用で確認します。
 
 失敗時は、失敗 task、対象 host、終了 code、直前の変更を保存して作業を中断します。原因を修正してから同じ playbook を再実行します。
 
 ## 4. 冪等性確認
 
 ```bash
-ansible-playbook -i inventory/staging.yml playbooks/site.yml
+ansible-playbook -i inventory/staging.local.yml playbooks/site.yml
 ```
 
 `play recap` が `failed=0` かつ `changed=0` であることを記録します。意図した定期更新などで変更が出る場合は、その task と理由を結果票へ残します。
@@ -55,7 +68,7 @@ ansible-playbook -i inventory/staging.yml playbooks/site.yml
 ## 5. 構築後確認
 
 ```bash
-ansible-playbook -i inventory/staging.yml playbooks/verify.yml
+ansible-playbook -i inventory/staging.local.yml playbooks/verify.yml
 ssh monitor-01 'systemctl --failed --no-pager'
 ssh monitor-01 'docker compose -f /opt/server-monitor/compose.yaml ps'
 ssh monitor-01 'ss -lntup'

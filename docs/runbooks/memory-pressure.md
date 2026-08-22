@@ -1,5 +1,7 @@
 # Runbook: メモリ使用率の逼迫
 
+> [共通の実行前提](README.md)を確認し、既定配備先`/opt/server-monitor`で実行します。
+
 ## 発火条件
 
 - Alert: `LinuxNodeMemoryPressure`
@@ -15,9 +17,10 @@
 ## 初動
 
 ```bash
+cd /opt/server-monitor
 date
 free -h
-docker stats --no-stream
+sudo docker stats --no-stream
 ```
 
 記録する項目:
@@ -33,10 +36,10 @@ docker stats --no-stream
 
 | 症状 | 確認 | 対応 |
 | --- | --- | --- |
-| 特定コンテナが大量消費 | `docker stats --no-stream` | 対象コンテナを特定し、`docker compose logs <service>` でリーク・無限ループの兆候を確認 |
-| OOM Killer が発火済み | `dmesg -T \| grep -i "killed process"` | 落ちたプロセス・コンテナを特定し `docker compose ps` で再起動状態を確認 |
-| Prometheus / Loki のメモリ使用量が高い | `docker stats --no-stream prometheus loki` | クエリ負荷、retention 設定、cardinality を確認 |
-| 徐々に増加している（リーク疑い） | `docker stats` を数分間隔で複数回取得し推移を比較 | 対象コンテナの再起動で一時回避し、原因調査は事後対応へ |
+| 特定コンテナが大量消費 | `sudo docker stats --no-stream` | 対象コンテナを特定し、`sudo docker compose logs <service>` でリーク・無限ループの兆候を確認 |
+| OOM Killer が発火済み | `sudo dmesg -T \| grep -i "killed process"` | 落ちたprocess / containerを特定し`sudo docker compose ps`で再起動状態を確認 |
+| Prometheus / Loki のメモリ使用量が高い | `sudo docker compose stats --no-stream prometheus loki` | service名をComposeに解決させ、query負荷、retention設定、cardinalityを確認 |
+| 徐々に増加している（リーク疑い） | `sudo docker stats` を数分間隔で複数回取得し推移を比較 | 対象コンテナの再起動で一時回避し、原因調査は事後対応へ |
 | ホスト全体の空きメモリが少ない | `free -h`、`ps aux --sort=-%mem \| head` | 監視スタック以外のプロセスの影響も確認 |
 
 ## 復旧操作
@@ -44,8 +47,8 @@ docker stats --no-stream
 1. 上記切り分けで特定した対象コンテナ・プロセスを再起動する。
 
 ```bash
-docker compose restart <service>
-docker stats --no-stream
+sudo docker compose restart <service>
+sudo docker stats --no-stream
 free -h
 ```
 
