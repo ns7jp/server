@@ -19,6 +19,9 @@ common_required_packages:
   - jq
   - openssl
   - rsync
+  # Self-signed TLS generation drops privileges with runuser while the
+  # Ansible module itself stays out of the managed application directory.
+  - util-linux
   - tcpdump
   - chrony
   - ufw

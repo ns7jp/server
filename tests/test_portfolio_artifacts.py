@@ -612,7 +612,9 @@ def test_install_path_and_account_are_validated_before_any_host_mutation():
     tls_generation = nginx.split("Generate self-signed TLS material", 1)[1].split(
         "- name:", 1
     )[0]
-    assert 'become_user: "{{ server_monitor_user }}"' in tls_generation
+    assert "- /usr/sbin/runuser" in tls_generation
+    assert '- "{{ server_monitor_user }}"' in tls_generation
+    assert "become_user:" not in tls_generation
     tls_permissions = nginx.split("Tighten permissions on TLS material", 1)[1]
     assert "state: file" in tls_permissions
     assert "follow: false" in tls_permissions
@@ -628,6 +630,11 @@ def test_install_path_and_account_are_validated_before_any_host_mutation():
     assert "install_dir_canonical=$(realpath -m" in runner
     assert '== *"/../"*' in runner
     assert '== *"/./"*' in runner
+
+    common_defaults = (
+        ROOT / "ansible" / "roles" / "common" / "defaults" / "main.yml"
+    ).read_text(encoding="utf-8")
+    assert "- util-linux" in common_defaults
 
     guarded_directory_tasks = (
         (common, "Ensure application install directory exists"),

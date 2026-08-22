@@ -111,6 +111,10 @@
 - name: Generate self-signed TLS material (lab / staging fallback)
   ansible.builtin.command:
     argv:
+      - /usr/sbin/runuser
+      - --user
+      - "{{ server_monitor_user }}"
+      - --
       - openssl
       - req
       - -x509
@@ -126,8 +130,6 @@
       - -subj
       - "/CN={{ nginx_self_signed_cn }}"
     creates: "{{ nginx_tls_dir }}/server.crt"
-  become: true
-  become_user: "{{ server_monitor_user }}"
   when: not (nginx_letsencrypt_enabled | bool)
 
 - name: Tighten permissions on TLS material
