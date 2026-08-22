@@ -9,8 +9,8 @@ TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
 ARCHIVE_DIR="${TARGET_DIR}/${TIMESTAMP}"
 WORK_DIR=$(mktemp -d "${TARGET_DIR}/.backup-${TIMESTAMP}-XXXXXX")
 BACKUP_COMPLETE=0
-SERVICES_QUIESCED=0
 {% if backup_quiesce_services | default(false) %}
+SERVICES_QUIESCED=0
 COMPOSE_DIR="{{ backup_compose_dir }}"
 QUIESCE_SERVICES=({% for service in backup_quiesce_service_names %}"{{ service }}" {% endfor %})
 {% endif %}

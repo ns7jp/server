@@ -65,7 +65,7 @@ def test_troubleshooting_template_preserves_primary_reasoning_record():
 
 def test_ansible_directory_source_resolves_from_playbooks_to_repository_root():
     group_vars = (
-        ROOT / "ansible" / "group_vars" / "all" / "main.yml"
+        ROOT / "ansible" / "inventory" / "group_vars" / "all" / "main.yml"
     ).read_text(encoding="utf-8")
     app_defaults = (
         ROOT / "ansible" / "roles" / "app" / "defaults" / "main.yml"
@@ -78,6 +78,16 @@ def test_ansible_directory_source_resolves_from_playbooks_to_repository_root():
     assert 'server_monitor_source_path: "{{ playbook_dir }}/../.."' in group_vars
     assert 'app_repo_source: "{{ server_monitor_source_path }}"' in app_defaults
     assert 'src: "{{ app_repo_source }}/"' in app_tasks
+
+
+def test_inventory_variables_live_beside_inventory_sources():
+    inventory_dir = ROOT / "ansible" / "inventory"
+
+    assert (inventory_dir / "group_vars" / "all" / "main.yml").is_file()
+    assert (inventory_dir / "group_vars" / "monitor" / "main.yml").is_file()
+    assert (inventory_dir / "host_vars" / "monitor-01.yml").is_file()
+    assert not list((ROOT / "ansible" / "group_vars").rglob("*.yml"))
+    assert not list((ROOT / "ansible" / "host_vars").rglob("*.yml"))
 
 
 def test_ansible_compose_secrets_are_readable_by_non_root_container_uids():
@@ -114,10 +124,17 @@ def test_managed_alertmanager_config_is_readable_by_container_uid():
         ROOT / "ansible" / "roles" / "monitoring" / "tasks" / "main.yml"
     ).read_text(encoding="utf-8")
 
-    assert "Render environment-specific Alertmanager configuration" in app_tasks
-    assert "Reconcile environment-specific Alertmanager configuration" in monitoring_tasks
-    assert "mode: '0644'" in app_tasks
-    assert "mode: '0644'" in monitoring_tasks
+    render_task = app_tasks.split(
+        "- name: Render environment-specific Alertmanager configuration", 1
+    )[1].split("- name:", 1)[0]
+
+    assert "src: alertmanager.yml.j2" in render_task
+    assert "deploy/alertmanager/alertmanager.ansible.yml" in render_task
+    assert "mode: '0644'" in render_task
+    assert "notify: Restart managed Alertmanager service" in render_task
+    assert "Reconcile environment-specific Alertmanager configuration" not in monitoring_tasks
+    assert "Validate Alertmanager configuration with amtool" in monitoring_tasks
+    assert "alertmanager.ansible.yml:/etc/alertmanager/alertmanager.yml:ro" in monitoring_tasks
 
 
 def test_full_stack_e2e_starts_as_not_run_and_requires_disposable_host_opt_in():
@@ -147,8 +164,36 @@ def test_directory_sync_excludes_generated_evidence_and_managed_alert_config():
 
     # Both otherwise change between first and second apply and break changed=0.
     assert '"--exclude=.artifacts"' in tasks
-    assert '"--exclude=deploy/alertmanager/alertmanager.yml"' in tasks
+    assert '"--exclude=deploy/alertmanager/alertmanager.ansible.yml"' in tasks
     assert "Render environment-specific Alertmanager configuration" in tasks
+
+
+def test_ansible_compose_override_uses_untracked_managed_alert_config():
+    override = (ROOT / "compose.ansible.yaml").read_text(encoding="utf-8")
+    app_tasks = (ROOT / "ansible" / "roles" / "app" / "tasks" / "main.yml").read_text(
+        encoding="utf-8"
+    )
+    handler = (
+        ROOT / "ansible" / "roles" / "app" / "handlers" / "main.yml"
+    ).read_text(encoding="utf-8")
+    template = (
+        ROOT / "ansible" / "roles" / "app" / "templates" / "alertmanager.yml.j2"
+    ).read_text(encoding="utf-8")
+    e2e_runner = (ROOT / "scripts" / "e2e" / "run-full-stack.sh").read_text(
+        encoding="utf-8"
+    )
+    demo_runner = (ROOT / "scripts" / "demo" / "run-demo.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "alertmanager.ansible.yml:/etc/alertmanager/alertmanager.yml:ro" in override
+    assert "+ ['compose.ansible.yaml']" in app_tasks
+    assert "+ ['compose.ansible.yaml']" in handler
+    assert "services:\n      - alertmanager" in handler
+    assert "slack_api_url_file: /run/secrets/slack_webhook_url" in template
+    assert "api_url: {{ slack_webhook_url" not in template
+    assert "compose.ansible.yaml" in e2e_runner
+    assert "compose.ansible.yaml" in demo_runner
 
 
 def test_restore_runner_verifies_checksums_and_refuses_existing_volumes_by_default():

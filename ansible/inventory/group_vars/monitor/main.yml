@@ -1,6 +1,6 @@
 ---
 # ダッシュボードを動作させるための非機密値。
-# 機密値は ansible-vault で暗号化した group_vars/monitor/vault.yml に置く。
+# 機密値は ansible-vault で暗号化した inventory/group_vars/monitor/vault.yml に置く。
 
 monitor_node_name: "{{ inventory_hostname }}"
 monitor_port: 8080
@@ -14,10 +14,10 @@ monitor_username: monitor
 monitor_password: "{{ vault_monitor_password }}"
 metrics_token: "{{ vault_metrics_token }}"
 grafana_admin_password: "{{ vault_grafana_admin_password }}"
-slack_webhook_url: "{{ vault_slack_webhook_url | default('') }}"
+app_slack_webhook_url: "{{ vault_slack_webhook_url | default('') }}"
 
 # Slack 通知を有効化する場合は true、未設定なら local-alert-view のまま
-alertmanager_slack_enabled: false
+app_alertmanager_slack_enabled: false
 
 # バックアップ
 backup_enabled: true

@@ -18,8 +18,8 @@ all:
     backup_enabled: false
     app_compose_additional_files:
       - compose.e2e.yaml
-    alertmanager_webhook_enabled: true
-    alertmanager_webhook_url: http://webhook-sink:8081/alerts
-    alertmanager_group_wait: 1s
-    alertmanager_group_interval: 1s
-    alertmanager_repeat_interval: 1h
+    app_alertmanager_webhook_enabled: true
+    app_alertmanager_webhook_url: http://webhook-sink:8081/alerts
+    app_alertmanager_group_wait: 1s
+    app_alertmanager_group_interval: 1s
+    app_alertmanager_repeat_interval: 1h

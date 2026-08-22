@@ -6,6 +6,7 @@ __pycache__/
 .artifacts/
 deploy/secrets/*.txt
 !deploy/secrets/*.example
+deploy/alertmanager/alertmanager.ansible.yml
 
 # Terraform
 **/.terraform/

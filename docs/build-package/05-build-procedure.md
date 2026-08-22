@@ -24,7 +24,7 @@ ansible-galaxy collection install -r ansible/requirements.yml
 ## 2. inventory と秘密値
 
 1. `ansible/inventory/staging.yml` の対象 IP と SSH user を設定します。
-2. `ansible/group_vars/monitor/vault.yml.example` を `vault.yml` にコピーします。
+2. `ansible/inventory/group_vars/monitor/vault.yml.example` を `vault.yml` にコピーします。
 3. 3 種類のランダムな秘密値を設定し、`ansible-vault encrypt` で暗号化します。
 4. `.vault_pass` の権限を `600` にし、Git 管理外であることを確認します。
 

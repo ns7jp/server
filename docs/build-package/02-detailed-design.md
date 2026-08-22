@@ -19,8 +19,8 @@
 1. `common` role でユーザー、timezone、SSH、UFW、更新を設定
 2. `docker` role で Docker Engine と Compose plugin を導入
 3. `nginx` role で TLS 前提を準備
-4. `app` role でリポジトリ root（`playbook_dir/../..`）の構成を同期し、秘密値をレンダリングして Compose stack を起動
-5. `monitoring` role で環境別監視設定を配付・構文検査
+4. `app` role でリポジトリ root（`playbook_dir/../..`）を同期し、秘密値と環境別Alertmanager設定を生成して Compose stack を起動
+5. `monitoring` role で配備済み監視設定を実コンテナにより構文検査
 6. `backup` role で systemd timer を登録
 7. `verify.yml` で配備後確認
 

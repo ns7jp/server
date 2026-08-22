@@ -1,0 +1,36 @@
+{# Ansible-managed Alertmanager configuration. Do not edit on the host. #}
+{% if app_alertmanager_slack_enabled | bool %}
+global:
+  slack_api_url_file: /run/secrets/slack_webhook_url
+
+{% endif %}
+route:
+  receiver: {{ 'slack-alerts' if app_alertmanager_slack_enabled | bool else ('validation-webhook' if app_alertmanager_webhook_enabled | bool else 'local-alert-view') }}
+  group_by: ["alertname", "instance"]
+  group_wait: {{ app_alertmanager_group_wait }}
+  group_interval: {{ app_alertmanager_group_interval }}
+  repeat_interval: {{ app_alertmanager_repeat_interval }}
+
+receivers:
+  - name: local-alert-view
+{% if app_alertmanager_slack_enabled | bool %}
+  - name: slack-alerts
+    slack_configs:
+      - channel: "#alerts"
+        send_resolved: true
+        title: '{% raw %}{{ template "slack.default.title" . }}{% endraw %}'
+        text: '{% raw %}{{ template "slack.default.text" . }}{% endraw %}'
+{% endif %}
+{% if app_alertmanager_webhook_enabled | bool %}
+  - name: validation-webhook
+    webhook_configs:
+      - url: {{ app_alertmanager_webhook_url | quote }}
+        send_resolved: true
+{% endif %}
+
+inhibit_rules:
+  - source_matchers:
+      - severity="critical"
+    target_matchers:
+      - severity="warning"
+    equal: ["instance"]

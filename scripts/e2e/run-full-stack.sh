@@ -158,6 +158,7 @@ dcompose() {
   run_as_root docker compose \
     --project-directory "${INSTALL_DIR}" \
     -f "${INSTALL_DIR}/compose.yaml" \
+    -f "${INSTALL_DIR}/compose.ansible.yaml" \
     -f "${INSTALL_DIR}/compose.e2e.yaml" "$@"
 }
 

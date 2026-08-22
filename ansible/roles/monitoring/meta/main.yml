@@ -2,7 +2,7 @@
 galaxy_info:
   role_name: monitoring
   author: server-monitor
-  description: Render Prometheus / Alertmanager / Loki / Grafana Alloy configs and Grafana provisioning for the compose stack
+  description: Validate Prometheus, Alertmanager and Loki configs deployed by the app role
   license: MIT
   min_ansible_version: "2.15"
   platforms:

@@ -10,8 +10,8 @@
   hosts: monitor
   become: true
   gather_facts: true
-  # 役割の順序: docker / nginx でホスト前提を整え、app がリポジトリを同期して compose を起動、
-  # その上で monitoring が環境別設定（Alertmanager）を上書きしてランタイム構文検証を行う。
+  # 役割の順序: docker / nginx でホスト前提を整え、app がリポジトリと環境別設定を同期して
+  # compose を起動し、その上で monitoring がランタイム構文検証を行う。
   # backup は compose volume の名前が確定した後で systemd timer を導入する。
   roles:
     - role: docker

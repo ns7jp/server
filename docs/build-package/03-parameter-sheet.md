@@ -9,7 +9,7 @@
 | 対象 OS | Ubuntu 22.04 / 24.04 LTS | `docs/deployment-ansible.md` |
 | timezone | `Asia/Tokyo` | `ansible/roles/common/defaults/main.yml` |
 | 管理方式 | SSH 公開鍵 + sudo | inventory / 対象ホスト |
-| アプリ用ユーザー | `monitor` | `ansible/group_vars/all/main.yml` |
+| アプリ用ユーザー | `monitor` | `ansible/inventory/group_vars/all/main.yml` |
 | firewall | UFW、default deny incoming | `ansible/roles/common/` |
 | SSH | root login 禁止、password login 禁止 | `ansible/roles/common/` |
 | 自動更新 | unattended-upgrades | `ansible/roles/common/` |

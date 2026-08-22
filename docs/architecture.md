@@ -112,8 +112,8 @@ OS 設定、Docker / Compose スタック、監視配付物、秘密値、バッ
 | `common` | timezone、UFW、SSH ハードニング、unattended-upgrades、アプリ用ユーザー |
 | `docker` | Docker CE、Compose plugin、`daemon.json`（ログローテーション + live-restore） |
 | `nginx` | ホスト側 TLS（Let's Encrypt または自己署名）。Nginx 本体は compose 内 |
-| `monitoring` | `deploy/` の同期、Alertmanager テンプレート、`promtool` / `loki -verify-config` |
-| `app` | リポジトリ同期、Vault 由来の `deploy/secrets/*.txt` 生成、`docker compose up -d` |
+| `monitoring` | app が配備した Prometheus / Loki / Alertmanager 設定の実コンテナ構文検証 |
+| `app` | リポジトリ同期、Vault由来の秘密値と環境別Alertmanager設定の生成、`docker compose up -d` |
 | `backup` | systemd timer による Prometheus / Grafana / Loki volume の日次スナップショット |
 
 CI（`.github/workflows/ansible-check.yml`）で `ansible-lint` と Molecule scenario の

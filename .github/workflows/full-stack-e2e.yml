@@ -10,6 +10,7 @@ on:
     paths:
       - 'ansible/**'
       - 'compose.yaml'
+      - 'compose.ansible.yaml'
       - 'compose.e2e.yaml'
       - 'deploy/**'
       - 'scripts/e2e/**'
@@ -22,6 +23,7 @@ on:
     paths:
       - 'ansible/**'
       - 'compose.yaml'
+      - 'compose.ansible.yaml'
       - 'compose.e2e.yaml'
       - 'deploy/**'
       - 'scripts/e2e/**'
@@ -81,7 +83,9 @@ jobs:
           cp deploy/secrets/dashboard_password.txt.example deploy/secrets/dashboard_password.txt
           cp deploy/secrets/metrics_token.txt.example deploy/secrets/metrics_token.txt
           cp deploy/secrets/grafana_admin_password.txt.example deploy/secrets/grafana_admin_password.txt
-          docker compose -f compose.yaml -f compose.e2e.yaml config --quiet
+          cp deploy/alertmanager/alertmanager.yml deploy/alertmanager/alertmanager.ansible.yml
+          docker compose -f compose.yaml -f compose.ansible.yaml -f compose.e2e.yaml config --quiet
+          rm deploy/alertmanager/alertmanager.ansible.yml
           cd ansible
           ansible-playbook -i inventory/ci.yml playbooks/site.yml --syntax-check
 
@@ -119,10 +123,12 @@ jobs:
           mkdir -p .artifacts/full-stack-e2e/current
           sudo docker compose --project-directory /opt/server-monitor \
             -f /opt/server-monitor/compose.yaml \
+            -f /opt/server-monitor/compose.ansible.yaml \
             -f /opt/server-monitor/compose.e2e.yaml ps \
             > .artifacts/full-stack-e2e/current/failure-compose-ps.txt 2>&1 || true
           sudo docker compose --project-directory /opt/server-monitor \
             -f /opt/server-monitor/compose.yaml \
+            -f /opt/server-monitor/compose.ansible.yaml \
             -f /opt/server-monitor/compose.e2e.yaml logs --no-color --tail 300 \
             > .artifacts/full-stack-e2e/current/failure-compose-logs.txt 2>&1 || true
           sudo journalctl -u server-monitor-backup.service --no-pager \

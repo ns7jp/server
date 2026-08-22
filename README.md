@@ -139,8 +139,8 @@ flowchart LR
 | `common` | timezone / UFW / SSH hardening / unattended-upgrades / アプリ用ユーザー作成 |
 | `docker` | Docker CE + Compose plugin の導入、`daemon.json` でログローテーション |
 | `nginx` | ホスト側 TLS（Let's Encrypt / 自己署名）。Nginx 本体は compose スタック内 |
-| `monitoring` | `deploy/` を同期、Alertmanager をテンプレートで環境別に切替、`promtool` / `loki -verify-config` で検証 |
-| `app` | リポジトリの同期、Vault からの秘密値レンダリング、`docker compose up -d` |
+| `monitoring` | app が配備した Prometheus / Loki / Alertmanager 設定を実コンテナで構文検証 |
+| `app` | リポジトリ同期、Vault由来の秘密値と環境別Alertmanager設定の生成、`docker compose up -d` |
 | `backup` | systemd timer で日次の Prometheus / Grafana / Loki volume スナップショット |
 
 ```bash

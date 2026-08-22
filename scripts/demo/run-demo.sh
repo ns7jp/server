@@ -36,7 +36,9 @@ exec > >(tee -a "${EVIDENCE_DIR}/demo-transcript.log") 2>&1
 
 dcompose() {
   docker compose --project-directory "${PROJECT_DIR}" \
-    -f "${PROJECT_DIR}/compose.yaml" -f "${PROJECT_DIR}/compose.e2e.yaml" "$@"
+    -f "${PROJECT_DIR}/compose.yaml" \
+    -f "${PROJECT_DIR}/compose.ansible.yaml" \
+    -f "${PROJECT_DIR}/compose.e2e.yaml" "$@"
 }
 
 event_seen() {
