@@ -1,0 +1,17 @@
+# E2E 検証専用 override。通常の compose 起動では読み込まれない。
+services:
+  webhook-sink:
+    image: python:3.12-alpine
+    command: ["python", "/app/webhook_sink.py"]
+    restart: unless-stopped
+    volumes:
+      - ./tests/e2e/webhook_sink.py:/app/webhook_sink.py:ro
+    ports:
+      - "127.0.0.1:18081:8081"
+    networks:
+      - monitoring
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true

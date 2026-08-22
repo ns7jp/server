@@ -6,6 +6,7 @@
 #
 # 使い方:
 #   scripts/drills/d1-process-down.sh [--service app] [--healthz URL] [--timeout 300]
+#                                      [--project-dir /opt/server-monitor]
 #
 # 出力:
 #   人間向けサマリーを stdout、機械可読 JSON を最終行に "RESULT_JSON=" で出力。
@@ -16,14 +17,16 @@ set -euo pipefail
 SERVICE="app"
 HEALTHZ_URL="http://127.0.0.1:8080/healthz"
 TIMEOUT_SECONDS=300
+PROJECT_DIR="."
 
 usage() {
   cat <<EOF
-Usage: $0 [--service SERVICE] [--healthz URL] [--timeout SECONDS]
+Usage: $0 [--service SERVICE] [--healthz URL] [--timeout SECONDS] [--project-dir DIR]
 
   --service   compose サービス名 (default: app)
   --healthz   復旧判定用の URL (default: http://127.0.0.1:8080/healthz)
   --timeout   復旧待ち上限秒 (default: 300)
+  --project-dir  compose.yaml がある directory (default: current directory)
   --help      このヘルプ
 EOF
 }
@@ -33,6 +36,7 @@ while [[ $# -gt 0 ]]; do
     --service)  SERVICE="$2"; shift 2 ;;
     --healthz)  HEALTHZ_URL="$2"; shift 2 ;;
     --timeout)  TIMEOUT_SECONDS="$2"; shift 2 ;;
+    --project-dir) PROJECT_DIR="$2"; shift 2 ;;
     --help|-h)  usage; exit 0 ;;
     *) echo "unknown arg: $1" >&2; usage; exit 1 ;;
   esac
@@ -52,9 +56,9 @@ require_cmd sudo
 
 # docker compose v2 plugin を想定（v1 docker-compose も後方互換）
 if docker compose version >/dev/null 2>&1; then
-  COMPOSE="docker compose"
+  COMPOSE=(docker compose --project-directory "$PROJECT_DIR")
 elif command -v docker-compose >/dev/null 2>&1; then
-  COMPOSE="docker-compose"
+  COMPOSE=(docker-compose --project-directory "$PROJECT_DIR")
 else
   echo "docker compose plugin が見つからない" >&2
   exit 1
@@ -69,7 +73,7 @@ if ! curl -fsS --max-time 5 "$HEALTHZ_URL" >/dev/null; then
   exit 2
 fi
 
-CID=$($COMPOSE ps -q "$SERVICE")
+CID=$("${COMPOSE[@]}" ps -q "$SERVICE")
 if [[ -z "$CID" ]]; then
   echo "コンテナが見つからない: ${SERVICE}" >&2
   exit 2

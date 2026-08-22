@@ -4,6 +4,14 @@ backup_target_dir: /var/backups/server-monitor
 backup_retention_days: 14
 backup_schedule_oncalendar: "*-*-* 03:30:00"
 backup_compose_project: server-monitor-lab
+backup_compose_dir: "{{ server_monitor_install_dir }}"
+# Prometheus / Grafana / Loki の on-disk state を同時点で採るため、既定では
+# 短時間停止してから archive を作り、成功・失敗にかかわらず再開する。
+backup_quiesce_services: true
+backup_quiesce_service_names:
+  - prometheus
+  - grafana
+  - loki
 backup_volumes:
   - prometheus_data
   - grafana_data

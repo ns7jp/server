@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 *.pyc
 .env
+.artifacts/
 deploy/secrets/*.txt
 !deploy/secrets/*.example
 

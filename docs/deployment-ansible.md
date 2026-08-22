@@ -98,6 +98,11 @@ ansible-playbook -i inventory/staging.yml playbooks/site.yml | tail -5
 
 冪等性が崩れた場合は Molecule の `idempotence` ステップでも検出される（[ローカル検証](#9-ローカル検証molecule) 参照）。
 
+手元に専用VMがない場合は [Full-stack Ansible E2E](e2e-validation.md)をActionsから
+実行できる。使い捨てUbuntu 24.04 runnerへ同じ`site.yml`を2回適用し、2回目の
+`changed=0`を文字列ではなくworkflowの終了条件として検査する。runtime、network、
+障害復旧、restoreのraw logも同じartifactへ保存する。
+
 ## 7. アプリと監視設定だけを更新
 
 OS の再設定を含まないため、運用中のホストへの差分適用は短時間で完了する。

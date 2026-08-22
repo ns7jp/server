@@ -88,8 +88,126 @@ def test_ansible_compose_secrets_are_readable_by_non_root_container_uids():
         ROOT / "docs" / "runbooks" / "alertmanager-down.md"
     ).read_text(encoding="utf-8")
 
-    assert "mode: '0700'" in app_tasks
-    assert app_tasks.count("mode: '0644'") == 2
-    assert "mode: '0600'" not in app_tasks
+    secrets_dir_task = app_tasks.split("- name: Ensure secrets directory exists", 1)[
+        1
+    ].split("- name:", 1)[0]
+    secret_files_task = app_tasks.split("- name: Render secret files from vault values", 1)[
+        1
+    ].split("- name:", 1)[0]
+    slack_secret_task = app_tasks.split("- name: Render optional Slack webhook secret", 1)[
+        1
+    ].split("- name:", 1)[0]
+
+    assert "mode: '0700'" in secrets_dir_task
+    assert "mode: '0644'" in secret_files_task
+    assert "mode: '0644'" in slack_secret_task
+    assert "mode: '0600'" not in secret_files_task
+    assert "mode: '0600'" not in slack_secret_task
     assert "Compose secrets ファイルが `0644`" in alertmanager_runbook
+
+
+def test_managed_alertmanager_config_is_readable_by_container_uid():
+    app_tasks = (ROOT / "ansible" / "roles" / "app" / "tasks" / "main.yml").read_text(
+        encoding="utf-8"
+    )
+    monitoring_tasks = (
+        ROOT / "ansible" / "roles" / "monitoring" / "tasks" / "main.yml"
+    ).read_text(encoding="utf-8")
+
+    assert "Render environment-specific Alertmanager configuration" in app_tasks
+    assert "Reconcile environment-specific Alertmanager configuration" in monitoring_tasks
+    assert "mode: '0644'" in app_tasks
+    assert "mode: '0644'" in monitoring_tasks
+
+
+def test_full_stack_e2e_starts_as_not_run_and_requires_disposable_host_opt_in():
+    runner = (ROOT / "scripts" / "e2e" / "run-full-stack.sh").read_text(
+        encoding="utf-8"
+    )
+    workflow = (
+        ROOT / ".github" / "workflows" / "full-stack-e2e.yml"
+    ).read_text(encoding="utf-8")
+
+    assert 'STATUS["${id}"]="NOT RUN"' in runner
+    assert "--confirm-disposable-host" in runner
+    assert "changed=0" in runner
+    assert "pull_request:" in workflow
+    assert "actions/upload-artifact" in workflow
+    assert "if: always()" in workflow
+    assert "include-hidden-files: true" in workflow
+    assert "if-no-files-found: error" in workflow
+    assert "--return" not in workflow
+    assert "demo-command-success.txt" in workflow
+
+
+def test_directory_sync_excludes_generated_evidence_and_managed_alert_config():
+    tasks = (ROOT / "ansible" / "roles" / "app" / "tasks" / "main.yml").read_text(
+        encoding="utf-8"
+    )
+
+    # Both otherwise change between first and second apply and break changed=0.
+    assert '"--exclude=.artifacts"' in tasks
+    assert '"--exclude=deploy/alertmanager/alertmanager.yml"' in tasks
+    assert "Render environment-specific Alertmanager configuration" in tasks
+
+
+def test_restore_runner_verifies_checksums_and_refuses_existing_volumes_by_default():
+    restore = (ROOT / "scripts" / "ops" / "restore-volumes.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "sha256sum --check SHA256SUMS" in restore
+    assert "target volume already exists" in restore
+    assert "FORCE=0" in restore
+    assert "unsafe path found in archive" in restore
+
+
+def test_demo_is_reproducible_and_does_not_claim_slack_delivery():
+    guide = (ROOT / "docs" / "demo-capture-guide.md").read_text(encoding="utf-8")
+    demo = (ROOT / "scripts" / "demo" / "run-demo.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "https://ns7jp.github.io/demo.html" in guide
+    assert "実操作の連続録画は未公開" in guide
+    assert "実操作の連続録画ではありません" in guide
+    assert "Slack実配信ではありません" in guide
+    assert "demo.cast" in guide
+    assert "PortfolioDemo" in demo
+    assert "d1-process-down.sh" in demo
+
+
+def test_e2e_cleanup_owns_only_resources_created_by_the_current_run():
+    runner = (ROOT / "scripts" / "e2e" / "run-full-stack.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'CLIENT_CREATED=0' in runner
+    assert 'SSH_USER_CREATED=0' in runner
+    assert 'RESTORE_OWNED=0' in runner
+    assert '[[ "${CLIENT_CREATED}" -eq 1 ]]' in runner
+    assert '[[ "${SSH_USER_CREATED}" -eq 1 ]]' in runner
+    assert '[[ "${RESTORE_OWNED}" -eq 1' in runner
+
+
+def test_notification_checks_match_the_current_synthetic_alert_instance():
+    runner = (ROOT / "scripts" / "e2e" / "run-full-stack.sh").read_text(
+        encoding="utf-8"
+    )
+    demo = (ROOT / "scripts" / "demo" / "run-demo.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "wanted_instance" in runner
+    assert 'alert_instance="ci-monitor-01-' in runner
+    assert "wanted_instance" in demo
+    assert 'DEMO_INSTANCE="demo-' in demo
+
+
+def test_authenticated_ansible_probes_do_not_log_credentials():
+    verify = (ROOT / "ansible" / "playbooks" / "verify.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert verify.count("no_log: true") >= 2
 

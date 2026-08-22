@@ -7,15 +7,60 @@ PROJECT="{{ backup_compose_project }}"
 RETENTION_DAYS={{ backup_retention_days }}
 TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
 ARCHIVE_DIR="${TARGET_DIR}/${TIMESTAMP}"
+WORK_DIR=$(mktemp -d "${TARGET_DIR}/.backup-${TIMESTAMP}-XXXXXX")
+BACKUP_COMPLETE=0
+SERVICES_QUIESCED=0
+{% if backup_quiesce_services | default(false) | bool %}
+COMPOSE_DIR="{{ backup_compose_dir }}"
+QUIESCE_SERVICES=({% for service in backup_quiesce_service_names %}"{{ service }}" {% endfor %})
+{% endif %}
 
-mkdir -p "${ARCHIVE_DIR}"
+cleanup() {
+  local exit_code=$?
+{% if backup_quiesce_services | default(false) | bool %}
+  if [[ "${SERVICES_QUIESCED}" -eq 1 ]]; then
+    docker compose --project-directory "${COMPOSE_DIR}" start "${QUIESCE_SERVICES[@]}" || true
+  fi
+{% endif %}
+  if [[ "${BACKUP_COMPLETE}" -ne 1 ]]; then
+    rm -rf -- "${WORK_DIR}"
+  fi
+  exit "${exit_code}"
+}
+trap cleanup EXIT
+
+if [[ -e "${ARCHIVE_DIR}" ]]; then
+  echo "backup destination already exists: ${ARCHIVE_DIR}" >&2
+  exit 1
+fi
+
+{% if backup_quiesce_services | default(false) | bool %}
+# Set the cleanup guard before the multi-service stop. If Compose stops only a
+# subset and then returns non-zero, the EXIT trap must still start all targets.
+SERVICES_QUIESCED=1
+docker compose --project-directory "${COMPOSE_DIR}" stop "${QUIESCE_SERVICES[@]}"
+{% endif %}
+
 {% for volume in backup_volumes %}
+docker volume inspect "${PROJECT}_{{ volume }}" >/dev/null
 docker run --rm \
   -v "${PROJECT}_{{ volume }}:/data:ro" \
-  -v "${ARCHIVE_DIR}:/backup" \
+  -v "${WORK_DIR}:/backup" \
   alpine:3.20 \
   tar czf "/backup/{{ volume }}.tgz" -C /data .
 {% endfor %}
+
+(
+  cd "${WORK_DIR}"
+  sha256sum ./*.tgz > SHA256SUMS
+)
+mv -- "${WORK_DIR}" "${ARCHIVE_DIR}"
+BACKUP_COMPLETE=1
+
+{% if backup_quiesce_services | default(false) | bool %}
+docker compose --project-directory "${COMPOSE_DIR}" start "${QUIESCE_SERVICES[@]}"
+SERVICES_QUIESCED=0
+{% endif %}
 
 # 古いスナップショットを削除
 find "${TARGET_DIR}" -mindepth 1 -maxdepth 1 -type d -mtime +${RETENTION_DAYS} -exec rm -rf {} +

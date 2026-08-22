@@ -11,7 +11,31 @@
 | Grafana 設定 | dashboard / datasource はプロビジョニング | 手動変更を禁止すれば volume 復元不要 |
 | 資格情報、Slack Webhook | `deploy/secrets/*.txt` または OS の秘密管理 | Git 外の安全な保管先へバックアップ |
 
-## バックアップ例
+## Ansible標準backup
+
+`backup` roleが導入する`server-monitor-backup.service`は、Prometheus / Grafana / Lokiを
+短時間停止して3 volumesを取得し、成功・失敗にかかわらずtrapで再開する。archiveは
+一時directoryへ生成し、`SHA256SUMS`を作ってからtimestamp directoryへrenameする。
+
+```bash
+sudo systemctl start server-monitor-backup.service
+sudo journalctl -u server-monitor-backup.service --no-pager
+sudo find /var/backups/server-monitor -maxdepth 2 -type f
+```
+
+別名volumesへ破壊せずにrestore testする例:
+
+```bash
+sudo bash scripts/ops/restore-volumes.sh \
+  --backup-dir /var/backups/server-monitor/<UTC_TIMESTAMP> \
+  --target-project server-monitor-restore-test
+```
+
+既存target volumeがある場合は既定で停止する。`--force`は対象servicesを停止し、
+置換対象volume名を再確認したdisaster recovery時だけ使う。一気通貫の自動実測は
+[Full-stack E2E](e2e-validation.md)を参照。
+
+## 手動バックアップ例
 
 検証環境で履歴を残す必要がある場合は、サービス停止時間を確保した上で volume をアーカイブする。
 

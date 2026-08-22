@@ -4,10 +4,16 @@
 # 環境固有の Alertmanager 設定だけテンプレートで上書きする。
 
 monitoring_deploy_target: "{{ server_monitor_install_dir }}/deploy"
-monitoring_alertmanager_template: alertmanager.yml.j2
-
 # Slack を有効化するとテンプレートが上書きされる。
 # alertmanager_slack_enabled と slack_webhook_url は group_vars で定義。
 
 # 検証ステップを実行するか（molecule では docker run が使えないため false にする）
 monitoring_run_validation: true
+
+# 通常環境は Alertmanager UI だけで確認する。CI E2E では外部サービスへ
+# 送信せず、compose 内の受信 sink へ通知して配送経路を検証する。
+alertmanager_webhook_enabled: false
+alertmanager_webhook_url: ""
+alertmanager_group_wait: 30s
+alertmanager_group_interval: 5m
+alertmanager_repeat_interval: 4h

@@ -9,9 +9,16 @@
 二セグメント障害ラボについて、実測証跡がある。**
 一方、Alertmanager から Slack への実配信、D-2 復旧演習、AWS 適用、`site.yml` を通した新規構築（IT-01/02）、実 VM の network / UFW 検証（IT-12）は未採録。
 
+> **2026-08-22 追加（自動化と実績の区別）:** `site.yml`一括適用、2回目`changed=0`、
+> runner内network/UFW、D-1、backup restoreを一つの使い捨てUbuntu hostで検証する
+> [Full-stack Ansible E2E](../e2e-validation.md)を実装した。workflow fileの存在はPASS証跡ではない。
+> 実績として参照するときは、成功したActions run URLとartifact `summary.md`、commit SHAを
+> 日付付きevidenceへ記録する。上の2026-08-21時点の状態は履歴として書き換えない。
+
 | 区分 | 状態 |
 | --- | --- |
 | CI による自動検証 | ✅ 継続的に実行中（構文・設定整合・依存脆弱性・秘密値混入・バックアップスクリプト） |
+| Full-stack E2E の実装 | 🧪 workflow / orchestrator / 判定表 / artifact化を実装。成功run未参照の段階では実績に数えない |
 | Ansible ロールの適用・冪等性・検証 | ✅ **4 ロール完走**（[2026-08-17](2026-08-17-molecule.md)、Ubuntu 22.04 コンテナ） |
 | 監視スタック全体の起動（Grafana / Loki） | ✅ [2026-08-18](2026-08-18-local-observability.md)（Alertmanager 通知配信は未採録） |
 | D-1 復旧演習の実測 | ✅ [2026-08-19](../drills/logs/2026-08-19-D-1.md)（RTO 13 秒） ／ D-2 は未採録 |
@@ -36,6 +43,7 @@
 | ローカル Python / 成果物検査 | `tests/` | [2026-08-11: 14 tests PASS](2026-08-11-local-code-validation.md) |
 | Compose / Prometheus / Loki / Alloy 設定 | `compose.yaml`、`deploy/`、`python-check.yml` | [2026-08-18: Linux(WSL2)上での起動・Grafana実画面・Lokiログ検索を採録](2026-08-18-local-observability.md) |
 | Ansible roles | `ansible/`、`ansible-check.yml` | 構文・lint 検証に加え、[2026-08-17: 4 ロールの `molecule test` 完走](2026-08-17-molecule.md)（create → converge → idempotence → verify）。[実行手順](molecule-via-github-actions.md) |
+| Ansible full site E2E | `full-stack-e2e.yml`、`scripts/e2e/run-full-stack.sh` | [実行・証跡採録手順](../e2e-validation.md)。成功run URLとartifactを採録するまでは過去のIT-01/02をPASSへ変更しない |
 | Terraform AWS 構成 | `terraform/`、`terraform-check.yml` | `terraform plan/apply/destroy` と Cost Explorer 実測は未収録 |
 | SLO / 復旧演習 | `docs/slo.md`、`docs/drills/`、`scripts/drills/` | [2026-08-19: D-1 `app` プロセスダウン、RTO 13 秒で復旧](../drills/logs/2026-08-19-D-1.md)。D-2 は未収録 |
 | 外部 probe / 中央 telemetry | `docs/roadmap/external-probe-central-telemetry.md` | 外部 probe と中央保存先の実測は未収録 |
@@ -87,18 +95,21 @@
 
 **必要な環境が軽い順**に進める。
 
-1. **[Molecule を GitHub Actions で実行する](molecule-via-github-actions.md)** — ブラウザのみ・15 分。
+1. **[Full-stack Ansible E2Eを実行する](../e2e-validation.md)** — ブラウザのみ・使い捨てUbuntu runner。
+   新規構築、冪等性、runtime/network、D-1、restoreを一つのartifactへまとめる。
+2. **[Molecule を GitHub Actions で実行する](molecule-via-github-actions.md)** — ブラウザのみ・15 分。
    手元に Linux も Docker も要らない。現時点で最も着手コストが低い実行証跡。
-2. **既存 CI の成功ログを本台帳へ記録する** — ブラウザのみ・30 分。
+3. **既存 CI の成功ログを本台帳へ記録する** — ブラウザのみ・30 分。
    `Backup verify` は毎日自動実行されて成功が蓄積しており（[2026-08-19 時点で 102 回](2026-08-19-ci-baseline.md)）、
    その実績が本台帳に反映されていないことがある。**新しく実行するのではなく、既にある結果を拾う作業**。
-3. **[ローカル証跡採録ガイド](local-evidence-quickstart.md)** — Linux + Docker（WSL2 可）・1 晩。
+4. **[ローカル証跡採録ガイド](local-evidence-quickstart.md)** — Linux + Docker（WSL2 可）・1 晩。
    Grafana dashboard、Loki / Alloy ログ検索、Alertmanager 通知、D-1 復旧演習を採録する。
-4. 動画化する場合は [2〜3 分デモ収録ガイド](../demo-capture-guide.md) を使う。
+5. 動画化する場合は [2〜3 分デモ収録ガイド](../demo-capture-guide.md) を使う。
 
-> 1 と 2 は CI による機械検証であり、**実機の実測証跡の代わりにはならない**。
-> CI で担保できるのは構文・設定の整合・依存の脆弱性までで、
-> 起動・疎通・復旧時間は 3 以降でしか確認できない。台帳にもこの区別を明記する。
+> 1 は使い捨てhost上で起動・疎通・復旧時間まで測る自動実測ですが、GitHub-hosted
+> runner内に範囲を限定した証跡です。長期稼働host、実管理端末、組織DNS、cloud firewallの
+> 代替にはしません。2 と 3 は構文・設定整合などのCI記録、4 は手元Linux環境の実測です。
+> 台帳には実行環境と対象commitを併記します。
 
 外部 probe と中央 telemetry の設計は
 [外部 probe / 中央 telemetry 設計](../roadmap/external-probe-central-telemetry.md) にまとめる。

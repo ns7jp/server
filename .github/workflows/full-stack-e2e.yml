@@ -1,0 +1,141 @@
+name: Full-stack Ansible E2E
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      # Initial branch-only execution; removed after this first E2E is proven.
+      - codex/full-stack-e2e-20260822
+    paths:
+      - 'ansible/**'
+      - 'compose.yaml'
+      - 'compose.e2e.yaml'
+      - 'deploy/**'
+      - 'scripts/e2e/**'
+      - 'scripts/demo/**'
+      - 'scripts/drills/**'
+      - 'scripts/ops/restore-volumes.sh'
+      - 'tests/e2e/**'
+      - '.github/workflows/full-stack-e2e.yml'
+  pull_request:
+    paths:
+      - 'ansible/**'
+      - 'compose.yaml'
+      - 'compose.e2e.yaml'
+      - 'deploy/**'
+      - 'scripts/e2e/**'
+      - 'scripts/demo/**'
+      - 'scripts/drills/**'
+      - 'scripts/ops/restore-volumes.sh'
+      - 'tests/e2e/**'
+      - '.github/workflows/full-stack-e2e.yml'
+  schedule:
+    # 月初 02:15 UTC。hosted runner/image の更新による drift も検出する。
+    - cron: '15 2 1 * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-stack-e2e-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ephemeral-ubuntu:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Initialize evidence directory
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/.artifacts/full-stack-e2e/current"
+          {
+            echo "event_name=${GITHUB_EVENT_NAME}"
+            echo "github_sha=${GITHUB_SHA}"
+            echo "source_sha=${{ github.event.pull_request.head.sha || github.sha }}"
+            echo "runner_image=${ImageOS:-unknown}-${ImageVersion:-unknown}"
+            date -u '+started_at_utc=%Y-%m-%dT%H:%M:%SZ'
+          } > "$GITHUB_WORKSPACE/.artifacts/full-stack-e2e/current/workflow-context.txt"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install Ansible and recording tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install 'ansible>=11,<12' 'asciinema>=2.4,<3'
+          ansible-galaxy collection install -r ansible/requirements.yml
+
+      - name: Validate E2E inputs before mutating the runner
+        run: |
+          bash -n scripts/e2e/run-full-stack.sh
+          bash -n scripts/demo/run-demo.sh
+          bash -n scripts/drills/d1-process-down.sh
+          bash -n scripts/ops/restore-volumes.sh
+          python -m py_compile tests/e2e/webhook_sink.py
+          cp deploy/secrets/dashboard_password.txt.example deploy/secrets/dashboard_password.txt
+          cp deploy/secrets/metrics_token.txt.example deploy/secrets/metrics_token.txt
+          cp deploy/secrets/grafana_admin_password.txt.example deploy/secrets/grafana_admin_password.txt
+          docker compose -f compose.yaml -f compose.e2e.yaml config --quiet
+          cd ansible
+          ansible-playbook -i inventory/ci.yml playbooks/site.yml --syntax-check
+
+      - name: Run ephemeral-host provision, idempotence, runtime and restore tests
+        run: |
+          bash scripts/e2e/run-full-stack.sh \
+            --confirm-disposable-host \
+            --evidence-dir "$GITHUB_WORKSPACE/.artifacts/full-stack-e2e/current"
+
+      - name: Record an actual terminal demo cast
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/.artifacts/full-stack-e2e/current/demo"
+          asciinema rec \
+            --overwrite \
+            --idle-time-limit 2 \
+            --command "sudo bash $GITHUB_WORKSPACE/scripts/demo/run-demo.sh --project-dir /opt/server-monitor --evidence-dir $GITHUB_WORKSPACE/.artifacts/full-stack-e2e/current/demo --pace-seconds 0 && date -u '+demo_completed_at_utc=%Y-%m-%dT%H:%M:%SZ' > $GITHUB_WORKSPACE/.artifacts/full-stack-e2e/current/demo-command-success.txt" \
+            "$GITHUB_WORKSPACE/.artifacts/full-stack-e2e/current/demo.cast"
+          # asciinema 2.4 does not propagate the recorded command's exit status.
+          # Require a marker written only after the demo command exits successfully.
+          test -s "$GITHUB_WORKSPACE/.artifacts/full-stack-e2e/current/demo.cast"
+          test -s "$GITHUB_WORKSPACE/.artifacts/full-stack-e2e/current/demo-command-success.txt"
+
+      - name: Publish summary in the Actions run
+        if: always()
+        run: |
+          if [ -f .artifacts/full-stack-e2e/current/summary.md ]; then
+            cat .artifacts/full-stack-e2e/current/summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'E2E stopped before summary generation.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Collect service diagnostics
+        if: failure()
+        run: |
+          mkdir -p .artifacts/full-stack-e2e/current
+          sudo docker compose --project-directory /opt/server-monitor \
+            -f /opt/server-monitor/compose.yaml \
+            -f /opt/server-monitor/compose.e2e.yaml ps \
+            > .artifacts/full-stack-e2e/current/failure-compose-ps.txt 2>&1 || true
+          sudo docker compose --project-directory /opt/server-monitor \
+            -f /opt/server-monitor/compose.yaml \
+            -f /opt/server-monitor/compose.e2e.yaml logs --no-color --tail 300 \
+            > .artifacts/full-stack-e2e/current/failure-compose-logs.txt 2>&1 || true
+          sudo journalctl -u server-monitor-backup.service --no-pager \
+            > .artifacts/full-stack-e2e/current/failure-backup-journal.txt 2>&1 || true
+
+      - name: Upload reproducible evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: full-stack-e2e-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .artifacts/full-stack-e2e/current/
+          # upload-artifact v7 excludes dot-directories unless explicitly allowed.
+          # This path is intentionally narrow and contains no generated credentials.
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
