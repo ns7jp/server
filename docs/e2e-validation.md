@@ -31,11 +31,12 @@ Actions runはDocker roleの収束と設定を検証しますが「Docker未導�
 | --- | --- | --- | --- | --- |
 | 2026-08-22 | `f4ea31993d6d5e3b8478789f8f0d008ed5f44961` | **23/23 ID PASS** | [run 32563104045](https://github.com/ns7jp/server-monitor/actions/runs/32563104045) / `full-stack-e2e-32563104045-1` | [環境・判定表・境界](evidence/2026-08-22-full-stack-e2e.md) |
 | 2026-08-22 | `43d36ee674f090108153b09451e825e3383494c1`（PR #74 merge後の`main`） | **workflow success（23 ID gate）** | [run 32566169574](https://github.com/ns7jp/server-monitor/actions/runs/32566169574) | [feature runとの区別と5 workflow一覧](evidence/2026-08-22-full-stack-e2e.md#main-merge後の再検証) |
+| 2026-08-22 | `7622a9da974f694ae75e0173135923701be9e5a5`（PR #75 runtime変更最終commit） | **23/23 ID PASS** | [run 32572409469](https://github.com/ns7jp/server-monitor/actions/runs/32572409469) / `full-stack-e2e-32572409469-1` | [proxy・source配備hardening後の再検証](evidence/2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証) |
 
 最初のfeature runのartifactは2026-09-21に期限切れとなるため、判定表、version、RTO、
-restore結果、terminal castのhashを日付付き証跡にも転記しています。上記2 runは
-Docker API proxy導入前の構成を検証した履歴です。proxy導入を含む後続commitは、
-新しいFull-stack E2Eが成功するまで実測済みとは扱いません。
+restore結果、terminal castのhashを日付付き証跡にも転記しています。最初の2 runは
+Docker API proxy導入前の履歴です。3番目のrunでproxyとsource配備hardeningを含む構成を
+再検証し、初回適用`changed=30 / failed=0`、2回目`changed=0 / failed=0`を確認しました。
 
 ## 実行方法
 

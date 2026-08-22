@@ -1,8 +1,9 @@
 # Full-stack Ansible E2E 実測 — 2026-08-22
 
 使い捨ての GitHub-hosted Ubuntu runner に `site.yml` を一括適用し、冪等性、
-10 containers の稼働、認証、通知経路、障害復旧、backup / restore、network / UFWを
-一つのrunで確認した記録です。artifactの保存期限後も判断根拠が残るよう、判定表を本書にも転記します。
+containersの稼働、認証、通知経路、障害復旧、backup / restore、network / UFWを
+一つのrunで確認した記録です。初回feature runは10 containers、Docker API proxy追加後の
+PR #75再検証は11 containersです。artifactの保存期限後も判断根拠が残るよう、判定表を本書にも転記します。
 
 ## 実行情報
 
@@ -43,7 +44,53 @@ artifact digest、個別判定値をmain runの値へ読み替えず、上の表
 示す追補として扱います。また、commit `43d36ee...`より後の変更を検証した証跡でもありません。
 AWS jobのskipをAWS実環境のPASSとして扱いません。
 
-## 判定結果
+## PR #75 hardening後の再検証
+
+Docker API proxy、controller側immutable source配備、path・symlink・型検証などを追加した
+PR #75のruntime変更最終commit `7622a9da974f694ae75e0173135923701be9e5a5`に対し、
+pull request eventで再検証しました。
+
+| 項目 | 値 |
+| --- | --- |
+| 結果 | **23/23 ID PASS** |
+| 実施時刻 | 2026-08-22 21:14〜21:17 JST（12:14〜12:17 UTC） |
+| Actions run | [Full-stack Ansible E2E run 32572409469 / attempt 1](https://github.com/ns7jp/server-monitor/actions/runs/32572409469) |
+| event / branch | `pull_request` / `codex/final-server-hardening-20260822` |
+| source / GitHub SHA | `7622a9da974f694ae75e0173135923701be9e5a5`（runtime変更最終commit） |
+| Ansible初回適用 | `changed=30 / failed=0` |
+| Ansible2回目適用 | `changed=0 / failed=0` |
+| runtime | core 10 services + E2E webhook sink、計11 containers |
+| artifact | `full-stack-e2e-32572409469-1` / ID `9475706910` / 26,500 bytes |
+| artifact digest | `sha256:11e3523cbf7a547c2762900b0d7d88006867e11d371d3c6283d6155eb3543900` |
+| artifact保存期限 | 2026-09-21 12:17:40 UTC（30日） |
+
+このrunでは従来の23 ID gateをすべてPASSし、追加したDocker API proxyについても、
+read APIの成功、POST拒否、proxyが取得した固有Nginx logのAlloy経由Loki到達を確認しました。
+D-1は1秒で復旧し、3 archivesのchecksum検証と別名3 volumesへのrestoreも成功しました。
+
+同じcommitに対する5 workflowはすべて`completed / success`です。
+
+| workflow | PR #75再検証run | 結果 |
+| --- | --- | --- |
+| Ansible check | [32572409470](https://github.com/ns7jp/server-monitor/actions/runs/32572409470) | **success** |
+| Full-stack Ansible E2E | [32572409469](https://github.com/ns7jp/server-monitor/actions/runs/32572409469) | **success**（23/23 ID PASS） |
+| Security scan | [32572409480](https://github.com/ns7jp/server-monitor/actions/runs/32572409480) | **success** |
+| Backup verify | [32572409434](https://github.com/ns7jp/server-monitor/actions/runs/32572409434) | **success** |
+| Python check | [32572409487](https://github.com/ns7jp/server-monitor/actions/runs/32572409487) | **success** |
+
+PR上の先行runでは、実環境でのみ表面化した2点を検出して修正しました。
+
+1. run [32571650745](https://github.com/ns7jp/server-monitor/actions/runs/32571650745)で、
+   `ansible.builtin.assert`に対するtask-level `vars`のindent不整合を検出し、task直下へ修正した。
+2. run [32571890175](https://github.com/ns7jp/server-monitor/actions/runs/32571890175)で、
+   `become_user: monitor`が作成する`/opt/server-monitor/.ansible/tmp`をsource同期が削除し、
+   2回目適用が`changed=1`になることを検出した。OpenSSL実行を`runuser`へ変更し、
+   controller側sourceと配備先の収束を維持した。
+
+この追補はruntime変更最終commitの実測です。後続の証跡文書だけを更新するcommitへruntimeの
+PASSを読み替えず、実装が変わった場合は新しいFull-stack E2Eで再検証します。
+
+## 判定結果（feature run 32563104045）
 
 artifactの`summary.md` / `results.tsv`では、対象23 IDがすべて`PASS`でした。
 

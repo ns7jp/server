@@ -20,15 +20,17 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 2. **構成と構築工程** — [構成図](docs/architecture.md) / [Linux server構築案件pack](docs/build-package/README.md)。
 3. **実測証跡** — [検証証跡台帳](docs/evidence/README.md) / [新規host一気通貫E2E](docs/e2e-validation.md)。未実行をPASSにしません。
 
-> **実測の現状（2026-08-22）**: [Full-stack E2E run 32563104045](https://github.com/ns7jp/server-monitor/actions/runs/32563104045)で、
-> **使い捨てUbuntu 24.04 hostへの`site.yml`一括適用、2回目`changed=0`、10 containersの稼働、
-> 認証、Prometheus target、ローカルwebhook通知、loopback/UFW/SSH tunnel、D-1自動復旧（1秒）、
-> 3 volumesのchecksum付きbackup / 別volume restoreを全項目PASS**として採録しました。
-> 判定表・環境・raw log・実terminal castは[日付付き証跡](docs/evidence/2026-08-22-full-stack-e2e.md)に固定しています。
-> PR #74 のmainへのmerge後も、commit `43d36ee674f090108153b09451e825e3383494c1`に対して
-> [Full-stack E2E run 32566169574](https://github.com/ns7jp/server-monitor/actions/runs/32566169574)を含む
-> 5 workflowが成功しました。これはmerge済みcommitの再検証であり、その後の変更は新しいrunが
-> 成功するまで実測済みとは扱いません。
+> **実測の現状（2026-08-22）**: PR #75のruntime変更最終commit
+> `7622a9da974f694ae75e0173135923701be9e5a5`に対する
+> [Full-stack E2E run 32572409469](https://github.com/ns7jp/server-monitor/actions/runs/32572409469)で、
+> **使い捨てUbuntu 24.04 hostへの`site.yml`一括適用、2回目`changed=0`、11 containersの稼働、
+> 認証、Prometheus target、Docker API proxyのGET成功・POST拒否・Loki log到達、
+> ローカルwebhook通知、loopback/UFW/SSH tunnel、D-1自動復旧（1秒）、
+> 3 volumesのchecksum付きbackup / 別volume restoreを23/23 ID PASS**として採録しました。
+> 同じcommitに対するAnsible check、Security scan、Backup verify、Python checkも成功しています。
+> 判定表・環境・測定値・artifact digestは
+> [日付付き証跡](docs/evidence/2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証)に固定し、
+> raw logは期限付きActions artifactに保存しています。
 >
 > 2026-08-18/19のWSL2実測、D-1 RTO 13秒、二セグメント障害ラボ、
 > [21項目中11項目PASSの結果票](docs/evidence/2026-08-19-build-validation.md)は当時の履歴として保持します。
