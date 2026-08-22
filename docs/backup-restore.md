@@ -35,6 +35,11 @@ sudo bash scripts/ops/restore-volumes.sh \
 置換対象volume名を再確認したdisaster recovery時だけ使う。一気通貫の自動実測は
 [Full-stack E2E](e2e-validation.md)を参照。
 
+> **実測（2026-08-22）:** 使い捨てUbuntu 24.04 runnerで3 volumeのbackup、
+> SHA-256検証、別名volumeへのrestore、marker一致までPASSしました
+> （[Full-stack E2E証跡](evidence/2026-08-22-full-stack-e2e.md)）。これは同一runner内の
+> volume restore試験であり、別hostへ復元するD-2やAWS snapshot復元の実績ではありません。
+
 ## 手動バックアップ例
 
 検証環境で履歴を残す必要がある場合は、サービス停止時間を確保した上で volume をアーカイブする。
@@ -81,7 +86,7 @@ docker compose start prometheus grafana loki
 
 | 演習 | 頻度 | 想定時間 | 環境 |
 | --- | --- | --- | --- |
-| D-1: プロセスダウン → 自動復旧 | 月次 | 15 分 | ローカル Docker |
+| D-1: プロセスダウン → 自動復旧 | 月次 | 15 分 | ローカル Docker / ephemeral runner |
 | D-2: ホスト障害 → 別ホストに復元 | 四半期 | 2 時間 | AWS staging |
 
 一覧は [docs/drills/README.md](drills/README.md)、テンプレートは
@@ -113,10 +118,13 @@ GitHub Secret `AWS_BACKUP_VERIFY_ROLE_ARN` が設定された環境でのみ動�
 
 ## 演習履歴
 
-D-1 は実施済み。D-2 はまだ収録されていない（下表の該当行は記録先の形式であり、実績値ではない）。
+D-1 と同一runner内の3-volume restoreは実施済み。D-2 はまだ収録されていない
+（下表の該当行は記録先の形式であり、実績値ではない）。
 実施後は [検証証跡台帳](evidence/README.md) の記録ルールに従って追加する。
 
 | 日付 | 演習 | RTO 実績 | 結果 | 記録 |
 | --- | --- | --- | --- | --- |
 | 2026-08-19 | D-1 | 13 秒（目標 5 分以内） | PASS | [docs/drills/logs/2026-08-19-D-1.md](drills/logs/2026-08-19-D-1.md) |
+| 2026-08-22 | D-1（ephemeral runner） | 1 秒（目標 5 分以内） | PASS | [Full-stack E2E](evidence/2026-08-22-full-stack-e2e.md) |
+| 2026-08-22 | 3-volume backup / restore（同一runner内） | RTO対象外 | PASS | [Full-stack E2E](evidence/2026-08-22-full-stack-e2e.md) |
 | 未実施 | D-2 | 未測定 | 未実施 | `docs/drills/logs/YYYY-MM-DD-D-2.md` |
