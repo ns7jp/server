@@ -1,4 +1,179 @@
 ---
+- name: Validate source deployment mode and target path before mutation
+  ansible.builtin.assert:
+    that:
+      - (server_monitor_user | string) != 'root'
+      - (server_monitor_group | string) != 'root'
+      - (server_monitor_group | string) != 'docker'
+      - server_monitor_source_mode in ['directory', 'git']
+      - app_repo_target == server_monitor_install_dir
+      - server_monitor_secrets_dir == app_repo_target ~ '/deploy/secrets'
+      - >-
+        (app_repo_target | string)
+        is match('^/(opt|srv)/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$')
+      - "'/./' not in ((app_repo_target | string) ~ '/')"
+      - "'/../' not in ((app_repo_target | string) ~ '/')"
+      - >-
+        server_monitor_source_mode != 'git'
+        or (server_monitor_git_version | string) is match('^[0-9a-fA-F]{40}$')
+      - app_secret_names | length == app_secrets | length
+      - app_secret_names | unique | list | length == app_secret_names | length
+      - >-
+        app_secret_names | select('match', '^[A-Za-z0-9._-]+[.]txt$')
+        | list | length == app_secret_names | length
+      - "'slack_webhook_url.txt' not in app_secret_names"
+    vars:
+      app_secret_names: >-
+        {{ app_secrets | map(attribute='name', default='') | list }}
+    fail_msg: >-
+      the application account and primary group must not be root, and the
+      primary group must not be docker;
+      server_monitor_install_dir must be a dedicated directory below /opt or /srv;
+      app_repo_target must equal server_monitor_install_dir;
+      server_monitor_secrets_dir must be the managed deploy/secrets directory;
+      app_secrets names must be unique safe .txt basenames and must not reserve
+      slack_webhook_url.txt;
+      server_monitor_source_mode must be directory, or git with
+      server_monitor_git_version set to an immutable 40-character commit SHA.
+
+- name: Inspect install target without following symlinks
+  ansible.builtin.stat:
+    path: "{{ app_repo_target }}"
+    follow: false
+  register: app_target_path
+
+- name: Resolve install target through parent path components
+  ansible.builtin.command:  # noqa: command-instead-of-module
+    argv:
+      - realpath
+      - -m
+      - --
+      - "{{ app_repo_target }}"
+  check_mode: false
+  changed_when: false
+  register: app_target_realpath
+
+- name: Refuse a symlink or non-directory install target before mutation
+  ansible.builtin.assert:
+    that:
+      - app_target_realpath.stdout == app_repo_target
+      - >-
+        not app_target_path.stat.exists
+        or (app_target_path.stat.isdir and not app_target_path.stat.islnk)
+    fail_msg: >-
+      Refusing deployment because {{ app_repo_target }} resolves to
+      {{ app_target_realpath.stdout | default('unknown') }} or is not a real
+      directory. A symlink could redirect release synchronization outside the
+      validated install path.
+
+- name: Inspect managed secrets directory without following symlinks
+  ansible.builtin.stat:
+    path: "{{ server_monitor_secrets_dir }}"
+    follow: false
+  register: app_secrets_path
+
+- name: Resolve managed secrets directory through parent path components
+  ansible.builtin.command:  # noqa: command-instead-of-module
+    argv:
+      - realpath
+      - -m
+      - --
+      - "{{ server_monitor_secrets_dir }}"
+  check_mode: false
+  changed_when: false
+  register: app_secrets_realpath
+
+- name: Refuse a symlinked or redirected secrets directory before mutation
+  ansible.builtin.assert:
+    that:
+      - app_secrets_realpath.stdout == server_monitor_secrets_dir
+      - >-
+        not app_secrets_path.stat.exists
+        or (app_secrets_path.stat.isdir and not app_secrets_path.stat.islnk)
+    fail_msg: >-
+      Refusing deployment because the managed secrets directory is a symlink,
+      is not a directory, or resolves outside the validated install tree.
+
+- name: Resolve local checkout revision for directory mode
+  ansible.builtin.command:  # noqa: command-instead-of-module
+    argv:
+      - git
+      - -C
+      - "{{ app_repo_source }}"
+      - rev-parse
+      - HEAD
+  delegate_to: localhost
+  become: false
+  check_mode: false
+  changed_when: false
+  register: app_directory_revision
+  when: server_monitor_source_mode == 'directory'
+
+- name: Resolve directory source path on controller
+  ansible.builtin.command:  # noqa: command-instead-of-module
+    argv:
+      - realpath
+      - -m
+      - --
+      - "{{ app_repo_source }}"
+  delegate_to: localhost
+  become: false
+  check_mode: false
+  changed_when: false
+  register: app_directory_source_realpath
+  when: server_monitor_source_mode == 'directory'
+
+- name: Resolve directory source repository top-level
+  ansible.builtin.command:  # noqa: command-instead-of-module
+    argv:
+      - git
+      - -C
+      - "{{ app_repo_source }}"
+      - rev-parse
+      - --show-toplevel
+  delegate_to: localhost
+  become: false
+  check_mode: false
+  changed_when: false
+  register: app_directory_source_toplevel
+  when: server_monitor_source_mode == 'directory'
+
+- name: Require directory source to identify the repository root
+  ansible.builtin.assert:
+    that:
+      - app_directory_source_toplevel.stdout == app_directory_source_realpath.stdout
+    fail_msg: >-
+      Directory source must resolve to the selected Git repository top-level;
+      refusing a subdirectory or unrelated path.
+  when: server_monitor_source_mode == 'directory'
+
+- name: Inspect local checkout for uncommitted deployment input
+  ansible.builtin.command:  # noqa: command-instead-of-module
+    argv:
+      - git
+      - -C
+      - "{{ app_repo_source }}"
+      - status
+      - --porcelain
+      - --untracked-files=normal
+  delegate_to: localhost
+  become: false
+  check_mode: false
+  changed_when: false
+  register: app_directory_status
+  when: server_monitor_source_mode == 'directory'
+
+- name: Require a clean local checkout for directory mode
+  ansible.builtin.assert:
+    that:
+      - app_directory_status.stdout | length == 0
+    fail_msg: >-
+      Directory mode refuses uncommitted or untracked source files because the
+      revision marker would not identify the deployed content. Commit, stash,
+      or remove the listed changes before deployment:
+      {{ app_directory_status.stdout_lines | default([]) | join(', ') }}
+  when: server_monitor_source_mode == 'directory'
+
 - name: Ensure install directory exists
   ansible.builtin.file:
     path: "{{ app_repo_target }}"
@@ -6,43 +181,172 @@
     owner: "{{ server_monitor_user }}"
     group: "{{ server_monitor_group }}"
     mode: '0750'
+    follow: false
 
-- name: Sync application source from local checkout
-  ansible.posix.synchronize:
-    src: "{{ app_repo_source }}/"
-    dest: "{{ app_repo_target }}/"
-    delete: false
-    recursive: true
-    # 配備先の所有者・権限はAnsible側で管理する。controller側の属性を再適用すると、
-    # 後続のfile taskとの間で差分が往復し、2回目の実行もchangedになってしまう。
-    owner: false
-    group: false
-    perms: false
-    rsync_opts:
-      - "--omit-dir-times"
-      - "--exclude=.git"
-      - "--exclude=.env"
-      - "--exclude=ansible"
-      - "--exclude=.venv"
-      - "--exclude=__pycache__"
-      - "--exclude=.artifacts"
-      # target host 上でのみ生成するため、controller 側の一時生成物は同期しない。
-      - "--exclude=deploy/alertmanager/alertmanager.ansible.yml"
-      - "--exclude=deploy/secrets/*.txt"
-      - "--exclude=deploy/tls/server.key"
-      - "--exclude=deploy/tls/server.crt"
-  when: server_monitor_source_mode == 'directory'
+- name: Build and deploy a tracked release archive
+  block:
+    - name: Create controller release staging directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: server-monitor-release-
+      delegate_to: localhost
+      become: false
+      check_mode: false
+      changed_when: false
+      register: app_release_staging
 
-- name: Clone repository for git mode
-  ansible.builtin.git:
-    repo: "{{ server_monitor_git_repo }}"
-    dest: "{{ app_repo_target }}"
-    version: "{{ server_monitor_git_version }}"
-    update: true
-    force: false
-  become: true
-  become_user: "{{ server_monitor_user }}"
-  when: server_monitor_source_mode == 'git'
+    - name: Fetch immutable release source for git mode
+      ansible.builtin.git:
+        repo: "{{ server_monitor_git_repo }}"
+        dest: "{{ app_release_staging.path }}/repository"
+        version: "{{ server_monitor_git_version }}"
+        update: true
+        force: false
+        recursive: false
+      delegate_to: localhost
+      become: false
+      check_mode: false
+      changed_when: false
+      register: app_git_checkout
+      when: server_monitor_source_mode == 'git'
+
+    - name: Assert fetched git release matches requested immutable revision
+      ansible.builtin.assert:
+        that:
+          - >-
+            (app_git_checkout.after | lower)
+            == (server_monitor_git_version | string | lower)
+        fail_msg: >-
+          Fetched git revision does not match server_monitor_git_version.
+      when: server_monitor_source_mode == 'git'
+
+    - name: Inspect selected release tree for unsupported gitlinks
+      ansible.builtin.command:  # noqa: command-instead-of-module
+        argv:
+          - git
+          - -C
+          - >-
+            {{ app_repo_source
+               if server_monitor_source_mode == 'directory'
+               else app_release_staging.path ~ '/repository' }}
+          - ls-tree
+          - -r
+          - >-
+            {{ app_directory_revision.stdout
+               if server_monitor_source_mode == 'directory'
+               else app_git_checkout.after }}
+      delegate_to: localhost
+      become: false
+      check_mode: false
+      changed_when: false
+      register: app_release_tree
+
+    - name: Reject submodules that git archive cannot materialize
+      ansible.builtin.assert:
+        that:
+          - not (app_release_tree.stdout is search('(^|\n)160000 '))
+        fail_msg: >-
+          The selected revision contains a Git submodule. Tracked-release
+          archive deployment refuses to omit gitlink content.
+
+    - name: Archive only files tracked by the selected checkout revision
+      ansible.builtin.command:  # noqa: command-instead-of-module
+        argv:
+          - git
+          - -C
+          - >-
+            {{ app_repo_source
+               if server_monitor_source_mode == 'directory'
+               else app_release_staging.path ~ '/repository' }}
+          - -c
+          - tar.umask=0022
+          - archive
+          - --format=tar
+          - "--output={{ app_release_staging.path }}/release.tar"
+          - >-
+            {{ app_directory_revision.stdout
+               if server_monitor_source_mode == 'directory'
+               else app_git_checkout.after }}
+      delegate_to: localhost
+      become: false
+      check_mode: false
+      changed_when: false
+
+    - name: Create controller release extraction directory
+      ansible.builtin.file:
+        path: "{{ app_release_staging.path }}/release"
+        state: directory
+        mode: '0750'
+      delegate_to: localhost
+      become: false
+      check_mode: false
+      changed_when: false
+
+    - name: Extract tracked release archive on controller
+      ansible.builtin.unarchive:
+        src: "{{ app_release_staging.path }}/release.tar"
+        dest: "{{ app_release_staging.path }}/release"
+        remote_src: true
+      delegate_to: localhost
+      become: false
+      check_mode: false
+      changed_when: false
+
+    - name: Normalize release directory modes managed by later roles
+      ansible.builtin.file:
+        path: "{{ app_release_staging.path }}/release/{{ item.path }}"
+        state: directory
+        mode: "{{ item.mode }}"
+      loop:
+        - path: deploy
+          mode: '0750'
+        - path: deploy/alertmanager
+          mode: '0750'
+        - path: deploy/secrets
+          mode: '0700'
+        - path: deploy/tls
+          mode: '0750'
+      loop_control:
+        label: "{{ item.path }}"
+      delegate_to: localhost
+      become: false
+      check_mode: false
+      changed_when: false
+
+    - name: Synchronize tracked release and delete stale target drift
+      ansible.posix.synchronize:
+        src: "{{ app_release_staging.path }}/release/"
+        dest: "{{ app_repo_target }}/"
+        delete: true
+        recursive: true
+        # 配備先の所有者・権限はAnsible側で管理する。controller側の属性を
+        # 再適用すると、後続file taskとの間で差分が往復してしまう。
+        owner: false
+        group: false
+        perms: true
+        checksum: true
+        rsync_opts:
+          - "--omit-dir-times"
+          # target hostでのみ生成するdataは転送せず、deleteからも保護する。
+          - "--exclude=/.env"
+          - "--exclude=/.artifacts/"
+          - "--exclude=/.server-monitor-deploy-revision"
+          - "--exclude=/deploy/alertmanager/alertmanager.ansible.yml"
+          - "--exclude=/deploy/secrets/*.txt"
+          - "--exclude=/deploy/tls/server.key"
+          - "--exclude=/deploy/tls/server.crt"
+  always:
+    - name: Remove controller release staging directory
+      ansible.builtin.file:
+        path: "{{ app_release_staging.path }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      check_mode: false
+      changed_when: false
+      when:
+        - app_release_staging is defined
+        - app_release_staging.path is defined
 
 - name: Fix ownership of synced files
   ansible.builtin.file:
@@ -51,6 +355,7 @@
     owner: "{{ server_monitor_user }}"
     group: "{{ server_monitor_group }}"
     recurse: true
+    follow: false
 
 - name: Ensure secrets directory exists
   ansible.builtin.file:
@@ -59,6 +364,7 @@
     owner: "{{ server_monitor_user }}"
     group: "{{ server_monitor_group }}"
     mode: '0700'
+    follow: false
 
 - name: Render secret files from vault values
   ansible.builtin.copy:
@@ -66,6 +372,7 @@
     content: "{{ item.value }}"
     owner: "{{ server_monitor_user }}"
     group: "{{ server_monitor_group }}"
+    follow: false
     # Compose file-backed secrets retain the host file mode. Grafana (UID 472) and
     # other non-root container users must be able to read the mounted file.
     # The parent secrets directory remains 0700, so unrelated host users cannot traverse it.
@@ -81,9 +388,40 @@
     content: "{{ app_slack_webhook_url }}"
     owner: "{{ server_monitor_user }}"
     group: "{{ server_monitor_group }}"
+    follow: false
     # Alertmanager also reads this file as a non-root container user.
     mode: '0644'
   when: app_use_slack_overlay | bool
+  no_log: true
+
+- name: Remove Slack webhook secret when the overlay is disabled
+  ansible.builtin.file:
+    path: "{{ server_monitor_secrets_dir }}/slack_webhook_url.txt"
+    state: absent
+  when: not (app_use_slack_overlay | bool)
+  no_log: true
+
+- name: Find generated secret files for allowlist reconciliation
+  ansible.builtin.find:
+    paths: "{{ server_monitor_secrets_dir }}"
+    patterns: "*.txt"
+    file_type: any
+    recurse: false
+    hidden: true
+  register: app_existing_secret_files
+
+- name: Remove generated secret files that are no longer configured
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ app_existing_secret_files.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  vars:
+    app_configured_secret_names: >-
+      {{ (app_secrets | map(attribute='name') | list)
+         + (['slack_webhook_url.txt'] if app_use_slack_overlay | bool else []) }}
+  when: (item.path | basename) not in app_configured_secret_names
   no_log: true
 
 - name: Render .env for compose
@@ -125,3 +463,20 @@
     pull: missing
     remove_orphans: true
   register: app_compose_result
+  when: not ansible_check_mode
+
+- name: Complete notified app handlers before recording the revision
+  ansible.builtin.meta: flush_handlers
+  when: not ansible_check_mode
+
+- name: Record successfully reconciled source revision on the target
+  ansible.builtin.copy:
+    dest: "{{ app_repo_target }}/.server-monitor-deploy-revision"
+    content: |
+      {{ (app_directory_revision.stdout
+          if server_monitor_source_mode == 'directory'
+          else app_git_checkout.after) | lower }}
+    owner: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    mode: '0644'
+  when: not ansible_check_mode

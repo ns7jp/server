@@ -23,6 +23,26 @@
 Dockerはrunner imageに事前導入済みでした。このrunはDocker roleの設定収束とサービス再起動を
 確認していますが、Docker未導入の最小OSからのpackage導入実績とは表現しません。
 
+## main merge後の再検証
+
+上記run 32563104045はfeature branchのcommit
+`f4ea31993d6d5e3b8478789f8f0d008ed5f44961`に対する一次証跡です。PR #74をmergeした後、
+`main`のmerge commit `43d36ee674f090108153b09451e825e3383494c1`（event=`push`）でも、
+次の5 workflowが同日に`completed / success`となったことをGitHub Actionsで確認しました。
+
+| workflow | main再検証run | 結果 |
+| --- | --- | --- |
+| Ansible check | [32566169563](https://github.com/ns7jp/server-monitor/actions/runs/32566169563) | **success** |
+| Full-stack Ansible E2E | [32566169574](https://github.com/ns7jp/server-monitor/actions/runs/32566169574) | **success**（23 ID gate） |
+| Security scan | [32566169577](https://github.com/ns7jp/server-monitor/actions/runs/32566169577) | **success** |
+| Backup verify | [32566169582](https://github.com/ns7jp/server-monitor/actions/runs/32566169582) | **success**（任意のAWS snapshot age jobは設定なしのためskip） |
+| Python check | [32566169583](https://github.com/ns7jp/server-monitor/actions/runs/32566169583) | **success** |
+
+これはfeature runと同じ変更がmainへmergeされた状態の再検証です。feature runの実行環境、
+artifact digest、個別判定値をmain runの値へ読み替えず、上の表はworkflow statusと対象SHAを
+示す追補として扱います。また、commit `43d36ee...`より後の変更を検証した証跡でもありません。
+AWS jobのskipをAWS実環境のPASSとして扱いません。
+
 ## 判定結果
 
 artifactの`summary.md` / `results.tsv`では、対象23 IDがすべて`PASS`でした。

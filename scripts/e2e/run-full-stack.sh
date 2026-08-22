@@ -50,9 +50,22 @@ if [[ "$(uname -s)" != "Linux" ]]; then
   echo "this E2E runner supports Linux only" >&2
   exit 2
 fi
-if [[ "${INSTALL_DIR}" != /* ]] \
-  || [[ "${INSTALL_DIR}" =~ ^/(|bin|boot|dev|etc|home|opt|proc|root|run|sbin|sys|tmp|usr|var)/?$ ]]; then
-  echo "--install-dir must be a dedicated absolute subdirectory: ${INSTALL_DIR}" >&2
+install_dir_with_slash="${INSTALL_DIR}/"
+if [[ ! "${INSTALL_DIR}" =~ ^/(opt|srv)/[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ ]] \
+  || [[ "${install_dir_with_slash}" == *"/./"* ]] \
+  || [[ "${install_dir_with_slash}" == *"/../"* ]]; then
+  echo "--install-dir must be a dedicated /opt or /srv path without dot segments: ${INSTALL_DIR}" >&2
+  exit 2
+fi
+if ! command -v realpath >/dev/null 2>&1; then
+  echo "realpath is required to validate --install-dir" >&2
+  exit 2
+fi
+install_dir_canonical=$(realpath -m -- "${INSTALL_DIR}")
+if [[ "${install_dir_canonical}" != "${INSTALL_DIR}" ]] \
+  || [[ -L "${INSTALL_DIR}" ]] \
+  || [[ -e "${INSTALL_DIR}" && ! -d "${INSTALL_DIR}" ]]; then
+  echo "--install-dir must be canonical and must not traverse a symlink: ${INSTALL_DIR}" >&2
   exit 2
 fi
 
@@ -69,7 +82,7 @@ declare -A STATUS DETAIL DESCRIPTION
 DESCRIPTION[ENV]="実行環境とツール版"
 DESCRIPTION[IT-01]="site.yml 新規一括適用"
 DESCRIPTION[IT-02]="site.yml 2回目 changed=0"
-DESCRIPTION[STACK]="core 9 services と E2E sink の稼働"
+DESCRIPTION[STACK]="core 10 services と E2E sink の稼働・Docker API proxy制限"
 DESCRIPTION[IT-03]="Prometheus linux-node up=1"
 DESCRIPTION[IT-04]="UI Basic 認証"
 DESCRIPTION[IT-05]="metrics Bearer 認証"
@@ -305,17 +318,67 @@ else
 fi
 
 echo "=== Runtime and authentication checks ==="
-required_services=(app nginx prometheus alertmanager grafana loki alloy blackbox node-exporter webhook-sink)
+required_services=(app nginx prometheus alertmanager grafana loki alloy blackbox node-exporter docker-socket-proxy webhook-sink)
 running_services=$(dcompose ps --services --status running | sort)
 printf '%s\n' "${running_services}" > "${EVIDENCE_DIR}/compose-running-services.txt"
 missing_service=0
 for service in "${required_services[@]}"; do
   grep -Fxq "${service}" <<< "${running_services}" || missing_service=1
 done
-if [[ "${missing_service}" -eq 0 ]]; then
-  mark STACK PASS "core 9 services + E2E webhook-sink が running"
+
+proxy_ping_ok=0
+for _ in $(seq 1 30); do
+  if dcompose exec -T docker-socket-proxy \
+    wget -qO- http://127.0.0.1:2375/_ping \
+    > "${EVIDENCE_DIR}/docker-proxy-ping.txt" 2>&1 \
+    && grep -Fxq 'OK' "${EVIDENCE_DIR}/docker-proxy-ping.txt"; then
+    proxy_ping_ok=1
+    break
+  fi
+  sleep 1
+done
+proxy_post_result=$(dcompose exec -T docker-socket-proxy sh -c \
+  "wget -S -O /dev/null --post-data='' http://127.0.0.1:2375/containers/e2e-do-not-exist/stop 2>&1 || true" \
+  || true)
+printf '%s\n' "${proxy_post_result}" > "${EVIDENCE_DIR}/docker-proxy-denied-post.txt"
+proxy_post_denied=0
+if grep -q '403 Forbidden' "${EVIDENCE_DIR}/docker-proxy-denied-post.txt"; then
+  proxy_post_denied=1
+fi
+
+docker_log_marker="server-monitor-e2e-docker-log-$(date -u +%s)-$$"
+proxy_loki_ok=0
+loki_log_result='{}'
+for _ in $(seq 1 60); do
+  # A unique Nginx request proves the complete read path rather than only the
+  # proxy's always-available /_ping endpoint:
+  # Docker containers/networks API -> Alloy discovery/log stream -> Loki.
+  curl -sS -o /dev/null --user "monitor:${monitor_password}" \
+    "http://127.0.0.1:8080/${docker_log_marker}" || true
+  loki_log_result=$(curl -fsS --get \
+    --data-urlencode "query={service=\"nginx\"} |= \"${docker_log_marker}\"" \
+    --data-urlencode 'limit=20' \
+    http://127.0.0.1:3100/loki/api/v1/query_range || true)
+  printf '%s\n' "${loki_log_result}" \
+    > "${EVIDENCE_DIR}/docker-proxy-loki-query.json"
+  if python3 -c '
+import json, sys
+marker = sys.argv[1]
+result = json.load(sys.stdin).get("data", {}).get("result", [])
+matched = any(marker in line for stream in result for _, line in stream.get("values", []))
+raise SystemExit(0 if matched else 1)
+' "${docker_log_marker}" <<< "${loki_log_result}"; then
+    proxy_loki_ok=1
+    break
+  fi
+  sleep 1
+done
+
+if [[ "${missing_service}" -eq 0 && "${proxy_ping_ok}" -eq 1 \
+  && "${proxy_post_denied}" -eq 1 && "${proxy_loki_ok}" -eq 1 ]]; then
+  mark STACK PASS "core 10 + E2E sink running / Docker log→Loki GET可・POST 403"
 else
-  mark STACK FAIL "running でない service あり; compose-running-services.txt を参照"
+  mark STACK FAIL "serviceまたはDocker API/log policy不一致; compose-running-services.txt / docker-proxy-*.txtを参照"
 fi
 dcompose ps > "${EVIDENCE_DIR}/compose-ps.txt"
 

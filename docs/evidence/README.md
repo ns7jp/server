@@ -9,6 +9,13 @@
 監視stack、認証、network/UFW、D-1、backup restoreまで実測証跡があります。**
 [2026-08-22 Full-stack E2E](2026-08-22-full-stack-e2e.md)では、使い捨てUbuntu 24.04 runner上で
 23 IDをすべてPASSとして採録しました（[Actions run 32563104045](https://github.com/ns7jp/server-monitor/actions/runs/32563104045)）。
+PR #74のmain merge commit `43d36ee674f090108153b09451e825e3383494c1`でも、
+[Full-stack E2E run 32566169574](https://github.com/ns7jp/server-monitor/actions/runs/32566169574)を
+含む5 workflowのsuccessを再確認しました。feature runとmain再検証の区別・全run IDは
+[日付付き証跡](2026-08-22-full-stack-e2e.md#main-merge後の再検証)に記録しています。
+
+`43d36ee...`より後に導入するDocker API proxyやsource配備hardeningはこのrunの検証対象外です。
+変更後のcommitは、新しいFull-stack E2Eが成功するまでruntime実測済みとは扱いません。
 
 > **履歴（2026-08-21時点）:** 当時はAnsible各ロール、WSL2上の監視stack、D-1、
 > 二セグメント障害ラボまでが実測済みで、`site.yml`一括構築（IT-01/02）、runner内

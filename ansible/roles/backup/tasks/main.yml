@@ -1,4 +1,104 @@
 ---
+- name: Validate backup inputs and target before mutation
+  ansible.builtin.assert:
+    that:
+      - backup_compose_dir == server_monitor_install_dir
+      - >-
+        (server_monitor_install_dir | string)
+        is match('^/(opt|srv)/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$')
+      - "'/./' not in ((server_monitor_install_dir | string) ~ '/')"
+      - "'/../' not in ((server_monitor_install_dir | string) ~ '/')"
+      - >-
+        (backup_target_dir | string)
+        is match('^/(var/backups|srv/backups)/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$')
+      - "'/./' not in ((backup_target_dir | string) ~ '/')"
+      - "'/../' not in ((backup_target_dir | string) ~ '/')"
+      - (backup_retention_days | string) is match('^[0-9]+$')
+      - (backup_retention_days | int) >= 1
+      - (backup_retention_days | int) <= 3650
+      - (backup_compose_project | string) is match('^[A-Za-z0-9][A-Za-z0-9_.-]*$')
+      - backup_volumes | length > 0
+      - backup_volume_names | unique | list | length == backup_volume_names | length
+      - >-
+        backup_volume_names | select('match', '^[A-Za-z0-9][A-Za-z0-9_.-]*$')
+        | list | length == backup_volume_names | length
+      - >-
+        backup_service_names | unique | list | length
+        == backup_service_names | length
+      - >-
+        not (backup_quiesce_services | bool)
+        or backup_service_names | length > 0
+      - >-
+        backup_service_names | select('match', '^[A-Za-z0-9][A-Za-z0-9_.-]*$')
+        | list | length == backup_service_names | length
+      - "'\n' not in (backup_schedule_oncalendar | string)"
+      - "'\r' not in (backup_schedule_oncalendar | string)"
+    vars:
+      backup_volume_names: "{{ backup_volumes | map('string') | list }}"
+      backup_service_names: >-
+        {{ backup_quiesce_service_names | map('string') | list }}
+    fail_msg: >-
+      Refusing backup mutation: use a dedicated canonical target below
+      /var/backups or /srv/backups, the exact install directory as Compose
+      directory, retention from 1 through 3650 days, and unique conservative
+      project, volume, and service names.
+
+- name: Resolve backup Compose directory through parent path components
+  ansible.builtin.command:  # noqa: command-instead-of-module
+    argv:
+      - realpath
+      - -m
+      - --
+      - "{{ backup_compose_dir }}"
+  check_mode: false
+  changed_when: false
+  register: backup_compose_realpath
+
+- name: Inspect backup Compose directory without following the final symlink
+  ansible.builtin.stat:
+    path: "{{ backup_compose_dir }}"
+    follow: false
+  register: backup_compose_path
+
+- name: Refuse a missing, symlinked, or redirected backup Compose directory
+  ansible.builtin.assert:
+    that:
+      - backup_compose_realpath.stdout == backup_compose_dir
+      - backup_compose_path.stat.exists
+      - backup_compose_path.stat.isdir
+      - not backup_compose_path.stat.islnk
+    fail_msg: >-
+      Refusing backup mutation because the Compose directory is missing, is a
+      symlink, is not a directory, or resolves outside its validated path.
+
+- name: Resolve backup target through parent path components
+  ansible.builtin.command:  # noqa: command-instead-of-module
+    argv:
+      - realpath
+      - -m
+      - --
+      - "{{ backup_target_dir }}"
+  check_mode: false
+  changed_when: false
+  register: backup_target_realpath
+
+- name: Inspect backup target without following the final symlink
+  ansible.builtin.stat:
+    path: "{{ backup_target_dir }}"
+    follow: false
+  register: backup_target_path
+
+- name: Refuse a symlinked or redirected backup target before mutation
+  ansible.builtin.assert:
+    that:
+      - backup_target_realpath.stdout == backup_target_dir
+      - >-
+        not backup_target_path.stat.exists
+        or (backup_target_path.stat.isdir and not backup_target_path.stat.islnk)
+    fail_msg: >-
+      Refusing backup mutation because the target is a symlink, is not a
+      directory, or resolves outside its validated path.
+
 - name: Ensure backup target directory exists
   ansible.builtin.file:
     path: "{{ backup_target_dir }}"
@@ -6,6 +106,7 @@
     owner: root
     group: root
     mode: '0750'
+    follow: false
 
 - name: Install backup script
   ansible.builtin.template:

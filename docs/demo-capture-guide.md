@@ -38,7 +38,7 @@ sudo bash scripts/demo/run-demo.sh \
 
 | 目安 | 画面 | 実際に確認すること |
 | --- | --- | --- |
-| 0:00–0:25 | terminal | commit、実行日時、core 9 services、health |
+| 0:00–0:25 | terminal | commit、実行日時、core 10 services、health |
 | 0:25–0:50 | Grafana / terminal | Grafana healthとPrometheus `linux-node up=1` |
 | 0:50–1:20 | terminal / Alertmanager | synthetic alertがlocal webhookへFIRING/RESOLVED配送 |
 | 1:20–2:15 | terminal | app PIDをhost側からkillし、自動再起動とRTOを計測 |
@@ -50,7 +50,7 @@ alertだと偽りません。CIでは通知先をlocal webhook sinkに限定し�
 ## 収録時に読む要点
 
 1. 「Ubuntu hostは`site.yml`で構築し、2回目`changed=0`は別logに残しています」
-2. 「core 9 servicesとPrometheusのhost targetが現在稼働しています」
+2. 「core 10 servicesとPrometheusのhost targetが現在稼働しています」
 3. 「これはlocal webhookまでの通知試験で、Slack実配信ではありません」
 4. 「app processを予期しない形で終了し、Dockerのrestart policyで復旧させます」
 5. 「RTOとraw logはartifactへ残し、未実行項目をPASSにしません」

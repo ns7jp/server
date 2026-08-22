@@ -3,6 +3,72 @@
 # Alertmanager 設定は compose 起動前に app role が生成する。
 # このロールは配備後のruntime構文検証を担う。
 
+- name: Validate monitoring paths and account before mutation
+  ansible.builtin.assert:
+    that:
+      - (server_monitor_user | string) != 'root'
+      - (server_monitor_group | string) != 'root'
+      - (server_monitor_group | string) != 'docker'
+      - >-
+        (server_monitor_install_dir | string)
+        is match('^/(opt|srv)/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$')
+      - "'/./' not in ((server_monitor_install_dir | string) ~ '/')"
+      - "'/../' not in ((server_monitor_install_dir | string) ~ '/')"
+      - monitoring_deploy_target == server_monitor_install_dir ~ '/deploy'
+      - server_monitor_secrets_dir == monitoring_deploy_target ~ '/secrets'
+    fail_msg: >-
+      Refusing monitoring mutation: use the exact deploy and deploy/secrets
+      paths below a dedicated /opt or /srv install directory.
+
+- name: Resolve monitoring-managed paths through parent components
+  ansible.builtin.command:  # noqa: command-instead-of-module
+    argv:
+      - realpath
+      - -m
+      - --
+      - "{{ item }}"
+  loop:
+    - "{{ monitoring_deploy_target }}"
+    - "{{ server_monitor_secrets_dir }}"
+    - "{{ monitoring_deploy_target }}/alertmanager"
+  check_mode: false
+  changed_when: false
+  register: monitoring_managed_realpaths
+
+- name: Inspect monitoring-managed paths without following final symlinks
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    follow: false
+  loop:
+    - "{{ monitoring_deploy_target }}"
+    - "{{ server_monitor_secrets_dir }}"
+    - "{{ monitoring_deploy_target }}/alertmanager"
+  register: monitoring_managed_paths
+
+- name: Refuse redirected monitoring-managed paths before mutation
+  ansible.builtin.assert:
+    that:
+      - monitoring_managed_realpaths.results[0].stdout == monitoring_deploy_target
+      - monitoring_managed_realpaths.results[1].stdout == server_monitor_secrets_dir
+      - >-
+        monitoring_managed_realpaths.results[2].stdout
+        == monitoring_deploy_target ~ '/alertmanager'
+      - >-
+        not monitoring_managed_paths.results[0].stat.exists
+        or (monitoring_managed_paths.results[0].stat.isdir
+            and not monitoring_managed_paths.results[0].stat.islnk)
+      - >-
+        not monitoring_managed_paths.results[1].stat.exists
+        or (monitoring_managed_paths.results[1].stat.isdir
+            and not monitoring_managed_paths.results[1].stat.islnk)
+      - >-
+        not monitoring_managed_paths.results[2].stat.exists
+        or (monitoring_managed_paths.results[2].stat.isdir
+            and not monitoring_managed_paths.results[2].stat.islnk)
+    fail_msg: >-
+      Refusing monitoring mutation because deploy or deploy/secrets is a
+      symlink, is not a directory, or resolves outside the validated tree.
+
 - name: Ensure deploy target directory exists
   ansible.builtin.file:
     path: "{{ monitoring_deploy_target }}"
@@ -10,6 +76,7 @@
     owner: "{{ server_monitor_user }}"
     group: "{{ server_monitor_group }}"
     mode: '0750'
+    follow: false
 
 - name: Ensure alertmanager directory exists
   ansible.builtin.file:
@@ -18,6 +85,72 @@
     owner: "{{ server_monitor_user }}"
     group: "{{ server_monitor_group }}"
     mode: '0750'
+    follow: false
+
+- name: Validate Docker bind sources before runtime checks
+  when:
+    - monitoring_run_validation | bool
+    - not ansible_check_mode
+  vars:
+    monitoring_validation_bind_sources:
+      - path: "{{ monitoring_deploy_target }}/prometheus"
+        type: directory
+      - path: "{{ server_monitor_secrets_dir }}/metrics_token.txt"
+        type: file
+      - path: "{{ monitoring_deploy_target }}/loki/loki-config.yml"
+        type: file
+      - path: "{{ monitoring_deploy_target }}/alertmanager/alertmanager.ansible.yml"
+        type: file
+  block:
+    - name: Inspect Docker bind sources without following leaf symlinks
+      ansible.builtin.stat:
+        path: "{{ item.path }}"
+        follow: false
+      loop: "{{ monitoring_validation_bind_sources }}"
+      loop_control:
+        label: "{{ item.path }}"
+      register: monitoring_bind_source_paths
+
+    - name: Resolve Docker bind sources through every path component
+      ansible.builtin.command:  # noqa: command-instead-of-module
+        argv:
+          - realpath
+          - -m
+          - --
+          - "{{ item.path }}"
+      loop: "{{ monitoring_validation_bind_sources }}"
+      loop_control:
+        label: "{{ item.path }}"
+      check_mode: false
+      changed_when: false
+      register: monitoring_bind_source_realpaths
+
+    - name: Refuse missing, redirected, or incorrectly typed Docker bind sources
+      ansible.builtin.assert:
+        that:
+          - >-
+            monitoring_bind_source_realpaths.results[item].stdout
+            == monitoring_expected_bind_source.path
+          - monitoring_inspected_bind_source.stat.exists
+          - not monitoring_inspected_bind_source.stat.islnk
+          - >-
+            (monitoring_expected_bind_source.type == 'directory'
+             and monitoring_inspected_bind_source.stat.isdir)
+            or (monitoring_expected_bind_source.type == 'file'
+                and monitoring_inspected_bind_source.stat.isreg)
+        fail_msg: >-
+          Refusing runtime validation because
+          {{ monitoring_expected_bind_source.path }} is missing, redirected,
+          symlinked, or has the wrong type. Docker must not create an unintended
+          root-owned bind source.
+      loop: "{{ range(0, monitoring_validation_bind_sources | length) | list }}"
+      loop_control:
+        label: "{{ monitoring_expected_bind_source.path }}"
+      vars:
+        monitoring_expected_bind_source: >-
+          {{ monitoring_validation_bind_sources[item] }}
+        monitoring_inspected_bind_source: >-
+          {{ monitoring_bind_source_paths.results[item] }}
 
 - name: Validate Prometheus configuration with promtool
   ansible.builtin.command:
@@ -31,7 +164,9 @@
   changed_when: false
   register: monitoring_promtool_config
   failed_when: monitoring_promtool_config.rc != 0
-  when: monitoring_run_validation | bool
+  when:
+    - monitoring_run_validation | bool
+    - not ansible_check_mode
 
 - name: Validate Loki configuration
   ansible.builtin.command:
@@ -43,7 +178,9 @@
   changed_when: false
   register: monitoring_loki_verify
   failed_when: monitoring_loki_verify.rc != 0
-  when: monitoring_run_validation | bool
+  when:
+    - monitoring_run_validation | bool
+    - not ansible_check_mode
 
 - name: Validate Alertmanager configuration with amtool
   ansible.builtin.command:
@@ -57,4 +194,6 @@
   changed_when: false
   register: monitoring_amtool_config
   failed_when: monitoring_amtool_config.rc != 0
-  when: monitoring_run_validation | bool
+  when:
+    - monitoring_run_validation | bool
+    - not ansible_check_mode

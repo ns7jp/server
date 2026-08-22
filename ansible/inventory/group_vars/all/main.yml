@@ -26,4 +26,6 @@ server_monitor_source_mode: directory
 # 配備するため 2 階層上を参照する。1 階層上では ansible/ だけが同期対象になってしまう。
 server_monitor_source_path: "{{ playbook_dir }}/../.."
 server_monitor_git_repo: https://github.com/ns7jp/server-monitor.git
-server_monitor_git_version: main
+# git modeは再現可能な配備にするため、inventoryで40桁commit SHAを必ず指定する。
+# branch名やmainは時点によって内容が変わるため受け付けない。
+server_monitor_git_version: ""

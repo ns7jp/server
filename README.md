@@ -25,6 +25,10 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 > 認証、Prometheus target、ローカルwebhook通知、loopback/UFW/SSH tunnel、D-1自動復旧（1秒）、
 > 3 volumesのchecksum付きbackup / 別volume restoreを全項目PASS**として採録しました。
 > 判定表・環境・raw log・実terminal castは[日付付き証跡](docs/evidence/2026-08-22-full-stack-e2e.md)に固定しています。
+> PR #74 のmainへのmerge後も、commit `43d36ee674f090108153b09451e825e3383494c1`に対して
+> [Full-stack E2E run 32566169574](https://github.com/ns7jp/server-monitor/actions/runs/32566169574)を含む
+> 5 workflowが成功しました。これはmerge済みcommitの再検証であり、その後の変更は新しいrunが
+> 成功するまで実測済みとは扱いません。
 >
 > 2026-08-18/19のWSL2実測、D-1 RTO 13秒、二セグメント障害ラボ、
 > [21項目中11項目PASSの結果票](docs/evidence/2026-08-19-build-validation.md)は当時の履歴として保持します。
@@ -42,7 +46,7 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 | 稼働監視 | 情報を露出しない `/healthz`、保護された `/metrics` |
 | 配備 | 非 root `Dockerfile`、Nginx、Docker Compose、native Linux 用 systemd / TLS 設定例 |
 | 標準監視基盤 | Prometheus + node-exporter + Grafana + Alertmanager |
-| ログ集約 | Loki + Grafana Alloy でコンテナログとホスト `/var/log` を収集、Grafana から横断検索 |
+| ログ集約 | Loki + Grafana Alloy でコンテナログとホスト `/var/log` を収集。AlloyはDocker socketを直接持たず、専用proxyのGET/HEAD限定APIを使用 |
 | 障害対応 | アラートルール、停止ランブック、CPU 高負荷の模擬インシデント記録 |
 | 構成管理 | Ansible roles で OS / Docker / TLS / 監視設定 / アプリ配備 / バックアップを宣言的に管理 |
 | クラウド配備 | Terraform で AWS 上に同等構成をコード化（[詳細](docs/aws-architecture.md)。apply 未実施） |
@@ -64,7 +68,9 @@ flowchart LR
     Prometheus --> Grafana
     Prometheus --> Alertmanager
     Alertmanager -.->|"秘密値設定後"| Slack["Slack"]
-    Alloy["Grafana Alloy<br/>ログ収集"] -->|"/var/log + Docker discovery"| Host
+    Alloy["Grafana Alloy<br/>ログ収集"] -->|"/var/log"| Host
+    Alloy -->|"GET/HEADのみ"| DockerProxy["Docker API proxy"]
+    DockerProxy -->|"socket / private network"| Host
     Alloy --> Loki["Loki<br/>ログ保存"]
     Loki -->|"LogQL"| Grafana
 ```
@@ -81,7 +87,7 @@ flowchart LR
 | [インフラ監視ラボ設計](docs/architecture.md) | 構成図、設計判断、監視条件 |
 | [セキュリティ設計](docs/security.md) | 認証、秘密管理、公開範囲、残存リスク |
 | [構築・配備手順](docs/deployment.md) | Docker Compose と native Linux 配備例 |
-| [Ansible 配備手順](docs/deployment-ansible.md) | 0 台から構築可能な playbook、roles 構成、Vault、Molecule |
+| [Ansible 配備手順](docs/deployment-ansible.md) | Ubuntu host向け一括構築playbook、roles 構成、Vault、Molecule |
 | [新規host一気通貫E2E](docs/e2e-validation.md) | `site.yml`適用、冪等性、network、D-1、backup restoreの自動検証と証跡境界 |
 | [バックアップ・復旧設計](docs/backup-restore.md) | 永続データ、復元試験、復旧目標 |
 | [停止時ランブック](docs/runbooks/service-down.md) | アラート受信後の確認と復旧手順 |
@@ -176,9 +182,10 @@ terraform apply
 
 ## SLO / エラーバジェット
 
-`server-monitor` のサービス品質の目標値を数値で決め、達成状況を継続的に観測している。
-ラボ内の blackbox-exporter が Nginx 経由で `/healthz` を 30 秒間隔で probe し、
-Prometheus が 30 日窓の成功率を計算する。
+`server-monitor` のサービス品質の目標値を数値で定義し、計測query、recording rule、
+dashboard、burn-rate alertを実装している。ラボ内の blackbox-exporter は Nginx 経由で
+`/healthz` を 30 秒間隔でprobeし、Prometheusが30日窓の成功率を計算できる。
+起動時点のprobeとE2Eは実測済みだが、同一hostを30日連続稼働させた達成率の証跡は未採録である。
 
 | 項目 | 目標 | 期間 |
 | --- | --- | --- |
@@ -239,13 +246,18 @@ Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可�
 
 | 要素 | 役割 | 公開範囲 |
 | --- | --- | --- |
-| Grafana Alloy | コンテナログ（Docker discovery）と `/var/log/{syslog,auth.log,messages,secure}` を Loki に転送 | Docker 内部ネットワーク |
+| Grafana Alloy | コンテナログ（Docker discovery）と `/var/log/{syslog,auth.log,messages,secure}` を Loki に転送 | `monitoring` + 専用`docker-api`内部ネットワーク |
+| Docker API proxy | Alloyにcontainer/network discoveryとログ取得のGET/HEADだけを提供。host portは非公開 | Alloyだけが参加する`docker-api`内部ネットワーク |
 | Loki | ログの保存とクエリ。リテンション 30 日、ファイルシステムストレージ | `127.0.0.1:3100`（API のみ、ブラウザ用 UI はない） |
 | Grafana | Loki データソースとして登録。Server Monitor ダッシュボードに Logs パネルを内蔵 | `127.0.0.1:3000` |
 
 ラベル設計は **「集計に使う固定値だけラベル化、それ以外は本文に残す」** とし、カーディナリティの爆発を避ける。クエリ例は [LogQL クエリ集](docs/loki-queries.md) に整理した。
 
-- Alloy は `/var/log` と `/var/lib/docker/containers`、`/var/run/docker.sock` を **読み取り専用** でマウントする。Docker socket は権限が強いため、Alloy コンテナは `no-new-privileges` で起動する。詳細は [セキュリティ設計](docs/security.md) を参照。
+- Docker socketを直接マウントするのは専用proxyだけで、Alloyはprivate network越しに
+  `CONTAINERS=1` / `NETWORKS=1` / `POST=0`のAPIを利用する。socketの`:ro`だけでは
+  API操作を制限できないため、固有Nginx logのLoki到達とPOST拒否をE2Eで検査する。
+  hostの`monitor`ユーザーにもdocker groupを付与しない。詳細は
+  [セキュリティ設計](docs/security.md)を参照。
 - Loki のポート 3100 は loopback のみに公開する。Loki 自体には認証がないため、外部公開しない設計である。
 - ログ量が増えた場合は `deploy/loki/loki-config.yml` の `limits_config.retention_period` と `compactor` で調整する。
 

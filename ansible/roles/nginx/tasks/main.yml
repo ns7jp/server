@@ -1,4 +1,49 @@
 ---
+- name: Validate TLS path and account before mutation
+  ansible.builtin.assert:
+    that:
+      - (server_monitor_user | string) != 'root'
+      - (server_monitor_group | string) != 'root'
+      - (server_monitor_group | string) != 'docker'
+      - >-
+        (server_monitor_install_dir | string)
+        is match('^/(opt|srv)/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*$')
+      - "'/./' not in ((server_monitor_install_dir | string) ~ '/')"
+      - "'/../' not in ((server_monitor_install_dir | string) ~ '/')"
+      - nginx_tls_dir == server_monitor_install_dir ~ '/deploy/tls'
+    fail_msg: >-
+      Refusing TLS mutation: use a non-root application account, a non-docker
+      primary group, a dedicated /opt or /srv install path, and its exact
+      deploy/tls directory.
+
+- name: Resolve TLS directory through parent path components
+  ansible.builtin.command:  # noqa: command-instead-of-module
+    argv:
+      - realpath
+      - -m
+      - --
+      - "{{ nginx_tls_dir }}"
+  check_mode: false
+  changed_when: false
+  register: nginx_tls_realpath
+
+- name: Inspect TLS directory without following the final symlink
+  ansible.builtin.stat:
+    path: "{{ nginx_tls_dir }}"
+    follow: false
+  register: nginx_tls_path
+
+- name: Refuse a symlinked or redirected TLS directory before mutation
+  ansible.builtin.assert:
+    that:
+      - nginx_tls_realpath.stdout == nginx_tls_dir
+      - >-
+        not nginx_tls_path.stat.exists
+        or (nginx_tls_path.stat.isdir and not nginx_tls_path.stat.islnk)
+    fail_msg: >-
+      Refusing TLS mutation because deploy/tls is a symlink, is not a
+      directory, or resolves outside the validated install tree.
+
 - name: Ensure TLS directory exists
   ansible.builtin.file:
     path: "{{ nginx_tls_dir }}"
@@ -6,6 +51,53 @@
     owner: "{{ server_monitor_user }}"
     group: "{{ server_monitor_group }}"
     mode: '0750'
+    follow: false
+
+- name: Inspect TLS material without following leaf symlinks
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    follow: false
+  loop:
+    - "{{ nginx_tls_dir }}/server.key"
+    - "{{ nginx_tls_dir }}/server.crt"
+  register: nginx_tls_material_paths
+  when: not (nginx_letsencrypt_enabled | bool)
+
+- name: Resolve TLS material through every path component
+  ansible.builtin.command:  # noqa: command-instead-of-module
+    argv:
+      - realpath
+      - -m
+      - --
+      - "{{ item }}"
+  loop:
+    - "{{ nginx_tls_dir }}/server.key"
+    - "{{ nginx_tls_dir }}/server.crt"
+  check_mode: false
+  changed_when: false
+  register: nginx_tls_material_realpaths
+  when: not (nginx_letsencrypt_enabled | bool)
+
+- name: Refuse unsafe or incomplete TLS material before OpenSSL
+  ansible.builtin.assert:
+    that:
+      - nginx_tls_material_realpaths.results[0].stdout == nginx_tls_dir ~ '/server.key'
+      - nginx_tls_material_realpaths.results[1].stdout == nginx_tls_dir ~ '/server.crt'
+      - >-
+        not nginx_tls_material_paths.results[0].stat.exists
+        or (nginx_tls_material_paths.results[0].stat.isreg
+            and not nginx_tls_material_paths.results[0].stat.islnk)
+      - >-
+        not nginx_tls_material_paths.results[1].stat.exists
+        or (nginx_tls_material_paths.results[1].stat.isreg
+            and not nginx_tls_material_paths.results[1].stat.islnk)
+      - >-
+        nginx_tls_material_paths.results[0].stat.exists
+        == nginx_tls_material_paths.results[1].stat.exists
+    fail_msg: >-
+      Refusing TLS generation because server.key/server.crt must both be absent
+      or both be regular non-symlink files within the validated TLS directory.
+  when: not (nginx_letsencrypt_enabled | bool)
 
 - name: Install certbot for Let's Encrypt
   ansible.builtin.apt:
@@ -18,20 +110,34 @@
 
 - name: Generate self-signed TLS material (lab / staging fallback)
   ansible.builtin.command:
-    cmd: >-
-      openssl req -x509 -nodes -days 365 -newkey rsa:2048
-      -keyout {{ nginx_tls_dir }}/server.key
-      -out {{ nginx_tls_dir }}/server.crt
-      -subj "/CN={{ nginx_self_signed_cn }}"
+    argv:
+      - openssl
+      - req
+      - -x509
+      - -nodes
+      - -days
+      - '365'
+      - -newkey
+      - rsa:2048
+      - -keyout
+      - "{{ nginx_tls_dir }}/server.key"
+      - -out
+      - "{{ nginx_tls_dir }}/server.crt"
+      - -subj
+      - "/CN={{ nginx_self_signed_cn }}"
     creates: "{{ nginx_tls_dir }}/server.crt"
+  become: true
+  become_user: "{{ server_monitor_user }}"
   when: not (nginx_letsencrypt_enabled | bool)
 
 - name: Tighten permissions on TLS material
   ansible.builtin.file:
     path: "{{ item }}"
+    state: file
     owner: "{{ server_monitor_user }}"
     group: "{{ server_monitor_group }}"
     mode: '0640'
+    follow: false
   loop:
     - "{{ nginx_tls_dir }}/server.key"
     - "{{ nginx_tls_dir }}/server.crt"

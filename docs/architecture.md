@@ -19,7 +19,9 @@ flowchart LR
     Prom --> Alert["Alertmanager"]
     Alert -.->|"秘密値投入後に有効化"| Slack["Slack notification"]
 
-    Alloy["Grafana Alloy<br/>ログ収集"] -->|"/var/log + Docker discovery<br/>read-only"| Host
+    Alloy["Grafana Alloy<br/>ログ収集"] -->|"/var/log<br/>read-only"| Host
+    Alloy -->|"GET/HEAD only"| DockerProxy["Docker API proxy<br/>private network"]
+    DockerProxy -->|"Docker socket"| Host
     Alloy --> Loki["Loki<br/>30日保持"]
     Loki -->|"LogQL"| Grafana
 ```
@@ -35,6 +37,7 @@ flowchart LR
 | Alertmanager | アラートの集約、通知ルーティング | `127.0.0.1:9093` |
 | Grafana | 運用向けダッシュボード（Prometheus + Loki データソース） | `127.0.0.1:3000` |
 | Grafana Alloy | コンテナログと `/var/log` の収集、Loki への転送 | Docker 内部ネットワーク |
+| Docker API proxy | Alloy向けにcontainer/network APIのGET/HEADだけを中継 | Alloyだけが参加する`docker-api`内部ネットワーク。host portなし |
 | Loki | ログの保存とクエリ、30日分の履歴保持 | `127.0.0.1:3100`（API のみ） |
 
 ## 重要な設計判断
@@ -51,7 +54,8 @@ flowchart LR
 | 履歴は Prometheus TSDB に保持 | UI の短期グラフではなく、障害調査で遡れる履歴を残すため |
 | ログは Loki に集約 | アラートで気づいた異常の原因を、同じ Grafana 画面で即時に追跡するため |
 | ログラベルは固定値のみ | カーディナリティ爆発を避け、Loki の単一ホスト構成を安定動作させるため |
-| Alloy は読み取り専用マウント | ホストの `/var/log` と Docker socket / メタデータを侵害時に書き換えられないため |
+| AlloyにDocker socketを直接渡さない | 専用proxyがcontainer/network APIのGET/HEADだけを許可し、POSTを拒否するため。socketの`:ro` mountだけではAPI操作をread-onlyにできない |
+| Docker API proxyを専用networkに隔離 | Docker daemonへ到達する信頼対象をAlloyとの一対一経路に限定し、host portや他serviceから到達させないため |
 
 ## 収集とアラート
 
