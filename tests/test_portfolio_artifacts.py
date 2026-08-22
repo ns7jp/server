@@ -583,6 +583,11 @@ def test_install_path_and_account_are_validated_before_any_host_mutation():
     assert app.index("Validate source deployment mode") < app.index(
         "Ensure install directory exists"
     )
+    app_validation_task = app.split(
+        "Validate source deployment mode and target path before mutation", 1
+    )[1].split("- name:", 1)[0]
+    assert "\n  vars:\n" in app_validation_task
+    assert "\n    vars:\n" not in app_validation_task
     assert nginx.index("Validate TLS path and account") < nginx.index(
         "Ensure TLS directory exists"
     )
@@ -727,6 +732,11 @@ def test_backup_role_validates_inputs_before_any_target_mutation():
     assert tasks.index("Refuse a symlinked or redirected backup target") < tasks.index(
         "Ensure backup target directory exists"
     )
+    backup_validation_task = tasks.split(
+        "Validate backup inputs and target before mutation", 1
+    )[1].split("- name:", 1)[0]
+    assert "\n  vars:\n" in backup_validation_task
+    assert "\n    vars:\n" not in backup_validation_task
     assert "^/(var/backups|srv/backups)/" in tasks
     assert "backup_compose_dir == server_monitor_install_dir" in tasks
     assert "Refuse a missing, symlinked, or redirected backup Compose directory" in tasks

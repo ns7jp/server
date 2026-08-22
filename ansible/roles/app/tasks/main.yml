@@ -22,9 +22,6 @@
         app_secret_names | select('match', '^[A-Za-z0-9._-]+[.]txt$')
         | list | length == app_secret_names | length
       - "'slack_webhook_url.txt' not in app_secret_names"
-    vars:
-      app_secret_names: >-
-        {{ app_secrets | map(attribute='name', default='') | list }}
     fail_msg: >-
       the application account and primary group must not be root, and the
       primary group must not be docker;
@@ -35,6 +32,9 @@
       slack_webhook_url.txt;
       server_monitor_source_mode must be directory, or git with
       server_monitor_git_version set to an immutable 40-character commit SHA.
+  vars:
+    app_secret_names: >-
+      {{ app_secrets | map(attribute='name', default='') | list }}
 
 - name: Inspect install target without following symlinks
   ansible.builtin.stat:

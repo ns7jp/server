@@ -33,15 +33,15 @@
         | list | length == backup_service_names | length
       - "'\n' not in (backup_schedule_oncalendar | string)"
       - "'\r' not in (backup_schedule_oncalendar | string)"
-    vars:
-      backup_volume_names: "{{ backup_volumes | map('string') | list }}"
-      backup_service_names: >-
-        {{ backup_quiesce_service_names | map('string') | list }}
     fail_msg: >-
       Refusing backup mutation: use a dedicated canonical target below
       /var/backups or /srv/backups, the exact install directory as Compose
       directory, retention from 1 through 3650 days, and unique conservative
       project, volume, and service names.
+  vars:
+    backup_volume_names: "{{ backup_volumes | map('string') | list }}"
+    backup_service_names: >-
+      {{ backup_quiesce_service_names | map('string') | list }}
 
 - name: Resolve backup Compose directory through parent path components
   ansible.builtin.command:  # noqa: command-instead-of-module
