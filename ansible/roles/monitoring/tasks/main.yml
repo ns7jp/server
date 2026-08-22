@@ -1,6 +1,7 @@
 ---
 # `app` ロールがリポジトリを {{ server_monitor_install_dir }} に同期した後に走ることを前提とする。
-# このロールは Alertmanager 設定を環境に応じて再生成し、デプロイ後の構文検証も担う。
+# Alertmanager 設定は compose 起動前に app role が生成する。
+# このロールは配備後のruntime構文検証を担う。
 
 - name: Ensure deploy target directory exists
   ansible.builtin.file:
@@ -17,14 +18,6 @@
     owner: "{{ server_monitor_user }}"
     group: "{{ server_monitor_group }}"
     mode: '0750'
-
-- name: Render Alertmanager configuration
-  ansible.builtin.template:
-    src: "{{ monitoring_alertmanager_template }}"
-    dest: "{{ monitoring_deploy_target }}/alertmanager/alertmanager.yml"
-    owner: "{{ server_monitor_user }}"
-    group: "{{ server_monitor_group }}"
-    mode: '0640'
 
 - name: Validate Prometheus configuration with promtool
   ansible.builtin.command:
@@ -57,7 +50,8 @@
     cmd: >-
       docker run --rm
       --entrypoint /bin/amtool
-      -v {{ monitoring_deploy_target }}/alertmanager:/etc/alertmanager:ro
+      -v
+      {{ monitoring_deploy_target }}/alertmanager/alertmanager.ansible.yml:/etc/alertmanager/alertmanager.yml:ro
       prom/alertmanager:v0.27.0
       check-config /etc/alertmanager/alertmanager.yml
   changed_when: false

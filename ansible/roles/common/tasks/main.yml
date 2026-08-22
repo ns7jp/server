@@ -39,6 +39,14 @@
     - common_ufw_limit_ssh | bool
     - (common_ufw_ssh_port | int) in (common_ufw_allowed_tcp_ports | map('int') | list)
 
+- name: Ensure sshd runtime directory exists for configuration validation
+  ansible.builtin.file:
+    path: /run/sshd
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
 - name: Disable root SSH login
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config

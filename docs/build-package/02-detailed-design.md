@@ -19,12 +19,15 @@
 1. `common` role でユーザー、timezone、SSH、UFW、更新を設定
 2. `docker` role で Docker Engine と Compose plugin を導入
 3. `nginx` role で TLS 前提を準備
-4. `app` role でリポジトリ root（`playbook_dir/../..`）の構成を同期し、秘密値をレンダリングして Compose stack を起動
-5. `monitoring` role で環境別監視設定を配付・構文検査
+4. `app` role でリポジトリ root（`playbook_dir/../..`）を同期し、秘密値と環境別Alertmanager設定を生成して Compose stack を起動
+5. `monitoring` role で配備済み監視設定を実コンテナにより構文検査
 6. `backup` role で systemd timer を登録
 7. `verify.yml` で配備後確認
 
 ## アクセス制御
+
+公開対象serviceは内部通信用networkに加えて`host-access` bridgeへ接続します。
+`ports`はすべて`127.0.0.1`を明記し、LAN/Internetからの直接到達を許可しません。
 
 | 経路 | 公開範囲 | 認証 |
 | --- | --- | --- |

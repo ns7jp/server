@@ -10,13 +10,14 @@ ansible/
 ├── requirements.yml
 ├── inventory/
 │   ├── staging.yml
-│   └── production.yml
-├── group_vars/
-│   ├── all/main.yml
-│   └── monitor/
-│       ├── main.yml
-│       └── vault.yml.example
-├── host_vars/monitor-01.yml
+│   ├── production.yml
+│   ├── group_vars/
+│   │   ├── all/main.yml
+│   │   └── monitor/
+│   │       ├── main.yml
+│   │       └── vault.yml.example
+│   └── host_vars/
+│       └── monitor-01.yml
 ├── playbooks/
 │   ├── site.yml         # 0 台から構築する完全プレイブック
 │   ├── bootstrap.yml    # 新規ホストの OS 初期化のみ
@@ -26,8 +27,8 @@ ansible/
     ├── common/      # OS 共通設定（timezone、UFW、SSH、unattended-upgrades）
     ├── docker/      # Docker Engine + Compose plugin + daemon.json
     ├── nginx/       # ホスト側の TLS 準備（Nginx 本体は compose 内）
-    ├── monitoring/  # Prometheus / Loki / Grafana Alloy / Alertmanager / Grafana 設定の同期
-    ├── app/         # アプリ同期、秘密値レンダリング、`docker compose up -d`
+    ├── monitoring/  # app が配備した Prometheus / Loki / Alertmanager 設定の構文検証
+    ├── app/         # アプリ同期、秘密値・環境別設定の生成、`docker compose up -d`
     └── backup/      # systemd timer で日次バックアップ
 ```
 
@@ -51,16 +52,16 @@ cd server-monitor/ansible
 ansible-galaxy collection install -r requirements.yml
 ```
 
-機密値のテンプレートを編集する。`vault.yml` 自体は `.gitignore` で除外しているため、暗号化前の状態ではコミットしない。
+機密値のテンプレートを編集する。`vault.yml` 自体は暗号化後も `.gitignore` で除外し、リポジトリにはコミットしない。
 
 ```bash
-cd group_vars/monitor
+cd inventory/group_vars/monitor
 cp vault.yml.example vault.yml
 $EDITOR vault.yml   # 3 つの秘密値を入れる
 openssl rand -base64 32   # 例。値の生成に使う
-echo 'change-me' > ../../.vault_pass
-chmod 600 ../../.vault_pass
-ansible-vault encrypt vault.yml --vault-password-file ../../.vault_pass
+echo 'change-me' > ../../../.vault_pass
+chmod 600 ../../../.vault_pass
+ansible-vault encrypt vault.yml --vault-password-file ../../../.vault_pass
 ```
 
 `.vault_pass` はファイル単位の Vault パスワード。CI に渡す場合は GitHub Secrets に格納し、`ansible-playbook --vault-password-file <path>` で読み込ませる。
@@ -98,6 +99,11 @@ ansible-playbook -i inventory/staging.yml playbooks/site.yml | tail -5
 
 冪等性が崩れた場合は Molecule の `idempotence` ステップでも検出される（[ローカル検証](#9-ローカル検証molecule) 参照）。
 
+手元に専用VMがない場合は [Full-stack Ansible E2E](e2e-validation.md)をActionsから
+実行できる。使い捨てUbuntu 24.04 runnerへ同じ`site.yml`を2回適用し、2回目の
+`changed=0`を文字列ではなくworkflowの終了条件として検査する。runtime、network、
+障害復旧、restoreのraw logも同じartifactへ保存する。
+
 ## 7. アプリと監視設定だけを更新
 
 OS の再設定を含まないため、運用中のホストへの差分適用は短時間で完了する。
@@ -110,8 +116,9 @@ ansible-playbook -i inventory/staging.yml playbooks/deploy.yml
 
 1. `deploy/` 配下を rsync で同期（既存の `secrets/*.txt` は除外）
 2. Vault から秘密値を取り出して `deploy/secrets/*.txt` を再生成
-3. `compose.yaml` を `docker compose up -d --build --pull missing` で適用
-4. `verify.yml` を別途実行して健全性を確認
+3. 環境別 Alertmanager 設定を追跡対象外の `alertmanager.ansible.yml` に生成
+4. `compose.yaml` と `compose.ansible.yaml` を重ねて `docker compose up -d --build --pull missing` で適用
+5. `verify.yml` を別途実行して健全性を確認
 
 ## 8. バックアップ
 
@@ -123,7 +130,7 @@ journalctl -u server-monitor-backup.service --since today
 ls -lah /var/backups/server-monitor
 ```
 
-`backup_enabled: false` で無効化できる。リテンションとスケジュールは `group_vars/monitor/main.yml` で変更する。
+`backup_enabled: false` で無効化できる。リテンションとスケジュールは `inventory/group_vars/monitor/main.yml` で変更する。
 
 ## 9. ローカル検証（Molecule）
 
@@ -156,7 +163,7 @@ GitHub Actions（`.github/workflows/ansible-check.yml`）では次を検証す�
 ## 10. 既存 docker-compose 環境からの移行
 
 1. 既存ホストの `deploy/secrets/*.txt` の値を控える
-2. それらを `group_vars/monitor/vault.yml` に転記し、`ansible-vault encrypt` で暗号化
+2. それらを `inventory/group_vars/monitor/vault.yml` に転記し、`ansible-vault encrypt` で暗号化
 3. ステージング相当のホストで `site.yml` を `--check --diff` モード実行し、差分が想定どおりか確認
 4. ステージングで実適用、`verify.yml` を流す
 5. 本番に対して同じ手順を実施し、以後は手動変更を禁止

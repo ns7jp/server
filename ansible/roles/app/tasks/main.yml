@@ -13,11 +13,21 @@
     dest: "{{ app_repo_target }}/"
     delete: false
     recursive: true
+    # 配備先の所有者・権限はAnsible側で管理する。controller側の属性を再適用すると、
+    # 後続のfile taskとの間で差分が往復し、2回目の実行もchangedになってしまう。
+    owner: false
+    group: false
+    perms: false
     rsync_opts:
+      - "--omit-dir-times"
       - "--exclude=.git"
+      - "--exclude=.env"
       - "--exclude=ansible"
       - "--exclude=.venv"
       - "--exclude=__pycache__"
+      - "--exclude=.artifacts"
+      # target host 上でのみ生成するため、controller 側の一時生成物は同期しない。
+      - "--exclude=deploy/alertmanager/alertmanager.ansible.yml"
       - "--exclude=deploy/secrets/*.txt"
       - "--exclude=deploy/tls/server.key"
       - "--exclude=deploy/tls/server.crt"
@@ -68,7 +78,7 @@
 - name: Render optional Slack webhook secret
   ansible.builtin.copy:
     dest: "{{ server_monitor_secrets_dir }}/slack_webhook_url.txt"
-    content: "{{ slack_webhook_url }}"
+    content: "{{ app_slack_webhook_url }}"
     owner: "{{ server_monitor_user }}"
     group: "{{ server_monitor_group }}"
     # Alertmanager also reads this file as a non-root container user.
@@ -91,11 +101,26 @@
     group: "{{ server_monitor_group }}"
     mode: '0640'
 
+- name: Render environment-specific Alertmanager configuration before compose starts
+  ansible.builtin.template:
+    src: alertmanager.yml.j2
+    dest: "{{ app_repo_target }}/deploy/alertmanager/alertmanager.ansible.yml"
+    owner: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    # Official Alertmanager runs as a non-root container UID unrelated to the
+    # host monitor account. The 0750 install directory protects host traversal.
+    mode: '0644'
+  notify: Restart managed Alertmanager service
+
 - name: Bring the compose stack up
   community.docker.docker_compose_v2:
     project_src: "{{ app_repo_target }}"
     state: "{{ app_compose_state }}"
-    files: "{{ ['compose.yaml'] + (['compose.slack.yaml.example'] if app_use_slack_overlay else []) }}"
+    files: >-
+      {{ ['compose.yaml']
+         + (['compose.slack.yaml.example'] if app_use_slack_overlay else [])
+         + ['compose.ansible.yaml']
+         + app_compose_additional_files }}
     build: "{{ app_compose_build_policy }}"
     pull: missing
     remove_orphans: true

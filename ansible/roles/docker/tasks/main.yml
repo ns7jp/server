@@ -72,3 +72,9 @@
     name: "{{ server_monitor_user }}"
     groups: docker
     append: true
+
+# daemon.json の変更を compose 起動後まで遅延させると、daemon restart が
+# 稼働中 container の published port を失わせる場合がある。workload 配備前に
+# handler を確実に完了させ、以後の role は確定済み daemon 上で実行する。
+- name: Apply Docker daemon changes before deploying workloads
+  ansible.builtin.meta: flush_handlers

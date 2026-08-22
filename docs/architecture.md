@@ -46,6 +46,7 @@ flowchart LR
 | ホスト名とユーザー名は既定でマスク | 情報漏えい時の影響を小さくするため |
 | Web アプリを非 root コンテナで実行 | アプリ侵害時の権限を限定するため |
 | Compose の公開ポートは loopback のみ | 学習環境で誤って LAN / Internet に露出しないため |
+| 公開対象だけ `host-access` bridgeにも接続 | `internal` networkだけではLinux hostへのport転送が作られないため。内部通信用の`frontend` / `monitoring`は維持し、host側は`127.0.0.1` bindとUFWで制限する |
 | ホスト監視には node-exporter を採用 | コンテナ内の `psutil` だけではホスト全体の監視にならないため |
 | 履歴は Prometheus TSDB に保持 | UI の短期グラフではなく、障害調査で遡れる履歴を残すため |
 | ログは Loki に集約 | アラートで気づいた異常の原因を、同じ Grafana 画面で即時に追跡するため |
@@ -112,8 +113,8 @@ OS 設定、Docker / Compose スタック、監視配付物、秘密値、バッ
 | `common` | timezone、UFW、SSH ハードニング、unattended-upgrades、アプリ用ユーザー |
 | `docker` | Docker CE、Compose plugin、`daemon.json`（ログローテーション + live-restore） |
 | `nginx` | ホスト側 TLS（Let's Encrypt または自己署名）。Nginx 本体は compose 内 |
-| `monitoring` | `deploy/` の同期、Alertmanager テンプレート、`promtool` / `loki -verify-config` |
-| `app` | リポジトリ同期、Vault 由来の `deploy/secrets/*.txt` 生成、`docker compose up -d` |
+| `monitoring` | app が配備した Prometheus / Loki / Alertmanager 設定の実コンテナ構文検証 |
+| `app` | リポジトリ同期、Vault由来の秘密値と環境別Alertmanager設定の生成、`docker compose up -d` |
 | `backup` | systemd timer による Prometheus / Grafana / Loki volume の日次スナップショット |
 
 CI（`.github/workflows/ansible-check.yml`）で `ansible-lint` と Molecule scenario の

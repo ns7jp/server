@@ -4,25 +4,31 @@
   become: true
   gather_facts: false
   tasks:
-    - name: Stat alertmanager.yml (rendered by template)
+    - name: Stat managed monitoring directories
       ansible.builtin.stat:
-        path: /opt/server-monitor/deploy/alertmanager/alertmanager.yml
-      register: am_yml
+        path: "{{ item }}"
+      loop:
+        - /opt/server-monitor/deploy
+        - /opt/server-monitor/deploy/alertmanager
+      register: monitoring_dirs
 
-    - name: Assert template was rendered with correct ownership
+    - name: Assert monitoring directories have restricted host permissions
       ansible.builtin.assert:
         that:
-          - am_yml.stat.exists
-          - am_yml.stat.pw_name == 'monitor'
-          - am_yml.stat.mode == '0640'
+          - item.stat.exists
+          - item.stat.isdir
+          - item.stat.pw_name == 'monitor'
+          - item.stat.mode == '0750'
+      loop: "{{ monitoring_dirs.results }}"
+      loop_control:
+        label: "{{ item.item }}"
 
-    - name: Inspect alertmanager body
-      ansible.builtin.slurp:
-        src: /opt/server-monitor/deploy/alertmanager/alertmanager.yml
-      register: am
+    - name: Stat app-owned Alertmanager configuration
+      ansible.builtin.stat:
+        path: /opt/server-monitor/deploy/alertmanager/alertmanager.ansible.yml
+      register: app_owned_alertmanager_config
 
-    - name: Assert Slack receiver is absent when slack disabled
+    - name: Assert monitoring role does not synthesize app-owned configuration
       ansible.builtin.assert:
         that:
-          - "'local-alert-view' in (am.content | b64decode)"
-          - "'slack_configs' not in (am.content | b64decode)"
+          - not app_owned_alertmanager_config.stat.exists

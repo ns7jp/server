@@ -20,6 +20,20 @@
         that:
           - healthz.json.status == 'ok'
 
+    - name: Assert dashboard requires Basic authentication
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ monitor_port }}/"
+        status_code: 401
+
+    - name: Assert dashboard accepts configured Basic authentication
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ monitor_port }}/"
+        user: "{{ monitor_username }}"
+        password: "{{ monitor_password }}"
+        force_basic_auth: true
+        status_code: 200
+      no_log: true
+
     - name: Wait for Prometheus readiness
       ansible.builtin.uri:
         url: "http://127.0.0.1:{{ prometheus_port }}/-/ready"
@@ -28,6 +42,30 @@
       retries: 20
       delay: 3
       until: prom_ready.status == 200
+
+    - name: Wait for linux-node target to be scraped successfully
+      ansible.builtin.uri:
+        url: >-
+          http://127.0.0.1:{{ prometheus_port
+          }}/api/v1/query?query=up%7Bjob%3D%22linux-node%22%7D
+        return_content: true
+        status_code: 200
+      register: linux_node_up
+      retries: 20
+      delay: 3
+      until:
+        - linux_node_up.json.status == 'success'
+        - linux_node_up.json.data.result | length > 0
+        - linux_node_up.json.data.result[0].value[1] == '1'
+
+    - name: Wait for Alertmanager readiness
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ alertmanager_port }}/-/ready"
+        status_code: 200
+      register: alertmanager_ready
+      retries: 20
+      delay: 3
+      until: alertmanager_ready.status == 200
 
     - name: Wait for Loki readiness
       ansible.builtin.uri:
@@ -61,6 +99,7 @@
         return_content: true
         status_code: 200
       register: metrics_auth
+      no_log: true
 
     - name: Assert metrics body contains server_monitor_cpu_usage_percent
       ansible.builtin.assert:

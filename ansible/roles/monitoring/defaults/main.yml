@@ -1,13 +1,8 @@
 ---
-# 監視設定はリポジトリの deploy/ を真の出典とする。
-# このロールはリポジトリの内容を {{ server_monitor_install_dir }}/deploy へ反映し、
-# 環境固有の Alertmanager 設定だけテンプレートで上書きする。
+# 監視設定は app role がリポジトリから配備する deploy/ を真の出典とする。
+# このロールは配備後の runtime 構文検証を担当する。
 
 monitoring_deploy_target: "{{ server_monitor_install_dir }}/deploy"
-monitoring_alertmanager_template: alertmanager.yml.j2
-
-# Slack を有効化するとテンプレートが上書きされる。
-# alertmanager_slack_enabled と slack_webhook_url は group_vars で定義。
 
 # 検証ステップを実行するか（molecule では docker run が使えないため false にする）
 monitoring_run_validation: true

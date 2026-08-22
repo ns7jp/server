@@ -1,12 +1,12 @@
 ---
 # このファイルを `vault.yml` にコピーして、運用者の値を入れ、
-# `ansible-vault encrypt vault.yml` で暗号化してから commit する。
-# `vault.yml` 自体は `.gitignore` で除外しているので、暗号化前の状態でリポジトリに混入しない。
+# `ansible-vault encrypt vault.yml` で暗号化してローカル保管する。
+# `vault.yml` 自体は暗号化後も `.gitignore` で除外し、リポジトリに含めない。
 #
 # 例：
 #   cp vault.yml.example vault.yml
 #   openssl rand -base64 32  # を 3 か所に貼る
-#   ansible-vault encrypt vault.yml --vault-password-file ../../.vault_pass
+#   ansible-vault encrypt vault.yml --vault-password-file ../../../.vault_pass
 
 vault_monitor_password: "replace-with-a-long-random-password"
 vault_metrics_token: "replace-with-a-long-random-token"

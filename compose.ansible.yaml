@@ -1,0 +1,6 @@
+# Ansible deployment override. Direct `docker compose up` keeps using the
+# checked-in local-lab configuration from compose.yaml.
+services:
+  alertmanager:
+    volumes:
+      - ./deploy/alertmanager/alertmanager.ansible.yml:/etc/alertmanager/alertmanager.yml:ro

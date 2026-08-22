@@ -35,9 +35,7 @@ provisioner:
         server_monitor_group: monitor
         server_monitor_install_dir: /opt/server-monitor
         server_monitor_secrets_dir: /opt/server-monitor/deploy/secrets
-        # Molecule では docker run を実行できないため、テンプレート出力のみを検証する
+        # Molecule では docker run を実行できないため、directory 収束だけを検証する。
         monitoring_run_validation: false
-        alertmanager_slack_enabled: false
-        slack_webhook_url: ""
 verifier:
   name: ansible

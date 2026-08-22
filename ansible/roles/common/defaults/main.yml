@@ -11,8 +11,15 @@ common_required_packages:
   - tzdata
   - ca-certificates
   - curl
+  # 構築後の一次切り分けを、追加インストールなしで実施できるようにする。
+  - dnsutils
   - git
+  - iproute2
+  - iputils-ping
+  - jq
+  - openssl
   - rsync
+  - tcpdump
   - chrony
   - ufw
   - unattended-upgrades

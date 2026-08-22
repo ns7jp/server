@@ -1,5 +1,5 @@
 ---
 # staging 環境の代表ホストに固有のオーバーライド。
-# ホスト数を増やす場合は host_vars/<hostname>.yml を増やす。
+# ホスト数を増やす場合は inventory/host_vars/<hostname>.yml を増やす。
 
 monitor_node_name: monitor-01

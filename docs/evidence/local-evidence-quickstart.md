@@ -10,8 +10,10 @@ Grafana、Loki、Alertmanager、D-1 復旧演習の証跡を採録する。
 > なお本ガイドの手順は **WSL2 上の Ubuntu でも実行できる**。専用マシンや VM の新規構築は必須ではない。
 > Grafana / Loki / D-1 の採録は [2026-08-18](2026-08-18-local-observability.md) ／ [2026-08-19](../drills/logs/2026-08-19-D-1.md) に完了済み。
 > `docs/screenshot.png` も Linux(WSL2) 上の実行画面へ差し替え済み。本ガイド内で未採録なのは Alertmanager → Slack の実配信です。
-> リポジトリ全体では、D-2 に加えて `site.yml` による新規 VM の一括構築・冪等性、実 VM の待受 / UFW / network、
-> container user の実行時確認、backup restore、AWS `apply / destroy` が未採録です。[証跡台帳](README.md)を正本としてください。
+> リポジトリ全体では、`site.yml`一括構築・冪等性、runner内の待受/UFW/network、
+> container user、backup restoreを[2026-08-22 Full-stack E2E](2026-08-22-full-stack-e2e.md)で採録済みです。
+> 一方、独立した対象host/管理端末でのnetwork検証、Slack実配信、D-2、AWS `apply / destroy`は未採録です。
+> [証跡台帳](README.md)を正本としてください。
 
 実 VM の network / UFW は本ガイドの Docker Compose 起動確認では代替できません。[実ホスト検証手順](../build-package/09-network-validation-procedure.md)を別途実行します。
 

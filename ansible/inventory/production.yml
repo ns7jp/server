@@ -1,6 +1,6 @@
 ---
 # 本番ホストの IP / SSH ユーザーは運用者が記入する。
-# `ansible-vault` で暗号化された secrets は group_vars/monitor/vault.yml を参照。
+# `ansible-vault` で暗号化された secrets は inventory/group_vars/monitor/vault.yml を参照。
 all:
   children:
     monitor:

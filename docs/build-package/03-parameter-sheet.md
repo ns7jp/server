@@ -9,7 +9,7 @@
 | 対象 OS | Ubuntu 22.04 / 24.04 LTS | `docs/deployment-ansible.md` |
 | timezone | `Asia/Tokyo` | `ansible/roles/common/defaults/main.yml` |
 | 管理方式 | SSH 公開鍵 + sudo | inventory / 対象ホスト |
-| アプリ用ユーザー | `monitor` | `ansible/group_vars/all/main.yml` |
+| アプリ用ユーザー | `monitor` | `ansible/inventory/group_vars/all/main.yml` |
 | firewall | UFW、default deny incoming | `ansible/roles/common/` |
 | SSH | root login 禁止、password login 禁止 | `ansible/roles/common/` |
 | 自動更新 | unattended-upgrades | `ansible/roles/common/` |
@@ -53,6 +53,9 @@
 | 3100/tcp | Loki | `127.0.0.1` | API（ブラウザ UI なし） |
 
 ## 実機記入欄
+
+下表は引き渡し対象hostごとの記入欄なので、未指定の現時点では`NOT RUN`を維持します。
+使い捨てrunnerの実測値は[2026-08-22 Full-stack E2E](../evidence/2026-08-22-full-stack-e2e.md)に分けて記録しています。
 
 | 項目 | 実測値 | 記録日 | 証跡 |
 | --- | --- | --- | --- |

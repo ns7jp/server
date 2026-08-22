@@ -12,4 +12,15 @@ app_compose_state: present  # present = up -d, absent = down
 # docker compose build policy. policy = compose ファイルの build 句に従い、
 # 既にイメージが存在する場合は再ビルドしない（冪等）。always はイメージの強制再ビルド。
 app_compose_build_policy: policy
-app_use_slack_overlay: "{{ alertmanager_slack_enabled | default(false) | bool }}"
+app_alertmanager_slack_enabled: false
+app_slack_webhook_url: ""
+app_use_slack_overlay: "{{ app_alertmanager_slack_enabled | default(false) | bool }}"
+# CI のように補助 service を足す環境だけ compose override を指定する。
+# 本番・staging の既定値は空で、通常構成を変えない。
+app_compose_additional_files: []
+# app role が compose 起動前に Alertmanager config を render するための安全な既定値。
+app_alertmanager_webhook_enabled: false
+app_alertmanager_webhook_url: ""
+app_alertmanager_group_wait: 30s
+app_alertmanager_group_interval: 5m
+app_alertmanager_repeat_interval: 4h

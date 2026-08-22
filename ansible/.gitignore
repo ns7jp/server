@@ -1,6 +1,6 @@
 .vault_pass
 *.retry
-group_vars/**/vault.yml
-host_vars/**/vault.yml
+inventory/group_vars/**/vault.yml
+inventory/host_vars/**/vault.yml
 collections/
 .ansible/

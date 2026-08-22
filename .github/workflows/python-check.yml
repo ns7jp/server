@@ -36,8 +36,10 @@ jobs:
           cp deploy/secrets/metrics_token.txt.example deploy/secrets/metrics_token.txt
           cp deploy/secrets/grafana_admin_password.txt.example deploy/secrets/grafana_admin_password.txt
           cp deploy/secrets/slack_webhook_url.txt.example deploy/secrets/slack_webhook_url.txt
+          cp deploy/alertmanager/alertmanager.yml deploy/alertmanager/alertmanager.ansible.yml
           docker compose config --quiet
           docker compose -f compose.yaml -f compose.slack.yaml.example config --quiet
+          docker compose -f compose.yaml -f compose.ansible.yaml config --quiet
           docker compose -f labs/network-troubleshooting/compose.yaml config --quiet
 
       - name: Validate network drill script
@@ -47,7 +49,7 @@ jobs:
         run: |
           docker run --rm --entrypoint /bin/promtool -v "$PWD/deploy/prometheus:/etc/prometheus:ro" -v "$PWD/deploy/secrets/metrics_token.txt.example:/run/secrets/metrics_token:ro" prom/prometheus:v2.55.1 check config /etc/prometheus/prometheus.yml
           docker run --rm --entrypoint /bin/promtool -v "$PWD/deploy/prometheus:/etc/prometheus:ro" prom/prometheus:v2.55.1 check rules /etc/prometheus/rules.yml /etc/prometheus/slo-rules.yml
-          docker run --rm --entrypoint /bin/amtool -v "$PWD/deploy/alertmanager:/etc/alertmanager:ro" prom/alertmanager:v0.27.0 check-config /etc/alertmanager/alertmanager.yml
+          docker run --rm --entrypoint /bin/amtool -v "$PWD/deploy/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro" prom/alertmanager:v0.27.0 check-config /etc/alertmanager/alertmanager.yml
 
       - name: Validate blackbox-exporter configuration
         run: |
