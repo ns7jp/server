@@ -268,6 +268,17 @@ def test_common_role_prepares_sshd_runtime_directory_before_validation():
     assert tasks.index(runtime_task) < tasks.index(validation_task)
 
 
+def test_docker_daemon_restart_finishes_before_compose_workloads_start():
+    tasks = (
+        ROOT / "ansible" / "roles" / "docker" / "tasks" / "main.yml"
+    ).read_text(encoding="utf-8")
+
+    render_task = "Render /etc/docker/daemon.json"
+    flush_task = "Apply Docker daemon changes before deploying workloads"
+    assert "ansible.builtin.meta: flush_handlers" in tasks
+    assert tasks.index(render_task) < tasks.index(flush_task)
+
+
 def test_backup_template_remains_renderable_by_plain_jinja_smoke_test():
     template = (
         ROOT
