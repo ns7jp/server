@@ -16,7 +16,7 @@
 | レスポンスヘッダー | `X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`、`Referrer-Policy: no-referrer`、`/healthz` を除き `Cache-Control: no-store` を付与 |
 | 秘密管理 | Compose secrets の実体 `*.txt` は `.gitignore` 対象。リポジトリには例のみ保存 |
 | 実行権限 | アプリコンテナは `monitor` ユーザー、`read_only`、`no-new-privileges` で実行 |
-| ネットワーク露出 | Compose で公開するポートはすべて `127.0.0.1` にバインド |
+| ネットワーク露出 | 内部通信は`frontend` / `monitoring`のinternal bridgeに分離。公開対象だけport転送用`host-access` bridgeにも接続し、すべて`127.0.0.1`にバインド |
 | リバースプロキシ | Nginx で基本的なセキュリティヘッダーを付与し、TLS 配備例も同梱 |
 | ログ収集の権限分離 | Grafana Alloy は `/var/log`、`/var/lib/docker/containers`、Docker socket を **読み取り専用** でマウントし、`no-new-privileges` で起動 |
 | ログラベルの最小化 | ラベルにはクライアント IP / URL / リクエスト ID 等の高カーディナリティ値を入れず、ログ本文に残す |
@@ -46,3 +46,4 @@
 - UI 表示用のディスク情報は認証済み利用者には見える。必要に応じ API 出力の制限を追加する。
 - Alloy は Docker socket をマウントするためコンテナ列挙の権限を持つ。socket は `:ro` で渡しているが、Docker daemon の API は読み取りでも機密情報（環境変数、ラベル等）を含む。同一ホストで信頼境界を越える別テナントを動かさないこと。
 - Loki は無認証である。`127.0.0.1:3100` のみで待ち受けるため、ホスト上の他ユーザーから到達可能な場合は LAN への露出と同等のリスクになる。多人数ホストでは Grafana 側でアクセス制御し、Loki ポートはコンテナ内部に閉じる構成を検討する。
+- `host-access`はLinux hostへのport転送を成立させる非internal bridgeであり、接続した管理serviceには外向き経路も生じる。`app`、exporter、collectorは接続せず、管理portのloopback bindとUFW denyを配備後試験で継続確認する。

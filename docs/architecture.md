@@ -46,6 +46,7 @@ flowchart LR
 | ホスト名とユーザー名は既定でマスク | 情報漏えい時の影響を小さくするため |
 | Web アプリを非 root コンテナで実行 | アプリ侵害時の権限を限定するため |
 | Compose の公開ポートは loopback のみ | 学習環境で誤って LAN / Internet に露出しないため |
+| 公開対象だけ `host-access` bridgeにも接続 | `internal` networkだけではLinux hostへのport転送が作られないため。内部通信用の`frontend` / `monitoring`は維持し、host側は`127.0.0.1` bindとUFWで制限する |
 | ホスト監視には node-exporter を採用 | コンテナ内の `psutil` だけではホスト全体の監視にならないため |
 | 履歴は Prometheus TSDB に保持 | UI の短期グラフではなく、障害調査で遡れる履歴を残すため |
 | ログは Loki に集約 | アラートで気づいた異常の原因を、同じ Grafana 画面で即時に追跡するため |

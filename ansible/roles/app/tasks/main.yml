@@ -13,8 +13,15 @@
     dest: "{{ app_repo_target }}/"
     delete: false
     recursive: true
+    # 配備先の所有者・権限はAnsible側で管理する。controller側の属性を再適用すると、
+    # 後続のfile taskとの間で差分が往復し、2回目の実行もchangedになってしまう。
+    owner: false
+    group: false
+    perms: false
     rsync_opts:
+      - "--omit-dir-times"
       - "--exclude=.git"
+      - "--exclude=.env"
       - "--exclude=ansible"
       - "--exclude=.venv"
       - "--exclude=__pycache__"

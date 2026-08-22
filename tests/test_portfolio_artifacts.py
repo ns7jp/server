@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 
@@ -37,6 +38,54 @@ def test_network_lab_declares_two_distinct_subnets():
     assert "172.28.10.0/24" in text
     assert "172.28.20.0/24" in text
     assert text.count("internal: true") == 1
+
+
+def test_main_stack_keeps_internal_segments_and_adds_loopback_host_access():
+    compose = (ROOT / "compose.yaml").read_text(encoding="utf-8")
+    e2e_override = (ROOT / "compose.e2e.yaml").read_text(encoding="utf-8")
+
+    assert compose.count("internal: true") == 2
+    assert "host-access:\n    driver: bridge" in compose
+    expected_mappings = (
+        "127.0.0.1:${MONITOR_PORT:-8080}:8080",
+        "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090",
+        "127.0.0.1:${ALERTMANAGER_PORT:-9093}:9093",
+        "127.0.0.1:${GRAFANA_PORT:-3000}:3000",
+        "127.0.0.1:${LOKI_PORT:-3100}:3100",
+    )
+    for mapping in expected_mappings:
+        assert mapping in compose
+    for service in ("nginx", "prometheus", "alertmanager", "grafana", "loki"):
+        remainder = compose.split(f"  {service}:\n", 1)[1]
+        section = re.split(r"\n(?=  [A-Za-z0-9_-]+:)", remainder, maxsplit=1)[0]
+        assert "- host-access" in section
+    for service in ("app", "alloy", "blackbox", "node-exporter"):
+        remainder = compose.split(f"  {service}:\n", 1)[1]
+        section = re.split(
+            r"\n(?=  [A-Za-z0-9_-]+:)", remainder, maxsplit=1
+        )[0]
+        assert "- host-access" not in section
+    webhook_remainder = e2e_override.split("  webhook-sink:\n", 1)[1]
+    webhook_section = re.split(
+        r"\n(?=  [A-Za-z0-9_-]+:)", webhook_remainder, maxsplit=1
+    )[0]
+    assert "- host-access" in webhook_section
+
+
+def test_directory_sync_preserves_ansible_managed_metadata_and_secrets():
+    task = (ROOT / "ansible" / "roles" / "app" / "tasks" / "main.yml").read_text(
+        encoding="utf-8"
+    )
+
+    for setting in ("owner: false", "group: false", "perms: false"):
+        assert setting in task
+    for option in (
+        '"--omit-dir-times"',
+        '"--exclude=.env"',
+        '"--exclude=deploy/secrets/*.txt"',
+        '"--exclude=deploy/alertmanager/alertmanager.ansible.yml"',
+    ):
+        assert option in task
 
 
 def test_host_network_validation_covers_required_layers_without_claiming_execution():
