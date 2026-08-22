@@ -206,6 +206,22 @@ def test_full_stack_e2e_starts_as_not_run_and_requires_disposable_host_opt_in():
     assert "demo-command-success.txt" in workflow
 
 
+def test_ci_overrides_are_host_vars_and_win_over_monitor_group_defaults():
+    inventory = (ROOT / "ansible" / "inventory" / "ci.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "\n  vars:\n" not in inventory
+    for setting in (
+        "          server_monitor_environment: ci",
+        "          server_monitor_timezone: Etc/UTC",
+        "          backup_target_dir: /var/backups/server-monitor-e2e",
+        "          backup_enabled: false",
+        "          app_alertmanager_webhook_enabled: true",
+    ):
+        assert setting in inventory
+
+
 def test_directory_sync_excludes_generated_evidence_and_managed_alert_config():
     tasks = (ROOT / "ansible" / "roles" / "app" / "tasks" / "main.yml").read_text(
         encoding="utf-8"

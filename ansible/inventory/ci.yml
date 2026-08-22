@@ -9,17 +9,17 @@ all:
           ansible_connection: local
           ansible_host: 127.0.0.1
           ansible_python_interpreter: /usr/bin/python3
-  vars:
-    server_monitor_environment: ci
-    monitor_node_name: ci-monitor-01
-    server_monitor_timezone: Etc/UTC
-    backup_target_dir: /var/backups/server-monitor-e2e
-    # Persistent timerがrunner起動直後に割り込まないよう、CIでは明示実行だけにする。
-    backup_enabled: false
-    app_compose_additional_files:
-      - compose.e2e.yaml
-    app_alertmanager_webhook_enabled: true
-    app_alertmanager_webhook_url: http://webhook-sink:8081/alerts
-    app_alertmanager_group_wait: 1s
-    app_alertmanager_group_interval: 1s
-    app_alertmanager_repeat_interval: 1h
+          # host変数に置き、group_vars/monitorの本番向け既定値より確実に優先する。
+          server_monitor_environment: ci
+          monitor_node_name: ci-monitor-01
+          server_monitor_timezone: Etc/UTC
+          backup_target_dir: /var/backups/server-monitor-e2e
+          # Persistent timerがrunner起動直後に割り込まないよう、CIでは明示実行だけにする。
+          backup_enabled: false
+          app_compose_additional_files:
+            - compose.e2e.yaml
+          app_alertmanager_webhook_enabled: true
+          app_alertmanager_webhook_url: http://webhook-sink:8081/alerts
+          app_alertmanager_group_wait: 1s
+          app_alertmanager_group_interval: 1s
+          app_alertmanager_repeat_interval: 1h
