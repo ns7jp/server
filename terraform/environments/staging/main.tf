@@ -173,9 +173,9 @@ module "monitoring" {
   monthly_budget_jpy       = var.monthly_budget_jpy
   # GuardDuty is account/region-scoped and CloudTrail is account-wide. A
   # short-lived restore drill must not create competing detectors or trails.
-  enable_guardduty         = false
-  enable_cloudtrail        = false
-  tags                     = local.common_tags
+  enable_guardduty  = false
+  enable_cloudtrail = false
+  tags              = local.common_tags
 }
 
 module "backup" {

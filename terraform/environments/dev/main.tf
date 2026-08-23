@@ -63,9 +63,9 @@ module "monitoring" {
   alarm_emails             = var.alarm_emails
   monthly_budget_jpy       = var.monthly_budget_jpy
   # Account-wide controls are owned once by the long-lived prod/account baseline.
-  enable_guardduty         = false
-  enable_cloudtrail        = false
-  tags                     = local.common_tags
+  enable_guardduty  = false
+  enable_cloudtrail = false
+  tags              = local.common_tags
 }
 
 module "backup" {
