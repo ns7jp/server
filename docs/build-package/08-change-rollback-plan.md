@@ -6,6 +6,11 @@
 
 この原本の実施欄は初期状態では `NOT RUN` です。実作業では `docs/evidence/YYYY-MM-DD-change-<ID>.md` へコピーし、実際の値と出力を記録します。
 
+最初の実測記録として、使い捨てUbuntu runner上のGit-mode変更・rollbackを
+[2026-08-23の結果票](../evidence/2026-08-23-change-CI-GIT-ROLLBACK.md)へ採録しました。
+以下の空欄は次の変更で再利用する原本であり、そのCI実測を`NOT RUN`へ戻すものではありません。
+引き渡し対象の永続hostでの変更・rollbackは、現在も`NOT RUN`です。
+
 ## 2. 変更票
 
 | 項目 | 計画・実績 |

@@ -32,9 +32,17 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 > [日付付き証跡](docs/evidence/2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証)に固定し、
 > raw logは期限付きActions artifactに保存しています。
 >
+> **実測の追加（2026-08-23）**: PR #77の
+> [Full-stack Ansible E2E run 32611251044](https://github.com/ns7jp/server-monitor/actions/runs/32611251044)で、
+> candidate `84e149254d463a8a27a4cabcd09efa4504d1b47e`をimmutableなGit SHAとして配備・検証し、
+> 前版`59aa88ed1c8ccb7ba188909f0e079b834e9126c7`へrollbackした後もrevision marker、
+> runtime manifest、app container再作成、stale file除去、loopback bind、Loki取り込みが一致してPASSしました。
+> これはPR branch上の使い捨てrunnerでの実測で、main統合や永続hostでの変更実績ではありません。
+> [日付付きrollback証跡](docs/evidence/2026-08-23-change-CI-GIT-ROLLBACK.md)に実測値と境界を固定しています。
+>
 > 2026-08-18/19のWSL2実測、D-1 RTO 13秒、二セグメント障害ラボ、
 > [21項目中11項目PASSの結果票](docs/evidence/2026-08-19-build-validation.md)は当時の履歴として保持します。
-> 今回のE2EはSlack実配信、AWS `apply / destroy`、D-2、構成commit / 設定rollback rehearsal、
+> 2026-08-22のE2EはSlack実配信、AWS `apply / destroy`、D-2、構成commit / 設定rollback rehearsal、
 > 長期稼働host、実管理端末・組織DNS・
 > cloud firewallを対象にしていません。実行ログが無い項目は実績として扱いません。
 > 詳細な境界は[検証証跡台帳](docs/evidence/README.md)を参照してください。

@@ -24,7 +24,7 @@
 | 構築 | [05-build-procedure.md](05-build-procedure.md) | 手順作成済み・実機結果は証跡台帳で管理 |
 | 試験 | [06-test-specification.md](06-test-specification.md) | 仕様作成済み・未実施欄は `NOT RUN` |
 | 引き渡し | [07-handover-checklist.md](07-handover-checklist.md) | 作成済み |
-| 変更・復旧 | [08-change-rollback-plan.md](08-change-rollback-plan.md) | 計画・記録様式作成済み、実施結果は `NOT RUN` |
+| 変更・復旧 | [08-change-rollback-plan.md](08-change-rollback-plan.md) | 計画・記録様式作成済み。使い捨てrunnerのGit rollbackは[2026-08-23にPASS](../evidence/2026-08-23-change-CI-GIT-ROLLBACK.md)、引き渡し対象hostでは`NOT RUN` |
 | ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | ephemeral runnerは[2026-08-22にPASS](../evidence/2026-08-22-full-stack-e2e.md)。独立した引き渡し対象host/管理端末は`NOT RUN` |
 | ネットワーク結果票 | [実機検証テンプレート](../evidence/templates/network-host-validation.md) | テンプレート作成済み |
 | 一次切り分け記録 | [トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md) | テンプレート作成済み |

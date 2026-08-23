@@ -52,5 +52,5 @@
 - 構成変更は Git の直前 commit へ戻し、Ansible の `deploy.yml` を再適用します。
 - データ破損時は [スナップショット復元ランブック](../roadmap/restore-from-snapshot.md)を使用します。
 - 復旧後は必ず `verify.yml` と必須試験を再実行します。
-- D-1 / volume restoreの実測と、構成commitを戻すrollback rehearsalは別試験です。後者は日付付き変更結果票が作られるまで`NOT RUN`です。
+- D-1 / volume restoreの実測と、構成commitを戻すrollback rehearsalは別試験です。使い捨てrunnerでは[2026-08-23にGit-mode rollbackを実測](../evidence/2026-08-23-change-CI-GIT-ROLLBACK.md)し、永続hostでは`NOT RUN`です。
 

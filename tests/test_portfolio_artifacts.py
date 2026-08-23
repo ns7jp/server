@@ -996,8 +996,23 @@ def test_current_docs_separate_rollback_and_external_acceptance_boundaries():
     evidence = (ROOT / "docs" / "evidence" / "README.md").read_text(
         encoding="utf-8"
     )
+    rollback_evidence = (
+        ROOT
+        / "docs"
+        / "evidence"
+        / "2026-08-23-change-CI-GIT-ROLLBACK.md"
+    ).read_text(encoding="utf-8")
     handover = (
         ROOT / "docs" / "build-package" / "07-handover-checklist.md"
+    ).read_text(encoding="utf-8")
+    build_package = (
+        ROOT / "docs" / "build-package" / "README.md"
+    ).read_text(encoding="utf-8")
+    detailed_design = (
+        ROOT / "docs" / "build-package" / "02-detailed-design.md"
+    ).read_text(encoding="utf-8")
+    rollback_plan = (
+        ROOT / "docs" / "build-package" / "08-change-rollback-plan.md"
     ).read_text(encoding="utf-8")
     parameters = (
         ROOT / "docs" / "build-package" / "03-parameter-sheet.md"
@@ -1008,7 +1023,31 @@ def test_current_docs_separate_rollback_and_external_acceptance_boundaries():
 
     assert "構成commit / 設定rollback rehearsal" in evidence
     assert "YYYY-MM-DD-change-<ID>.md" in evidence
-    assert "構成commit / 設定rollback rehearsal" in handover
+    assert "2026-08-23-change-CI-GIT-ROLLBACK.md" in evidence
+    for expected in (
+        "32611251044",
+        "84e149254d463a8a27a4cabcd09efa4504d1b47e",
+        "59aa88ed1c8ccb7ba188909f0e079b834e9126c7",
+        "GIT_MODE_ROLLBACK_REHEARSAL=PASS",
+        "candidate-runtime-manifest.diff`は0 byte",
+        "rollback-runtime-manifest.diff`は0 byte",
+        "LOOPBACK_LISTENERS=PASS",
+        "使い捨てrunner",
+    ):
+        assert expected in rollback_evidence
+    for not_run_boundary in (
+        "永続host / staging / productionへの変更適用とロールバック: **NOT RUN**",
+        "実hostの再起動、24時間・72時間継続確認: **NOT RUN**",
+        "AWS `terraform apply / destroy`、AWS Backup restore、D-2: **NOT RUN**",
+        "AlertmanagerからSlackへの実配信: **NOT RUN**",
+    ):
+        assert not_run_boundary in rollback_evidence
+    for current_doc in (handover, build_package, detailed_design, rollback_plan):
+        assert "2026-08-23-change-CI-GIT-ROLLBACK.md" in current_doc
+    assert "引き渡し対象hostの構成commit / 設定rollback rehearsal" in handover
+    assert "引き渡し対象hostでは`NOT RUN`" in build_package
+    assert "永続hostでは`NOT RUN`" in detailed_design
+    assert "引き渡し対象の永続host" in rollback_plan
     assert "Docker API proxy" in parameters
     assert "manifest digest" in parameters
     assert "全送信元" in parameters
