@@ -1,0 +1,89 @@
+---
+- name: Verify common role outcomes on RHEL family
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Assert the role detected the RedHat family
+      ansible.builtin.assert:
+        that:
+          - ansible_os_family == 'RedHat'
+        fail_msg: >-
+          This scenario must run on a RHEL-family image. Got
+          {{ ansible_os_family }}.
+
+    - name: Read configured timezone
+      ansible.builtin.command: timedatectl show -p Timezone --value
+      register: tz
+      changed_when: false
+
+    - name: Assert timezone is set
+      ansible.builtin.assert:
+        that:
+          - tz.stdout == 'Asia/Tokyo'
+
+    - name: Read sshd_config
+      ansible.builtin.slurp:
+        src: /etc/ssh/sshd_config
+      register: sshd
+
+    - name: Assert root SSH login and password authentication are disabled
+      ansible.builtin.assert:
+        that:
+          - "'PermitRootLogin no' in (sshd.content | b64decode)"
+          - "'PasswordAuthentication no' in (sshd.content | b64decode)"
+
+    # Debian には無い RHEL 固有の確認項目。
+    - name: Check that the RHEL time synchronization unit is chronyd
+      ansible.builtin.command: systemctl is-enabled chronyd
+      register: chronyd_enabled
+      changed_when: false
+
+    - name: Assert chronyd is enabled
+      ansible.builtin.assert:
+        that:
+          - chronyd_enabled.stdout == 'enabled'
+
+    - name: Read dnf-automatic configuration
+      ansible.builtin.slurp:
+        src: /etc/dnf/automatic.conf
+      register: dnf_automatic
+
+    - name: Assert dnf-automatic applies security updates
+      ansible.builtin.assert:
+        that:
+          - "'upgrade_type = security' in (dnf_automatic.content | b64decode)"
+          - "'apply_updates = yes' in (dnf_automatic.content | b64decode)"
+
+    # Debian の dnsutils / iproute2 に相当する RHEL 側 package が実際に
+    # 入っていることを、コマンドが起動できるかどうかで確認する。
+    - name: Check that RHEL diagnostic tools are installed
+      ansible.builtin.command: "{{ item }}"
+      loop:
+        - dig -v
+        - ip -V
+        - lvm version
+      changed_when: false
+
+    - name: Check monitor user exists
+      ansible.builtin.command: id monitor
+      register: id_monitor
+      changed_when: false
+
+    - name: Assert monitor user exists
+      ansible.builtin.assert:
+        that:
+          - id_monitor.rc == 0
+
+    - name: Check install directory exists
+      ansible.builtin.stat:
+        path: /opt/server-monitor
+      register: install_dir
+
+    - name: Assert install directory was created with the expected owner and mode
+      ansible.builtin.assert:
+        that:
+          - install_dir.stat.exists
+          - install_dir.stat.isdir
+          - install_dir.stat.pw_name == 'monitor'
+          - install_dir.stat.mode == '0750'

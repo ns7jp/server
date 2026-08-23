@@ -1,0 +1,255 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# B-2: 3 層構成の障害切り分け演習
+#
+# Web / AP / DB のどの層で止まっているかを、層ごとの health endpoint と
+# 到達確認で 1 段ずつ絞り込む。3 種類の障害を注入し、
+# 「利用者から見た症状は似ているが原因が違う」ことを実測で示す。
+#
+#   障害 A: DB プロセス停止        -> web 5xx / ap healthz 200 / ap readyz 503
+#   障害 B: AP プロセス停止        -> web 502 / web-healthz 200
+#   障害 C: AP を db-tier から切断  -> A と同じ症状だが原因が経路側
+#
+# A と C は利用者から見ると同じ「DB に繋がらない」だが、
+# A は DB 側、C は経路側。区別できることがこの演習の目的。
+#
+#   ./run-drill.sh
+#
+# 結果は docs/drills/logs/<date>-B-2.md に書き出す。
+# ---------------------------------------------------------------------------
+set -euo pipefail
+
+LAB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${LAB_DIR}/../.." && pwd)"
+COMPOSE=(docker compose -f "${LAB_DIR}/compose.yaml")
+DB_NETWORK=server-monitor-3t-db
+EVIDENCE_DIR="${REPO_ROOT}/docs/drills/logs"
+RUN_DATE="$(date -u '+%Y-%m-%d')"
+EVIDENCE_FILE="${EVIDENCE_DIR}/${RUN_DATE}-B-2.md"
+
+PASS_COUNT=0
+FAIL_COUNT=0
+declare -a RESULT_ROWS=()
+
+log()  { printf '\n=== %s ===\n' "$*"; }
+note() { printf '    %s\n' "$*"; }
+
+record() {
+  local id="$1" title="$2" expected="$3" observed="$4" verdict="$5"
+  RESULT_ROWS+=("| ${id} | ${title} | ${expected} | ${observed} | ${verdict} |")
+  if [[ "$verdict" == "PASS" ]]; then
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
+  printf '    [%s] %s -> %s (%s)\n' "$id" "$title" "$observed" "$verdict"
+}
+
+# client から見た HTTP status を返す。到達できない場合は 000。
+http_status() {
+  local url="$1"
+  "${COMPOSE[@]}" exec -T client \
+    curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" 2>/dev/null || echo "000"
+}
+
+# AP の health endpoint は web 経由で叩く（client は app-tier にいないため）。
+ap_status() { http_status "http://web/$1"; }
+
+wait_for_ready() {
+  local remaining=40
+  while (( remaining-- > 0 )); do
+    if [[ "$(ap_status readyz)" == "200" ]]; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
+cleanup_note() {
+  printf '\n演習が途中で終了した。後始末:\n  %s down -v\n' "docker compose -f ${LAB_DIR}/compose.yaml" >&2
+}
+trap cleanup_note ERR
+
+# --- 起動 -----------------------------------------------------------------
+log "0. 3 層スタックを起動する"
+"${COMPOSE[@]}" up -d --build
+if ! wait_for_ready; then
+  echo "起動後に readyz が 200 にならない。docker compose logs を確認する" >&2
+  exit 1
+fi
+note "readyz=200 を確認"
+
+# --- 1. 正常系 ------------------------------------------------------------
+log "1. 正常系: client -> web -> ap -> db"
+BASELINE_STATUS="$(http_status http://web/)"
+BASELINE_COUNT="$("${COMPOSE[@]}" exec -T client curl -fsS --max-time 10 http://web/api/items/count 2>/dev/null | tr -d ' \n' || echo 'n/a')"
+if [[ "$BASELINE_STATUS" == "200" ]]; then
+  record "B2-01" "正常系の通し疎通" "HTTP 200 と件数取得" "status=${BASELINE_STATUS}, ${BASELINE_COUNT}" "PASS"
+else
+  record "B2-01" "正常系の通し疎通" "HTTP 200 と件数取得" "status=${BASELINE_STATUS}" "FAIL"
+fi
+
+# --- 2. 層の分離が実際に効いているか --------------------------------------
+log "2. 層の分離: web から db へ直接届かないこと"
+# web は db-tier ネットワークに参加していないので、名前解決すらできないはず。
+# 「設計上そうなっている」ではなく「実際に届かない」ことを確認する。
+if "${COMPOSE[@]}" exec -T web sh -c 'nc -z -w 3 db 5432' >/dev/null 2>&1; then
+  record "B2-02" "web から db への直接到達を遮断" "接続できない" "接続できてしまった" "FAIL"
+else
+  record "B2-02" "web から db への直接到達を遮断" "接続できない" "接続不可を確認" "PASS"
+fi
+note "web が参加しているネットワーク:"
+"${COMPOSE[@]}" exec -T web sh -c 'ip -br addr | grep -v LOOPBACK' || true
+
+# --- 3. 障害 A: DB 停止 ---------------------------------------------------
+log "3. 障害 A: DB プロセスを停止する"
+"${COMPOSE[@]}" stop db >/dev/null
+sleep 3
+A_WEB_HEALTH="$(http_status http://web/web-healthz)"
+A_AP_HEALTH="$(ap_status healthz)"
+A_AP_READY="$(ap_status readyz)"
+A_TOP="$(http_status http://web/)"
+note "web-healthz=${A_WEB_HEALTH} / ap healthz=${A_AP_HEALTH} / ap readyz=${A_AP_READY} / トップ=${A_TOP}"
+note "readyz が返した理由:"
+"${COMPOSE[@]}" exec -T client curl -s --max-time 10 http://web/readyz 2>/dev/null || true
+echo
+if [[ "$A_WEB_HEALTH" == "200" && "$A_AP_HEALTH" == "200" && "$A_AP_READY" == "503" ]]; then
+  record "B2-03" "DB 停止時に DB 層まで切り分けられる" "web 200 / ap healthz 200 / ap readyz 503" \
+    "web-healthz=${A_WEB_HEALTH}, healthz=${A_AP_HEALTH}, readyz=${A_AP_READY}" "PASS"
+else
+  record "B2-03" "DB 停止時に DB 層まで切り分けられる" "web 200 / ap healthz 200 / ap readyz 503" \
+    "web-healthz=${A_WEB_HEALTH}, healthz=${A_AP_HEALTH}, readyz=${A_AP_READY}" "FAIL"
+fi
+
+log "4. 障害 A から復旧する"
+"${COMPOSE[@]}" start db >/dev/null
+if wait_for_ready; then
+  record "B2-04" "DB 復帰後の自動回復" "readyz が 200 に戻る" "readyz=200" "PASS"
+else
+  record "B2-04" "DB 復帰後の自動回復" "readyz が 200 に戻る" "200 に戻らない" "FAIL"
+fi
+
+# --- 5. 障害 B: AP 停止 ---------------------------------------------------
+log "5. 障害 B: AP プロセスを停止する"
+"${COMPOSE[@]}" stop ap >/dev/null
+sleep 3
+B_WEB_HEALTH="$(http_status http://web/web-healthz)"
+B_TOP="$(http_status http://web/)"
+note "web-healthz=${B_WEB_HEALTH} / トップ=${B_TOP}"
+if [[ "$B_WEB_HEALTH" == "200" && "$B_TOP" == "502" ]]; then
+  record "B2-05" "AP 停止時に AP 層まで切り分けられる" "web-healthz 200 / トップ 502" \
+    "web-healthz=${B_WEB_HEALTH}, トップ=${B_TOP}" "PASS"
+else
+  record "B2-05" "AP 停止時に AP 層まで切り分けられる" "web-healthz 200 / トップ 502" \
+    "web-healthz=${B_WEB_HEALTH}, トップ=${B_TOP}" "FAIL"
+fi
+
+log "6. 障害 B から復旧する"
+"${COMPOSE[@]}" start ap >/dev/null
+if wait_for_ready; then
+  record "B2-06" "AP 復帰後の自動回復" "readyz が 200 に戻る" "readyz=200" "PASS"
+else
+  record "B2-06" "AP 復帰後の自動回復" "readyz が 200 に戻る" "200 に戻らない" "FAIL"
+fi
+
+# --- 7. 障害 C: 経路断 ----------------------------------------------------
+log "7. 障害 C: AP を db-tier ネットワークから切り離す（A と同じ症状・別の原因）"
+AP_ID="$("${COMPOSE[@]}" ps -q ap)"
+docker network disconnect "$DB_NETWORK" "$AP_ID"
+sleep 3
+C_AP_HEALTH="$(ap_status healthz)"
+C_AP_READY="$(ap_status readyz)"
+note "ap healthz=${C_AP_HEALTH} / ap readyz=${C_AP_READY}（A と同じ並び）"
+
+note "ここから A と C を区別する。DB コンテナ自身は動いているか:"
+DB_STATE="$("${COMPOSE[@]}" ps --format '{{.Service}} {{.State}}' | grep '^db ' || echo 'db unknown')"
+note "  docker compose ps -> ${DB_STATE}"
+note "AP から見た経路と名前解決:"
+"${COMPOSE[@]}" exec -T ap sh -c 'ip -br addr | grep -v LOOPBACK' || true
+"${COMPOSE[@]}" exec -T ap sh -c 'getent hosts db || echo "  名前解決できない -> 経路/所属ネットワーク側の問題"' || true
+
+# A では db が Exited、C では db は Up のまま。この差が切り分けの決め手。
+if [[ "$C_AP_READY" == "503" && "$DB_STATE" == *"running"* ]]; then
+  record "B2-07" "経路断と DB 停止を区別できる" "readyz 503 だが db は running" \
+    "readyz=${C_AP_READY}, ${DB_STATE}" "PASS"
+else
+  record "B2-07" "経路断と DB 停止を区別できる" "readyz 503 だが db は running" \
+    "readyz=${C_AP_READY}, ${DB_STATE}" "FAIL"
+fi
+
+log "8. 障害 C から復旧する"
+docker network connect --ip 172.29.30.20 "$DB_NETWORK" "$AP_ID"
+"${COMPOSE[@]}" restart ap >/dev/null
+if wait_for_ready; then
+  record "B2-08" "経路復旧後の回復" "readyz が 200 に戻る" "readyz=200" "PASS"
+else
+  record "B2-08" "経路復旧後の回復" "readyz が 200 に戻る" "200 に戻らない" "FAIL"
+fi
+
+FINAL_COUNT="$("${COMPOSE[@]}" exec -T client curl -fsS --max-time 10 http://web/api/items/count 2>/dev/null | tr -d ' \n' || echo 'n/a')"
+
+# --- 証跡 -----------------------------------------------------------------
+log "証跡を書き出す"
+mkdir -p "$EVIDENCE_DIR"
+{
+  cat <<EVIDENCE_HEAD
+# B-2 3 層構成の障害切り分け演習 — ${RUN_DATE}
+
+> このファイルは \`labs/three-tier/run-drill.sh\` が実行結果から生成した。
+> 判定は script が実測値と期待値を比較した結果で、手で書き換えていない。
+
+## 実施情報
+
+| 項目 | 値 |
+| --- | --- |
+| 実施日時 (UTC) | $(date -u '+%Y-%m-%d %H:%M:%S') |
+| 実施環境 | $(uname -srm) / Docker $(docker version --format '{{.Server.Version}}' 2>/dev/null || echo unknown) |
+| commit SHA | $(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo unknown) |
+| 構成 | client -> web(nginx) -> ap(gunicorn/Flask) -> db(PostgreSQL 16) |
+| ネットワーク | dmz 172.29.10.0/24 / app-tier 172.29.20.0/24 (internal) / db-tier 172.29.30.0/24 (internal) |
+| 初期データ件数 | ${BASELINE_COUNT} |
+| 終了時データ件数 | ${FINAL_COUNT} |
+
+## 判定
+
+| ID | 試験 | 期待結果 | 実測 | 結果 |
+| --- | --- | --- | --- | --- |
+EVIDENCE_HEAD
+  printf '%s\n' "${RESULT_ROWS[@]}"
+  cat <<EVIDENCE_TAIL
+
+合計: ${PASS_COUNT} PASS / ${FAIL_COUNT} FAIL
+
+## この演習で確認したこと
+
+- 層ごとに独立した health endpoint を持たせると、利用者から見て同じ
+  「画面が出ない」でも、どの層で止まっているかを HTTP status の並びだけで
+  絞り込める。
+- \`/healthz\`（プロセス生存）と \`/readyz\`（依存先込み）を分けていないと、
+  障害 A（DB 停止）と障害 B（AP 停止）を区別できない。
+- 障害 A と障害 C は AP から見た症状が同じ（readyz 503）。
+  DB コンテナ自身の稼働状態と、AP 側の所属ネットワーク・名前解決を見て
+  初めて区別できる。症状だけで原因を決めない。
+
+## この演習で確認していないこと
+
+- 単一ホスト上のコンテナ構成であり、物理的に分かれた 3 台のサーバー、
+  L2 スイッチ、VLAN、ファイアウォール機器は対象外。
+- DB のレプリケーション、フェイルオーバー、コネクションプールの枯渇は対象外。
+- 負荷をかけた状態での挙動（遅延、タイムアウトの連鎖）は対象外。
+- TLS 終端、認証、WAF は対象外。
+
+## 後始末
+
+\`\`\`bash
+docker compose -f labs/three-tier/compose.yaml down -v
+\`\`\`
+EVIDENCE_TAIL
+} > "$EVIDENCE_FILE"
+
+trap - ERR
+printf '\n証跡: %s\n' "$EVIDENCE_FILE"
+printf '合計: %d PASS / %d FAIL\n' "$PASS_COUNT" "$FAIL_COUNT"
+printf '\n後始末:\n  docker compose -f %s down -v\n' "${LAB_DIR}/compose.yaml"
+[[ $FAIL_COUNT -eq 0 ]]

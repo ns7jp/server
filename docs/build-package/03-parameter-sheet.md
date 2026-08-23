@@ -4,22 +4,62 @@
 
 ## OS
 
+対象 OS は 2 系統。値が分かれるものは両方を書く。片方だけ書くと、
+もう片方のファミリーで構築したときに手順書と実物がずれる。
+
+| 項目 | Debian 系（Ubuntu 22.04 / 24.04） | RHEL 系（AlmaLinux / Rocky 9） | 正本 |
+| --- | --- | --- | --- |
+| timezone | `Asia/Tokyo` | `Asia/Tokyo` | `ansible/roles/common/defaults/main.yml` |
+| 管理方式 | SSH 公開鍵 + sudo | SSH 公開鍵 + sudo | inventory / 対象ホスト |
+| 時刻同期 | **chrony**（unit 名 `chrony`） | **chrony**（unit 名 `chronyd`） | `ansible/roles/common/vars/*.yml` |
+| firewall | UFW、default deny incoming | firewalld、zone `public` | `ansible/roles/common/tasks/firewall-*.yml` |
+| SSH ブルートフォース対策 | `ufw limit 22/tcp` | rich rule `limit value="4/m"`（既定 ssh service は削除） | `ansible/roles/common/tasks/firewall-*.yml` |
+| SSH | root login 禁止、password login 禁止 | 同左 + `sshd_config.d/*.conf` の上書き検査 | `ansible/roles/common/tasks/ssh.yml` |
+| SELinux | 該当なし | `enforcing` を維持（`targeted`） | `ansible/roles/common/tasks/selinux.yml` |
+| 自動更新 | unattended-upgrades | dnf-automatic（`upgrade_type = security`） | `ansible/roles/common/tasks/auto-updates.yml` |
+| sshd unit 名 | `ssh` | `sshd` | `ansible/roles/common/vars/*.yml` |
+
+## ユーザー・グループ・権限
+
+| 項目 | 設定値 | 理由 | 正本 |
+| --- | --- | --- | --- |
+| アプリ用ユーザー | `monitor`（system account） | 一般ユーザーと分ける | `ansible/inventory/group_vars/all/main.yml` |
+| プライマリグループ | `monitor` | — | 同上 |
+| ログインシェル | `/usr/sbin/nologin` | 対話ログインさせない | `ansible/roles/common/tasks/account.yml` |
+| ホームディレクトリ | `/opt/server-monitor`（作成しない） | 配備先と兼ねる | 同上 |
+| `docker` グループ | **付与しない** | docker グループは root 相当 | `ansible/roles/docker/tasks/main.yml` |
+| install dir の所有・権限 | `monitor:monitor` / `0750` | 他ユーザーから読めない | `ansible/roles/common/tasks/account.yml` |
+| secrets dir の権限 | `0700` | 同上 | `ansible/roles/app/tasks/main.yml` |
+
+## ディスク・ファイルシステム
+
+追加ディスクを使う場合のみ記入する。`storage_volumes` が空なら
+storage role は何も実行しない（既定は「触らない」）。
+
 | 項目 | 設定値 | 正本 |
 | --- | --- | --- |
-| 対象 OS | Ubuntu 22.04 / 24.04 LTS | `docs/deployment-ansible.md` |
-| timezone | `Asia/Tokyo` | `ansible/roles/common/defaults/main.yml` |
-| 管理方式 | SSH 公開鍵 + sudo | inventory / 対象ホスト |
-| アプリ用ユーザー | `monitor` | `ansible/inventory/group_vars/all/main.yml` |
-| firewall | UFW、default deny incoming | `ansible/roles/common/` |
-| SSH | root login 禁止、password login 禁止 | `ansible/roles/common/` |
-| 自動更新 | unattended-upgrades | `ansible/roles/common/` |
-| 時刻同期 | systemd-timesyncd / OS 標準 | 対象ホスト |
+| 構成方式 | LVM（パーティションを切らない whole-disk PV） | `ansible/roles/storage/tasks/apply.yml` |
+| ファイルシステム | `xfs` または `ext4` | `ansible/roles/storage/defaults/main.yml` |
+| fstab の書き方 | `UUID=` 指定 | `ansible/roles/storage/tasks/apply.yml` |
+| 縮小 | **禁止**（`shrink: false`） | 同上 |
+| 既存署名のあるディスク | **拒否**（`wipefs` で実読み） | `ansible/roles/storage/tasks/main.yml` |
+
+### 実機記入欄（ディスク）
+
+| 項目 | 値 | 記録日 |
+| --- | --- | --- |
+| 対象デバイス | `NOT RUN` | — |
+| VG 名 / LV 名 | `NOT RUN` | — |
+| サイズ | `NOT RUN` | — |
+| ファイルシステム | `NOT RUN` | — |
+| mount point / オプション | `NOT RUN` | — |
 
 ## Docker・アプリ
 
 | 項目 | 設定値 | 正本 |
 | --- | --- | --- |
 | install dir | `/opt/server-monitor` | `ansible/inventory/group_vars/all/main.yml` |
+| Docker リポジトリ | Debian 系: apt keyring / RHEL 系: `yum_repository` + `rpm_key` | `ansible/roles/docker/tasks/repo-*.yml` |
 | restart policy | `unless-stopped` | `compose.yaml` |
 | app user | Dockerfile の非 root ユーザー | `Dockerfile` |
 | UI listen | `127.0.0.1:8080` | `compose.yaml` |
@@ -79,7 +119,11 @@ registry上のtag不変性まで保証するdigest固定ではありません。
 | 項目 | 実測値 | 記録日 | 証跡 |
 | --- | --- | --- | --- |
 | OS / kernel | `NOT RUN` | — | — |
+| OS ファミリー（Debian / RHEL） | `NOT RUN` | — | — |
 | CPU / memory / disk | `NOT RUN` | — | — |
+| ディスク構成（`lsblk` / `pvs` / `lvs`） | `NOT RUN` | — | — |
+| firewall の許可範囲（`ufw status` / `firewall-cmd --list-all`） | `NOT RUN` | — | — |
+| SELinux の状態（`getenforce`） | `NOT RUN` | — | — |
 | Docker / Compose version | `NOT RUN` | — | — |
 | Ansible version | `NOT RUN` | — | — |
 | 適用 commit SHA | `NOT RUN` | — | — |

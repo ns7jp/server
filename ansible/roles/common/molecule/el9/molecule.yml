@@ -1,0 +1,42 @@
+---
+# RHEL 系（AlmaLinux / Rocky 9）向けの scenario。
+# default scenario（Ubuntu 22.04）と同じ role を、別 OS ファミリーで検証する。
+#
+# image は MOLECULE_EL_IMAGE で差し替えられる。既定は systemd を PID 1 で
+# 起動できる Rocky Linux 9 の Ansible 用イメージ。AlmaLinux 9 は同じ
+# RHEL 9 ファミリーなので、手元に用意した AlmaLinux イメージへ差し替えても
+# 同じ tasks が通ることを確認できる。
+#   MOLECULE_EL_IMAGE=<almalinux9 systemd image> molecule test -s el9
+driver:
+  name: docker
+platforms:
+  - name: server-monitor-common-el9
+    image: ${MOLECULE_EL_IMAGE:-geerlingguy/docker-rockylinux9-ansible:latest}
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    # default scenario と同じ理由で systemd を PID 1 にする。指定しないと
+    # service モジュールと timedatectl が動作しない。
+    command: /usr/sbin/init
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      stdout_callback: ansible.builtin.default
+      callback_result_format: yaml
+  inventory:
+    group_vars:
+      all:
+        server_monitor_user: monitor
+        server_monitor_group: monitor
+        server_monitor_install_dir: /opt/server-monitor
+        server_monitor_timezone: Asia/Tokyo
+        common_password_authentication: false
+        # コンテナ内では kernel の SELinux 状態を変更できないため、
+        # package 導入と設定内容の検証までを対象にする。
+        # 実 VM では既定の true のまま enforcing を維持する。
+        common_manage_selinux: false
+verifier:
+  name: ansible

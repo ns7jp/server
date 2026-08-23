@@ -1,10 +1,16 @@
 ---
+# unit 名は OS ファミリーで異なる（Debian: ssh / RHEL: sshd）。
 - name: Reload sshd
   ansible.builtin.service:
-    name: ssh
+    name: "{{ common_ssh_service_name }}"
     state: reloaded
   when: common_manage_services | bool
 
 - name: Reload ufw
   community.general.ufw:
     state: reloaded
+
+- name: Reload firewalld
+  ansible.builtin.command: firewall-cmd --reload
+  changed_when: true
+  when: common_manage_services | bool

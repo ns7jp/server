@@ -9,49 +9,35 @@
       server_monitor_user and server_monitor_group must not be root, and the
       primary group must not be docker. Docker group membership is root-equivalent.
 
-- name: Ensure prerequisites are installed
+- name: Refuse an unsupported OS family before any host mutation
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family in ['Debian', 'RedHat']
+    fail_msg: >-
+      Unsupported OS family {{ ansible_os_family | default('unknown') }}.
+      This role supports Debian family and RedHat family only.
+
+- name: Load OS family specific variables
+  ansible.builtin.include_vars:
+    file: "{{ ansible_os_family }}.yml"
+
+- name: Ensure prerequisites are installed (Debian family)
   ansible.builtin.apt:
-    name:
-      - ca-certificates
-      - curl
-      - gnupg
-      - python3-pip
+    name: "{{ docker_prerequisite_packages }}"
     state: present
     update_cache: true
     cache_valid_time: 3600
+  when: ansible_os_family == 'Debian'
 
-- name: Ensure /etc/apt/keyrings exists
-  ansible.builtin.file:
-    path: /etc/apt/keyrings
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
-
-- name: Download Docker apt signing key
-  ansible.builtin.get_url:
-    url: https://download.docker.com/linux/ubuntu/gpg
-    dest: /etc/apt/keyrings/docker.asc
-    owner: root
-    group: root
-    mode: '0644'
-    force: false
-
-- name: Add Docker apt repository
-  ansible.builtin.apt_repository:
-    repo: >-
-      deb [arch={{ ansible_architecture | replace('x86_64', 'amd64') | replace('aarch64', 'arm64') }}
-      signed-by=/etc/apt/keyrings/docker.asc]
-      https://download.docker.com/linux/ubuntu
-      {{ ansible_distribution_release }} {{ docker_apt_release_channel }}
+- name: Ensure prerequisites are installed (RedHat family)
+  ansible.builtin.dnf:
+    name: "{{ docker_prerequisite_packages }}"
     state: present
-    filename: docker
     update_cache: true
+  when: ansible_os_family == 'RedHat'
 
-- name: Install Docker Engine and Compose plugin
-  ansible.builtin.apt:
-    name: "{{ docker_packages }}"
-    state: present
+- name: Configure the Docker repository and install the engine
+  ansible.builtin.include_tasks: "repo-{{ ansible_os_family }}.yml"
 
 # The dedicated service account never invokes Docker. Remove only the
 # root-equivalent docker membership left by older role versions, preserving

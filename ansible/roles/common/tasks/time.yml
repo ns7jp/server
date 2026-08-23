@@ -1,0 +1,12 @@
+---
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ common_timezone }}"
+
+# Debian 系は chrony、RHEL 系は chronyd。unit 名だけが違い、役割は同じ。
+- name: Ensure chrony is enabled and running
+  ansible.builtin.service:
+    name: "{{ common_chrony_service_name }}"
+    state: started
+    enabled: true
+  when: common_manage_services | bool

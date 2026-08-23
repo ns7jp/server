@@ -1,0 +1,7 @@
+---
+docker_prerequisite_packages:
+  - ca-certificates
+  - curl
+  - python3-pip
+  # dnf config-manager を提供する。最小構成には含まれないことがある。
+  - dnf-plugins-core

@@ -4,31 +4,27 @@ common_timezone: "{{ server_monitor_timezone | default('Asia/Tokyo') }}"
 # 構築とサービス起動を分けたい場面（イメージ作成時など）のための切り替えで、
 # Molecule では true のまま chrony 起動と sshd 再起動を実際に検証する。
 common_manage_services: true
-common_required_packages:
-  # tzdata がないと timezone 設定が "not available" で失敗する。
-  # Ubuntu Server の既定インストールには含まれるが、最小構成イメージには
-  # 含まれないことがあるため、ロール側で明示的に導入する。
-  - tzdata
-  - ca-certificates
-  - curl
-  # 構築後の一次切り分けを、追加インストールなしで実施できるようにする。
-  - dnsutils
-  - git
-  - iproute2
-  - iputils-ping
-  - jq
-  - openssl
-  - rsync
-  # Self-signed TLS generation drops privileges with runuser while the
-  # Ansible module itself stays out of the managed application directory.
-  - util-linux
-  - tcpdump
-  - chrony
-  - ufw
-  - unattended-upgrades
-  - openssh-server
+
+# 導入パッケージ。OS ファミリー別の一覧は vars/<family>.yml が持つ。
+# 案件固有の追加は common_extra_packages を使い、本体一覧は上書きしない。
+common_required_packages: "{{ common_os_packages }}"
+common_extra_packages: []
+# AlmaLinux / Rocky で EPEL を有効化するか。base だけで足りる案件では false。
+common_enable_epel: true
+
 common_disable_root_ssh: true
 common_password_authentication: false
+
+# firewall を実際に操作するか。既定 true。
+# firewalld / ufw は host 側の nftables / iptables kernel module を使うため、
+# 一部のコンテナ環境では操作できない。docker role の docker_manage_service や
+# monitoring role の monitoring_run_validation と同じ切り替え方針。
+common_manage_firewall: true
+
+# firewall backend: ufw（Debian 系既定）または firewalld（RHEL 系既定）。
+# 案件で明示したい場合は inventory から上書きする。
+common_firewall_backend: "{{ common_default_firewall_backend }}"
+
 common_ufw_default_incoming: deny
 common_ufw_allowed_tcp_ports: "{{ server_monitor_allowed_tcp_ports | default([22]) }}"
 common_ufw_alb_source_cidr: "{{ server_monitor_alb_source_cidr | default('') }}"
@@ -40,3 +36,23 @@ common_ufw_alb_target_port: "{{ server_monitor_alb_target_port | default(8080) }
 common_ufw_limit_ssh: true
 common_ufw_ssh_port: 22
 common_ufw_rate_limited_ports: "{{ [common_ufw_ssh_port | int] if (common_ufw_limit_ssh | bool) else [] }}"
+
+# firewalld 側は zone を明示する。既定 zone を暗黙に使うと、案件ごとに
+# 既定値が異なる環境で許可範囲がぶれる。
+common_firewalld_zone: public
+# firewalld は ufw の limit に相当する rate limit を rule 単位で持たないため、
+# rich rule の service 指定で SSH を開け、送信元制限は下の CIDR 変数で行う。
+common_firewalld_ssh_source_cidr: "{{ server_monitor_ssh_source_cidr | default('') }}"
+# ufw の limit 相当。firewalld の rich rule が受け付ける表記（例 4/m）。
+common_firewalld_ssh_rate_limit: "4/m"
+# rate limit を効かせるには既定の ssh service accept を外す必要がある。
+# 切り戻しが必要な場合だけ false にする。
+common_firewalld_manage_ssh_service: true
+
+# SELinux。RHEL 系のみ適用し、既定は enforcing を維持する。
+# permissive / disabled へ落とす判断は案件変数として明示的に行う。
+# SELinux を実際に操作するか。コンテナ内では kernel 側の状態を変更できない
+# ため、Molecule では false にして package と設定内容の検証だけを行う。
+common_manage_selinux: true
+common_selinux_state: enforcing
+common_selinux_policy: targeted

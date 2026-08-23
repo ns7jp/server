@@ -1,0 +1,6 @@
+---
+- name: Converge docker role on RHEL family
+  hosts: all
+  become: true
+  roles:
+    - role: docker

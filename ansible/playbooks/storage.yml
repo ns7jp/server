@@ -1,0 +1,15 @@
+---
+# 追加ディスクの LVM 構成のみを適用する。
+# site.yml とは分離してあるので、ディスクを触る作業だけを
+# 独立した変更として計画・実施・記録できる。
+#
+#   ansible-playbook -i inventory/staging.local.yml playbooks/storage.yml --check --diff
+#   ansible-playbook -i inventory/staging.local.yml playbooks/storage.yml
+#
+# storage_volumes が空のホストでは何も実行されない。
+- name: Apply the declared LVM storage layout
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - role: storage

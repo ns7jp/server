@@ -1,0 +1,37 @@
+---
+# Debian / Ubuntu 系の OS 差分。tasks 側は変数だけを見る。
+common_os_packages:
+  # tzdata がないと timezone 設定が "not available" で失敗する。
+  # Ubuntu Server の既定インストールには含まれるが、最小構成イメージには
+  # 含まれないことがあるため、ロール側で明示的に導入する。
+  - tzdata
+  - ca-certificates
+  - curl
+  # 構築後の一次切り分けを、追加インストールなしで実施できるようにする。
+  - dnsutils
+  - git
+  - iproute2
+  - iputils-ping
+  - jq
+  - openssl
+  - rsync
+  # Self-signed TLS generation drops privileges with runuser while the
+  # Ansible module itself stays out of the managed application directory.
+  - util-linux
+  - tcpdump
+  # storage role が LVM を扱うため、OS 側で先に用意する。
+  - lvm2
+  - chrony
+  - ufw
+  - unattended-upgrades
+  - openssh-server
+
+# systemd unit 名。Debian 系は ssh / chrony、RHEL 系は sshd / chronyd。
+common_ssh_service_name: ssh
+common_chrony_service_name: chrony
+
+# 既定の firewall backend。inventory から common_firewall_backend で上書きできる。
+common_default_firewall_backend: ufw
+
+# SELinux は RHEL 系のみ。Debian 系では該当タスクを実行しない。
+common_selinux_supported: false

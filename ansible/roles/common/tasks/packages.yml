@@ -1,0 +1,26 @@
+---
+- name: Ensure required packages are installed (Debian family)
+  ansible.builtin.apt:
+    name: "{{ common_required_packages + common_extra_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ansible_os_family == 'Debian'
+
+# AlmaLinux / Rocky の最小構成には EPEL が無く、jq などが標準リポジトリに
+# 入らない版がある。base リポジトリで足りる場合でも EPEL の有無で
+# 結果が変わらないよう、パッケージ導入前に明示的に用意する。
+- name: Ensure EPEL repository is available (RedHat family)
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  when:
+    - ansible_os_family == 'RedHat'
+    - common_enable_epel | bool
+
+- name: Ensure required packages are installed (RedHat family)
+  ansible.builtin.dnf:
+    name: "{{ common_required_packages + common_extra_packages }}"
+    state: present
+    update_cache: true
+  when: ansible_os_family == 'RedHat'

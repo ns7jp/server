@@ -30,6 +30,13 @@ AlertmanagerからSlackへの実配信、D-2、AWS適用、永続hostの再起�
 実管理端末・組織DNS・cloud firewallを含むproduction相当のnetwork検証は、現在も
 `NOT RUN`です。
 
+**AlmaLinux / Rocky 9対応（roleとMolecule scenario）、B-1〜B-4の構築演習
+（LVM、3層構成、DB復元、L2/L3）を追加しました。** これらはroleとscriptとして
+実装済みで、CIで構文・安全装置まで検査していますが、
+**実機での実行証跡（`docs/drills/logs/`配下の日付付きファイル）はまだありません**。
+実行するとscriptが証跡を自動生成するので、生成された結果を確認してから採録します。
+AlmaLinux実機への`site.yml`適用も`NOT RUN`です。
+
 | 区分 | 状態 |
 | --- | --- |
 | CI による自動検証 | ✅ 継続的に実行中（構文・設定整合・依存脆弱性・秘密値混入・バックアップスクリプト） |
@@ -42,6 +49,11 @@ AlertmanagerからSlackへの実配信、D-2、AWS適用、永続hostの再起�
 | ネットワーク切り分けの一次メモ | ✅ [2026-08-21](2026-08-21-network-firstlook.md)：公開port不成立を切り分け。2026-08-22に内部segmentを維持した`host-access`構成へ修正し、E2Eでloopback bind / namespace遮断 / SSH tunnelを確認 |
 | ephemeral VM の network / UFW | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：`NW-01〜09` / `IT-12` / `ST-01,04` PASS |
 | 独立した管理端末・対象hostでの network / UFW | ❌ **NOT RUN**（[手順](../build-package/09-network-validation-procedure.md)と[結果票テンプレート](templates/network-host-validation.md)のみ） |
+| AlmaLinux / Rocky 9 実機への `site.yml` 適用 | ❌ **NOT RUN**（role と `el9` Molecule scenario のみ） |
+| B-1 ディスク設計・LVM 拡張演習 | ❌ **NOT RUN**（[`scripts/labs/lvm-drill.sh`](../../scripts/labs/lvm-drill.sh) と安全装置テストは実装済み） |
+| B-2 3 層構成の障害切り分け演習 | ❌ **NOT RUN**（[`labs/three-tier/`](../../labs/three-tier/README.md) 実装済み） |
+| B-3 DB バックアップ・復元演習 | ❌ **NOT RUN**（[`labs/three-tier/run-restore-drill.sh`](../../labs/three-tier/run-restore-drill.sh) 実装済み） |
+| B-4 L2 / L3 切り分け演習 | ❌ **NOT RUN**（[`labs/routing/`](../../labs/routing/README.md) 実装済み） |
 | AWS `apply` / `destroy` と実費 | ❌ **NOT RUN** |
 | 構成commit / 設定rollback rehearsal | ✅ [2026-08-23](2026-08-23-change-CI-GIT-ROLLBACK.md)：使い捨てUbuntu runnerでcandidate `84e1492`からmain `59aa88e`へGit-mode rollbackを実測。永続hostでは**NOT RUN** |
 | 永続hostの再起動・24h / 72h確認 | ❌ **NOT RUN**（[結果票テンプレート](templates/host-reboot-72h.md)のみ） |

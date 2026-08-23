@@ -1,0 +1,33 @@
+---
+# RHEL / AlmaLinux / Rocky 系の OS 差分。tasks 側は変数だけを見る。
+common_os_packages:
+  - tzdata
+  - ca-certificates
+  - curl
+  # Debian の dnsutils に相当する dig / nslookup の提供元。
+  - bind-utils
+  - git
+  # Debian の iproute2 / iputils-ping に相当。
+  - iproute
+  - iputils
+  - jq
+  - openssl
+  - rsync
+  - util-linux
+  - tcpdump
+  - lvm2
+  - chrony
+  - firewalld
+  # Debian の unattended-upgrades に相当する自動更新機構。
+  - dnf-automatic
+  - openssh-server
+  # semanage / restorecon と、SELinux 関連 Ansible モジュールの実行に必要。
+  - policycoreutils-python-utils
+  - python3-libselinux
+
+common_ssh_service_name: sshd
+common_chrony_service_name: chronyd
+
+common_default_firewall_backend: firewalld
+
+common_selinux_supported: true

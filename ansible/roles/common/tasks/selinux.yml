@@ -1,0 +1,44 @@
+---
+# RHEL 系のみ。既定は enforcing を維持する。
+# permissive / disabled へ落とす場合は inventory で明示し、その理由を
+# 変更管理（docs/change-management.md）に残す方針。
+- name: Read the current SELinux state
+  ansible.builtin.command: getenforce
+  register: common_selinux_current
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Refuse to weaken SELinux without an explicit decision
+  ansible.builtin.assert:
+    that:
+      - common_selinux_state in ['enforcing', 'permissive', 'disabled']
+    fail_msg: >-
+      common_selinux_state must be enforcing, permissive, or disabled.
+
+- name: Apply the SELinux policy state
+  ansible.posix.selinux:
+    policy: "{{ common_selinux_policy }}"
+    state: "{{ common_selinux_state }}"
+  register: common_selinux_applied
+
+# enforcing のまま Docker の bind mount を使うと、コンテナからホスト側
+# ディレクトリを読めずに配備が失敗する。compose 側で :z / :Z を付けるか、
+# container_manage_cgroup などの boolean を有効化する必要がある。
+# ここでは「必要な boolean が落ちていないか」を検査だけ行い、
+# 暗黙に無効化しない。
+- name: Ensure the container SELinux boolean is enabled
+  ansible.posix.seboolean:
+    name: container_manage_cgroup
+    state: true
+    persistent: true
+  when: common_selinux_state == 'enforcing'
+
+- name: Report that a relabel-requiring SELinux change was made
+  ansible.builtin.debug:
+    msg: >-
+      SELinux state changed from
+      {{ common_selinux_current.stdout | default('unknown') }} to
+      {{ common_selinux_state }}. A reboot with a filesystem relabel is
+      required before this host is considered handed over.
+  when: common_selinux_applied.reboot_required | default(false)

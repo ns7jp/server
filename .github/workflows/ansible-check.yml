@@ -44,6 +44,7 @@ jobs:
           ansible-playbook -i inventory/staging.yml playbooks/deploy.yml --syntax-check
           ansible-playbook -i inventory/staging.yml playbooks/verify.yml --syntax-check
           ansible-playbook -i inventory/ci.yml playbooks/site.yml --syntax-check
+          ansible-playbook -i inventory/staging.yml playbooks/storage.yml --syntax-check
 
       - name: Validate resolved real-host inventory values
         working-directory: ansible
@@ -89,17 +90,24 @@ jobs:
           ansible --version
           molecule --version
 
-      - name: Molecule scenario is detected
+      - name: Molecule scenarios are detected
         working-directory: ansible/roles/${{ matrix.role }}
         run: molecule list
 
+      # default (Ubuntu) と el9 (AlmaLinux / Rocky) の両方を対象にする。
+      # el9 scenario を持たないロールは default だけを検証する。
       - name: Validate molecule converge / verify playbooks parse
         working-directory: ansible/roles/${{ matrix.role }}
         env:
           ANSIBLE_ROLES_PATH: ${{ github.workspace }}/ansible/roles
         run: |
-          if [[ -f molecule/default/prepare.yml ]]; then
-            ansible-playbook molecule/default/prepare.yml --syntax-check
-          fi
-          ansible-playbook molecule/default/converge.yml --syntax-check
-          ansible-playbook molecule/default/verify.yml --syntax-check
+          for scenario in molecule/*/; do
+            scenario="${scenario%/}"
+            echo "::group::${scenario}"
+            if [[ -f "${scenario}/prepare.yml" ]]; then
+              ansible-playbook "${scenario}/prepare.yml" --syntax-check
+            fi
+            ansible-playbook "${scenario}/converge.yml" --syntax-check
+            ansible-playbook "${scenario}/verify.yml" --syntax-check
+            echo "::endgroup::"
+          done

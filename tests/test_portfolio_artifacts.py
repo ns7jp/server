@@ -9,6 +9,52 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def role_task_flow(role: str) -> str:
+    """Return a role's effective task sequence with ``include_tasks`` expanded.
+
+    ロールを OS ファミリーごとのタスクファイルへ分割したので、``main.yml`` を
+    1 本のテキストとして読むだけでは「A が B より先に実行される」という
+    不変条件を検査できなくなった。include の順に本文を差し込んだ 1 本の
+    テキストへ畳んでから検査する。
+
+    ``firewall-{{ common_firewall_backend }}.yml`` のように変数を含む
+    include は、その接頭辞に一致するファイルをすべて、名前順に展開する。
+    どの分岐へ入っても順序が保たれていることを確認するため。
+    """
+    tasks_dir = ROOT / "ansible" / "roles" / role / "tasks"
+    include = re.compile(
+        r"^\s*ansible\.builtin\.include_tasks:\s*[\"']?([^\"'\n]+)[\"']?\s*$",
+        re.MULTILINE,
+    )
+
+    def expand(name: str, seen: frozenset) -> str:
+        path = tasks_dir / name
+        if not path.exists() or name in seen:
+            return ""
+        body = path.read_text(encoding="utf-8")
+        seen = seen | {name}
+        out = []
+        last = 0
+        for match in include.finditer(body):
+            out.append(body[last : match.end()])
+            last = match.end()
+            target = match.group(1).strip()
+            if "{{" in target:
+                prefix = target.split("{{", 1)[0]
+                targets = sorted(
+                    child.name
+                    for child in tasks_dir.glob(f"{prefix}*.yml")
+                )
+            else:
+                targets = [target]
+            for child_name in targets:
+                out.append("\n" + expand(child_name, seen))
+        out.append(body[last:])
+        return "".join(out)
+
+    return expand("main.yml", frozenset())
+
+
 def test_build_package_contains_all_delivery_documents():
     required = {
         "README.md",
@@ -328,9 +374,7 @@ def test_alloy_uses_restricted_private_docker_api_proxy():
 
 
 def test_application_user_is_not_granted_root_equivalent_docker_group():
-    docker_tasks = (
-        ROOT / "ansible" / "roles" / "docker" / "tasks" / "main.yml"
-    ).read_text(encoding="utf-8")
+    docker_tasks = role_task_flow("docker")
     verify = (
         ROOT
         / "ansible"
@@ -365,9 +409,7 @@ def test_application_user_is_not_granted_root_equivalent_docker_group():
 
 
 def test_fresh_host_check_mode_skips_runtime_only_operations():
-    docker_tasks = (
-        ROOT / "ansible" / "roles" / "docker" / "tasks" / "main.yml"
-    ).read_text(encoding="utf-8")
+    docker_tasks = role_task_flow("docker")
     app_tasks = (ROOT / "ansible" / "roles" / "app" / "tasks" / "main.yml").read_text(
         encoding="utf-8"
     )
@@ -393,7 +435,10 @@ def test_fresh_host_check_mode_skips_runtime_only_operations():
     assert monitoring_tasks.count("- not ansible_check_mode") >= 4
     assert "Skip runtime verification during check mode" in verify
     assert "ansible.builtin.meta: end_play" in verify
-    assert "molecule/default/prepare.yml --syntax-check" in ansible_workflow
+    # ロールごとの scenario をすべて走査する形へ変えたので、固定の
+    # default だけを見るのではなく、走査そのものが残っていることを確認する。
+    assert 'for scenario in molecule/*/' in ansible_workflow
+    assert '"${scenario}/prepare.yml" --syntax-check' in ansible_workflow
 
 
 def test_successful_full_stack_e2e_is_recorded_with_scope_boundaries():
@@ -551,9 +596,7 @@ def test_authenticated_ansible_probes_do_not_log_credentials():
 
 
 def test_common_role_prepares_sshd_runtime_directory_before_validation():
-    tasks = (
-        ROOT / "ansible" / "roles" / "common" / "tasks" / "main.yml"
-    ).read_text(encoding="utf-8")
+    tasks = role_task_flow("common")
 
     runtime_task = "Ensure sshd runtime directory exists for configuration validation"
     validation_task = "Disable root SSH login"
@@ -562,9 +605,7 @@ def test_common_role_prepares_sshd_runtime_directory_before_validation():
 
 
 def test_install_path_and_account_are_validated_before_any_host_mutation():
-    common = (
-        ROOT / "ansible" / "roles" / "common" / "tasks" / "main.yml"
-    ).read_text(encoding="utf-8")
+    common = role_task_flow("common")
     app = (ROOT / "ansible" / "roles" / "app" / "tasks" / "main.yml").read_text(
         encoding="utf-8"
     )
@@ -635,10 +676,15 @@ def test_install_path_and_account_are_validated_before_any_host_mutation():
     assert '== *"/../"*' in runner
     assert '== *"/./"*' in runner
 
-    common_defaults = (
-        ROOT / "ansible" / "roles" / "common" / "defaults" / "main.yml"
-    ).read_text(encoding="utf-8")
-    assert "- util-linux" in common_defaults
+    # runuser（util-linux）で権限を落として TLS 素材を作るため、どの OS
+    # ファミリーの package 一覧にも util-linux が入っていること。
+    # 片方のファミリーだけ入れ忘れると、そのファミリーでだけ nginx ロールが
+    # 落ちる。
+    common_vars_dir = ROOT / "ansible" / "roles" / "common" / "vars"
+    common_vars_files = sorted(common_vars_dir.glob("*.yml"))
+    assert {path.name for path in common_vars_files} == {"Debian.yml", "RedHat.yml"}
+    for path in common_vars_files:
+        assert "- util-linux" in path.read_text(encoding="utf-8"), path.name
 
     guarded_directory_tasks = (
         (common, "Ensure application install directory exists"),

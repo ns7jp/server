@@ -9,6 +9,18 @@ def text(path: str) -> str:
     return (ROOT / path).read_text(encoding="utf-8")
 
 
+def role_tasks(role: str) -> str:
+    """ロールの tasks/ 配下をまとめて 1 本のテキストとして返す。
+
+    common ロールを OS ファミリーごとのファイルへ分割したため、
+    main.yml だけを見ても firewall 変数の定義箇所を検査できない。
+    """
+    tasks_dir = ROOT / "ansible" / "roles" / role / "tasks"
+    return "\n".join(
+        path.read_text(encoding="utf-8") for path in sorted(tasks_dir.glob("*.yml"))
+    )
+
+
 def test_alb_ingress_matches_the_active_listener() -> None:
     alb = text("terraform/modules/alb/main.tf")
     prod_variables = text("terraform/environments/prod/variables.tf")
@@ -241,7 +253,7 @@ def test_staging_ssm_transfer_path_is_self_contained() -> None:
 def test_aws_app_port_contract_preserves_loopback_default() -> None:
     compose = text("compose.yaml")
     app_tasks = text("ansible/roles/app/tasks/main.yml")
-    common_tasks = text("ansible/roles/common/tasks/main.yml")
+    common_tasks = role_tasks("common")
     assert "${MONITOR_BIND_ADDRESS:-127.0.0.1}:${MONITOR_PORT:-8080}:8080" in compose
     assert "MONITOR_BIND_ADDRESS={{ app_monitor_bind_address }}" in app_tasks
     assert "common_ufw_alb_source_cidr" in common_tasks

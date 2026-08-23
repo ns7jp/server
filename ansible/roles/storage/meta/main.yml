@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  role_name: storage
+  author: server-monitor
+  description: Partition-free LVM volume management (VG / LV / filesystem / fstab) for the server-monitor lab
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+    - name: EL
+      versions:
+        - "9"
+  galaxy_tags:
+    - system
+    - storage
+dependencies: []
