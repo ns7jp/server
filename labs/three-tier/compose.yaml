@@ -47,6 +47,28 @@ services:
       db:
         condition: service_healthy
 
+  # 診断用サイドカー。web / ap と **同じ network namespace** を共有するので、
+  # ここから見た到達性は web / ap 自身から見た到達性と同一になる。
+  #
+  # なぜ必要か: nginx:alpine の busybox には `ip -br` も `nc -z` も無く、
+  # python:3.12-slim には iproute2 自体が入っていない。
+  # 存在しないコマンドで到達性を確かめると、「遮断されているから失敗した」のか
+  # 「コマンドが無いから失敗した」のか区別できず、**遮断されていないのに
+  # PASS してしまう**。診断は道具が揃ったイメージから行う。
+  netprobe-web:
+    image: nicolaka/netshoot:v0.13
+    command: ["sleep", "infinity"]
+    network_mode: "service:web"
+    depends_on:
+      - web
+
+  netprobe-ap:
+    image: nicolaka/netshoot:v0.13
+    command: ["sleep", "infinity"]
+    network_mode: "service:ap"
+    depends_on:
+      - ap
+
   db:
     image: postgres:16.4-alpine
     environment:
