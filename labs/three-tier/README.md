@@ -35,6 +35,20 @@ flowchart LR
 「設定として書いてある」だけでは意味がないので、ドリルの `B2-02` で
 web から db へ実際に到達できないことを毎回確認する。
 
+### 診断用サイドカーがある理由
+
+`nginx:alpine` の busybox には `ip -br` も `nc -z` も無く、
+`python:3.12-slim` には iproute2 自体が入っていない。
+**存在しないコマンドで到達性を確かめると、「遮断されているから失敗した」のか
+「コマンドが無いから失敗した」のか区別できず、遮断されていないのに PASS する。**
+
+そのため `netprobe-web` / `netprobe-ap`（`nicolaka/netshoot`）を
+`network_mode: "service:web"` / `"service:ap"` で置き、
+**web / ap と同じ network namespace を共有**させている。
+ここから見た到達性は web / ap 自身から見た到達性と同一。
+
+`B2-02` の判定は fail-closed で、probe を実行できなかった場合も FAIL にする。
+
 | 層 | 役割 | 生存確認 | DB を見るか |
 | --- | --- | --- | --- |
 | web (nginx) | 入口、リバースプロキシ | `GET /web-healthz` | 見ない |

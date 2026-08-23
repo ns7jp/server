@@ -92,15 +92,26 @@ fi
 
 # --- 2. 層の分離が実際に効いているか --------------------------------------
 log "2. 層の分離: web から db へ直接届かないこと"
-# web は db-tier ネットワークに参加していないので、名前解決すらできないはず。
 # 「設計上そうなっている」ではなく「実際に届かない」ことを確認する。
-if "${COMPOSE[@]}" exec -T web sh -c 'nc -z -w 3 db 5432' >/dev/null 2>&1; then
+#
+# 判定は fail-closed にする。到達できなかった理由が「遮断されている」なのか
+# 「道具が無くて確かめられなかった」なのかを区別せずに PASS にすると、
+# 遮断されていないのに PASS する偽陽性になる。
+# netprobe-web は web と network namespace を共有しているので、
+# ここからの到達性は web 自身からの到達性と同一。
+isolation_out="$("${COMPOSE[@]}" exec -T netprobe-web nc -z -w 3 db 5432 2>&1)"
+isolation_rc=$?
+if [[ $isolation_rc -eq 0 ]]; then
   record "B2-02" "web から db への直接到達を遮断" "接続できない" "接続できてしまった" "FAIL"
+elif grep -qiE 'not found|no such file|unknown option|invalid option' <<<"$isolation_out"; then
+  # 道具側の問題。遮断の証明になっていないので PASS にしない。
+  record "B2-02" "web から db への直接到達を遮断" "接続できない" \
+    "probe を実行できず検証不能: ${isolation_out%%$'\n'*}" "FAIL"
 else
   record "B2-02" "web から db への直接到達を遮断" "接続できない" "接続不可を確認" "PASS"
 fi
 note "web が参加しているネットワーク:"
-"${COMPOSE[@]}" exec -T web sh -c 'ip -br addr | grep -v LOOPBACK' || true
+"${COMPOSE[@]}" exec -T netprobe-web ip -br addr | grep -v LOOPBACK || true
 
 # --- 3. 障害 A: DB 停止 ---------------------------------------------------
 log "3. 障害 A: DB プロセスを停止する"
@@ -166,8 +177,10 @@ note "ここから A と C を区別する。DB コンテナ自身は動いて�
 DB_STATE="$("${COMPOSE[@]}" ps --format '{{.Service}} {{.State}}' | grep '^db ' || echo 'db unknown')"
 note "  docker compose ps -> ${DB_STATE}"
 note "AP から見た経路と名前解決:"
-"${COMPOSE[@]}" exec -T ap sh -c 'ip -br addr | grep -v LOOPBACK' || true
-"${COMPOSE[@]}" exec -T ap sh -c 'getent hosts db || echo "  名前解決できない -> 経路/所属ネットワーク側の問題"' || true
+# ap は python:3.12-slim で iproute2 が入っていないため、
+# network namespace を共有する netprobe-ap から見る。
+"${COMPOSE[@]}" exec -T netprobe-ap ip -br addr | grep -v LOOPBACK || true
+"${COMPOSE[@]}" exec -T netprobe-ap sh -c 'getent hosts db || echo "  名前解決できない -> 経路/所属ネットワーク側の問題"' || true
 
 # A では db が Exited、C では db は Up のまま。この差が切り分けの決め手。
 if [[ "$C_AP_READY" == "503" && "$DB_STATE" == *"running"* ]]; then
@@ -180,7 +193,10 @@ fi
 
 log "8. 障害 C から復旧する"
 docker network connect --ip 172.29.30.20 "$DB_NETWORK" "$AP_ID"
+# ap を restart すると network namespace が作り直され、それを共有している
+# netprobe-ap が孤立する。診断を続けられるよう一緒に作り直す。
 "${COMPOSE[@]}" restart ap >/dev/null
+"${COMPOSE[@]}" restart netprobe-ap >/dev/null 2>&1 || true
 if wait_for_ready; then
   record "B2-08" "経路復旧後の回復" "readyz が 200 に戻る" "readyz=200" "PASS"
 else

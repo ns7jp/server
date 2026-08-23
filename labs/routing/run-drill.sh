@@ -28,6 +28,7 @@ EVIDENCE_FILE="${EVIDENCE_DIR}/${RUN_DATE}-B-4.md"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
 declare -a RESULT_ROWS=()
 
 log()  { printf '\n=== %s ===\n' "$*"; }
@@ -36,11 +37,13 @@ note() { printf '    %s\n' "$*"; }
 record() {
   local id="$1" title="$2" expected="$3" observed="$4" verdict="$5"
   RESULT_ROWS+=("| ${id} | ${title} | ${expected} | ${observed} | ${verdict} |")
-  if [[ "$verdict" == "PASS" ]]; then
-    PASS_COUNT=$((PASS_COUNT + 1))
-  else
-    FAIL_COUNT=$((FAIL_COUNT + 1))
-  fi
+  case "$verdict" in
+    PASS)     PASS_COUNT=$((PASS_COUNT + 1)) ;;
+    # 環境都合で実行できなかったものは PASS にも FAIL にもしない。
+    # 「確認していない」ことが証跡に残るようにする。
+    SKIP-ENV) SKIP_COUNT=$((SKIP_COUNT + 1)) ;;
+    *)        FAIL_COUNT=$((FAIL_COUNT + 1)) ;;
+  esac
   printf '    [%s] %s -> %s (%s)\n' "$id" "$title" "$observed" "$verdict"
 }
 
@@ -56,6 +59,28 @@ can_ping() {
 }
 
 trap 'printf "\n演習が途中で終了した。後始末: docker compose -f %s down\n" "${LAB_DIR}/compose.yaml" >&2' ERR
+
+# 802.1Q VLAN サブインターフェースは host 側の 8021q カーネルモジュールを使う。
+# 無い環境では ip link add ... type vlan が分かりにくいエラーで落ちるので、
+# 演習を始める前に検査して、環境の問題だと分かる形で止める。
+# （LVM ラボの device-mapper 検査と同じ方針）
+check_vlan_support() {
+  if [[ -d /sys/module/8021q ]]; then
+    return 0
+  fi
+  if modprobe 8021q 2>/dev/null && [[ -d /sys/module/8021q ]]; then
+    note "8021q モジュールを読み込んだ"
+    return 0
+  fi
+  cat >&2 <<'MSG'
+FAIL: host 側に 8021q (802.1Q VLAN) カーネルモジュールがない。
+
+  L3 の演習 (NW-L3-*) は動くが、VLAN の演習 (NW-L2-02〜04) は実行できない。
+  通常の Linux kernel を持つ環境で実行するか、
+  sudo modprobe 8021q を実行してから再試行する。
+MSG
+  return 1
+}
 
 log "0. ラボを起動する"
 "${COMPOSE[@]}" up -d
@@ -133,6 +158,15 @@ fi
 
 # --- 6. VLAN (L2) ---------------------------------------------------------
 log "6. 802.1Q VLAN: 同一物理線上に VLAN 10 / VLAN 20 を作る"
+# L3 の演習はここまでで完了しているので、VLAN が使えない環境では
+# ここまでの結果を証跡に残してから止める。
+if ! check_vlan_support; then
+  record "B4-L2-02" "同じ VLAN ID どうしは疎通する" "到達する" "8021q が無く実行不能" "SKIP-ENV"
+  record "B4-L2-03" "VLAN ID 不一致では疎通しない" "到達しない" "8021q が無く実行不能" "SKIP-ENV"
+  record "B4-L2-04" "VLAN ID を揃えると復旧する" "到達する" "8021q が無く実行不能" "SKIP-ENV"
+  VLAN_SKIPPED=1
+fi
+if [[ "${VLAN_SKIPPED:-0}" -eq 0 ]]; then
 # segment-c 側の物理インターフェース名を実際に取得する（eth0 とは限らない）。
 ROUTER_IF="$(on router "ip -o -4 addr show | awk '/172\.30\.30\.1\//{print \$2}'" | tr -d ' \r\n')"
 HOST_C_IF="$(on host-c "ip -o -4 addr show | awk '/172\.30\.30\.10\//{print \$2}'" | tr -d ' \r\n')"
@@ -188,6 +222,8 @@ else
   record "B4-L2-04" "VLAN ID を揃えると復旧する" "到達する" "到達しない" "FAIL"
 fi
 
+fi  # VLAN セクション
+
 # --- 証跡 -----------------------------------------------------------------
 log "証跡を書き出す"
 mkdir -p "$EVIDENCE_DIR"
@@ -217,7 +253,7 @@ EVIDENCE_HEAD
   printf '%s\n' "${RESULT_ROWS[@]}"
   cat <<EVIDENCE_TAIL
 
-合計: ${PASS_COUNT} PASS / ${FAIL_COUNT} FAIL
+合計: ${PASS_COUNT} PASS / ${FAIL_COUNT} FAIL / ${SKIP_COUNT} SKIP
 
 ## 切り分けの順序（この演習で使った形）
 
@@ -258,6 +294,6 @@ EVIDENCE_TAIL
 
 trap - ERR
 printf '\n証跡: %s\n' "$EVIDENCE_FILE"
-printf '合計: %d PASS / %d FAIL\n' "$PASS_COUNT" "$FAIL_COUNT"
+printf '合計: %d PASS / %d FAIL / %d SKIP\n' "$PASS_COUNT" "$FAIL_COUNT" "$SKIP_COUNT"
 printf '\n後始末:\n  docker compose -f %s down\n' "${LAB_DIR}/compose.yaml"
 [[ $FAIL_COUNT -eq 0 ]]

@@ -538,3 +538,80 @@ def test_bringup_runbook_states_what_one_host_cannot_cover():
         assert uncovered in runbook, uncovered
     # SSH だけに依存させない警告
     assert "SSH だけに依存しない" in runbook
+
+
+# ---------------------------------------------------------------------------
+# ラボの診断コマンドが、そのイメージに実在すること
+# ---------------------------------------------------------------------------
+
+
+def test_three_tier_probes_run_from_images_that_have_the_tools():
+    """診断コマンドを、それが入っていないイメージの中で実行しない。
+
+    nginx:alpine の busybox には `ip -br` も `nc -z` も無く、
+    python:3.12-slim には iproute2 自体が入っていない。
+    存在しないコマンドで到達性を確かめると「遮断されているから失敗した」のか
+    「コマンドが無いから失敗した」のか区別できず、遮断されていないのに
+    PASS する偽陽性になる。
+
+    network namespace を共有する netshoot サイドカーから実行すること。
+    """
+    compose = read("labs", "three-tier", "compose.yaml")
+    drill = read("labs", "three-tier", "run-drill.sh")
+
+    # サイドカーが web / ap と netns を共有していること。
+    # 共有していなければ、そこから見た到達性は web / ap の到達性ではない。
+    web_probe = compose_service_section(compose, "netprobe-web")
+    ap_probe = compose_service_section(compose, "netprobe-ap")
+    assert 'network_mode: "service:web"' in web_probe
+    assert 'network_mode: "service:ap"' in ap_probe
+    assert "netshoot" in web_probe and "netshoot" in ap_probe
+
+    # 道具の無いコンテナの中で ip / nc を実行していないこと。
+    for line in drill.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#") or "exec -T" not in stripped:
+            continue
+        for thin_container in (" -T web ", " -T ap "):
+            if thin_container in stripped:
+                assert " ip " not in f" {stripped} ", stripped
+                assert " nc " not in f" {stripped} ", stripped
+
+
+def test_tier_isolation_check_is_fail_closed():
+    """probe を実行できなかったときに PASS にしない。
+
+    「到達できなかった」理由が遮断なのか道具不足なのかを区別せずに
+    PASS にすると、層が分離されていないのに PASS する。
+    """
+    drill = read("labs", "three-tier", "run-drill.sh")
+
+    # コメント見出しにも同じ語が出るので、log 行を起点に 3 節までを切り出す。
+    isolation = drill.split('log "2. 層の分離', 1)[1].split('log "3.', 1)[0]
+    # 実行できなかった場合を明示的に FAIL にしていること
+    assert "not found" in isolation
+    assert "検証不能" in isolation
+    assert 'record "B2-02"' in isolation
+    # 3 分岐（到達した / 検証不能 / 遮断を確認）があること
+    assert isolation.count('record "B2-02"') == 3
+
+
+def test_routing_lab_checks_vlan_kernel_support_before_using_it():
+    """8021q が無い環境で、分かりにくいエラーではなく理由を出して止める。"""
+    drill = read("labs", "routing", "run-drill.sh")
+
+    assert "check_vlan_support" in drill
+    assert "/sys/module/8021q" in drill
+    # L3 の演習はそこまでで完走させ、VLAN 分だけを SKIP にする
+    assert "SKIP-ENV" in drill
+    assert "VLAN_SKIPPED" in drill
+
+
+def test_environment_skips_are_not_counted_as_pass():
+    """環境都合で実行できなかったものを PASS に混ぜない。"""
+    drill = read("labs", "routing", "run-drill.sh")
+
+    assert "SKIP_COUNT" in drill
+    assert "SKIP-ENV) SKIP_COUNT=$((SKIP_COUNT + 1)) ;;" in drill
+    # 証跡にも SKIP 件数が出ること
+    assert "${SKIP_COUNT} SKIP" in drill
