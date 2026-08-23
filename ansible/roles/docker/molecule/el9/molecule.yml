@@ -1,0 +1,31 @@
+---
+# RHEL 系（AlmaLinux / Rocky 9）向けの scenario。
+# apt keyring ではなく rpm_key + yum_repository 経路を通ることを確認する。
+driver:
+  name: docker
+platforms:
+  - name: server-monitor-docker-el9
+    image: ${MOLECULE_EL_IMAGE:-geerlingguy/docker-rockylinux9-ansible:latest}
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    command: /usr/sbin/init
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      stdout_callback: ansible.builtin.default
+      callback_result_format: yaml
+  inventory:
+    group_vars:
+      all:
+        server_monitor_user: monitor
+        server_monitor_group: monitor
+        server_monitor_install_dir: /opt/server-monitor
+        # default scenario と同じ理由で、入れ子の docker daemon は起動しない。
+        # 導入とリポジトリ設定・daemon.json の内容だけを検証する。
+        docker_manage_service: false
+verifier:
+  name: ansible

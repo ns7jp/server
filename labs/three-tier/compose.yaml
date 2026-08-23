@@ -1,0 +1,94 @@
+name: server-monitor-three-tier
+
+# Web / AP / DB を別コンテナ・別ネットワークに分けた 3 層構成。
+#
+#   client -> [dmz] -> web(nginx) -> [app-tier] -> ap(gunicorn) -> [db-tier] -> db(PostgreSQL)
+#
+# ポイントは「web から db へ直接届かない」こと。層をまたぐ通信は
+# 必ず隣の層を経由する。障害切り分けのとき、どの層まで到達しているかで
+# 原因を絞り込めるようにするための設計。
+services:
+  client:
+    image: curlimages/curl:8.10.1
+    command: ["sleep", "infinity"]
+    networks:
+      dmz:
+        ipv4_address: 172.29.10.30
+
+  web:
+    image: nginx:1.27.2-alpine
+    volumes:
+      - ./web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      dmz:
+        ipv4_address: 172.29.10.10
+      app-tier:
+        ipv4_address: 172.29.20.10
+    depends_on:
+      - ap
+
+  ap:
+    build:
+      context: ./ap
+    environment:
+      # 秘密値をラボの外へ持ち出さないため、ここでは固定値を使う。
+      # 実ホストでは Docker secrets / Ansible Vault を使う（本体の compose.yaml 参照）。
+      THREE_TIER_DB_HOST: db
+      THREE_TIER_DB_PORT: "5432"
+      THREE_TIER_DB_NAME: inventory
+      THREE_TIER_DB_USER: app
+      THREE_TIER_DB_PASSWORD: lab-only-not-a-secret
+    networks:
+      app-tier:
+        ipv4_address: 172.29.20.20
+      db-tier:
+        ipv4_address: 172.29.30.20
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_DB: inventory
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: lab-only-not-a-secret
+      # 復元演習で決定的な結果を得るため、ロケールを固定する。
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d inventory"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    networks:
+      db-tier:
+        ipv4_address: 172.29.30.30
+
+networks:
+  # 利用者からの入口。web だけがここにいる。
+  dmz:
+    name: server-monitor-3t-dmz
+    ipam:
+      config:
+        - subnet: 172.29.10.0/24
+  # web <-> ap。外部へ出られない。
+  app-tier:
+    name: server-monitor-3t-app
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.29.20.0/24
+  # ap <-> db。web はこのネットワークに参加していない。
+  db-tier:
+    name: server-monitor-3t-db
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.29.30.0/24
+
+volumes:
+  db_data:
+    name: server-monitor-3t-db-data

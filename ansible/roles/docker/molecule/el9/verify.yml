@@ -1,0 +1,57 @@
+---
+- name: Verify docker role outcomes on RHEL family
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Assert the role detected the RedHat family
+      ansible.builtin.assert:
+        that:
+          - ansible_os_family == 'RedHat'
+
+    - name: Read the generated Docker dnf repository file
+      ansible.builtin.slurp:
+        src: /etc/yum.repos.d/docker-ce.repo
+      register: docker_repo
+
+    - name: Assert the Docker repository points at the CentOS channel with gpgcheck
+      ansible.builtin.assert:
+        that:
+          - "'download.docker.com/linux/centos' in (docker_repo.content | b64decode)"
+          - "'gpgcheck = 1' in (docker_repo.content | b64decode)"
+        fail_msg: >-
+          The Docker dnf repository must use the CentOS path and keep GPG
+          checking enabled.
+
+    - name: Check that the Docker CLI and Compose plugin are installed
+      ansible.builtin.command: "{{ item }}"
+      loop:
+        - docker --version
+        - docker compose version
+      changed_when: false
+
+    - name: Read /etc/docker/daemon.json
+      ansible.builtin.slurp:
+        src: /etc/docker/daemon.json
+      register: daemon_json
+
+    - name: Assert log rotation and live-restore are configured
+      ansible.builtin.assert:
+        that:
+          - (daemon_json.content | b64decode | from_json)['log-driver'] == 'json-file'
+          - (daemon_json.content | b64decode | from_json)['live-restore']
+          - (daemon_json.content | b64decode | from_json)['log-opts']['max-size'] == '10m'
+
+    # docker group は root 相当。アプリ用アカウントに付いていないことを
+    # RHEL 側でも確認する。
+    - name: Read the application user supplementary groups
+      ansible.builtin.command: id -nG monitor
+      register: monitor_groups
+      changed_when: false
+      failed_when: false
+
+    - name: Assert the application user is not in the docker group
+      ansible.builtin.assert:
+        that:
+          - "'docker' not in monitor_groups.stdout.split()"
+      when: monitor_groups.rc == 0

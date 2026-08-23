@@ -1,0 +1,52 @@
+---
+# パーティションを切らず、ディスク全体を PV にする（LVM whole-disk PV）。
+# 追加ディスクの用途が 1 つに決まっている構成では、パーティションテーブルを
+# 挟まないほうが拡張時の手順が短く、事故も減る。
+- name: Ensure the volume group exists
+  community.general.lvg:
+    vg: "{{ storage_volume.vg }}"
+    pvs: "{{ storage_volume.devices | join(',') }}"
+    state: present
+
+- name: Ensure the logical volume exists at the requested size
+  community.general.lvol:
+    vg: "{{ storage_volume.vg }}"
+    lv: "{{ storage_volume.lv }}"
+    size: "{{ storage_volume.size | default('100%FREE') }}"
+    # 拡張は許可し、縮小は許可しない。縮小はデータ損失につながるため、
+    # 必要になった場合は手順書に沿って手動で行う。
+    resizefs: "{{ storage_resizefs | bool }}"
+    shrink: false
+    state: present
+
+- name: Create the filesystem
+  community.general.filesystem:
+    dev: "/dev/{{ storage_volume.vg }}/{{ storage_volume.lv }}"
+    fstype: "{{ storage_volume.fstype | default('xfs') }}"
+    # 既存ファイルシステムを黙って作り直さない。
+    force: false
+    resizefs: "{{ storage_resizefs | bool }}"
+
+- name: Ensure the mount point exists
+  ansible.builtin.file:
+    path: "{{ storage_volume.mount }}"
+    state: directory
+    owner: "{{ storage_volume.owner | default('root') }}"
+    group: "{{ storage_volume.group | default('root') }}"
+    mode: "{{ storage_volume.mode | default('0755') }}"
+
+# device path ではなく UUID で fstab に書く。追加ディスクの順序が
+# 変わっても再起動後に同じものがマウントされるようにするため。
+- name: Read the filesystem UUID
+  ansible.builtin.command: blkid -s UUID -o value /dev/{{ storage_volume.vg }}/{{ storage_volume.lv }}
+  changed_when: false
+  check_mode: false
+  register: storage_lv_uuid
+
+- name: Mount the logical volume
+  ansible.posix.mount:
+    path: "{{ storage_volume.mount }}"
+    src: "UUID={{ storage_lv_uuid.stdout }}"
+    fstype: "{{ storage_volume.fstype | default('xfs') }}"
+    opts: "{{ storage_volume.opts | default('defaults') }}"
+    state: "{{ 'mounted' if storage_persist_fstab | bool else 'ephemeral' }}"

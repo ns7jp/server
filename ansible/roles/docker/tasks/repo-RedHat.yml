@@ -1,0 +1,32 @@
+---
+# AlmaLinux / Rocky は CentOS 向けリポジトリを使う。$releasever は
+# ディストリビューションのメジャー版に展開される。
+- name: Import the Docker RPM signing key
+  ansible.builtin.rpm_key:
+    key: https://download.docker.com/linux/centos/gpg
+    state: present
+
+- name: Add the Docker dnf repository
+  ansible.builtin.yum_repository:
+    name: docker-ce-{{ docker_apt_release_channel }}
+    description: Docker CE {{ docker_apt_release_channel }} - $basearch
+    baseurl: >-
+      https://download.docker.com/linux/centos/$releasever/$basearch/{{ docker_apt_release_channel }}
+    gpgcheck: true
+    gpgkey: https://download.docker.com/linux/centos/gpg
+    enabled: true
+    file: docker-ce
+
+# podman / runc が残っていると docker-ce の containerd.io と衝突する。
+# AlmaLinux / Rocky の最小構成でも入っていることがあるため明示的に外す。
+- name: Remove conflicting container runtimes
+  ansible.builtin.dnf:
+    name: "{{ docker_conflicting_packages }}"
+    state: absent
+  when: docker_remove_conflicting_packages | bool
+
+- name: Install Docker Engine and Compose plugin
+  ansible.builtin.dnf:
+    name: "{{ docker_packages }}"
+    state: present
+    update_cache: true

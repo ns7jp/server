@@ -1,0 +1,6 @@
+---
+- name: Converge common role on RHEL family
+  hosts: all
+  become: true
+  roles:
+    - role: common

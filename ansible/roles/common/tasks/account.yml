@@ -1,0 +1,24 @@
+---
+- name: Ensure application group exists
+  ansible.builtin.group:
+    name: "{{ server_monitor_group }}"
+    state: present
+    system: true
+
+- name: Ensure application user exists
+  ansible.builtin.user:
+    name: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    system: true
+    shell: /usr/sbin/nologin
+    home: "{{ server_monitor_install_dir }}"
+    create_home: false
+
+- name: Ensure application install directory exists
+  ansible.builtin.file:
+    path: "{{ server_monitor_install_dir }}"
+    state: directory
+    owner: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    mode: '0750'
+    follow: false

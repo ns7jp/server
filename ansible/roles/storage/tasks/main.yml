@@ -1,0 +1,121 @@
+---
+- name: Skip storage management when no volumes are declared
+  ansible.builtin.meta: end_role
+  when: storage_volumes | length == 0
+
+- name: Validate declared storage volumes before touching any disk
+  ansible.builtin.assert:
+    that:
+      - item.vg is defined
+      - (item.vg | string) is match('^[A-Za-z0-9][A-Za-z0-9_.+-]*$')
+      - item.lv is defined
+      - (item.lv | string) is match('^[A-Za-z0-9][A-Za-z0-9_.+-]*$')
+      - item.devices is defined
+      - item.devices | length > 0
+      - item.fstype | default('xfs') in ['xfs', 'ext4']
+      - item.mount is defined
+      - (item.mount | string) is match('^/[A-Za-z0-9._/-]*$')
+      - "'/../' not in ((item.mount | string) ~ '/')"
+      - (item.mount | string) not in ['/', '/boot', '/etc', '/usr', '/bin', '/sbin', '/lib', '/dev', '/proc', '/sys']
+    fail_msg: >-
+      Invalid storage volume definition: {{ item }}. Each entry needs a
+      conservative vg / lv name, at least one device, an xfs or ext4
+      filesystem, and a dedicated absolute mount point that is not a critical
+      system directory.
+  loop: "{{ storage_volumes }}"
+  loop_control:
+    label: "{{ item.vg | default('?') }}/{{ item.lv | default('?') }}"
+
+- name: Collect the unique set of target devices
+  ansible.builtin.set_fact:
+    storage_target_devices: >-
+      {{ storage_volumes | map(attribute='devices') | flatten | unique | list }}
+
+- name: Install LVM and filesystem tooling
+  ansible.builtin.package:
+    name: "{{ storage_packages }}"
+    state: present
+
+- name: Inspect the current block device topology
+  ansible.builtin.command: lsblk --json --bytes --output NAME,KNAME,PATH,TYPE,FSTYPE,MOUNTPOINT,PKNAME
+  changed_when: false
+  check_mode: false
+  register: storage_lsblk
+
+# lsblk の FSTYPE は udev が作った cache を読むため、udev が動いていない環境や
+# cache が古い環境では、実際には filesystem があるディスクでも null を返す。
+# これを署名判定に使うと「中身のあるディスクを空だと誤認して潰す」事故になる。
+# wipefs は libblkid で実際にディスクを読み直すので、こちらを正本にする。
+- name: Probe target devices for on-disk signatures
+  ansible.builtin.command:
+    argv:
+      - wipefs
+      - --noheadings
+      - --output
+      - TYPE
+      - --
+      - "{{ item }}"
+  loop: "{{ storage_target_devices }}"
+  loop_control:
+    label: "{{ item }}"
+  changed_when: false
+  check_mode: false
+  # デバイスが存在しない場合も下の assert でまとめて判定する。
+  failed_when: false
+  register: storage_device_signatures
+
+- name: Verify every target device is safe to consume
+  ansible.builtin.assert:
+    that:
+      # 1. デバイスが実在する
+      - storage_device_entry | length == 1
+      # 2. disk そのもの（partition や lvm の上に重ねない）。
+      #    loop device は演習用に明示許可したときだけ通す。
+      - >-
+        storage_device_entry[0].type == 'disk'
+        or (storage_allow_loop_devices | bool
+            and storage_device_entry[0].type == 'loop')
+      # 3. 自分自身がマウントされていない
+      - storage_device_entry[0].mountpoint in [none, '']
+      # 4. 子デバイス（partition / 既存 LV）を持たない
+      - storage_device_children | length == 0
+      # 5. wipefs が署名を読めている（読めない = 検査できていない）
+      - storage_device_probe.rc == 0
+      # 6. 既存の filesystem / partition table / RAID 署名がない。
+      #    LVM2_member だけは、このロールが再実行された結果なので許容する。
+      - >-
+        storage_allow_existing_signature | bool
+        or storage_device_found_signatures | difference(['LVM2_member']) | length == 0
+    fail_msg: >-
+      Refusing to use {{ item }}: it is missing, is not a whole disk, is
+      mounted, has partitions or logical volumes on it, could not be probed,
+      or already carries on-disk signatures
+      ({{ storage_device_found_signatures | default([]) | join(', ') | default('unknown', true) }}).
+      No LVM, mkfs, or fstab change has been made. Set
+      storage_allow_existing_signature only after confirming the disk may be
+      erased.
+  loop: "{{ storage_target_devices }}"
+  loop_control:
+    index_var: storage_device_index
+    label: "{{ item }}"
+  vars:
+    storage_all_devices: >-
+      {{ (storage_lsblk.stdout | from_json).blockdevices }}
+    storage_device_entry: >-
+      {{ storage_all_devices | selectattr('path', 'equalto', item) | list }}
+    storage_device_children: >-
+      {{ (storage_device_entry[0].children | default([]))
+         if storage_device_entry | length == 1 else [] }}
+    storage_device_probe: >-
+      {{ storage_device_signatures.results[storage_device_index] }}
+    storage_device_found_signatures: >-
+      {{ storage_device_probe.stdout_lines | default([])
+         | map('trim') | select('!=', '') | list }}
+
+- name: Apply the declared LVM layout
+  ansible.builtin.include_tasks: apply.yml
+  loop: "{{ storage_volumes }}"
+  loop_control:
+    loop_var: storage_volume
+    label: "{{ storage_volume.vg }}/{{ storage_volume.lv }} -> {{ storage_volume.mount }}"
+  when: storage_apply | bool

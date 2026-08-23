@@ -1,0 +1,81 @@
+---
+# ufw との対応関係:
+#   ufw default deny incoming  -> zone の target を既定 (unlisted は reject) のまま使う
+#   ufw allow <port>/tcp       -> firewalld port の permanent + immediate 許可
+#   ufw limit 22/tcp           -> rich rule の limit value で毎分の新規接続数を制限
+# firewalld には rule 単位の "limit" 動作がないため、rich rule で明示的に書く。
+- name: Ensure firewalld is installed and running
+  ansible.builtin.service:
+    name: firewalld
+    state: started
+    enabled: true
+  when: common_manage_services | bool
+
+- name: Set the default firewalld zone
+  ansible.builtin.command:
+    argv:
+      - firewall-cmd
+      - --set-default-zone
+      - "{{ common_firewalld_zone }}"
+  register: common_firewalld_default_zone
+  changed_when: "'ZONE_ALREADY_SET' not in common_firewalld_default_zone.stderr"
+  failed_when:
+    - common_firewalld_default_zone.rc != 0
+    - "'ZONE_ALREADY_SET' not in common_firewalld_default_zone.stderr"
+  when: common_manage_services | bool
+
+- name: Allow configured TCP ports through firewalld
+  ansible.posix.firewalld:
+    port: "{{ item }}/tcp"
+    zone: "{{ common_firewalld_zone }}"
+    permanent: true
+    immediate: "{{ common_manage_services | bool }}"
+    state: enabled
+  loop: >-
+    {{ common_ufw_allowed_tcp_ports | map('int') | list
+       | difference(common_ufw_rate_limited_ports) }}
+
+- name: Record the ALB/VPC source policy in firewalld for the application entry port
+  ansible.posix.firewalld:
+    rich_rule: >-
+      rule family="ipv4"
+      source address="{{ common_ufw_alb_source_cidr }}"
+      port port="{{ common_ufw_alb_target_port }}" protocol="tcp"
+      accept
+    zone: "{{ common_firewalld_zone }}"
+    permanent: true
+    immediate: "{{ common_manage_services | bool }}"
+    state: enabled
+  when: common_ufw_alb_source_cidr | length > 0
+
+# 送信元 CIDR を指定した場合はその範囲だけ、未指定なら全送信元に対して
+# 毎分の新規接続数を制限する。ufw の limit と同じ意図の実装。
+- name: Rate-limit SSH with an explicit firewalld rich rule
+  ansible.posix.firewalld:
+    rich_rule: >-
+      rule family="ipv4"
+      {% if common_firewalld_ssh_source_cidr | length > 0 %}
+      source address="{{ common_firewalld_ssh_source_cidr }}"
+      {% endif %}
+      port port="{{ common_ufw_ssh_port }}" protocol="tcp"
+      accept limit value="{{ common_firewalld_ssh_rate_limit }}"
+    zone: "{{ common_firewalld_zone }}"
+    permanent: true
+    immediate: "{{ common_manage_services | bool }}"
+    state: enabled
+  when: common_ufw_limit_ssh | bool
+
+# firewalld は「plain な service accept」が rich rule より広く効くため、
+# 既定の ssh service を残したままでは上の limit が意味を持たない。
+# 先に rich rule を入れてから外す順序にしている。切り戻しが必要な場合は
+# common_firewalld_manage_ssh_service を false にする。
+- name: Remove the unrestricted default ssh service so the rate limit takes effect
+  ansible.posix.firewalld:
+    service: ssh
+    zone: "{{ common_firewalld_zone }}"
+    permanent: true
+    immediate: "{{ common_manage_services | bool }}"
+    state: disabled
+  when:
+    - common_ufw_limit_ssh | bool
+    - common_firewalld_manage_ssh_service | bool

@@ -1,0 +1,49 @@
+---
+# 追加ディスクを LVM で切り、指定した mount point へ接続する。
+#
+# 既定は空。何も指定しなければこのロールは一切ディスクに触らない。
+# 「変数を入れ忘れたので何もしなかった」は安全側、
+# 「変数を入れ忘れたので既定のディスクを消した」は事故なので、
+# 対象デバイスは必ず案件側で明示する。
+#
+# storage_volumes:
+#   - vg: vg_data
+#     devices:
+#       - /dev/vdb
+#     lv: lv_docker
+#     size: 100%FREE          # community.general.lvol の size 表記
+#     fstype: xfs             # xfs / ext4
+#     mount: /var/lib/docker
+#     opts: defaults,noatime
+storage_volumes: []
+
+# mkfs / mount を実際に行うか。false にすると事前検査だけを実行する。
+# 受け入れ前に「対象ディスクの現状」を確認する用途で使う。
+storage_apply: true
+
+# LV を拡張したときにファイルシステムまで一緒に広げるか。
+# 縮小は行わない（lvol の shrink は既定で無効のまま）。
+storage_resizefs: true
+
+# fstab を書くか。false の場合は mount だけ行い、再起動後は残らない。
+storage_persist_fstab: true
+
+# loop device (/dev/loopN) を対象として許可するか。既定 false。
+# 予備ディスクの無い PC で LVM の手順を練習・実演するための逃げ道で、
+# 実ホストの構築では false のまま使う。
+# scripts/labs/lvm-drill.sh がこの変数を true にして演習を回す。
+storage_allow_loop_devices: false
+
+# 既存の署名（filesystem / partition table / RAID）を持つデバイスを
+# 許容するか。既定 false = 何か入っているディスクには触らない。
+# true にするのは「そのディスクを消してよい」と確認できた場合だけ。
+storage_allow_existing_signature: false
+
+# LVM とファイルシステム作成に必要な package。
+# Debian 系 / RHEL 系で同名なので OS 分岐は不要。
+storage_packages:
+  - lvm2
+  - xfsprogs
+  - e2fsprogs
+  # wipefs（署名検査）と blkid（UUID 取得）の提供元。
+  - util-linux

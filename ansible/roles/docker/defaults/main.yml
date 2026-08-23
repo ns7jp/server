@@ -13,6 +13,12 @@ docker_packages:
   - docker-compose-plugin
 docker_python_packages:
   - docker
+# RHEL 系で docker-ce と衝突する既定の container runtime。
+docker_conflicting_packages:
+  - podman
+  - buildah
+  - runc
+docker_remove_conflicting_packages: true
 docker_log_max_size: "10m"
 docker_log_max_file: 5
 docker_daemon_options:

@@ -60,6 +60,10 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 | ログ集約 | Loki + Grafana Alloy でコンテナログとホスト `/var/log` を収集。AlloyはDocker socketを直接持たず、専用proxyのGET/HEAD限定APIを使用 |
 | 障害対応 | アラートルール、停止ランブック、CPU 高負荷の模擬インシデント記録 |
 | 構成管理 | Ansible roles で OS / Docker / TLS / 監視設定 / アプリ配備 / バックアップを宣言的に管理 |
+| OS ファミリー | Ubuntu 22.04 / 24.04 に加えて **AlmaLinux / Rocky 9** に対応（`dnf`、firewalld、SELinux、dnf-automatic、sshd drop-in 検査）|
+| ディスク設計 | `storage` role で LVM の VG / LV / ファイルシステム / fstab を管理。既存署名のあるディスクは `wipefs` の実読みで拒否 |
+| 3 層構成 | [Web / AP / DB ラボ](labs/three-tier/README.md)。層別 health endpoint、層の分離、PostgreSQL の復元試験 |
+| L2 / L3 | [ルーティングラボ](labs/routing/README.md)。静的ルート、`ip_forward`、802.1Q VLAN の切り分け |
 | クラウド配備 | Terraform で AWS 上に同等構成をコード化（[詳細](docs/aws-architecture.md)。apply 未実施） |
 | SLO 運用 | `/healthz` の定期チェックと、しきい値を超えたときのアラート通知（[詳細](docs/slo.md)） |
 | 復旧演習 | D-1 はローカル実測RTO 13秒（[2026-08-19](docs/drills/logs/2026-08-19-D-1.md)）とE2E実測RTO 1秒（[2026-08-22](docs/evidence/2026-08-22-full-stack-e2e.md)）。D-2 はランブック・テンプレートのみで未実測 |
@@ -103,7 +107,9 @@ flowchart LR
 | [バックアップ・復旧設計](docs/backup-restore.md) | 永続データ、復元試験、復旧目標 |
 | [運用ランブック索引](docs/runbooks/README.md) | 共通実行前提、停止・遅延・disk・memory・監視停止時の切り分け |
 | [CPU 高負荷演習記録](docs/incidents/cpu-high-drill.md) | 模擬障害の再現、確認、復旧、再発防止 |
-| [復旧演習一覧](docs/drills/README.md) | D-1（実測済み）と、環境待ちの D-2 の整理 |
+| [演習一覧](docs/drills/README.md) | 実行できる構築演習 B-1〜B-4 と、復旧演習 D-1 / D-2 の整理 |
+| [Web / AP / DB 3 層ラボ](labs/three-tier/README.md) | 層別 health、層の分離、DB のバックアップ・復元試験 |
+| [L2 / L3 切り分けラボ](labs/routing/README.md) | 静的ルーティング、転送設定、802.1Q VLAN |
 | [LogQL クエリ集](docs/loki-queries.md) | ダッシュボードと運用で使う LogQL の例 |
 | [検証証跡台帳](docs/evidence/README.md) | コード実装と実環境での実測を区別する検証状況 |
 | [ローカル証跡採録ガイド](docs/evidence/local-evidence-quickstart.md) | Grafana / Loki / Alertmanager / D-1 演習を実測証跡に変える最短手順 |
@@ -377,9 +383,83 @@ server-monitor/
 `-- tests/
 ```
 
+## 対応 OS
+
+同じ role を 2 系統の OS ファミリーへ適用できる。国内の商用環境は RHEL 系が
+多い一方、手元のラボは Ubuntu で組んでいたため、差分を role 側に閉じ込めた。
+
+| 項目 | Ubuntu 22.04 / 24.04 | AlmaLinux / Rocky 9 |
+| --- | --- | --- |
+| パッケージ | `apt` | `dnf`（+ EPEL） |
+| firewall | UFW（`limit` で SSH を抑止） | firewalld（rich rule の `limit`、既定 ssh service は削除） |
+| 時刻同期 | chrony（unit `chrony`） | chrony（unit `chronyd`） |
+| 自動更新 | unattended-upgrades | dnf-automatic（`upgrade_type = security`） |
+| SELinux | 該当なし | `enforcing` を維持 |
+| SSH | `sshd_config` | `sshd_config` + `sshd_config.d/*.conf` の上書き検査 |
+| Docker | apt keyring + repo | `rpm_key` + `yum_repository`（CentOS チャネル） |
+
+OS ファミリーごとの値は `ansible/roles/*/vars/<family>.yml` に集約し、
+tasks 側は変数だけを見る。未対応の OS ではパッケージを 1 つも入れる前に
+`assert` で停止する。
+
+Molecule は `default`（Ubuntu 22.04）と `el9`（Rocky 9）の 2 scenario を持ち、
+`ansible-integration.yml` が両方を実コンテナで回す。
+
+```bash
+cd ansible/roles/common
+molecule test -s default   # Ubuntu
+molecule test -s el9       # AlmaLinux / Rocky
+```
+
+## 手を動かす演習（B シリーズ）
+
+監視基盤の外側にある「構築の基礎」を実測するためのラボ。
+すべてスクリプトが**実行結果から証跡を自動生成**する
+（`docs/drills/logs/<日付>-B-<n>.md`）。判定は期待値との比較結果で、
+手で PASS を書き込む余地は無い。1 件でも FAIL があれば終了コードが 0 にならない。
+
+| 演習 | 内容 | 実行 |
+| --- | --- | --- |
+| B-1 | LVM で VG / LV を作り、容量を使い切り、PV を足して online 拡張する | `sudo ./scripts/labs/lvm-drill.sh` |
+| B-2 | Web / AP / DB のどの層で止まっているかを層別 health で絞り込む | `./labs/three-tier/run-drill.sh` |
+| B-3 | `pg_dump` / `pg_restore` で復元し、RTO / RPO と内容ハッシュを実測する | `./labs/three-tier/run-restore-drill.sh` |
+| B-4 | 静的ルート、`ip_forward`、VLAN ID 不一致を切り分ける | `./labs/routing/run-drill.sh` |
+
+`storage` role の安全装置そのものは、専用の negative test が検証する。
+
+```bash
+sudo ./scripts/labs/storage-guard-test.sh
+```
+
+存在しないデバイス、`/` への mount、既存 filesystem のあるディスクなどを与えて、
+**LVM 操作の手前で止まること**を 7 ケースで確認する。
+
+## AI の利用について
+
+このリポジトリの文書とコードには AI 支援を使っている。範囲を正確に書く。
+
+| 使っている範囲 | 具体例 |
+| --- | --- |
+| 文書の構成・整形・調査 | README、設計書、ランブックの下書きと推敲 |
+| **実装コードの生成** | Ansible role、Terraform module、CI workflow、テスト、ラボの雛形 |
+| コードレビュー、リンク・表記の確認 | PR 上でのレビューと修正提案 |
+
+`git log` を見ると、`Author: Claude <noreply@anthropic.com>` のコミットが
+一定数ある。上表の「実装コードの生成」がそれにあたる。
+
+**AI が生成した手順や説明を、本人が実行・理解していない状態で実績にはしない。**
+実機の操作、結果の採録、機密情報のマスク、技術選定の最終判断、面接での説明は
+本人が担当する。実際に手を動かし、仮説を外した経緯も含めて記録したものは
+[docs/evidence/](docs/evidence/) と、プロフィール側の
+[学習の一次記録](https://github.com/ns7jp/ns7jp/blob/main/LEARNINGS.md) にある。
+
 ## 現在の制約と次の拡張
 
 - 単一ホストの検証構成であり、監視基盤の冗長化は対象外です。
+- AlmaLinux / Rocky 9 対応は role と Molecule scenario までです。**実機の
+  AlmaLinux ホストへ `site.yml` を適用した証跡はまだありません。**
+- B-1〜B-4 はラボ環境（loop device / コンテナ）での演習です。物理ディスク、
+  物理スイッチ、VLAN 対応スイッチの設定は対象外です。
 - AWS Terraform は構成コードを実装済みですが、AWS上のapply / destroy、費用、復元試験の実測証跡はまだありません。
 - `site.yml`一括構築・冪等性、runner内network/UFW/待受、backup restoreは[2026-08-22の自動E2E](docs/evidence/2026-08-22-full-stack-e2e.md)でPASSです。GitHub runner imageにはDocker等が事前導入されていたため、最小OSからの導入証跡とはしません。実管理端末・組織DNS・cloud firewallを含むproduction相当のnetwork証跡とも区別します。
 - Slack 通知は Webhook 秘密値をコミットしないため、`compose.slack.yaml.example` を重ねて利用環境で有効化する方式です。

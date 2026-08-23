@@ -1,0 +1,73 @@
+---
+# Debian の sshd -t は /run/sshd の存在を前提にする。RHEL 系では
+# /var/empty/sshd を使うため、ここでは Debian 系だけを対象にする。
+- name: Ensure sshd runtime directory exists for configuration validation
+  ansible.builtin.file:
+    path: /run/sshd
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: ansible_os_family == 'Debian'
+
+- name: Disable root SSH login
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin no'
+    create: false
+    state: present
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: Reload sshd
+  when: common_disable_root_ssh | bool
+
+- name: Disable SSH password authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication no'
+    create: false
+    state: present
+    validate: '/usr/sbin/sshd -t -f %s'
+  notify: Reload sshd
+  when: not (common_password_authentication | bool)
+
+# AlmaLinux / Rocky 9 は /etc/ssh/sshd_config.d/*.conf を先に読み込む。
+# 本体だけを書き換えても drop-in 側の設定に負けるため、drop-in を検査して
+# 上書きされていないことを確認する。気付かないまま password 認証が
+# 生き続ける事故を防ぐ。
+- name: Find sshd drop-in configuration files
+  ansible.builtin.find:
+    paths: /etc/ssh/sshd_config.d
+    patterns: '*.conf'
+  register: common_sshd_dropins
+  when: ansible_os_family == 'RedHat'
+
+- name: Read sshd drop-in configuration files
+  ansible.builtin.slurp:
+    src: "{{ item.path }}"
+  loop: "{{ common_sshd_dropins.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path }}"
+  register: common_sshd_dropin_contents
+  when: ansible_os_family == 'RedHat'
+
+- name: Refuse a drop-in that re-enables root login or password authentication
+  ansible.builtin.assert:
+    that:
+      - >-
+        not (common_disable_root_ssh | bool)
+        or 'permitrootlogin yes' not in common_sshd_dropin_text
+      - >-
+        (common_password_authentication | bool)
+        or 'passwordauthentication yes' not in common_sshd_dropin_text
+    fail_msg: >-
+      /etc/ssh/sshd_config.d contains a drop-in that re-enables root login or
+      password authentication, which overrides /etc/ssh/sshd_config on RHEL 9.
+      Remove or correct the drop-in before applying this role.
+  vars:
+    common_sshd_dropin_text: >-
+      {{ common_sshd_dropin_contents.results | default([])
+         | map(attribute='content') | select('defined')
+         | map('b64decode') | join('\n') | lower }}
+  when: ansible_os_family == 'RedHat'

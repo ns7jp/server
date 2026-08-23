@@ -99,14 +99,28 @@
       or both be regular non-symlink files within the validated TLS directory.
   when: not (nginx_letsencrypt_enabled | bool)
 
-- name: Install certbot for Let's Encrypt
+- name: Install certbot for Let's Encrypt (Debian family)
   ansible.builtin.apt:
     name:
       - certbot
     state: present
     update_cache: true
     cache_valid_time: 3600
-  when: nginx_letsencrypt_enabled | bool
+  when:
+    - nginx_letsencrypt_enabled | bool
+    - ansible_os_family == 'Debian'
+
+# AlmaLinux / Rocky の certbot は EPEL からのみ提供される。
+- name: Install certbot for Let's Encrypt (RedHat family)
+  ansible.builtin.dnf:
+    name:
+      - epel-release
+      - certbot
+    state: present
+    update_cache: true
+  when:
+    - nginx_letsencrypt_enabled | bool
+    - ansible_os_family == 'RedHat'
 
 - name: Generate self-signed TLS material (lab / staging fallback)
   ansible.builtin.command:

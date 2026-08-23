@@ -1,0 +1,6 @@
+---
+docker_prerequisite_packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - python3-pip

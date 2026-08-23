@@ -1,0 +1,37 @@
+---
+- name: Enable unattended security upgrades (Debian family)
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family == 'Debian'
+
+# dnf-automatic は既定で「ダウンロードのみ」。security だけを適用する設定へ
+# 寄せて、Debian 側の unattended-upgrades と同じ挙動に揃える。
+- name: Configure dnf-automatic for security updates (RedHat family)
+  ansible.builtin.lineinfile:
+    path: /etc/dnf/automatic.conf
+    regexp: "^{{ item.key }}[[:space:]]*="
+    line: "{{ item.key }} = {{ item.value }}"
+    insertafter: '^\[commands\]'
+    state: present
+  loop:
+    - {key: upgrade_type, value: security}
+    - {key: download_updates, value: 'yes'}
+    - {key: apply_updates, value: 'yes'}
+  loop_control:
+    label: "{{ item.key }}"
+  when: ansible_os_family == 'RedHat'
+
+- name: Enable the dnf-automatic timer (RedHat family)
+  ansible.builtin.systemd:
+    name: dnf-automatic.timer
+    enabled: true
+    state: started
+  when:
+    - ansible_os_family == 'RedHat'
+    - common_manage_services | bool
