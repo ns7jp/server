@@ -8,7 +8,8 @@
 | ephemeral runner 新規構築 IT-01 / 冪等性 IT-02 | `PASS`（[2026-08-22 E2E](../evidence/2026-08-22-full-stack-e2e.md)） |
 | 引き渡し対象hostの新規構築 IT-01 / 冪等性 IT-02 | `NOT RUN`（対象host未指定） |
 | 引き渡し対象host/管理端末の network IT-12 | `NOT RUN` |
-| 構成commit / 設定rollback rehearsal | `NOT RUN`（[計画兼結果票](08-change-rollback-plan.md)のみ。D-1 / volume restoreとは別） |
+| ephemeral runnerの構成commit / 設定rollback rehearsal | `PASS`（[2026-08-23 CI実測](../evidence/2026-08-23-change-CI-GIT-ROLLBACK.md)。D-1 / volume restoreとは別） |
+| 引き渡し対象hostの構成commit / 設定rollback rehearsal | `NOT RUN`（対象host未指定） |
 | 必須試験完了 | `NOT READY` |
 | 受領 | `NOT SET` |
 

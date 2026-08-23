@@ -108,8 +108,11 @@ Ansible 側は `ansible/inventory/aws_ec2.yml.example` の動的インベント�
 ```bash
 cd ansible
 ansible-galaxy collection install amazon.aws
+cp inventory/aws_ec2.yml.example inventory/aws_ec2.yml
+# Environmentを対象環境へ限定し、SSM bucket/regionも実環境へ合わせる
 ansible-inventory -i inventory/aws_ec2.yml --graph
-ansible-playbook -i inventory/aws_ec2.yml playbooks/site.yml
+ansible-playbook -i inventory/aws_ec2.yml \
+  -e ansible_connection=amazon.aws.aws_ssm playbooks/site.yml
 ```
 
 SSH ではなく SSM Session Manager 経由で接続する場合は `ansible_connection: aws_ssm`
@@ -126,6 +129,11 @@ SSH ではなく SSM Session Manager 経由で接続する場合は `ansible_con
 | EC2 → NTP | UDP 123 (169.254.169.123) | Amazon Time Sync Service |
 | Prometheus → EC2 内 `/metrics` | HTTP（Bearer token） | Compose 内ネットワーク内 |
 
+Composeのlocal/CI既定は全管理portを`127.0.0.1`へbindする。AWS inventoryだけはNginx入口8080を
+`0.0.0.0`へ明示変更する。authoritativeな到達制御はEC2 Security GroupのALB Security Group参照で、
+UFWにもTerraformがtagへ記録したVPC CIDRのhost policyを残す。ただしDockerのpublished portがUFW
+INPUTを通るとは仮定しない。3000 / 9090 / 9093 / 3100はAWSでもloopbackのままにする。
+
 ## 障害設計
 
 | 障害想定 | 期待動作 | 検出 |
@@ -136,6 +144,15 @@ SSH ではなく SSM Session Manager 経由で接続する場合は `ansible_con
 | 設定誤りで EC2 停止 | EC2 ステータスチェック failed → 通知 → 復旧 | `StatusCheckFailed` アラーム |
 | 予期せぬ課金 | Budgets 80% / 100% で SNS 通知 | `aws_budgets_budget` |
 | 不審 API コール | GuardDuty findings | GuardDuty + 後続のレビュー |
+
+GuardDuty detectorはaccount / regionごとに1個なので、同一accountでdev / staging / prodを
+重ねても各stackから作成しません。本構成では長期利用するprod rootだけがGuardDutyと
+account-wide CloudTrailを所有し、devとD-2 stagingはその共有controlを重複作成しません。
+別account構成へ移す場合は、application stackではなくaccount baselineの専用stateで管理します。
+
+図と表のHTTPS記載はproduction境界を示す。ACM証明書を設定しないdev / D-2 stagingは、
+短時間検証に限ってHTTP 80を使い、ALB Security Groupの許可元を承認済みCIDRへ限定する。
+productionは`certificate_arn`が必須で、Security GroupもHTTPS 443だけを許可する。
 
 ## 拡張余地（将来構想）
 

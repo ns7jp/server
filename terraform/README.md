@@ -16,9 +16,15 @@ terraform/
 │   ├── monitoring/      # CloudWatch Alarms / SNS / CloudTrail / GuardDuty / Budgets
 │   └── backup/          # AWS Backup vault / plan / S3 archive
 └── environments/
-    ├── dev/             # 単一 AZ・EC2 1 台・短時間検証用 Budgets 3,000 円
+    ├── dev/             # ALB用2 AZ・EC2 1台（account-wide GuardDuty / CloudTrailは作らない）
+    ├── staging/         # D-2専用・ALB用2 AZ・EC2 1台（GuardDuty / CloudTrailは作らない）
     └── prod/            # マルチ AZ・EC2 2 台・Budgets 15,000 円
 ```
+
+同じAWS account / regionで複数environmentを使う場合、GuardDuty detectorは1個だけです。
+この構成では長期利用するprod rootだけがGuardDuty / account-wide CloudTrailを所有し、devと
+短時間stagingは重複作成しません。environmentを別accountへ分離する場合は、account baselineを
+別stateで1回だけ管理する設計へ移します。
 
 すべて Tokyo (`ap-northeast-1`) を既定とする。
 
@@ -42,8 +48,19 @@ terraform apply -var-file=terraform.tfvars
 ## EC2 への Ansible 適用
 
 Terraform で作成された EC2 のプライベート IP に対し、SSM Session Manager
-経由（または bastion 経由）で SSH し、`ansible-playbook -i ... site.yml`
-を実行する。Ansible 側は `ansible/inventory/aws.yml.example` を参照。
+経由（または承認済みの管理経路）で`ansible-playbook -i ... site.yml`
+を実行する。Ansible 側は`ansible/inventory/aws_ec2.yml.example`を
+`ansible/inventory/aws_ec2.yml`へコピーし、Environmentを対象環境へ限定してから
+SSM用bucketなどの実値をGit管理外で設定する。D-2 stagingは、versioning無効・1日expire・
+SSE-S3・public blockを持つ専用transfer bucketとcontroller用最小権限policyを作成し、outputする。
+既存controller roleへ自動attachする場合だけ`ssm_controller_role_name`を指定する。
+
+Backup selectionはenvironmentごとの明示的なEC2 ARNだけを対象とし、広いApplication tagとのunionを
+作らない。dev/prodのVault policyはrecovery pointの直接削除・lifecycle短縮・policy除去を拒否し、
+自動retentionを行うAWS Backup roleと、tfvarsで指定した実在break-glass principalだけを例外にする。
+Vault policy更新時もbreak-glass principalを利用する。stagingは承認済みdestroyを可能にするためこの
+保護を無効化する。初回apply後のdev/prod Terraform更新・destroyは、tfvarsへ列挙した実在
+break-glass/deploy roleを必ずassumeして実行する。通常deploy roleを列挙せずに適用すると自己ロックする。
 
 ## 検証
 

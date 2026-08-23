@@ -35,12 +35,12 @@ module "compute" {
   name                  = var.name_prefix
   vpc_id                = module.network.vpc_id
   private_subnet_ids    = module.network.private_subnet_ids
-  azs                   = var.azs
+  azs                   = var.compute_azs
   instance_type         = var.instance_type
   alb_security_group_id = module.alb.alb_security_group_id
   ssh_ingress_cidrs     = var.ssh_ingress_cidrs
   schedule_stop_enabled = true # dev は夜間停止でコスト削減
-  tags                  = local.common_tags
+  tags                  = merge(local.common_tags, { AlbHealthCheckSourceCidr = var.vpc_cidr })
 }
 
 # ALB と Compute の循環依存を避けるため、Target Group attachment は環境側で配線する。
@@ -59,19 +59,21 @@ module "monitoring" {
   instance_ids             = module.compute.instance_ids
   target_group_arn         = module.alb.target_group_arn
   load_balancer_arn_suffix = split("loadbalancer/", module.alb.alb_arn)[1]
-  target_group_arn_suffix  = split(":targetgroup/", module.alb.target_group_arn)[1]
+  target_group_arn_suffix  = module.alb.target_group_arn_suffix
   alarm_emails             = var.alarm_emails
   monthly_budget_jpy       = var.monthly_budget_jpy
-  enable_guardduty         = true
-  enable_cloudtrail        = true
-  tags                     = local.common_tags
+  # Account-wide controls are owned once by the long-lived prod/account baseline.
+  enable_guardduty  = false
+  enable_cloudtrail = false
+  tags              = local.common_tags
 }
 
 module "backup" {
   source = "../../modules/backup"
 
-  name                  = var.name_prefix
-  instance_arns         = module.compute.instance_arns
-  backup_retention_days = 14
-  tags                  = local.common_tags
+  name                                 = var.name_prefix
+  instance_arns                        = module.compute.instance_arns
+  backup_retention_days                = 14
+  recovery_point_delete_principal_arns = var.backup_admin_principal_arns
+  tags                                 = local.common_tags
 }

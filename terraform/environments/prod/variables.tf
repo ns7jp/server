@@ -68,7 +68,15 @@ variable "allowed_ingress_cidrs" {
   description = "ALB の HTTPS を許可する CIDR。"
   type        = list(string)
   validation {
-    condition     = length(var.allowed_ingress_cidrs) >= 1
+    condition = (
+      length(var.allowed_ingress_cidrs) >= 1
+      && !contains(var.allowed_ingress_cidrs, "0.0.0.0/0")
+    )
     error_message = "prod では allowed_ingress_cidrs を 1 件以上指定し、フルオープン (0.0.0.0/0) を避ける。"
   }
+}
+
+variable "backup_admin_principal_arns" {
+  description = "AWS Backup保護変更を許可する実在break-glass/deploy role ARN。以後のTerraform更新は列挙roleをassumeする。"
+  type        = list(string)
 }

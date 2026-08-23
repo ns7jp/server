@@ -431,6 +431,7 @@
       MONITOR_USERNAME={{ monitor_username }}
       MONITOR_NODE_NAME={{ monitor_node_name }}
       MONITOR_PORT={{ monitor_port }}
+      MONITOR_BIND_ADDRESS={{ app_monitor_bind_address }}
       PROMETHEUS_PORT={{ prometheus_port }}
       ALERTMANAGER_PORT={{ alertmanager_port }}
       GRAFANA_PORT={{ grafana_port }}

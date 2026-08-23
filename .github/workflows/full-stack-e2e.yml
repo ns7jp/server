@@ -60,6 +60,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # The rehearsal validates the selected common ancestor / previous main commit.
+          fetch-depth: 0
 
       - name: Initialize evidence directory
         run: |
@@ -86,6 +89,10 @@ jobs:
       - name: Validate E2E inputs before mutating the runner
         run: |
           bash -n scripts/e2e/run-full-stack.sh
+          bash -n scripts/e2e/run-git-rollback-rehearsal.sh
+          python -m py_compile \
+            scripts/e2e/check_loopback_listeners.py \
+            scripts/e2e/select_rollback_sha.py
           bash -n scripts/demo/run-demo.sh
           bash -n scripts/drills/d1-process-down.sh
           bash -n scripts/ops/restore-volumes.sh
@@ -104,6 +111,42 @@ jobs:
           bash scripts/e2e/run-full-stack.sh \
             --confirm-disposable-host \
             --evidence-dir "$GITHUB_WORKSPACE/.artifacts/full-stack-e2e/current"
+
+      - name: Run immutable git deployment and rollback rehearsal
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          REQUESTED_ROLLBACK_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          GIT_REPO_URL: ${{ github.event.pull_request.head.repo.clone_url || format('{0}/{1}.git', github.server_url, github.repository) }}
+        run: |
+          requested_rollback_sha="$REQUESTED_ROLLBACK_SHA"
+          rollback_args=()
+          if [[ "$requested_rollback_sha" =~ ^[0-9a-fA-F]{40}$ ]] \
+            && [[ ! "$requested_rollback_sha" =~ ^0{40}$ ]]; then
+            rollback_args+=(--requested-rollback-sha "$requested_rollback_sha")
+          fi
+          rollback_sha=$(python scripts/e2e/select_rollback_sha.py \
+            "$CANDIDATE_SHA" "$requested_rollback_sha")
+          bash scripts/e2e/run-git-rollback-rehearsal.sh \
+            --confirm-disposable-host \
+            --candidate-sha "$CANDIDATE_SHA" \
+            --rollback-sha "$rollback_sha" \
+            "${rollback_args[@]}" \
+            --git-repo-url "$GIT_REPO_URL" \
+            --evidence-dir "$GITHUB_WORKSPACE/.artifacts/full-stack-e2e/current"
+          evidence_dir="$GITHUB_WORKSPACE/.artifacts/full-stack-e2e/current"
+          test -s "$evidence_dir/change-rollback-summary.md"
+          grep -F -- '- Overall: **PASS**' "$evidence_dir/change-rollback-summary.md"
+          for required in \
+            candidate-revision.txt rollback-revision.txt \
+            candidate-app-container-id.txt rollback-app-container-id.txt \
+            candidate-expected-runtime-manifest.sha256 \
+            candidate-actual-runtime-manifest.sha256 \
+            rollback-expected-runtime-manifest.sha256 \
+            rollback-actual-runtime-manifest.sha256; do
+            test -s "$evidence_dir/$required"
+          done
+          test -f "$evidence_dir/candidate-runtime-manifest.diff"
+          test -f "$evidence_dir/rollback-runtime-manifest.diff"
 
       - name: Record an actual terminal demo cast
         run: |
@@ -125,6 +168,11 @@ jobs:
             cat .artifacts/full-stack-e2e/current/summary.md >> "$GITHUB_STEP_SUMMARY"
           else
             echo 'E2E stopped before summary generation.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f .artifacts/full-stack-e2e/current/change-rollback-summary.md ]; then
+            printf '\n---\n\n' >> "$GITHUB_STEP_SUMMARY"
+            cat .artifacts/full-stack-e2e/current/change-rollback-summary.md \
+              >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Collect service diagnostics

@@ -51,34 +51,66 @@ resource "aws_kms_alias" "backup" {
 # Backup Vault
 # ----------------------------------------------------------------------------
 resource "aws_backup_vault" "this" {
-  name        = "${local.name}-vault"
-  kms_key_arn = aws_kms_key.backup.arn
+  name          = "${local.name}-vault"
+  kms_key_arn   = aws_kms_key.backup.arn
+  force_destroy = var.force_destroy
 
   tags = merge(local.tags, { Name = "${local.name}-vault" })
 }
 
 resource "aws_backup_vault_policy" "this" {
+  count = var.protect_recovery_points ? 1 : 0
+
   backup_vault_name = aws_backup_vault.this.name
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Sid    = "DenyDeleteRecoveryPoints"
-      Effect = "Deny"
-      Principal = {
-        AWS = "*"
-      }
-      Action = [
-        "backup:DeleteRecoveryPoint",
-      ]
-      Resource = "*"
-      Condition = {
-        StringNotEquals = {
-          "aws:PrincipalArn" = "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/${local.name}-backup-admin"
+    Statement = [
+      {
+        Sid       = "DenyRecoveryPointMutation"
+        Effect    = "Deny"
+        Principal = { AWS = "*" }
+        Action = [
+          "backup:DeleteRecoveryPoint",
+          "backup:UpdateRecoveryPointLifecycle",
+        ]
+        Resource = "*"
+        Condition = {
+          ArnNotEquals = {
+            "aws:PrincipalArn" = concat(
+              var.recovery_point_delete_principal_arns,
+              [
+                aws_iam_role.backup.arn,
+                "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/backup.amazonaws.com/AWSServiceRoleForBackup",
+              ]
+            )
+          }
         }
-      }
-    }]
+      },
+      {
+        Sid       = "DenyVaultPolicyMutation"
+        Effect    = "Deny"
+        Principal = { AWS = "*" }
+        Action = [
+          "backup:PutBackupVaultAccessPolicy",
+          "backup:DeleteBackupVaultAccessPolicy",
+        ]
+        Resource = "*"
+        Condition = {
+          ArnNotEquals = {
+            "aws:PrincipalArn" = var.recovery_point_delete_principal_arns
+          }
+        }
+      },
+    ]
   })
+
+  lifecycle {
+    precondition {
+      condition     = length(var.recovery_point_delete_principal_arns) >= 1
+      error_message = "protect_recovery_points=true requires at least one real break-glass principal ARN."
+    }
+  }
 }
 
 # ----------------------------------------------------------------------------
@@ -103,6 +135,16 @@ resource "aws_backup_plan" "this" {
   }
 
   tags = merge(local.tags, { Name = "${local.name}-plan" })
+
+  lifecycle {
+    precondition {
+      condition = (
+        var.cold_storage_after_days == 0
+        || var.backup_retention_days >= var.cold_storage_after_days + 90
+      )
+      error_message = "backup_retention_days must be at least 90 days after cold_storage_after_days."
+    }
+  }
 }
 
 # ----------------------------------------------------------------------------
@@ -141,13 +183,9 @@ resource "aws_backup_selection" "this" {
   name         = "${local.name}-selection"
   plan_id      = aws_backup_plan.this.id
 
+  # Explicit environment-scoped ARNs prevent dev/staging/prod selections from
+  # forming a union through a broad account-wide Application tag.
   resources = var.instance_arns
-
-  selection_tag {
-    type  = "STRINGEQUALS"
-    key   = "Application"
-    value = "server-monitor"
-  }
 }
 
 # ----------------------------------------------------------------------------
@@ -159,7 +197,7 @@ resource "random_id" "archive_bucket_suffix" {
 
 resource "aws_s3_bucket" "archive" {
   bucket        = "${local.name}-archive-${random_id.archive_bucket_suffix.hex}"
-  force_destroy = false
+  force_destroy = var.force_destroy
 
   tags = merge(local.tags, { Name = "${local.name}-archive" })
 }

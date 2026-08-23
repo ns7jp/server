@@ -1,0 +1,25 @@
+region        = "ap-northeast-1"
+environment   = "staging"
+name_prefix   = "server-monitor-staging"
+vpc_cidr      = "10.15.0.0/16"
+azs           = ["ap-northeast-1a", "ap-northeast-1c"]
+compute_azs   = ["ap-northeast-1a"]
+instance_type = "t3.small"
+
+# Empty uses the restricted HTTP listener intended only for a short-lived drill.
+certificate_arn = ""
+
+# Replace with an address that will confirm SNS subscriptions before the drill.
+alarm_emails = ["noc@example.com"]
+
+# Short-lived staging guardrail. Destroy the environment after evidence capture.
+monthly_budget_jpy = 3000
+
+# Prefer SSM Session Manager. Do not open SSH unless the drill plan approves it.
+ssh_ingress_cidrs = []
+
+# Optional: existing approved controller role. Empty still creates and outputs the policy for manual attachment.
+ssm_controller_role_name = ""
+
+# Replace with the approved management egress CIDR. Never use 0.0.0.0/0.
+allowed_ingress_cidrs = ["192.0.2.0/24"]

@@ -75,6 +75,14 @@
     proto: tcp
   loop: "{{ common_ufw_allowed_tcp_ports | map('int') | list | difference(common_ufw_rate_limited_ports) }}"
 
+- name: Record the ALB/VPC source policy in UFW for the application entry port
+  community.general.ufw:
+    rule: allow
+    port: "{{ common_ufw_alb_target_port }}"
+    proto: tcp
+    from_ip: "{{ common_ufw_alb_source_cidr }}"
+  when: common_ufw_alb_source_cidr | length > 0
+
 - name: Rate-limit SSH instead of plain allow
   community.general.ufw:
     rule: limit

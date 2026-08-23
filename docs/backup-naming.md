@@ -7,7 +7,7 @@
 
 | 種類 | 場所 | 命名 / タグ |
 | --- | --- | --- |
-| AWS Backup recovery point | AWS Backup Vault | プラン名・選択タグで一意に特定 |
+| AWS Backup recovery point | AWS Backup Vault | environment別Vault・明示resource ARN・plan IDで特定 |
 | EBS スナップショット（手動 / 追加取得） | EC2 → スナップショット | 後述の命名規則を適用 |
 | ローカル tarball スナップショット | `/var/backups/server-monitor/` | ISO 8601 UTC タイムスタンプ |
 | S3 への長期アーカイブ | `server-monitor-prod-archive-*` バケット | プレフィックス + ISO 日付 |
@@ -18,7 +18,7 @@
 | --- | --- | --- |
 | `Project` | `server-monitor` | プロジェクト全体識別 |
 | `Environment` | `dev` / `staging` / `prod` | 環境分離 |
-| `Application` | `server-monitor` | AWS Backup の selection_tag と一致 |
+| `Application` | `server-monitor` | inventory / cleanup用。Backup selection自体は明示EC2 ARN |
 | `Source` | `<EC2-instance-id>` または `<hostname>` | 復元元の特定 |
 | `BackupType` | `daily` / `weekly` / `pre-change` / `manual` | バックアップ目的の識別 |
 | `RetentionDays` | 数値（例: `14`、`30`） | 保持日数 |
@@ -78,7 +78,7 @@
 「最新スナップを 1 つだけ取り出す」典型ケース：
 
 ```bash
-# AWS Backup の最新 recovery point（タグ Application=server-monitor）
+# AWS Backup の最新 recovery point（environment rootが明示選択したEC2 ARN）
 aws backup list-recovery-points-by-backup-vault \
   --backup-vault-name server-monitor-prod-vault \
   --by-resource-arn "<EC2-or-EBS-ARN>" \

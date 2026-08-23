@@ -3,10 +3,11 @@
 このディレクトリは、設計資料や構成コードが存在することと、実環境で確認した結果を
 混同しないための台帳である。実行していない検証を成功実績として記載しない。
 
-## 要約（2026-08-22 更新）
+## 要約（2026-08-23 更新）
 
 **Ansibleロール単体だけでなく、`site.yml`によるhost全体の新規構築・冪等性、
-監視stack、認証、network/UFW、D-1、backup restoreまで実測証跡があります。**
+監視stack、認証、network/UFW、D-1、backup restore、使い捨てrunner上のGit-mode
+構成commitロールバックまで実測証跡があります。**
 [2026-08-22 Full-stack E2E](2026-08-22-full-stack-e2e.md)では、使い捨てUbuntu 24.04 runner上で
 23 IDをすべてPASSとして採録しました（[Actions run 32563104045](https://github.com/ns7jp/server-monitor/actions/runs/32563104045)）。
 PR #74のmain merge commit `43d36ee674f090108153b09451e825e3383494c1`でも5 workflowを再確認し、
@@ -14,36 +15,41 @@ PR #74のmain merge commit `43d36ee674f090108153b09451e825e3383494c1`でも5 wor
 [Full-stack E2E run 32572409469](https://github.com/ns7jp/server-monitor/actions/runs/32572409469)を
 含む5 workflowがすべてsuccessとなりました。後者ではDocker API proxyのGET成功・POST拒否・
 Loki log到達、`directory` modeのtracked archive / sync、初回適用`changed=30 / failed=0`、2回目
-`changed=0 / failed=0`まで実測しています。実host向け`git` modeはinventory解決値と静的検査までで、
-remote fetchから配備までのruntimeは`NOT RUN`です。commitごとの区別・全run IDは
-[日付付き証跡](2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証)に記録しています。
+`changed=0 / failed=0`まで実測しています。PR #75時点では`git` modeのremote fetchから配備までが
+`NOT RUN`でしたが、2026-08-23の[run 32611251044](https://github.com/ns7jp/server-monitor/actions/runs/32611251044)で
+候補SHAの配備から旧SHAへのrollbackを実測しました。commitごとの区別・境界は
+[2026-08-22 E2E証跡](2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証)と
+[Git-mode rollback証跡](2026-08-23-change-CI-GIT-ROLLBACK.md)に記録しています。
 
 > **履歴（2026-08-21時点）:** 当時はAnsible各ロール、WSL2上の監視stack、D-1、
 > 二セグメント障害ラボまでが実測済みで、`site.yml`一括構築（IT-01/02）、runner内
 > network/UFW（IT-12）、backup restoreは未採録でした。この履歴を示す
 > [2026-08-19結果票](2026-08-19-build-validation.md)は後から上書きしていません。
 
-AlertmanagerからSlackへの実配信、D-2、AWS適用、長期稼働host、実管理端末・組織DNS・
-cloud firewallを含むproduction相当のnetwork検証は、現在も未採録です。
+AlertmanagerからSlackへの実配信、D-2、AWS適用、永続hostの再起動・24h / 72h確認、
+実管理端末・組織DNS・cloud firewallを含むproduction相当のnetwork検証は、現在も
+`NOT RUN`です。
 
 | 区分 | 状態 |
 | --- | --- |
 | CI による自動検証 | ✅ 継続的に実行中（構文・設定整合・依存脆弱性・秘密値混入・バックアップスクリプト） |
+| 現行mainのMolecule / Backup再検証 | ✅ [2026-08-23](2026-08-23-current-main-ci-refresh.md)：4 roleとbackup archive smokeを`59aa88e`で再実行。AWS jobは設定なしでskip |
 | Full-stack E2E | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：新規構築、2回目`changed=0`、11 containers、認証、Docker API proxy、local通知、network/UFW、D-1、3-volume restoreを23/23 PASS |
 | Ansible ロールの適用・冪等性・検証 | ✅ **4 ロール完走**（[2026-08-17](2026-08-17-molecule.md)、Ubuntu 22.04 コンテナ） |
-| 監視スタック全体の起動（Grafana / Loki） | ✅ [2026-08-18](2026-08-18-local-observability.md)。local webhook通知は[2026-08-22 E2E](2026-08-22-full-stack-e2e.md)、Slack実配信は未採録 |
-| D-1 復旧演習の実測 | ✅ [2026-08-19](../drills/logs/2026-08-19-D-1.md) RTO 13秒 / [2026-08-22 E2E](2026-08-22-full-stack-e2e.md) RTO 1秒。D-2は未採録 |
+| 監視スタック全体の起動（Grafana / Loki） | ✅ [2026-08-18](2026-08-18-local-observability.md)。local webhook通知は[2026-08-22 E2E](2026-08-22-full-stack-e2e.md)、Slack実配信は**NOT RUN** |
+| D-1 復旧演習の実測 | ✅ [2026-08-19](../drills/logs/2026-08-19-D-1.md) RTO 13秒 / [2026-08-22 E2E](2026-08-22-full-stack-e2e.md) RTO 1秒。D-2は**NOT RUN** |
 | 二セグメント障害ラボの実測 | ✅ [2026-08-19](2026-08-19-network-drill.md)（障害注入→切り分け→復旧、PASS） |
 | ネットワーク切り分けの一次メモ | ✅ [2026-08-21](2026-08-21-network-firstlook.md)：公開port不成立を切り分け。2026-08-22に内部segmentを維持した`host-access`構成へ修正し、E2Eでloopback bind / namespace遮断 / SSH tunnelを確認 |
 | ephemeral VM の network / UFW | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：`NW-01〜09` / `IT-12` / `ST-01,04` PASS |
 | 独立した管理端末・対象hostでの network / UFW | ❌ **NOT RUN**（[手順](../build-package/09-network-validation-procedure.md)と[結果票テンプレート](templates/network-host-validation.md)のみ） |
-| AWS `apply` / `destroy` と実費 | ❌ 未採録 |
-| 構成commit / 設定rollback rehearsal | ❌ **NOT RUN**（[計画兼結果票](../build-package/08-change-rollback-plan.md)のみ。D-1 / volume restoreのPASSとは別） |
+| AWS `apply` / `destroy` と実費 | ❌ **NOT RUN** |
+| 構成commit / 設定rollback rehearsal | ✅ [2026-08-23](2026-08-23-change-CI-GIT-ROLLBACK.md)：使い捨てUbuntu runnerでcandidate `84e1492`からmain `59aa88e`へGit-mode rollbackを実測。永続hostでは**NOT RUN** |
+| 永続hostの再起動・24h / 72h確認 | ❌ **NOT RUN**（[結果票テンプレート](templates/host-reboot-72h.md)のみ） |
 | [試験仕様書](../build-package/06-test-specification.md)の2026-08-19結果 | ⚠ **日付付き履歴**: [11/21 PASS、残り NOT RUN](2026-08-19-build-validation.md)。現在のcoverageは下表で別管理 |
 
-> **この証跡が示す範囲を広げて解釈しない。** 2026-08-22 E2EはGitHub-hosted runnerと
-> 別Docker namespace内の自動実測です。独立した管理端末、複数host、組織DNS、
-> D-2、Slack実配信、AWS適用、長期運用の代替にはしません。
+> **この証跡が示す範囲を広げて解釈しない。** 2026-08-22 E2Eと2026-08-23 Git-mode
+> rollbackはGitHub-hosted runner内の自動実測です。独立した管理端末、複数host、組織DNS、
+> D-2、Slack実配信、AWS適用、永続hostの再起動・24h / 72h確認の代替にはしません。
 
 ## 試験IDと現在の証跡の対応
 
@@ -61,9 +67,9 @@ cloud firewallを含むproduction相当のnetwork検証は、現在も未採録�
 | IT-11 | [2026-08-19二セグメント障害ラボ](2026-08-19-network-drill.md) | Docker lab内の障害注入・切り分け・復旧 |
 | IT-12 | [2026-08-22 `NW-01〜09`](2026-08-22-full-stack-e2e.md#判定結果feature-run-32563104045) | runner + 別Docker namespace。独立した引き渡し対象host / 管理端末は`NOT RUN` |
 
-次にrepository内だけで採れる証跡は、構成commit / 設定rollback rehearsalです。外部環境が
+repository内で完結する構成commit / 設定rollback rehearsalは採録済みです。外部環境が
 用意できた後は、Slack実配信、独立した対象host / 管理端末のnetwork検証、AWS短時間
-`apply / destroy`、D-2をそれぞれ別証跡として採録します。
+`apply / destroy`、D-2、永続hostの再起動・24h / 72h確認をそれぞれ別証跡として採録します。
 
 ## 現在の証跡状態
 
@@ -74,11 +80,11 @@ cloud firewallを含むproduction相当のnetwork検証は、現在も未採録�
 | Compose / Prometheus / Loki / Alloy 設定 | `compose.yaml`、`deploy/`、`python-check.yml` | [2026-08-18: Linux(WSL2)上での起動・Grafana実画面・Lokiログ検索を採録](2026-08-18-local-observability.md) |
 | Ansible roles | `ansible/`、`ansible-check.yml` | 構文・lint 検証に加え、[2026-08-17: 4 ロールの `molecule test` 完走](2026-08-17-molecule.md)（create → converge → idempotence → verify）。[実行手順](molecule-via-github-actions.md) |
 | Ansible full site E2E | `full-stack-e2e.yml`、`scripts/e2e/run-full-stack.sh` | [2026-08-22実測](2026-08-22-full-stack-e2e.md) / [実行・証跡採録手順](../e2e-validation.md) |
-| Terraform AWS 構成 | `terraform/`、`terraform-check.yml` | `terraform plan/apply/destroy` と Cost Explorer 実測は未収録 |
-| SLO / 復旧演習 | `docs/slo.md`、`docs/drills/`、`scripts/drills/` | D-1は[2026-08-19: RTO 13秒](../drills/logs/2026-08-19-D-1.md) / [2026-08-22 E2E: RTO 1秒](2026-08-22-full-stack-e2e.md)。D-2は未収録 |
+| Terraform AWS 構成 | `terraform/`、`terraform-check.yml` | `terraform plan/apply/destroy` と Cost Explorer 実測は**NOT RUN** |
+| SLO / 復旧演習 | `docs/slo.md`、`docs/drills/`、`scripts/drills/` | D-1は[2026-08-19: RTO 13秒](../drills/logs/2026-08-19-D-1.md) / [2026-08-22 E2E: RTO 1秒](2026-08-22-full-stack-e2e.md)。D-2は**NOT RUN** |
 | 外部 probe / 中央 telemetry | `docs/roadmap/external-probe-central-telemetry.md` | 外部 probe と中央保存先の実測は未収録 |
 | 変更管理 | `.github/pull_request_template.md`、`.github/ISSUE_TEMPLATE/`、`docs/change-management.md` | PR ごとに検証・ロールバック・証跡リンクを残す |
-| 構成commit / 設定rollback | `docs/build-package/08-change-rollback-plan.md` | rehearsal結果は**NOT RUN**。D-1 / volume restoreの証跡を読み替えない |
+| 構成commit / 設定rollback | `docs/build-package/08-change-rollback-plan.md`、`scripts/e2e/run-git-rollback-rehearsal.sh` | [2026-08-23 CI実測](2026-08-23-change-CI-GIT-ROLLBACK.md)は使い捨てrunnerで**PASS**。永続hostでは**NOT RUN**。D-1 / volume restoreの証跡を読み替えない |
 | 構築工程成果物 | `docs/build-package/` | 設計・構築・試験様式を整備。実機結果は各検証ログへ記録 |
 | 二セグメント障害ラボ | `labs/network-troubleshooting/` | [2026-08-19: 障害注入→切り分け→復旧を実測、PASS](2026-08-19-network-drill.md) |
 | 独立した対象host/管理端末の NIC / DNS / route / listen / HTTP / packet / UFW | `docs/build-package/09-network-validation-procedure.md` | **NOT RUN**。ephemeral runner内のPASSは[別証跡](2026-08-22-full-stack-e2e.md)として区別 |
@@ -104,7 +110,9 @@ cloud firewallを含むproduction相当のnetwork検証は、現在も未採録�
 | D-2 AWS 復元 | `docs/drills/logs/YYYY-MM-DD-D-2.md` |
 | AWS 短時間 apply/destroy | `docs/evidence/YYYY-MM-DD-aws-validation.md` |
 | Grafana / Loki / Alertmanager ローカル採録 | `docs/evidence/YYYY-MM-DD-local-observability.md` |
+| Alertmanager → Slack 実配信 | `docs/evidence/YYYY-MM-DD-slack-delivery.md` |
 | Linux 新規構築・試験 | `docs/evidence/YYYY-MM-DD-build-validation.md` |
+| 永続host再起動・24h / 72h確認 | `docs/evidence/YYYY-MM-DD-host-reboot-72h.md` |
 | 二セグメント通信障害 | `docs/evidence/YYYY-MM-DD-network-drill.md` |
 | Linux 実ホスト network / UFW | `docs/evidence/YYYY-MM-DD-network-host-validation.md` |
 | 構成commit / 設定rollback rehearsal | `docs/evidence/YYYY-MM-DD-change-<ID>.md` |
@@ -116,6 +124,8 @@ cloud firewallを含むproduction相当のnetwork検証は、現在も未採録�
 | 用途 | テンプレート |
 | --- | --- |
 | ローカル Grafana / Loki / Alertmanager | [templates/local-observability.md](templates/local-observability.md) |
+| Alertmanager → Slack 実配信 | [templates/slack-delivery.md](templates/slack-delivery.md) |
+| 永続host再起動・24h / 72h確認 | [templates/host-reboot-72h.md](templates/host-reboot-72h.md) |
 | AWS 短時間検証 | [templates/aws-validation.md](templates/aws-validation.md) |
 | Molecule フル実行 | [templates/molecule.md](templates/molecule.md) |
 | Linux 実ホスト network / UFW | [templates/network-host-validation.md](templates/network-host-validation.md) |
