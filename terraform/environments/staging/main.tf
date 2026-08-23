@@ -37,6 +37,7 @@ resource "aws_s3_bucket_ownership_controls" "ssm_transfer" {
   }
 }
 
+#trivy:ignore:AWS-0132 SSM transfer uses short-lived SSE-S3 objects; CMK would add controller and managed-node KMS coupling.
 resource "aws_s3_bucket_server_side_encryption_configuration" "ssm_transfer" {
   bucket = aws_s3_bucket.ssm_transfer.id
 

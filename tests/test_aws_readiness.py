@@ -177,7 +177,7 @@ def test_dynamic_inventory_can_limit_a_restored_instance_id() -> None:
     assert "ansible_aws_ssm_instance_id: instance_id" in inventory
     assert 'tag:Environment: "<REPLACE-WITH-ENVIRONMENT>"' in inventory
     assert "amazon.aws.aws_ssm" in inventory
-    assert "monitor_bind_address: \"'0.0.0.0'\"" in inventory
+    assert "app_monitor_bind_address: \"'0.0.0.0'\"" in inventory
     assert "server_monitor_alb_source_cidr: tags.AlbHealthCheckSourceCidr" in inventory
     assert "ansible/inventory/aws_ec2.yml.example" in terraform_readme
     assert "inventory/aws_ec2.yml" in ansible_ignore
@@ -243,7 +243,7 @@ def test_aws_app_port_contract_preserves_loopback_default() -> None:
     app_tasks = text("ansible/roles/app/tasks/main.yml")
     common_tasks = text("ansible/roles/common/tasks/main.yml")
     assert "${MONITOR_BIND_ADDRESS:-127.0.0.1}:${MONITOR_PORT:-8080}:8080" in compose
-    assert "MONITOR_BIND_ADDRESS={{ monitor_bind_address }}" in app_tasks
+    assert "MONITOR_BIND_ADDRESS={{ app_monitor_bind_address }}" in app_tasks
     assert "common_ufw_alb_source_cidr" in common_tasks
     for environment in ("dev", "staging", "prod"):
         main = text(f"terraform/environments/{environment}/main.tf")

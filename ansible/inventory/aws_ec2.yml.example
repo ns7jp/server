@@ -50,7 +50,7 @@ compose:
   # AWSだけはALBから到達できるようapp入口を全interfaceへbindする。EC2 SGと
   # EC2 SGをauthoritative boundaryにし、UFWはVPC CIDRのhost policyも記録する。
   # Docker NATがUFW INPUTを通るとは主張しない。
-  monitor_bind_address: "'0.0.0.0'"
+  app_monitor_bind_address: "'0.0.0.0'"
   server_monitor_alb_source_cidr: tags.AlbHealthCheckSourceCidr
   server_monitor_alb_target_port: "8080"
 
