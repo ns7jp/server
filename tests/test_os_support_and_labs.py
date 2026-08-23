@@ -411,3 +411,26 @@ def test_parameter_sheet_documents_both_firewall_backends():
     # ディスク設計の欄があること。構築案件で必ず聞かれる。
     assert "## ディスク・ファイルシステム" in sheet
     assert "## ユーザー・グループ・権限" in sheet
+
+
+def test_three_tier_web_resolves_the_ap_upstream_per_request():
+    """upstream を静的に書くと、停止 → 再起動で IP が変わったとき
+    nginx が古い IP を掴んだままになり、AP が復帰しても 502 が続く。
+    「復旧したのに直らない」という誤った観測になるので、
+    labs/network-troubleshooting と同じく動的解決にする。
+    """
+    conf = read("labs", "three-tier", "web", "nginx.conf")
+
+    assert "resolver 127.0.0.11" in conf
+    # 変数経由の proxy_pass（リクエストごとに解決される）
+    assert "set $ap_upstream ap:8000;" in conf
+    assert "proxy_pass http://$ap_upstream;" in conf
+    # 起動時に一度だけ解決する upstream ブロック宣言を使っていない。
+    # コメント中の「upstream」に反応しないよう、ディレクティブとして
+    # 行頭に現れる形だけを見る。
+    directives = [
+        line.strip()
+        for line in conf.splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+    assert not any(line.startswith("upstream ") for line in directives), directives
