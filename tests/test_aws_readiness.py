@@ -45,12 +45,12 @@ def test_account_wide_security_controls_have_one_owner() -> None:
     dev = text("terraform/environments/dev/main.tf")
     staging = text("terraform/environments/staging/main.tf")
     prod = text("terraform/environments/prod/main.tf")
-    assert "enable_guardduty         = false" in dev
-    assert "enable_cloudtrail        = false" in dev
-    assert "enable_guardduty         = false" in staging
-    assert "enable_cloudtrail        = false" in staging
-    assert "enable_guardduty         = true" in prod
-    assert "enable_cloudtrail        = true" in prod
+    assert re.search(r"enable_guardduty\s*=\s*false", dev)
+    assert re.search(r"enable_cloudtrail\s*=\s*false", dev)
+    assert re.search(r"enable_guardduty\s*=\s*false", staging)
+    assert re.search(r"enable_cloudtrail\s*=\s*false", staging)
+    assert re.search(r"enable_guardduty\s*=\s*true", prod)
+    assert re.search(r"enable_cloudtrail\s*=\s*true", prod)
 
 
 def test_backup_cold_storage_retention_and_cloudtrail_kms_are_validated() -> None:
@@ -115,8 +115,8 @@ def test_force_destroy_is_isolated_to_short_lived_staging() -> None:
     staging = text("terraform/environments/staging/main.tf")
     assert len(re.findall(r"force_destroy\s*=\s*true", staging)) == 3
     assert "protect_recovery_points = false" in staging
-    assert "enable_guardduty         = false" in staging
-    assert "enable_cloudtrail        = false" in staging
+    assert re.search(r"enable_guardduty\s*=\s*false", staging)
+    assert re.search(r"enable_cloudtrail\s*=\s*false", staging)
 
     for module in ("alb", "backup"):
         variables = text(f"terraform/modules/{module}/variables.tf")
