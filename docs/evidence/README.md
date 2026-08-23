@@ -56,7 +56,8 @@ AlmaLinux実機への`site.yml`適用も`NOT RUN`です。
 | B-4 L2 / L3 切り分け演習 | ❌ **NOT RUN**（[`labs/routing/`](../../labs/routing/README.md) 実装済み） |
 | AWS `apply` / `destroy` と実費 | ❌ **NOT RUN** |
 | 構成commit / 設定rollback rehearsal | ✅ [2026-08-23](2026-08-23-change-CI-GIT-ROLLBACK.md)：使い捨てUbuntu runnerでcandidate `84e1492`からmain `59aa88e`へGit-mode rollbackを実測。永続hostでは**NOT RUN** |
-| 永続hostの再起動・24h / 72h確認 | ❌ **NOT RUN**（[結果票テンプレート](templates/host-reboot-72h.md)のみ） |
+| 永続hostの再起動・24h / 72h確認 | ❌ **NOT RUN**（[`acceptance-check.sh`](../../scripts/ops/acceptance-check.sh) の `--mode after-reboot` / `--mode soak` で自動採録できる状態。手順は[10 立ち上げと受け入れ試験](../build-package/10-host-bringup-and-acceptance.md)） |
+| 引き渡し対象hostの受け入れ試験 | ❌ **NOT RUN**（[`acceptance-check.sh`](../../scripts/ops/acceptance-check.sh) が試験IDに対応した結果票を生成する。対象host 1台があれば実行できる） |
 | [試験仕様書](../build-package/06-test-specification.md)の2026-08-19結果 | ⚠ **日付付き履歴**: [11/21 PASS、残り NOT RUN](2026-08-19-build-validation.md)。現在のcoverageは下表で別管理 |
 
 > **この証跡が示す範囲を広げて解釈しない。** 2026-08-22 E2Eと2026-08-23 Git-mode

@@ -434,3 +434,107 @@ def test_three_tier_web_resolves_the_ap_upstream_per_request():
         if line.strip() and not line.strip().startswith("#")
     ]
     assert not any(line.startswith("upstream ") for line in directives), directives
+
+
+# ---------------------------------------------------------------------------
+# 引き渡し対象ホストの受け入れ試験
+# ---------------------------------------------------------------------------
+
+
+def test_acceptance_check_covers_the_test_specification_ids():
+    """結果票を名乗る以上、試験仕様書の runtime ID を実際に見ていること。"""
+    script = read("scripts", "ops", "acceptance-check.sh")
+
+    # 06 の runtime 系 ID（静的検査で済む UT 系と、別環境が要る IT-01/02/10/11 は除く）
+    for test_id in ("IT-03", "IT-04", "IT-05", "IT-06", "IT-07", "ST-01", "ST-02", "ST-04"):
+        assert f"record {test_id} " in script, test_id
+
+
+def test_acceptance_check_never_prints_secret_values():
+    """秘密値は読むが出力しない。証跡はそのまま公開される前提。"""
+    script = read("scripts", "ops", "acceptance-check.sh")
+
+    # 秘密値を保持する変数が echo / printf の引数に現れないこと。
+    for secret_var in ("dashboard_password", "metrics_token"):
+        for line in script.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            if f"${{{secret_var}}}" in stripped or f"${secret_var}" in stripped:
+                assert not stripped.startswith(("echo", "printf")), stripped
+                # record() の実測欄へ入れていないこと
+                assert not stripped.startswith("record "), stripped
+
+    # host 名 / IP は既定でマスクする。
+    assert "MASK=1" in script
+    assert "<masked-host>" in script
+    assert "<masked-ip>" in script
+
+
+def test_acceptance_check_distinguishes_skip_from_pass():
+    """SKIP を PASS に混ぜない。「確認していない」は「問題なし」ではない。"""
+    script = read("scripts", "ops", "acceptance-check.sh")
+
+    assert "SKIP_COUNT" in script
+    assert "SKIP) SKIP_COUNT=$((SKIP_COUNT + 1)) ;;" in script
+    # 終了コードは FAIL だけで決まる（SKIP は成否に含めない）
+    assert "[[ $FAIL_COUNT -eq 0 ]]" in script
+    # heredoc 内なので source ではバッククォートがエスケープされている。
+    # 記法に依存しないよう、文言そのものを見る。
+    assert "は「確認していない」であって「問題なし」ではない" in script
+
+
+def test_reboot_mode_detects_a_host_that_was_never_rebooted():
+    """boot ID が変わっていなければ再起動していない。
+
+    「再起動したつもりで実はしていない」証跡を作らせない。
+    """
+    script = read("scripts", "ops", "acceptance-check.sh")
+
+    assert "random/boot_id" in script
+    assert 'record RB-01 "実際に再起動した"' in script
+    assert '"boot ID が同じ（未再起動）" FAIL' in script
+
+
+def test_acceptance_check_handles_command_output_without_double_printing():
+    """`grep -c` と `curl -w` は失敗時にも値を出力したうえで非ゼロ終了する。
+
+    `|| echo 0` を付けると値が二重になり、算術比較が構文エラーになる。
+    実際にこの不具合を踏んだので、ヘルパー経由に統一したことを固定する。
+    """
+    script = read("scripts", "ops", "acceptance-check.sh")
+
+    assert "count_lines()" in script
+    # 二重出力を生む書き方が残っていないこと
+    assert "grep -c . || echo 0" not in script
+    assert "|| echo \"000\"" not in script
+
+
+def test_ufw_restricts_ssh_source_when_a_management_cidr_is_given():
+    """04-network-ip-plan.md が「受入条件なら実装する」としていた項目。
+
+    絞った rule を入れてから無制限 rule を外す順序であること。
+    逆順だと、代わりの経路を作る前に SSH を閉じることになる。
+    """
+    ufw = read("ansible", "roles", "common", "tasks", "firewall-ufw.yml")
+    defaults = read("ansible", "roles", "common", "defaults", "main.yml")
+
+    assert "common_ufw_ssh_source_cidr" in defaults
+    add_restricted = ufw.index("Rate-limit SSH from the management source only")
+    remove_open = ufw.index("Remove the unrestricted SSH rule once a management source is set")
+    assert add_restricted < remove_open
+
+    # 管理元 CIDR 未指定のときだけ全送信元 rate limit を掛ける
+    any_source = ufw.split("Rate-limit SSH from any source", 1)[1].split("- name:", 1)[0]
+    assert "common_ufw_ssh_source_cidr | length == 0" in any_source
+
+
+def test_bringup_runbook_states_what_one_host_cannot_cover():
+    """1 台で埋まらないものを、埋まったことにしない。"""
+    runbook = read("docs", "build-package", "10-host-bringup-and-acceptance.md")
+
+    assert "## 7. この手順で埋まらないもの" in runbook
+    for uncovered in ("Slack", "組織 DNS", "D-2", "AWS", "物理層"):
+        assert uncovered in runbook, uncovered
+    # SSH だけに依存させない警告
+    assert "SSH だけに依存しない" in runbook

@@ -456,6 +456,12 @@ sudo ./scripts/labs/storage-guard-test.sh
 ## 現在の制約と次の拡張
 
 - 単一ホストの検証構成であり、監視基盤の冗長化は対象外です。
+- **恒久的に稼働しているホストがまだありません。** 再起動後の永続性、24 / 72 時間
+  稼働、Slack 実配信、実 DNS / TLS、インターネット越しの firewall は、これが原因で
+  まとめて未実測です。対象ホストを 1 台用意してから証跡が出るまでの手順と、
+  結果票を自動生成する仕組みは
+  [10 立ち上げと受け入れ試験](docs/build-package/10-host-bringup-and-acceptance.md)
+  に用意しています。
 - AlmaLinux / Rocky 9 対応は role と Molecule scenario までです。**実機の
   AlmaLinux ホストへ `site.yml` を適用した証跡はまだありません。**
 - B-1〜B-4 はラボ環境（loop device / コンテナ）での演習です。物理ディスク、
