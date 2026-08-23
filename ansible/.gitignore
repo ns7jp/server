@@ -1,6 +1,7 @@
 .vault_pass
 *.retry
 inventory/*.local.yml
+inventory/aws_ec2.yml
 inventory/group_vars/**/vault.yml
 inventory/host_vars/**/vault.yml
 collections/

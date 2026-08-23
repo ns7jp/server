@@ -23,7 +23,13 @@ variable "vpc_cidr" {
 }
 
 variable "azs" {
-  description = "利用する Availability Zone。dev は単一 AZ。"
+  description = "network / ALBが利用するAvailability Zone。ALB要件のため2 AZを指定する。"
+  type        = list(string)
+  default     = ["ap-northeast-1a", "ap-northeast-1c"]
+}
+
+variable "compute_azs" {
+  description = "EC2を配置するAvailability Zone。devは費用を抑えるため1 AZ。azsの部分集合にする。"
   type        = list(string)
   default     = ["ap-northeast-1a"]
 }
@@ -59,7 +65,17 @@ variable "ssh_ingress_cidrs" {
 }
 
 variable "allowed_ingress_cidrs" {
-  description = "ALB の HTTPS を許可する CIDR。"
+  description = "ALBの有効listener（dev既定はHTTP）を許可するCIDR。"
   type        = list(string)
   default     = []
+
+  validation {
+    condition     = !contains(var.allowed_ingress_cidrs, "0.0.0.0/0")
+    error_message = "devのALBは0.0.0.0/0を許可しない。承認済みの管理CIDRへ限定する。"
+  }
+}
+
+variable "backup_admin_principal_arns" {
+  description = "AWS Backup保護変更を許可する実在break-glass/deploy role ARN。以後のTerraform更新は列挙roleをassumeする。"
+  type        = list(string)
 }

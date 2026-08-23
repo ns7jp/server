@@ -43,7 +43,7 @@ module "compute" {
   ssh_ingress_cidrs     = var.ssh_ingress_cidrs
   # prod は 24h 稼働
   schedule_stop_enabled = false
-  tags                  = local.common_tags
+  tags                  = merge(local.common_tags, { AlbHealthCheckSourceCidr = var.vpc_cidr })
 }
 
 # ALB と Compute の循環依存を避けるため、Target Group attachment は環境側で配線する。
@@ -62,7 +62,7 @@ module "monitoring" {
   instance_ids             = module.compute.instance_ids
   target_group_arn         = module.alb.target_group_arn
   load_balancer_arn_suffix = split("loadbalancer/", module.alb.alb_arn)[1]
-  target_group_arn_suffix  = split(":targetgroup/", module.alb.target_group_arn)[1]
+  target_group_arn_suffix  = module.alb.target_group_arn_suffix
   alarm_emails             = var.alarm_emails
   monthly_budget_jpy       = var.monthly_budget_jpy
   enable_guardduty         = true
@@ -73,10 +73,11 @@ module "monitoring" {
 module "backup" {
   source = "../../modules/backup"
 
-  name                          = var.name_prefix
-  instance_arns                 = module.compute.instance_arns
-  backup_retention_days         = 30
-  cold_storage_after_days       = 90
-  archive_bucket_lifecycle_days = 365
-  tags                          = local.common_tags
+  name                                 = var.name_prefix
+  instance_arns                        = module.compute.instance_arns
+  backup_retention_days                = 180
+  cold_storage_after_days              = 90
+  archive_bucket_lifecycle_days        = 365
+  recovery_point_delete_principal_arns = var.backup_admin_principal_arns
+  tags                                 = local.common_tags
 }

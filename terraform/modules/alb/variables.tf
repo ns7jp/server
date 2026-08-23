@@ -41,6 +41,12 @@ variable "access_log_retention_days" {
   default     = 90
 }
 
+variable "force_destroy" {
+  description = "短時間の非本番環境でALB log bucket内のobjectもdestroyするか。prodではfalseのまま使う。"
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   description = "全リソースに付与する共通タグ。"
   type        = map(string)

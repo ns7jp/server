@@ -31,6 +31,8 @@ common_disable_root_ssh: true
 common_password_authentication: false
 common_ufw_default_incoming: deny
 common_ufw_allowed_tcp_ports: "{{ server_monitor_allowed_tcp_ports | default([22]) }}"
+common_ufw_alb_source_cidr: "{{ server_monitor_alb_source_cidr | default('') }}"
+common_ufw_alb_target_port: "{{ server_monitor_alb_target_port | default(8080) }}"
 # SSH は allow ではなく limit で開放し、総当たりを抑止する。
 # 同じ port へ allow と limit の両方を適用すると ufw 上で互いを上書きし、
 # 実行のたびに changed となって冪等性が壊れる。そのため limit 対象の port は

@@ -1,7 +1,8 @@
 locals {
-  name      = var.name
-  tags      = merge(var.tags, { Module = "alb" })
-  use_https = var.certificate_arn != ""
+  name                 = var.name
+  tags                 = merge(var.tags, { Module = "alb" })
+  use_https            = var.certificate_arn != ""
+  client_listener_port = local.use_https ? 443 : 80
 }
 
 # ----------------------------------------------------------------------------
@@ -9,7 +10,7 @@ locals {
 # ----------------------------------------------------------------------------
 resource "aws_security_group" "alb" {
   name        = "${local.name}-alb-sg"
-  description = "Application Load Balancer for server-monitor; HTTPS only."
+  description = "Application Load Balancer for server-monitor; HTTPS in production and HTTP in short-lived validation."
   vpc_id      = var.vpc_id
 
   tags = merge(local.tags, { Name = "${local.name}-alb-sg" })
@@ -19,10 +20,10 @@ resource "aws_vpc_security_group_ingress_rule" "https" {
   for_each = toset(length(var.allowed_ingress_cidrs) > 0 ? var.allowed_ingress_cidrs : [])
 
   security_group_id = aws_security_group.alb.id
-  description       = "HTTPS from allowed networks"
+  description       = local.use_https ? "HTTPS from allowed networks" : "HTTP from allowed networks for short-lived validation"
   ip_protocol       = "tcp"
-  from_port         = 443
-  to_port           = 443
+  from_port         = local.client_listener_port
+  to_port           = local.client_listener_port
   cidr_ipv4         = each.value
 }
 
@@ -46,34 +47,12 @@ resource "random_id" "log_bucket_suffix" {
   byte_length = 4
 }
 
-# ELB / ALB のアクセスログ用バケットはサービスが指定するアカウント ID を
-# 書き込み元として許可する必要がある。東京 (ap-northeast-1) は 582318560864。
-locals {
-  elb_log_account_ids = {
-    "us-east-1"      = "127311923021"
-    "us-east-2"      = "033677994240"
-    "us-west-1"      = "027434742980"
-    "us-west-2"      = "797873946194"
-    "ap-northeast-1" = "582318560864"
-    "ap-northeast-2" = "600734575887"
-    "ap-southeast-1" = "114774131450"
-    "ap-southeast-2" = "783225319266"
-    "ap-south-1"     = "718504428378"
-    "eu-central-1"   = "054676820928"
-    "eu-west-1"      = "156460612806"
-    "eu-west-2"      = "652711504416"
-    "eu-west-3"      = "009996457667"
-    "eu-north-1"     = "897822967062"
-    "sa-east-1"      = "507241528517"
-  }
-}
-
 # ALB のアクセスログは AWS ELB サービスからの書き込みのため、SSE-S3 (AES256) を用いる。
 # SSE-KMS (customer-managed key) は ALB Access Logs の仕様上未サポート。
 # trivy:ignore:AVD-AWS-0132 tfsec:ignore:aws-s3-encryption-customer-key
 resource "aws_s3_bucket" "access_logs" {
   bucket        = "${local.name}-alb-access-logs-${random_id.log_bucket_suffix.hex}"
-  force_destroy = false
+  force_destroy = var.force_destroy
 
   tags = merge(local.tags, { Name = "${local.name}-alb-access-logs" })
 }
@@ -145,7 +124,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "access_logs" {
 }
 
 data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
 
 resource "aws_s3_bucket_policy" "access_logs" {
   bucket = aws_s3_bucket.access_logs.id
@@ -157,10 +135,10 @@ resource "aws_s3_bucket_policy" "access_logs" {
         Sid    = "AllowELBLogDelivery"
         Effect = "Allow"
         Principal = {
-          AWS = "arn:aws:iam::${lookup(local.elb_log_account_ids, data.aws_region.current.name, data.aws_caller_identity.current.account_id)}:root"
+          Service = "logdelivery.elasticloadbalancing.amazonaws.com"
         }
         Action   = "s3:PutObject"
-        Resource = "${aws_s3_bucket.access_logs.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
+        Resource = "${aws_s3_bucket.access_logs.arn}/${local.name}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
       },
       {
         Sid    = "DenyInsecureTransport"

@@ -16,7 +16,7 @@
 | レスポンスヘッダー | `X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`、`Referrer-Policy: no-referrer`、`/healthz` を除き `Cache-Control: no-store` を付与 |
 | 秘密管理 | Compose secrets の実体 `*.txt` は `.gitignore` 対象。リポジトリには例のみ保存 |
 | 実行権限 | アプリコンテナは `monitor` ユーザー、`read_only`、`no-new-privileges` で実行 |
-| ネットワーク露出 | 内部通信は`frontend` / `monitoring`のinternal bridgeに分離。公開対象だけport転送用`host-access` bridgeにも接続し、すべて`127.0.0.1`にバインド |
+| ネットワーク露出 | local/CIは全管理portを`127.0.0.1`へ限定。AWSはNginx 8080だけを全interfaceへbindし、EC2 SGのALB SG参照をauthoritative boundaryにする。UFWは意図を記録するがDocker NATの防御境界とは主張しない。その他はloopback |
 | リバースプロキシ | Nginx で基本的なセキュリティヘッダーを付与し、TLS 配備例も同梱 |
 | ログ収集の権限分離 | Alloyは`/var/log`だけをread-only mountし、Docker discovery/log取得は専用proxyの`CONTAINERS=1` / `NETWORKS=1` / `POST=0` APIを使用。proxyとAlloyだけをprivate networkへ接続し、host portは公開しない |
 | hostユーザーの権限 | `root` account/groupと`docker` primary groupをhost mutation前に拒否。専用`monitor`ユーザーからroot相当のDocker補助groupだけを除去し、無関係な補助groupは保持 |

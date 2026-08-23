@@ -3,7 +3,7 @@
 このディレクトリは、設計資料や構成コードが存在することと、実環境で確認した結果を
 混同しないための台帳である。実行していない検証を成功実績として記載しない。
 
-## 要約（2026-08-22 更新）
+## 要約（2026-08-23 更新）
 
 **Ansibleロール単体だけでなく、`site.yml`によるhost全体の新規構築・冪等性、
 監視stack、認証、network/UFW、D-1、backup restoreまで実測証跡があります。**
@@ -29,6 +29,7 @@ cloud firewallを含むproduction相当のnetwork検証は、現在も未採録�
 | 区分 | 状態 |
 | --- | --- |
 | CI による自動検証 | ✅ 継続的に実行中（構文・設定整合・依存脆弱性・秘密値混入・バックアップスクリプト） |
+| 現行mainのMolecule / Backup再検証 | ✅ [2026-08-23](2026-08-23-current-main-ci-refresh.md)：4 roleとbackup archive smokeを`59aa88e`で再実行。AWS jobは設定なしでskip |
 | Full-stack E2E | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：新規構築、2回目`changed=0`、11 containers、認証、Docker API proxy、local通知、network/UFW、D-1、3-volume restoreを23/23 PASS |
 | Ansible ロールの適用・冪等性・検証 | ✅ **4 ロール完走**（[2026-08-17](2026-08-17-molecule.md)、Ubuntu 22.04 コンテナ） |
 | 監視スタック全体の起動（Grafana / Loki） | ✅ [2026-08-18](2026-08-18-local-observability.md)。local webhook通知は[2026-08-22 E2E](2026-08-22-full-stack-e2e.md)、Slack実配信は未採録 |
@@ -104,7 +105,9 @@ cloud firewallを含むproduction相当のnetwork検証は、現在も未採録�
 | D-2 AWS 復元 | `docs/drills/logs/YYYY-MM-DD-D-2.md` |
 | AWS 短時間 apply/destroy | `docs/evidence/YYYY-MM-DD-aws-validation.md` |
 | Grafana / Loki / Alertmanager ローカル採録 | `docs/evidence/YYYY-MM-DD-local-observability.md` |
+| Alertmanager → Slack 実配信 | `docs/evidence/YYYY-MM-DD-slack-delivery.md` |
 | Linux 新規構築・試験 | `docs/evidence/YYYY-MM-DD-build-validation.md` |
+| 永続host再起動・24h / 72h確認 | `docs/evidence/YYYY-MM-DD-host-reboot-72h.md` |
 | 二セグメント通信障害 | `docs/evidence/YYYY-MM-DD-network-drill.md` |
 | Linux 実ホスト network / UFW | `docs/evidence/YYYY-MM-DD-network-host-validation.md` |
 | 構成commit / 設定rollback rehearsal | `docs/evidence/YYYY-MM-DD-change-<ID>.md` |
@@ -116,6 +119,8 @@ cloud firewallを含むproduction相当のnetwork検証は、現在も未採録�
 | 用途 | テンプレート |
 | --- | --- |
 | ローカル Grafana / Loki / Alertmanager | [templates/local-observability.md](templates/local-observability.md) |
+| Alertmanager → Slack 実配信 | [templates/slack-delivery.md](templates/slack-delivery.md) |
+| 永続host再起動・24h / 72h確認 | [templates/host-reboot-72h.md](templates/host-reboot-72h.md) |
 | AWS 短時間検証 | [templates/aws-validation.md](templates/aws-validation.md) |
 | Molecule フル実行 | [templates/molecule.md](templates/molecule.md) |
 | Linux 実ホスト network / UFW | [templates/network-host-validation.md](templates/network-host-validation.md) |

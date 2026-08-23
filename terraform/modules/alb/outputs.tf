@@ -23,6 +23,11 @@ output "target_group_arn" {
   value       = aws_lb_target_group.app.arn
 }
 
+output "target_group_arn_suffix" {
+  description = "CloudWatch ApplicationELB dimension用のtargetgroup/name/hash。"
+  value       = aws_lb_target_group.app.arn_suffix
+}
+
 output "access_logs_bucket" {
   description = "ALB アクセスログを保存している S3 バケット名。"
   value       = aws_s3_bucket.access_logs.id

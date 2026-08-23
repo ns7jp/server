@@ -1,6 +1,7 @@
 ---
 app_repo_target: "{{ server_monitor_install_dir }}"
 app_repo_source: "{{ server_monitor_source_path }}"
+monitor_bind_address: 127.0.0.1
 app_secrets:
   - name: dashboard_password.txt
     value: "{{ monitor_password }}"

@@ -2,7 +2,8 @@ region        = "ap-northeast-1"
 environment   = "dev"
 name_prefix   = "server-monitor-dev"
 vpc_cidr      = "10.10.0.0/16"
-azs           = ["ap-northeast-1a"]
+azs           = ["ap-northeast-1a", "ap-northeast-1c"]
+compute_azs   = ["ap-northeast-1a"]
 instance_type = "t3.small"
 
 # ACM 証明書 ARN を入れると ALB が HTTPS 終端する。未設定なら HTTP のみ。
@@ -18,5 +19,9 @@ monthly_budget_jpy = 3000
 # 緊急 SSH 許可 CIDR。空にすると SSM Session Manager のみ。
 ssh_ingress_cidrs = []
 
-# ALB の HTTPS 着信元 CIDR。社内 NAT などに限定すること。
+# ALB の有効listener（既定はHTTP）の着信元CIDR。例示値を承認済みの送信元へ置換すること。
 allowed_ingress_cidrs = ["192.0.2.0/24"]
+
+# 必須: 実在し、承認済みのbreak-glass/deploy roleへ置換する。wildcard不可。
+# 初回apply後のpolicy更新/destroyは、この列挙roleをassumeしたTerraformからだけ実行できる。
+backup_admin_principal_arns = ["arn:aws:iam::123456789012:role/REPLACE-ME-backup-admin"]

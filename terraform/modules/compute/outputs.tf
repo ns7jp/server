@@ -28,6 +28,11 @@ output "iam_role_name" {
   value       = aws_iam_role.instance.name
 }
 
+output "instance_profile_name" {
+  description = "EC2 にアタッチされた IAM instance profile 名。AWS Backup restore metadata で利用する。"
+  value       = aws_iam_instance_profile.this.name
+}
+
 output "ebs_kms_key_arn" {
   description = "EBS 暗号化用の KMS キー ARN。AWS Backup から参照する。"
   value       = aws_kms_key.ebs.arn

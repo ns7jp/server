@@ -51,7 +51,7 @@ def test_main_stack_keeps_internal_segments_and_adds_loopback_host_access():
     assert compose.count("internal: true") == 3
     assert "host-access:\n    driver: bridge" in compose
     expected_mappings = (
-        "127.0.0.1:${MONITOR_PORT:-8080}:8080",
+        "${MONITOR_BIND_ADDRESS:-127.0.0.1}:${MONITOR_PORT:-8080}:8080",
         "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090",
         "127.0.0.1:${ALERTMANAGER_PORT:-9093}:9093",
         "127.0.0.1:${GRAFANA_PORT:-3000}:3000",
@@ -1013,4 +1013,51 @@ def test_current_docs_separate_rollback_and_external_acceptance_boundaries():
     assert "manifest digest" in parameters
     assert "全送信元" in parameters
     assert "rate limitをsource制限の証跡にはしません" in network
+
+
+def test_full_stack_ci_executes_scoped_git_mode_rollback_rehearsal():
+    script = (
+        ROOT / "scripts" / "e2e" / "run-git-rollback-rehearsal.sh"
+    ).read_text(encoding="utf-8")
+    workflow = (
+        ROOT / ".github" / "workflows" / "full-stack-e2e.yml"
+    ).read_text(encoding="utf-8")
+
+    for expected in (
+        "--confirm-disposable-host",
+        "for sha_name in CANDIDATE_SHA ROLLBACK_SHA",
+        "must be a full 40-character commit SHA",
+        "--git-repo-url must not contain embedded credentials",
+        'merge-base --is-ancestor "${ROLLBACK_SHA}" "${CANDIDATE_SHA}"',
+        "server_monitor_source_mode=git",
+        "app_compose_build_policy: always",
+        'worktree add --detach "${CANDIDATE_WORKTREE}" "${CANDIDATE_SHA}"',
+        'worktree add --detach "${ROLLBACK_WORKTREE}" "${ROLLBACK_SHA}"',
+        "candidate-check.log --check --diff",
+        "rollback-check.log --check --diff",
+        "candidate revision marker mismatch",
+        "rollback revision marker mismatch",
+        "write_checkout_runtime_manifest",
+        "write_container_runtime_manifest",
+        "running app content does not match",
+        "app container was not replaced between candidate and rollback",
+        "failed to write rollback evidence summary",
+        "check_loopback_listeners.py",
+        "stale release marker survived rollback synchronization",
+        "rollback-loki-query.json",
+        "not a persistent/production host, AWS recovery, D-2, or Slack delivery",
+    ):
+        assert expected in script
+
+    assert "fetch-depth: 0" in workflow
+    assert "Run immutable git deployment and rollback rehearsal" in workflow
+    assert "github.event.pull_request.head.sha || github.sha" in workflow
+    assert "github.event.pull_request.base.sha || github.event.before" in workflow
+    assert "select_rollback_sha.py" in workflow
+    assert "--requested-rollback-sha" in workflow
+    assert "run-git-rollback-rehearsal.sh" in workflow
+    assert "change-rollback-summary.md" in workflow
+    assert "candidate-actual-runtime-manifest.sha256" in workflow
+    assert "rollback-actual-runtime-manifest.sha256" in workflow
+    assert "test -s \"$evidence_dir/change-rollback-summary.md\"" in workflow
 
