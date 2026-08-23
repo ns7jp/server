@@ -34,6 +34,18 @@
 >
 > これらは演習スクリプトが実行結果から自動生成します。手で PASS を
 > 書き込む余地を残さないための作りです。
+>
+> ### この原本を埋めるには
+>
+> 引き渡し対象ホスト（VPS / VM / 物理）を 1 台用意して、その上で
+> [`scripts/ops/acceptance-check.sh`](../../scripts/ops/acceptance-check.sh)
+> を実行すると、**下の表と同じ試験 ID に対応した記入済みの結果票**が
+> `docs/evidence/<日付>-host-acceptance.md` に生成されます。
+> 手順は [10 立ち上げと受け入れ試験](10-host-bringup-and-acceptance.md)。
+>
+> 再起動後の永続性（`--mode after-reboot`）と 24 / 72 時間の連続稼働
+> （`--mode soak`）も同じ script が担当します。**どちらも使い捨て CI runner
+> では原理的に確認できない項目**です。
 
 ## 記録情報
 

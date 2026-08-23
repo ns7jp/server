@@ -35,6 +35,10 @@ common_ufw_alb_target_port: "{{ server_monitor_alb_target_port | default(8080) }
 # allow のループから除外する。
 common_ufw_limit_ssh: true
 common_ufw_ssh_port: 22
+# 管理元 CIDR。設定すると SSH をその範囲だけに絞る。
+# 空のままだと全送信元に対する rate limit のみで、送信元制限にはならない。
+# 04-network-ip-plan.md が「受入条件なら案件変数として実装する」としていた項目。
+common_ufw_ssh_source_cidr: "{{ server_monitor_ssh_source_cidr | default('') }}"
 common_ufw_rate_limited_ports: "{{ [common_ufw_ssh_port | int] if (common_ufw_limit_ssh | bool) else [] }}"
 
 # firewalld 側は zone を明示する。既定 zone を暗黙に使うと、案件ごとに
