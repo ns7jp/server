@@ -46,10 +46,15 @@ record() {
 }
 
 # client から見た HTTP status を返す。到達できない場合は 000。
+# curl は接続失敗時にも "000" を出力したうえで非ゼロ終了する。
+# `|| echo "000"` を付けると値が二重に出て "000000" になり、
+# 後続の比較が「200 ではない」で通ってしまう（誤った理由での PASS）。
+# 出力を採ってから、空のときだけ既定値を入れる。
 http_status() {
-  local url="$1"
-  "${COMPOSE[@]}" exec -T client \
-    curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" 2>/dev/null || echo "000"
+  local url="$1" code
+  code="$("${COMPOSE[@]}" exec -T client \
+    curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" 2>/dev/null)" || true
+  printf '%s' "${code:-000}"
 }
 
 # AP の health endpoint は web 経由で叩く（client は app-tier にいないため）。

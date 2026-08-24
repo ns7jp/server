@@ -615,3 +615,68 @@ def test_environment_skips_are_not_counted_as_pass():
     assert "SKIP-ENV) SKIP_COUNT=$((SKIP_COUNT + 1)) ;;" in drill
     # 証跡にも SKIP 件数が出ること
     assert "${SKIP_COUNT} SKIP" in drill
+
+
+# ---------------------------------------------------------------------------
+# 失敗時にも値を出力するコマンドと `|| echo` の併用
+# ---------------------------------------------------------------------------
+
+
+ALL_DRILL_SCRIPTS = (
+    ("labs", "three-tier", "run-drill.sh"),
+    ("labs", "three-tier", "run-restore-drill.sh"),
+    ("labs", "routing", "run-drill.sh"),
+    ("scripts", "labs", "lvm-drill.sh"),
+    ("scripts", "labs", "storage-guard-test.sh"),
+    ("scripts", "ops", "acceptance-check.sh"),
+)
+
+
+def test_no_script_double_prints_a_failure_value():
+    """`curl -w '%{http_code}'` と `grep -c` は失敗時にも値を出力する。
+
+    そこへ `|| echo <既定値>` を付けると出力が二重になり
+    ("000000" / "0\\n0")、比較が壊れるか、誤った理由で通る。
+
+    実際に acceptance-check.sh と 3 層ラボの 2 本で踏んだので、
+    全 script を横断で検査する。
+    """
+    offenders = []
+    for parts in ALL_DRILL_SCRIPTS:
+        script = read(*parts)
+        for number, line in enumerate(script.splitlines(), start=1):
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            if "|| echo" not in stripped:
+                continue
+            # 失敗時にも stdout へ値を出すコマンド
+            if "%{http_code}" in stripped or "grep -c" in stripped:
+                offenders.append(f"{'/'.join(parts)}:{number}: {stripped}")
+    assert not offenders, "失敗時にも値を出力するコマンドに || echo を付けている:\n" + "\n".join(offenders)
+
+
+def test_http_status_helpers_default_only_when_empty():
+    """既定値は「出力が空のとき」だけ入れる。"""
+    for parts in (
+        ("labs", "three-tier", "run-drill.sh"),
+        ("labs", "three-tier", "run-restore-drill.sh"),
+        ("scripts", "ops", "acceptance-check.sh"),
+    ):
+        script = read(*parts)
+        assert '"${code:-000}"' in script, "/".join(parts)
+
+
+def test_restore_drill_records_pg_restore_exit_code_instead_of_aborting():
+    """pg_restore は警告を無視したとき非ゼロで終了することがある。
+
+    set -e のまま呼ぶと ERR trap で演習全体が中断し、証跡が 1 行も残らない。
+    終了コードは判定行として記録し、復元の成否は件数・内容ハッシュで見る。
+    """
+    drill = read("labs", "three-tier", "run-restore-drill.sh")
+
+    assert "RESTORE_RC=$?" in drill
+    assert 'record "B3-02b" "復元コマンドの終了コード"' in drill
+    # 復元の本判定は照合側に残っていること
+    assert "CHECKSUM_RESTORED" in drill
+    assert 'record "B3-04"' in drill or "B3-04" in drill
