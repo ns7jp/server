@@ -735,3 +735,34 @@ def test_soak_records_the_measured_window_not_the_requested_one():
     assert "秒（不足）\" FAIL" in script
     # 証跡本文にも実測値を残す
     assert "実測した観測窓 ${soak_observed} 秒" in script
+
+
+# ---------------------------------------------------------------------------
+# 判定行の「実測」欄
+# ---------------------------------------------------------------------------
+
+
+def test_lvm_drill_reports_what_it_observed_not_a_fixed_string():
+    """実測欄を結果に関わらず固定文字列にしない。
+
+    以前 B1-01 は判定が FAIL でも実測欄へ「適用完了」と書いていたため、
+    mount できていないのに「適用完了 / FAIL」という自己矛盾した行が
+    証跡に残る状態だった。
+    """
+    drill = read("scripts", "labs", "lvm-drill.sh")
+
+    b1_01 = drill.split('record "B1-01"', 1)[1].split('record "B1-02"', 1)[0]
+    # 成否で異なる観測結果を書き分けていること
+    assert "mount 済み" in b1_01
+    assert "mount されていない" in b1_01
+    # 固定文字列と成否を同時に渡していた旧形が戻っていないこと
+    assert '"適用完了" "$(mountpoint' not in drill
+
+
+def test_lvm_drill_preflights_the_tools_its_verdicts_depend_on():
+    """判定に使うコマンドが無いと、成功していても FAIL になる（偽 FAIL）。"""
+    drill = read("scripts", "labs", "lvm-drill.sh")
+
+    preflight = drill.split("for tool in", 1)[1].split("done", 1)[0]
+    for tool in ("mountpoint", "df", "dmsetup", "losetup", "blkid"):
+        assert tool in preflight, tool
