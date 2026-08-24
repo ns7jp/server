@@ -680,3 +680,58 @@ def test_restore_drill_records_pg_restore_exit_code_instead_of_aborting():
     # 復元の本判定は照合側に残っていること
     assert "CHECKSUM_RESTORED" in drill
     assert 'record "B3-04"' in drill or "B3-04" in drill
+
+
+# ---------------------------------------------------------------------------
+# soak モードの観測窓
+# ---------------------------------------------------------------------------
+
+
+def test_soak_sample_count_spans_the_requested_window():
+    """サンプル間だけ sleep するので、n 回の観測がまたぐ時間は (n-1) 間隔。
+
+    `total / interval` のままだと観測窓が 1 間隔ぶん短くなり、
+    「N 時間連続稼働」と題した証跡が実際には N 時間を観測していない。
+    実際に --hours 24（既定間隔 900 秒）で 23 時間 45 分しか測れていなかった。
+    """
+    script = read("scripts", "ops", "acceptance-check.sh")
+
+    assert "samples=$(( total_seconds / SOAK_INTERVAL + 1 ))" in script
+    # 旧実装（1 間隔ぶん不足する）が戻っていないこと
+    assert "samples=$(( total_seconds / SOAK_INTERVAL ))" not in script
+
+    # 代表的な指定で観測窓が要求以上になること
+    for hours, interval in ((1, 900), (1, 1800), (1, 3600), (24, 900), (72, 3600)):
+        total = hours * 3600
+        samples = total // interval + 1
+        assert (samples - 1) * interval >= total, (hours, interval)
+
+
+def test_soak_rejects_inputs_that_cannot_cover_the_window():
+    """0 時間の soak や、観測窓より長い間隔を受け付けない。
+
+    受け付けると「1 回測っただけで N 時間稼働した」証跡が作れてしまう。
+    """
+    script = read("scripts", "ops", "acceptance-check.sh")
+
+    assert "--hours must be an integer of at least 1" in script
+    assert "(( SOAK_HOURS < 1 ))" in script
+    assert "must not exceed --hours" in script
+    assert "(( SOAK_INTERVAL > SOAK_HOURS * 3600 ))" in script
+
+
+def test_soak_records_the_measured_window_not_the_requested_one():
+    """実際に観測できた時間を測って判定する。
+
+    途中で中断された場合も、要求を満たしていないことが証跡に残る。
+    """
+    script = read("scripts", "ops", "acceptance-check.sh")
+
+    assert "soak_started_at=" in script
+    assert "soak_ended_at=" in script
+    assert "soak_observed=" in script
+    assert 'record SK-00 "観測窓が要求時間を満たす"' in script
+    # 不足時は FAIL
+    assert "秒（不足）\" FAIL" in script
+    # 証跡本文にも実測値を残す
+    assert "実測した観測窓 ${soak_observed} 秒" in script

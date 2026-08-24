@@ -66,9 +66,17 @@ case "$MODE" in
   acceptance|baseline|after-reboot|soak) ;;
   *) echo "--mode must be acceptance, baseline, after-reboot, or soak" >&2; exit 1 ;;
 esac
-[[ "$SOAK_HOURS" =~ ^[0-9]+$ ]] || { echo "--hours must be an integer" >&2; exit 1; }
+if ! [[ "$SOAK_HOURS" =~ ^[0-9]+$ ]] || (( SOAK_HOURS < 1 )); then
+  echo "--hours must be an integer of at least 1" >&2
+  exit 1
+fi
 if ! [[ "$SOAK_INTERVAL" =~ ^[0-9]+$ ]] || (( SOAK_INTERVAL < 60 )); then
   echo "--interval must be an integer of at least 60 seconds" >&2
+  exit 1
+fi
+# 間隔が観測窓より長いと、1 回測っただけで「N 時間稼働した」証跡になる。
+if (( SOAK_INTERVAL > SOAK_HOURS * 3600 )); then
+  echo "--interval (${SOAK_INTERVAL}s) must not exceed --hours (${SOAK_HOURS}h = $((SOAK_HOURS * 3600))s)" >&2
   exit 1
 fi
 
@@ -436,12 +444,15 @@ case "$MODE" in
 
   soak)
     total_seconds=$(( SOAK_HOURS * 3600 ))
-    samples=$(( total_seconds / SOAK_INTERVAL ))
-    (( samples > 0 )) || samples=1
-    printf '%d 時間の連続稼働を %d 秒間隔で %d 回サンプリングする\n' \
-      "$SOAK_HOURS" "$SOAK_INTERVAL" "$samples"
+    # サンプル間だけ sleep するので、n 回の観測がまたぐ時間は (n-1) 間隔。
+    # total / interval のままだと観測窓が 1 間隔ぶん短くなり、
+    # 「N 時間連続稼働」と題した証跡が実際には N 時間を観測していないことになる。
+    samples=$(( total_seconds / SOAK_INTERVAL + 1 ))
+    printf '%d 時間の連続稼働を %d 秒間隔で %d 回サンプリングする（観測窓 %d 秒）\n' \
+      "$SOAK_HOURS" "$SOAK_INTERVAL" "$samples" "$(( (samples - 1) * SOAK_INTERVAL ))"
     printf 'nohup / systemd-run などで切断に耐える形で起動することを推奨する\n\n'
 
+    soak_started_at=$(date -u +%s)
     start_boot_id="$(boot_id)"
     degraded=0
     reboots=0
@@ -456,13 +467,24 @@ case "$MODE" in
       (( i < samples )) && sleep "$SOAK_INTERVAL"
     done
 
+    soak_ended_at=$(date -u +%s)
+    soak_observed=$(( soak_ended_at - soak_started_at ))
+    # 実際に観測できた時間が要求より短ければ、その証跡は要求を満たしていない。
+    # 途中で中断された場合もここで落ちる。
+    if (( soak_observed >= total_seconds )); then
+      record SK-00 "観測窓が要求時間を満たす" "${total_seconds} 秒以上" \
+        "${soak_observed} 秒" PASS
+    else
+      record SK-00 "観測窓が要求時間を満たす" "${total_seconds} 秒以上" \
+        "${soak_observed} 秒（不足）" FAIL
+    fi
     record SK-01 "連続稼働中の可用性" "全サンプルで healthz=200" \
       "${samples} 回中 ${degraded} 回が異常" "$(verdict_eq "$degraded" 0)"
     record SK-02 "意図しない再起動" "0 回" "${reboots} 回" "$(verdict_eq "$reboots" 0)"
     run_acceptance_checks
     emit_evidence "永続ホスト ${SOAK_HOURS} 時間連続稼働 結果票" \
       "${EVIDENCE_DIR}/${RUN_DATE}-host-soak-${SOAK_HOURS}h.md" \
-      "> サンプリング間隔 ${SOAK_INTERVAL} 秒、サンプル数 ${samples}。"
+      "> サンプリング間隔 ${SOAK_INTERVAL} 秒、サンプル数 ${samples}、実測した観測窓 ${soak_observed} 秒（要求 ${total_seconds} 秒）。"
     ;;
 esac
 
