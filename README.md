@@ -425,13 +425,14 @@ molecule test -s el9       # AlmaLinux / Rocky
 | B-3 | `pg_dump` / `pg_restore` で復元し、RTO / RPO と内容ハッシュを実測する | `./labs/three-tier/run-restore-drill.sh` |
 | B-4 | 静的ルート、`ip_forward`、VLAN ID 不一致を切り分ける | `./labs/routing/run-drill.sh` |
 
-> **B-2 / B-3 / B-4 は実行済み**（[B-2](docs/drills/logs/2026-08-24-B-2.md) 9 PASS、
+> **B-1 〜 B-4 はすべて実行済み**です。
+> [B-1](docs/drills/logs/2026-08-24-B-1.md) 5 PASS（220M→457M の online 拡張）、
+> [B-2](docs/drills/logs/2026-08-24-B-2.md) 9 PASS、
 > [B-3](docs/drills/logs/2026-08-24-B-3.md) 7 PASS・RTO 0.149 秒、
-> [B-4](docs/drills/logs/2026-08-24-B-4.md) 6 PASS / 3 SKIP-ENV）。
-> **B-1 だけが未実行**です（device-mapper が要る）。
-> B-4 は当初 Docker の bridge network で組んでいましたが、実行を試みて成立しない
-> ことが分かり、network namespace を自分で組む形へ変えました。経緯は
-> [証跡の索引](docs/evidence/README.md)に書いています。
+> [B-4](docs/drills/logs/2026-08-24-B-4.md) 6 PASS / 3 SKIP-ENV（VLAN 部のみ kernel 都合で未検証）。
+> B-1 と B-4 は実行を試みた結果、それぞれ Ansible の版依存と Docker の
+> ネットワーク制約で**そのままでは動かない**ことが分かり、直したうえで通しています。
+> 経緯は[証跡の索引](docs/evidence/README.md)に書いています。
 
 `storage` role の安全装置そのものは、専用の negative test が検証する。
 
@@ -472,11 +473,11 @@ sudo ./scripts/labs/storage-guard-test.sh
   に用意しています。
 - AlmaLinux / Rocky 9 対応は role と Molecule scenario までです。**実機の
   AlmaLinux ホストへ `site.yml` を適用した証跡はまだありません。**
-- **B-2 / B-3 / B-4 は実行した証跡があります。B-1 にはありません**（device-mapper
-  が要る）。B-4 の VLAN 部は kernel が `CONFIG_VLAN_8021Q` を有効にしている環境
-  でのみ実行でき、この環境では未検証です。いずれにせよラボ環境（loop device /
+- **B-1 〜 B-4 は実行した証跡があります。** ただしラボ環境（loop device /
   network namespace）での演習なので、物理ディスク、物理スイッチ、VLAN 対応
-  スイッチの設定は対象外です。
+  スイッチの設定は対象外です。B-4 の VLAN 部は kernel が `CONFIG_VLAN_8021Q`
+  を有効にしている環境でのみ実行でき、証跡を採った環境では未検証（`SKIP-ENV`）
+  です。
 - AWS Terraform は構成コードを実装済みですが、AWS上のapply / destroy、費用、復元試験の実測証跡はまだありません。
 - `site.yml`一括構築・冪等性、runner内network/UFW/待受、backup restoreは[2026-08-22の自動E2E](docs/evidence/2026-08-22-full-stack-e2e.md)でPASSです。GitHub runner imageにはDocker等が事前導入されていたため、最小OSからの導入証跡とはしません。実管理端末・組織DNS・cloud firewallを含むproduction相当のnetwork証跡とも区別します。
 - Slack 通知は Webhook 秘密値をコミットしないため、`compose.slack.yaml.example` を重ねて利用環境で有効化する方式です。

@@ -32,7 +32,7 @@ B-1 は `losetup` と device-mapper を使うため、通常の Linux kernel を
 | B-2 | ✅ 実コンテナで実行済み（[証跡](logs/2026-08-24-B-2.md)、9 PASS / 0 FAIL） |
 | B-3 | ✅ 実 PostgreSQL で実行済み（[証跡](logs/2026-08-24-B-3.md)、7 PASS / 0 FAIL。RTO 0.149 秒） |
 | B-4 | ✅ 実行済み（[証跡](logs/2026-08-24-B-4.md)、6 PASS / 0 FAIL / 3 SKIP-ENV） |
-| B-1 | ❌ 未実行。device-mapper が要る。安全装置テストは実行して 7/7 PASS |
+| B-1 | ✅ 実行済み（[証跡](logs/2026-08-24-B-1.md)、5 PASS / 0 FAIL。220M→457M の online 拡張を実測）。安全装置テストも 7/7 PASS |
 
 ### B-4 のトポロジは Docker の network を使わない
 
