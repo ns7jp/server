@@ -651,7 +651,12 @@ def test_no_script_double_prints_a_failure_value():
             if "|| echo" not in stripped:
                 continue
             # 失敗時にも stdout へ値を出すコマンド
-            if "%{http_code}" in stripped or "grep -c" in stripped:
+            if (
+                "%{http_code}" in stripped
+                or "grep -c" in stripped
+                # docker version は daemon 不達のとき stdout へ空行を出す
+                or "docker version" in stripped
+            ):
                 offenders.append(f"{'/'.join(parts)}:{number}: {stripped}")
     assert not offenders, "失敗時にも値を出力するコマンドに || echo を付けている:\n" + "\n".join(offenders)
 
@@ -735,3 +740,62 @@ def test_soak_records_the_measured_window_not_the_requested_one():
     assert "秒（不足）\" FAIL" in script
     # 証跡本文にも実測値を残す
     assert "実測した観測窓 ${soak_observed} 秒" in script
+
+
+# ---------------------------------------------------------------------------
+# 判定行の「実測」欄
+# ---------------------------------------------------------------------------
+
+
+def test_lvm_drill_reports_what_it_observed_not_a_fixed_string():
+    """実測欄を結果に関わらず固定文字列にしない。
+
+    以前 B1-01 は判定が FAIL でも実測欄へ「適用完了」と書いていたため、
+    mount できていないのに「適用完了 / FAIL」という自己矛盾した行が
+    証跡に残る状態だった。
+    """
+    drill = read("scripts", "labs", "lvm-drill.sh")
+
+    b1_01 = drill.split('record "B1-01"', 1)[1].split('record "B1-02"', 1)[0]
+    # 成否で異なる観測結果を書き分けていること
+    assert "mount 済み" in b1_01
+    assert "mount されていない" in b1_01
+    # 固定文字列と成否を同時に渡していた旧形が戻っていないこと
+    assert '"適用完了" "$(mountpoint' not in drill
+
+
+def test_lvm_drill_preflights_the_tools_its_verdicts_depend_on():
+    """判定に使うコマンドが無いと、成功していても FAIL になる（偽 FAIL）。"""
+    drill = read("scripts", "labs", "lvm-drill.sh")
+
+    preflight = drill.split("for tool in", 1)[1].split("done", 1)[0]
+    for tool in ("mountpoint", "df", "dmsetup", "losetup", "blkid"):
+        assert tool in preflight, tool
+
+
+DRILLS_WITH_DOCKER_VERSION = (
+    ("labs", "three-tier", "run-drill.sh"),
+    ("labs", "three-tier", "run-restore-drill.sh"),
+    ("labs", "routing", "run-drill.sh"),
+)
+
+
+def test_docker_version_is_folded_into_one_line():
+    """証跡の「実施環境」欄は markdown の表のセルなので、必ず 1 行でなければ
+    ならない。
+
+    `docker version --format ...` は daemon へ繋がらないとき stdout へ空行を
+    出したうえで非ゼロ終了する。`|| echo unknown` だけだと値が 2 行になり、
+    表がその行で崩れる。helper で 1 行へ畳んでいることを固定する。
+    """
+    for parts in DRILLS_WITH_DOCKER_VERSION:
+        script = read(*parts)
+        name = "/".join(parts)
+        assert "docker_server_version() {" in script, f"{name}: helper がない"
+        assert r"tr -d '\n'" in script, (
+            f"{name}: helper が改行を落としていない"
+        )
+        assert '${v:-unknown}' in script, f"{name}: 空のときだけ既定値にしていない"
+        assert "Docker $(docker_server_version)" in script, (
+            f"{name}: 証跡が helper を経由していない"
+        )

@@ -62,7 +62,8 @@ require_root() {
 
 require_tools() {
   local missing=()
-  for tool in losetup pvcreate vgcreate lvcreate lvextend vgextend blkid dmsetup ansible-playbook; do
+  for tool in losetup pvcreate vgcreate lvcreate lvextend vgextend blkid dmsetup \
+    mountpoint df ansible-playbook; do
     command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
   done
   [[ ${#missing[@]} -eq 0 ]] || fail "不足しているコマンド: ${missing[*]} (lvm2 と ansible-core を入れる)"
@@ -174,8 +175,15 @@ SECOND_RUN_LOG="${WORK_DIR}/apply-2.log"
 run_playbook | tee "$SECOND_RUN_LOG"
 
 CHANGED_SECOND="$(grep -oE 'changed=[0-9]+' "$SECOND_RUN_LOG" | tail -1 | cut -d= -f2)"
-record "B1-01" "storage role の初回適用" "VG / LV / filesystem / fstab が作られる" \
-  "適用完了" "$(mountpoint -q "$MOUNT_POINT" && echo PASS || echo FAIL)"
+# 実測欄は必ず観測した内容にする。結果に関わらず「適用完了」と書くと、
+# mount できていないのに「適用完了 / FAIL」という自己矛盾した行が証跡へ残る。
+if mountpoint -q "$MOUNT_POINT"; then
+  record "B1-01" "storage role の初回適用" "VG / LV / filesystem / fstab が作られる" \
+    "${MOUNT_POINT} に mount 済み" "PASS"
+else
+  record "B1-01" "storage role の初回適用" "VG / LV / filesystem / fstab が作られる" \
+    "${MOUNT_POINT} が mount されていない" "FAIL"
+fi
 record "B1-02" "冪等性" "2 回目の適用で changed=0" \
   "changed=${CHANGED_SECOND}" "$(verdict_for "$CHANGED_SECOND" 0)"
 
