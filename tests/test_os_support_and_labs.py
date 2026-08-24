@@ -651,7 +651,12 @@ def test_no_script_double_prints_a_failure_value():
             if "|| echo" not in stripped:
                 continue
             # 失敗時にも stdout へ値を出すコマンド
-            if "%{http_code}" in stripped or "grep -c" in stripped:
+            if (
+                "%{http_code}" in stripped
+                or "grep -c" in stripped
+                # docker version は daemon 不達のとき stdout へ空行を出す
+                or "docker version" in stripped
+            ):
                 offenders.append(f"{'/'.join(parts)}:{number}: {stripped}")
     assert not offenders, "失敗時にも値を出力するコマンドに || echo を付けている:\n" + "\n".join(offenders)
 
@@ -766,3 +771,31 @@ def test_lvm_drill_preflights_the_tools_its_verdicts_depend_on():
     preflight = drill.split("for tool in", 1)[1].split("done", 1)[0]
     for tool in ("mountpoint", "df", "dmsetup", "losetup", "blkid"):
         assert tool in preflight, tool
+
+
+DRILLS_WITH_DOCKER_VERSION = (
+    ("labs", "three-tier", "run-drill.sh"),
+    ("labs", "three-tier", "run-restore-drill.sh"),
+    ("labs", "routing", "run-drill.sh"),
+)
+
+
+def test_docker_version_is_folded_into_one_line():
+    """証跡の「実施環境」欄は markdown の表のセルなので、必ず 1 行でなければ
+    ならない。
+
+    `docker version --format ...` は daemon へ繋がらないとき stdout へ空行を
+    出したうえで非ゼロ終了する。`|| echo unknown` だけだと値が 2 行になり、
+    表がその行で崩れる。helper で 1 行へ畳んでいることを固定する。
+    """
+    for parts in DRILLS_WITH_DOCKER_VERSION:
+        script = read(*parts)
+        name = "/".join(parts)
+        assert "docker_server_version() {" in script, f"{name}: helper がない"
+        assert r"tr -d '\n'" in script, (
+            f"{name}: helper が改行を落としていない"
+        )
+        assert '${v:-unknown}' in script, f"{name}: 空のときだけ既定値にしていない"
+        assert "Docker $(docker_server_version)" in script, (
+            f"{name}: 証跡が helper を経由していない"
+        )

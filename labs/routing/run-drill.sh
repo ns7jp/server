@@ -34,6 +34,15 @@ declare -a RESULT_ROWS=()
 log()  { printf '\n=== %s ===\n' "$*"; }
 note() { printf '    %s\n' "$*"; }
 
+# docker version は daemon へ繋がらないとき stdout へ空行を出したうえで非 0 で
+# 終わる。`|| echo unknown` だけでは値が "空行 + unknown" の 2 行になり、
+# markdown の表がその行で崩れて証跡が読めなくなる。必ず 1 行へ畳む。
+docker_server_version() {
+  local v
+  v="$(docker version --format '{{.Server.Version}}' 2>/dev/null | tr -d '\n')" || true
+  printf '%s' "${v:-unknown}"
+}
+
 record() {
   local id="$1" title="$2" expected="$3" observed="$4" verdict="$5"
   RESULT_ROWS+=("| ${id} | ${title} | ${expected} | ${observed} | ${verdict} |")
@@ -239,7 +248,7 @@ mkdir -p "$EVIDENCE_DIR"
 | 項目 | 値 |
 | --- | --- |
 | 実施日時 (UTC) | $(date -u '+%Y-%m-%d %H:%M:%S') |
-| 実施環境 | $(uname -srm) / Docker $(docker version --format '{{.Server.Version}}' 2>/dev/null || echo unknown) |
+| 実施環境 | $(uname -srm) / Docker $(docker_server_version) |
 | commit SHA | $(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo unknown) |
 | 構成 | host-a — router — host-b / host-c（3 セグメント、default route なし） |
 | セグメント | a 172.30.10.0/24 / b 172.30.20.0/24 / c 172.30.30.0/24 |
