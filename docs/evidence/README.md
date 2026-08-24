@@ -50,7 +50,7 @@ AlmaLinux実機への`site.yml`適用も`NOT RUN`です。
 | ephemeral VM の network / UFW | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：`NW-01〜09` / `IT-12` / `ST-01,04` PASS |
 | 独立した管理端末・対象hostでの network / UFW | ❌ **NOT RUN**（[手順](../build-package/09-network-validation-procedure.md)と[結果票テンプレート](templates/network-host-validation.md)のみ） |
 | AlmaLinux / Rocky 9 実機への `site.yml` 適用 | ❌ **NOT RUN**（role と `el9` Molecule scenario のみ） |
-| B-1 ディスク設計・LVM 拡張演習 | ❌ **ラボ本体は NOT RUN**（device-mapper が要る）。⚠ script は検証済み: 安全装置テスト 7/7 PASS（実行）、証跡出力部を抽出して実行 |
+| B-1 ディスク設計・LVM 拡張演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-1.md)：**5 PASS / 0 FAIL**。初回適用・冪等性・ENOSPC 再現・PV 追加による online 拡張（220M→457M、mount 維持）を実測。安全装置テストは別途 7/7 PASS |
 | B-2 3 層構成の障害切り分け演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-2.md)：実コンテナ（Docker 29.3.1）で **9 PASS / 0 FAIL**。層分離の遮断、DB 停止・AP 停止・経路断の切り分けを実測 |
 | B-3 DB バックアップ・復元演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-3.md)：実 PostgreSQL 16 で **7 PASS / 0 FAIL**。RTO **0.149 秒** / RPO **2.344 秒**、内容ハッシュ一致まで実測 |
 | B-4 L2 / L3 切り分け演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-4.md)：**6 PASS / 0 FAIL / 3 SKIP-ENV**。静的ルート・戻り経路の欠落・`ip_forward` を実測。VLAN 部はこの kernel が `CONFIG_VLAN_8021Q` 無効のため未検証 |
@@ -63,6 +63,25 @@ AlmaLinux実機への`site.yml`適用も`NOT RUN`です。
 > **この証跡が示す範囲を広げて解釈しない。** 2026-08-22 E2Eと2026-08-23 Git-mode
 > rollbackはGitHub-hosted runner内の自動実測です。独立した管理端末、複数host、組織DNS、
 > D-2、Slack実配信、AWS適用、永続hostの再起動・24h / 72h確認の代替にはしません。
+
+### 実機で B-1 を実行して見つかった欠陥（2026-08-24）
+
+B-1 は device-mapper を持つ kernel が要る。この作業環境の kernel は
+`CONFIG_BLK_DEV_DM` を持たないため、qemu で Ubuntu 24.04
+（kernel 6.8.0-138-generic）を起動して実行した。**2 件の欠陥が出た。**
+どちらも CI・`ansible-lint`・molecule・構文検査のいずれも捕まえていない。
+
+| 欠陥 | 内容 |
+| --- | --- |
+| 対象 OS の既定 Ansible で play ごと失敗する | `meta: end_role` は ansible-core **2.18 以降**にしかない。Ubuntu 24.04 LTS が同梱するのは **2.16.3** で、`invalid meta action requested: end_role` になる。CI は pip で入れた 2.21.3 を使っていたため通っていた |
+| 冪等でなかった | 1 回目の適用は完全に成功する（`ok=15 changed=5 failed=0`）。2 回目は **このロール自身が作った LV** を安全装置が子デバイスとして検出し、拒否する。`site.yml` を 2 回流せない |
+
+2 件目は「子がいるなら通す」では安全装置の意味が無くなるため、`pvs` で
+その PV が属する VG を読み、**宣言している VG のときだけ許す**形に直した。
+partition や他人の VG の LV が載っているディスクは従来どおり拒否する。
+
+修正後、同じ環境で **5 PASS / 0 FAIL** で完走し、冪等性の試験も
+`changed=0` で通っている。
 
 ### B-4 を Docker の network から network namespace へ組み替えた（2026-08-24 実測）
 
@@ -82,8 +101,9 @@ VLAN 部（`B4-L2-02`〜`04`）だけは、この環境の kernel が `CONFIG_VL
 
 ### 「ラボ本体は NOT RUN / script は検証済み」とは何か
 
-B-2 / B-3 / B-4 は実行し、証跡があります（上表）。**B-1 だけが未実行**で、
-次の 2 つの別々の問いを分けて書いています。
+**B-1 〜 B-4 はすべて実行し、証跡があります**（上表）。以前は「ラボ本体は
+未実行 / script は検証済み」を分けて書いていましたが、その区別はもう
+不要になりました。参考までに、その 2 つの問いの違いは次のとおりです。
 
 | 問い | 状態 |
 | --- | --- |
