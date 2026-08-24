@@ -53,9 +53,15 @@ psql_scalar() {
   "${COMPOSE[@]}" exec -T db psql -U "$DB_USER" -d "$DB_NAME" -tAc "$1" 2>/dev/null | tr -d ' \r\n'
 }
 
+# curl は接続失敗時にも "000" を出力したうえで非ゼロ終了する。
+# `|| echo "000"` を付けると値が二重に出て "000000" になり、
+# 後続の比較が「200 ではない」で通ってしまう（誤った理由での PASS）。
+# 出力を採ってから、空のときだけ既定値を入れる。
 http_status() {
-  "${COMPOSE[@]}" exec -T client \
-    curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$1" 2>/dev/null || echo "000"
+  local code
+  code="$("${COMPOSE[@]}" exec -T client \
+    curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$1" 2>/dev/null)" || true
+  printf '%s' "${code:-000}"
 }
 
 wait_for_ready() {
@@ -126,8 +132,22 @@ fi
 log "5. pg_restore で復元する"
 RESTORE_START_EPOCH="$(date -u +%s)"
 # --clean --if-exists で、途中まで残った定義があっても決定的に戻す。
-"${COMPOSE[@]}" exec -T db pg_restore -U "$DB_USER" -d "$DB_NAME" --clean --if-exists < "$BACKUP_FILE"
+#
+# pg_restore は無視した警告があると非ゼロで終了することがある
+# ("warning: errors ignored on restore: N")。set -e のままだと演習全体が
+# ERR trap で中断し、証跡が 1 行も残らない。復元の成否は後段の件数・
+# 内容ハッシュ照合で判定するので、ここでは終了コードを控えるだけにする。
+RESTORE_LOG="${BACKUP_DIR}/pg_restore.log"
+set +e
+"${COMPOSE[@]}" exec -T db pg_restore -U "$DB_USER" -d "$DB_NAME" \
+  --clean --if-exists < "$BACKUP_FILE" >"$RESTORE_LOG" 2>&1
+RESTORE_RC=$?
+set -e
 RESTORE_END_EPOCH="$(date -u +%s)"
+if [[ $RESTORE_RC -ne 0 ]]; then
+  note "pg_restore が rc=${RESTORE_RC} で終了した（後段の照合で成否を判定する）"
+  tail -5 "$RESTORE_LOG" | sed 's/^/      /'
+fi
 RTO_SECONDS=$((RESTORE_END_EPOCH - RESTORE_START_EPOCH))
 note "復元所要時間 (RTO) = ${RTO_SECONDS} 秒"
 
@@ -136,6 +156,9 @@ log "6. 件数・内容ハッシュ・アプリからの見え方を突き合わ
 ROWS_RESTORED="$(psql_scalar 'SELECT count(*) FROM items;')"
 CHECKSUM_RESTORED="$(psql_scalar "SELECT md5(string_agg(sku || ':' || name || ':' || quantity, ',' ORDER BY id)) FROM items;")"
 note "復元後の件数=${ROWS_RESTORED} / 内容ハッシュ=${CHECKSUM_RESTORED}"
+
+record "B3-02b" "復元コマンドの終了コード" "0" "rc=${RESTORE_RC}" \
+  "$( [[ $RESTORE_RC -eq 0 ]] && echo PASS || echo FAIL )"
 
 if [[ "$ROWS_RESTORED" == "$ROWS_BEFORE" ]]; then
   record "B3-03" "復元後の件数一致" "バックアップ時点の ${ROWS_BEFORE} 件" "${ROWS_RESTORED} 件" "PASS"
