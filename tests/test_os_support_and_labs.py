@@ -293,28 +293,34 @@ def test_restore_drill_compares_content_not_only_row_counts():
 # ---------------------------------------------------------------------------
 
 
-def test_routing_lab_hosts_do_not_share_a_segment():
-    """同一セグメントに同居していると、経路を書く演習にならない。"""
-    compose = read("labs", "routing", "compose.yaml")
+def test_routing_topology_gives_each_host_its_own_segment():
+    """同一セグメントに同居していると、経路を書く演習にならない。
 
-    memberships = {}
-    for host in ("host-a", "host-b", "host-c"):
-        section = compose_service_section(compose, host)
-        memberships[host] = {
-            name for name in ("segment-a", "segment-b", "segment-c") if f"{name}:" in section
-        }
-        assert len(memberships[host]) == 1, host
+    トポロジは Docker の network ではなく topology.sh が組む
+    （Docker の raw PREROUTING が router 経由の転送を落とすため）。
+    不変条件は変わらないので、検査対象を topology.sh へ移した。
+    """
+    topology = read("labs", "routing", "topology.sh")
 
-    assert memberships["host-a"] != memberships["host-b"]
-    assert memberships["host-b"] != memberships["host-c"]
-    assert memberships["host-a"] != memberships["host-c"]
+    # 3 セグメントが別サブネットで定義されていること。
+    assert "SEGMENTS='a:172.30.10 b:172.30.20 c:172.30.30'" in topology
 
-    # router だけが 3 セグメントすべてに足を出す。
-    router = compose_service_section(compose, "router")
-    for segment in ("segment-a", "segment-b", "segment-c"):
-        assert f"{segment}:" in router
-    assert "net.ipv4.ip_forward" in router
-    assert "NET_ADMIN" in router
+    # host は自分のセグメントの bridge にだけ挿さる。
+    assert 'ip link set "br-h-${seg}" master "br-${seg}"' in topology
+    # router は全セグメントの bridge に足を出す。
+    assert 'ip link set "br-r-${seg}" master "br-${seg}"' in topology
+    # router だけが転送する。
+    assert "ip netns exec router sysctl -qw net.ipv4.ip_forward=1" in topology
+
+    # host 側で ip_forward を上げていないこと（上げると router を経由せずに
+    # 転送してしまい、演習が成立しない）。
+    host_forward = [
+        line for line in topology.splitlines()
+        if "ip_forward" in line
+        and not line.lstrip().startswith("#")
+        and "router" not in line
+    ]
+    assert not host_forward, host_forward
 
 
 def test_routing_drill_covers_layer2_and_layer3_causes():
@@ -327,8 +333,15 @@ def test_routing_drill_covers_layer2_and_layer3_causes():
     # L2: VLAN サブインターフェースと ID 不一致
     assert "type vlan id 10" in drill
     assert "type vlan id 20" in drill
-    # default route に頼らない構成であること。
-    assert "ip route del default" in drill
+
+    # default route に頼らない構成であること。Docker の network を使って
+    # いた頃は Docker が入れた default route を演習側で消していたが、
+    # 自分で組むようになったので最初から入れない。どちらにせよ
+    # 「経路を書かない限り届かない」ことが演習の前提。
+    topology = read("labs", "routing", "topology.sh")
+    assert "default" not in topology.replace(
+        "# default route は敢えて入れない。経路を自分で書く演習にするため。", ""
+    ), "topology が default route を入れている"
 
 
 # ---------------------------------------------------------------------------
@@ -962,3 +975,40 @@ def test_stub_verification_is_not_presented_as_a_real_run():
         assert "代わりにはなりません" in text or "代わりにはならない" in text, (
             f"{'/'.join(parts)}: スタブ検証の限界を書いていない"
         )
+
+
+def test_routing_lab_does_not_use_docker_networks():
+    """B-4 のトポロジを Docker の network で組み直さない。
+
+    Docker は endpoint ごとに
+    `iptables -t raw -A PREROUTING -d <IP> ! -i <その bridge> -j DROP`
+    を入れるため、別セグメントから router 宛に来たパケットが FORWARD へ
+    届く前に落ちる。router を経由した L3 疎通が原理的に成立しない。
+    実測で確認した（該当 DROP を迂回すると疎通し、戻すと不通になる）。
+
+    見た目には自然な書き方なので戻されやすい。ここで固定する。
+    """
+    compose = read("labs", "routing", "compose.yaml")
+    assert "networks:" not in compose, (
+        "Docker の network を使うと router 経由の転送が成立しない"
+    )
+    assert "ipv4_address" not in compose
+    # 権限は 1 コンテナへ閉じ込め、host 側のネットワークへは触らない。
+    assert "privileged: true" in compose
+    assert "network_mode:" not in compose, "host のネットワークを共有しない"
+
+    drill = read("labs", "routing", "run-drill.sh")
+    assert "ip netns exec" in drill, "netns 越しに実行していない"
+
+
+def test_routing_topology_can_be_torn_down_and_rebuilt():
+    """演習を続けて 2 回流せるよう、組む前に必ず片付ける。
+
+    残骸があると `ip link add` が Address already in use で落ち、
+    「前回の後始末をしていない」だけの理由で FAIL が記録される。
+    """
+    topology = read("labs", "routing", "topology.sh")
+    assert "teardown()" in topology
+    build = topology[topology.index("build() {"):]
+    first = build.splitlines()[1].strip()
+    assert first == "teardown", f"build の先頭で片付けていない: {first}"

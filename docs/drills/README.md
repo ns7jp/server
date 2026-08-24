@@ -31,25 +31,30 @@ B-1 は `losetup` と device-mapper を使うため、通常の Linux kernel を
 | --- | --- |
 | B-2 | ✅ 実コンテナで実行済み（[証跡](logs/2026-08-24-B-2.md)、9 PASS / 0 FAIL） |
 | B-3 | ✅ 実 PostgreSQL で実行済み（[証跡](logs/2026-08-24-B-3.md)、7 PASS / 0 FAIL。RTO 0.149 秒） |
+| B-4 | ✅ 実行済み（[証跡](logs/2026-08-24-B-4.md)、6 PASS / 0 FAIL / 3 SKIP-ENV） |
 | B-1 | ❌ 未実行。device-mapper が要る。安全装置テストは実行して 7/7 PASS |
-| B-4 | ❌ 未実行。**現在の compose では成立しない**（後述） |
 
-### B-4 が成立しない理由
+### B-4 のトポロジは Docker の network を使わない
 
-実コンテナで起動を試みて分かったこと。
+当初は Docker の bridge network を 3 つ並べていたが、実行を試みて成立しない
+ことが分かった。
 
 1. router に各セグメントの `.1` を要求していたが、Docker は既定で bridge 自身へ
-   `.1` を割り当てる。`Address already in use` で router が起動しない。
-   **この演習は一度も起動できていなかった。** gateway を `.254` へ寄せて修正した。
-2. Docker はコンテナごとに
-   `iptables -t raw -A PREROUTING -d <IP> ! -i <そのbridge> -j DROP` を入れる。
-   別セグメントから router 宛に来たパケットは **FORWARD へ届く前に落ちる**ため、
-   router を経由した L3 疎通が原理的に成立しない。該当規則を一時的に迂回すると
-   疎通し、戻すと再び不通になることまで実測した。
-3. `sysctl -w net.ipv4.ip_forward` も `/proc/sys` が read-only で失敗する。
+   `.1` を割り当てる。`Address already in use` になる。
+   **この演習は一度も起動できていなかった。**
+2. Docker は endpoint ごとに
+   `iptables -t raw -A PREROUTING -d <IP> ! -i <その bridge> -j DROP` を入れる。
+   別セグメントから router 宛に来たパケットは **FORWARD へ届く前に落ちる**。
+3. コンテナ内の `/proc/sys` が read-only で `ip_forward` を切り替えられない。
 
-bridge network を 3 つ並べる構成では成立しない。単一の L2 ドメイン上に
-複数サブネットを載せる形へ設計を変える必要がある。
+そこで bridge・veth・network namespace を自分で組む形
+（[`labs/routing/topology.sh`](../../labs/routing/topology.sh)）に変えた。
+Docker のネットワーク機能を使わないので上の 3 点はいずれも当てはまらず、
+「ネットワークを自分で組む」という演習の目的にも合う。権限は privileged な
+コンテナ 1 台へ閉じてあり、後始末は `down` で済む。
+
+VLAN 部（`B4-L2-02`〜`04`）は kernel が `CONFIG_VLAN_8021Q` を有効にして
+いる環境でのみ実行できる。無効な環境では `SKIP-ENV`（未検証）として記録する。
 
 安全装置そのものの検証は [`scripts/labs/storage-guard-test.sh`](../../scripts/labs/storage-guard-test.sh)
 が担当する（存在しないデバイス、`/` への mount、既存署名のあるディスクなどを
