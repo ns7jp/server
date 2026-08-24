@@ -425,6 +425,13 @@ molecule test -s el9       # AlmaLinux / Rocky
 | B-3 | `pg_dump` / `pg_restore` で復元し、RTO / RPO と内容ハッシュを実測する | `./labs/three-tier/run-restore-drill.sh` |
 | B-4 | 静的ルート、`ip_forward`、VLAN ID 不一致を切り分ける | `./labs/routing/run-drill.sh` |
 
+> **この 4 本はまだ実機で回していない。** `docs/drills/logs/` に B-1〜B-4 の
+> 証跡はありません。実行できる環境（コンテナ、device-mapper）が手元に無いためです。
+> script 自体は、`docker` を差し替えたスタブで B-2 / B-3 / B-4 を通しで実行し、
+> 「壊れている」入力でも FAIL が出ること（空振りで PASS しないこと）まで
+> 確かめてあります。スタブでの実行は実機の代わりにはなりません。
+> 詳細は[証跡の索引](docs/evidence/README.md)。
+
 `storage` role の安全装置そのものは、専用の negative test が検証する。
 
 ```bash
@@ -464,8 +471,11 @@ sudo ./scripts/labs/storage-guard-test.sh
   に用意しています。
 - AlmaLinux / Rocky 9 対応は role と Molecule scenario までです。**実機の
   AlmaLinux ホストへ `site.yml` を適用した証跡はまだありません。**
-- B-1〜B-4 はラボ環境（loop device / コンテナ）での演習です。物理ディスク、
-  物理スイッチ、VLAN 対応スイッチの設定は対象外です。
+- **B-1〜B-4 は script を用意した段階で、実機で回した証跡はまだありません。**
+  スタブでの script 検証は済ませていますが（[証跡の索引](docs/evidence/README.md)）、
+  実機の実行の代わりにはしません。そもそもラボ環境（loop device / コンテナ）
+  での演習なので、物理ディスク、物理スイッチ、VLAN 対応スイッチの設定は
+  実行できても対象外です。
 - AWS Terraform は構成コードを実装済みですが、AWS上のapply / destroy、費用、復元試験の実測証跡はまだありません。
 - `site.yml`一括構築・冪等性、runner内network/UFW/待受、backup restoreは[2026-08-22の自動E2E](docs/evidence/2026-08-22-full-stack-e2e.md)でPASSです。GitHub runner imageにはDocker等が事前導入されていたため、最小OSからの導入証跡とはしません。実管理端末・組織DNS・cloud firewallを含むproduction相当のnetwork証跡とも区別します。
 - Slack 通知は Webhook 秘密値をコミットしないため、`compose.slack.yaml.example` を重ねて利用環境で有効化する方式です。
