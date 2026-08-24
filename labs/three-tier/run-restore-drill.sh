@@ -82,7 +82,11 @@ wait_for_ready() {
   return 1
 }
 
-trap 'printf "\n演習が途中で終了した。後始末: docker compose -f %s down -v\n" "${LAB_DIR}/compose.yaml" >&2' ERR
+cleanup_note() {
+  printf '\n演習が途中で終了した。後始末: docker compose -f %s down -v\n' \
+    "${LAB_DIR}/compose.yaml" >&2
+}
+trap cleanup_note ERR
 
 log "0. 3 層スタックを起動する"
 "${COMPOSE[@]}" up -d --build
@@ -147,11 +151,17 @@ RESTORE_START_EPOCH="$(date -u +%s)"
 # ERR trap で中断し、証跡が 1 行も残らない。復元の成否は後段の件数・
 # 内容ハッシュ照合で判定するので、ここでは終了コードを控えるだけにする。
 RESTORE_LOG="${BACKUP_DIR}/pg_restore.log"
+# 失敗を承知で実行する箇所では、set +e だけでは足りない。
+# bash は set +e でも ERR trap を実行するので、後始末を促す注意書きが
+# 「正常に進んでいるのに中断したように見える」形で証跡と画面へ出てしまう。
+# 意図した失敗の間は trap も外し、終わったら必ず張り直す。
+trap - ERR
 set +e
 "${COMPOSE[@]}" exec -T db pg_restore -U "$DB_USER" -d "$DB_NAME" \
   --clean --if-exists < "$BACKUP_FILE" >"$RESTORE_LOG" 2>&1
 RESTORE_RC=$?
 set -e
+trap cleanup_note ERR
 RESTORE_END_EPOCH="$(date -u +%s)"
 if [[ $RESTORE_RC -ne 0 ]]; then
   note "pg_restore が rc=${RESTORE_RC} で終了した（後段の照合で成否を判定する）"

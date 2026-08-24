@@ -113,8 +113,23 @@ log "2. 層の分離: web から db へ直接届かないこと"
 # 遮断されていないのに PASS する偽陽性になる。
 # netprobe-web は web と network namespace を共有しているので、
 # ここからの到達性は web 自身からの到達性と同一。
+#
+# 遮断されていれば nc は非ゼロで終わる。それが期待どおりの結果なので、
+# set -e に巻き込まれないよう一時的に外す。外さないと、代入文そのものが
+# 非ゼロを返して次の行（isolation_rc=$?）へ到達する前に script が落ち、
+# 下の fail-closed 判定が丸ごと死ぬ。
+# しかも落ちるのは「遮断できている」= PASS のときなので、
+# 分離が壊れている環境でしか演習が最後まで走らない、という逆の挙動になる。
+# 失敗を承知で実行する箇所では、set +e だけでは足りない。
+# bash は set +e でも ERR trap を実行するので、後始末を促す注意書きが
+# 「正常に進んでいるのに中断したように見える」形で証跡と画面へ出てしまう。
+# 意図した失敗の間は trap も外し、終わったら必ず張り直す。
+trap - ERR
+set +e
 isolation_out="$("${COMPOSE[@]}" exec -T netprobe-web nc -z -w 3 db 5432 2>&1)"
 isolation_rc=$?
+set -e
+trap cleanup_note ERR
 if [[ $isolation_rc -eq 0 ]]; then
   record "B2-02" "web から db への直接到達を遮断" "接続できない" "接続できてしまった" "FAIL"
 elif grep -qiE 'not found|no such file|unknown option|invalid option' <<<"$isolation_out"; then

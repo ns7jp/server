@@ -118,7 +118,10 @@ fi
 require_root
 require_tools
 require_device_mapper
-trap 'echo "演習が途中で失敗した。後始末は $0 --cleanup" >&2' ERR
+cleanup_note() {
+  echo "演習が途中で失敗した。後始末は $0 --cleanup" >&2
+}
+trap cleanup_note ERR
 
 # --- 1. loop device を用意する -------------------------------------------
 log "1. backing file と loop device を用意する"
@@ -192,10 +195,16 @@ echo "  拡張前のサイズ: ${SIZE_BEFORE}"
 
 # --- 4. 容量を使い切って ENOSPC を再現する --------------------------------
 log "4. わざと容量を使い切る（No space left on device の再現）"
+# 失敗を承知で実行する箇所では、set +e だけでは足りない。
+# bash は set +e でも ERR trap を実行するので、後始末を促す注意書きが
+# 「正常に進んでいるのに中断したように見える」形で証跡と画面へ出てしまう。
+# 意図した失敗の間は trap も外し、終わったら必ず張り直す。
+trap - ERR
 set +e
 dd if=/dev/zero of="${MOUNT_POINT}/filler.bin" bs=1M count=10000 status=none 2>"${WORK_DIR}/enospc.log"
 DD_RC=$?
 set -e
+trap cleanup_note ERR
 ENOSPC_MESSAGE="$(tr -d '\0' < "${WORK_DIR}/enospc.log" | tail -1)"
 DF_FULL="$(df -h "$MOUNT_POINT" | tail -1)"
 if [[ $DD_RC -eq 0 ]]; then

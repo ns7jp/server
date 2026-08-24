@@ -799,3 +799,72 @@ def test_docker_version_is_folded_into_one_line():
         assert "Docker $(docker_server_version)" in script, (
             f"{name}: 証跡が helper を経由していない"
         )
+
+
+SCRIPTS_WITH_ERR_TRAP = (
+    ("labs", "three-tier", "run-drill.sh"),
+    ("labs", "three-tier", "run-restore-drill.sh"),
+    ("labs", "routing", "run-drill.sh"),
+    ("scripts", "labs", "lvm-drill.sh"),
+)
+
+
+def _tolerated_failure_regions(script):
+    """`set +e` ... `set -e` の各区間を (開始行, 終了行) で返す（1 始まり）。"""
+    lines = script.splitlines()
+    regions, start = [], None
+    for number, line in enumerate(lines, start=1):
+        if line.strip() == "set +e":
+            start = number
+        elif line.strip() == "set -e" and start is not None:
+            regions.append((start, number))
+            start = None
+    assert start is None, "set +e を張ったまま閉じていない"
+    return lines, regions
+
+
+def test_exit_code_capture_is_inside_a_tolerated_failure_region():
+    """`out="$(cmd)"` の直後に `rc=$?` を置く形は、`set -e` の下では動かない。
+
+    代入文そのものが非ゼロを返すため、`rc=$?` の行へ到達する前に script が
+    落ちる。落ちるのは cmd が失敗したときなので、「失敗を承知で実行して
+    終了コードを見る」という意図と正反対の挙動になる。
+
+    実際に 3 層ラボの層分離チェックで踏んだ。そこでは nc が失敗する＝遮断
+    できている＝PASS の入力のときにだけ演習が中断していた。
+    """
+    offenders = []
+    for parts in ALL_DRILL_SCRIPTS:
+        script = read(*parts)
+        lines, regions = _tolerated_failure_regions(script)
+        for number, line in enumerate(lines, start=1):
+            if not re.fullmatch(r"\s*[A-Za-z_][A-Za-z0-9_]*=\$\?\s*", line):
+                continue
+            if not any(start < number < end for start, end in regions):
+                offenders.append(f"{'/'.join(parts)}:{number}: {line.strip()}")
+    assert not offenders, (
+        "終了コードの取得が set +e 区間の外にある（set -e に巻き込まれる）:\n"
+        + "\n".join(offenders)
+    )
+
+
+def test_err_trap_is_disarmed_around_tolerated_failures():
+    """bash は `set +e` でも ERR trap を実行する。
+
+    そのため後始末を促す注意書きが「正常に進んでいるのに中断した」ように
+    見える形で出てしまう。意図した失敗の間は trap も外し、区間を抜けたら
+    必ず張り直す。
+    """
+    offenders = []
+    for parts in SCRIPTS_WITH_ERR_TRAP:
+        script = read(*parts)
+        name = "/".join(parts)
+        lines, regions = _tolerated_failure_regions(script)
+        for start, end in regions:
+            before = lines[start - 2].strip() if start >= 2 else ""
+            after = lines[end].strip() if end < len(lines) else ""
+            if before != "trap - ERR":
+                offenders.append(f"{name}:{start}: 直前で trap を外していない")
+            if after != "trap cleanup_note ERR":
+                offenders.append(f"{name}:{end}: 直後で trap を張り直していない")
+    assert not offenders, "\n".join(offenders)
