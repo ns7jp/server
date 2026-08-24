@@ -31,14 +31,29 @@ cd labs/routing
 ./run-drill.sh
 ```
 
-### 前提: 8021q カーネルモジュール
+### トポロジは自分で組む（Docker の network を使わない）
 
-VLAN の演習（`B4-L2-02`〜`04`）は host 側の **802.1Q モジュール**を使う。
-無い環境では L3 の演習まで完走し、VLAN 分は `SKIP-ENV` として証跡に残す
+bridge・veth・network namespace を `topology.sh` が組み立てる。
+Docker の network を使わないのは、実行を試みて成立しないことが分かったため。
+
+1. router に各セグメントの `.1` を要求すると、Docker が bridge 自身へ割り当てる
+   `.1` と衝突して起動できない。
+2. Docker は endpoint ごとに
+   `iptables -t raw -A PREROUTING -d <IP> ! -i <その bridge> -j DROP` を入れる。
+   別セグメントから router 宛に来たパケットは **FORWARD へ届く前に落ちる**。
+3. コンテナ内の `/proc/sys` が read-only で `ip_forward` を切り替えられない。
+
+権限は privileged なコンテナ 1 台へ閉じてあるので、host 側のネットワークには
+何も残らない。後始末は `down` で済む。
+
+### 前提: kernel の 802.1Q サポート
+
+VLAN の演習（`B4-L2-02`〜`04`）は kernel の **802.1Q** サポートを使う。
+無効な kernel では L3 の演習まで完走し、VLAN 分は `SKIP-ENV` として証跡に残す
 （**PASS にはしない**。「確認していない」ことが分かる形にする）。
 
 ```bash
-lsmod | grep 8021q || sudo modprobe 8021q
+grep VLAN_8021Q /boot/config-$(uname -r)
 ```
 
 ## 演習内容
@@ -69,16 +84,20 @@ lsmod | grep 8021q || sudo modprobe 8021q
 
 ```bash
 docker compose up -d
+docker compose exec netlab sh /opt/topology.sh build
+
+# 各 "ホスト" は network namespace なので netns 越しに触る
+docker compose exec netlab ip netns list
 
 # 経路を見る
-docker compose exec host-a ip route show
-docker compose exec host-a traceroute -n 172.30.20.10
+docker compose exec netlab ip netns exec host-a ip route show
+docker compose exec netlab ip netns exec host-a traceroute -n 172.30.20.10
 
 # パケットを router 側で観察する
-docker compose exec router tcpdump -nn -i any icmp
+docker compose exec netlab ip netns exec router tcpdump -nn -i any icmp
 
 # VLAN サブインターフェースの ID を確認する
-docker compose exec host-c ip -d link show
+docker compose exec netlab ip netns exec host-c ip -d link show
 ```
 
 ## 後始末

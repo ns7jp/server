@@ -56,12 +56,16 @@ record() {
   printf '    [%s] %s -> %s (%s)\n' "$id" "$title" "$observed" "$verdict"
 }
 
-on() { "${COMPOSE[@]}" exec -T "$1" sh -c "$2"; }
+# トポロジはコンテナ 1 台の中に network namespace で組んである
+# （labs/routing/topology.sh）。各 "ホスト" は netns なので、
+# コマンドは netns 越しに流す。
+in_lab() { "${COMPOSE[@]}" exec -T netlab "$@"; }
+on() { in_lab ip netns exec "$1" sh -c "$2"; }
 
 # 到達したら 0、しなかったら 1 を返す（set -e に巻き込まれないようにする）。
 can_ping() {
   local from="$1" target="$2"
-  if "${COMPOSE[@]}" exec -T "$from" ping -c 2 -W 2 "$target" >/dev/null 2>&1; then
+  if in_lab ip netns exec "$from" ping -c 2 -W 2 "$target" >/dev/null 2>&1; then
     return 0
   fi
   return 1
@@ -73,12 +77,18 @@ trap 'printf "\n演習が途中で終了した。後始末: docker compose -f %s
 # 無い環境では ip link add ... type vlan が分かりにくいエラーで落ちるので、
 # 演習を始める前に検査して、環境の問題だと分かる形で止める。
 # （LVM ラボの device-mapper 検査と同じ方針）
+# VLAN サブインターフェースを実際に 1 本作ってみて判定する。
+# /sys/module/8021q の有無だけを見ると、VLAN が組み込み (=y) の kernel を
+# 「無い」と誤判定する。作れるかどうかが知りたいことなので、作って試す。
 check_vlan_support() {
-  if [[ -d /sys/module/8021q ]]; then
-    return 0
-  fi
-  if modprobe 8021q 2>/dev/null && [[ -d /sys/module/8021q ]]; then
-    note "8021q モジュールを読み込んだ"
+  # 後始末を必ず通したいので trap で消す。終了コードは if がそのまま見る。
+  # コンテナ側で評価させたいため、意図的に単一引用符のままにする。
+  # shellcheck disable=SC2016
+  if in_lab sh -c '
+      ip link add vlanprobe type dummy >/dev/null 2>&1 || exit 1
+      trap "ip link del vlanprobe >/dev/null 2>&1" EXIT
+      ip link add link vlanprobe name vlanprobe.10 type vlan id 10 >/dev/null 2>&1
+    ' 2>/dev/null; then
     return 0
   fi
   # ここで記録する判定は SKIP-ENV（未検証）であって FAIL（不合格）ではない。
@@ -86,26 +96,31 @@ check_vlan_support() {
   # 落ちた」と読む。未検証と不合格の取り違えは、この演習が避けたいものその
   # ものなので、表示も SKIP に揃える。
   cat >&2 <<'MSG'
-SKIP: host 側に 8021q (802.1Q VLAN) カーネルモジュールがないため、
+SKIP: この kernel は 802.1Q VLAN を提供していないため、
       VLAN の演習 (B4-L2-02〜04) を実行できない。
 
   未検証として記録する。合否の判定ではない。
   L3 の演習 (B4-L3-*) はこの環境でも実行でき、結果は証跡に残る。
-  VLAN まで確かめるには、通常の Linux kernel を持つ環境で実行するか、
-  sudo modprobe 8021q を実行してから再試行する。
+  CONFIG_VLAN_8021Q が有効な kernel（多くのディストリビューションの
+  既定 kernel）で実行すれば、VLAN の演習まで通る。
+  確認方法: grep VLAN_8021Q /boot/config-$(uname -r)
 MSG
   return 1
 }
 
-log "0. ラボを起動する"
+log "0. ラボを起動し、network namespace でトポロジを組む"
 "${COMPOSE[@]}" up -d
-sleep 3
+# コンテナが応答するまで待つ。sleep 決め打ちだと遅い環境で落ちる。
+for _ in $(seq 1 30); do
+  in_lab true >/dev/null 2>&1 && break
+  sleep 1
+done
+in_lab sh /opt/topology.sh build | sed 's/^/    /'
 
-# Docker は各ネットワークの gateway 経由の default route を自動で入れる。
-# 「自分で経路を書く」演習にするため、まず default route を外す。
-log "0-b. 各ホストの default route を外す（自分で経路を書く演習にするため）"
+log "0-b. 各ホストの経路表（default route は最初から無い）"
+# Docker の network を使わず自分で組んでいるので、default route は
+# そもそも入らない。経路を書かない限り隣のセグメントへは届かない。
 for host in host-a host-b host-c; do
-  on "$host" 'ip route del default 2>/dev/null || true'
   note "${host}: $(on "$host" 'ip route show' | tr '\n' ' ')"
 done
 
@@ -176,9 +191,9 @@ log "6. 802.1Q VLAN: 同一物理線上に VLAN 10 / VLAN 20 を作る"
 # L3 の演習はここまでで完了しているので、VLAN が使えない環境では
 # ここまでの結果を証跡に残してから止める。
 if ! check_vlan_support; then
-  record "B4-L2-02" "同じ VLAN ID どうしは疎通する" "到達する" "8021q が無く実行不能" "SKIP-ENV"
-  record "B4-L2-03" "VLAN ID 不一致では疎通しない" "到達しない" "8021q が無く実行不能" "SKIP-ENV"
-  record "B4-L2-04" "VLAN ID を揃えると復旧する" "到達する" "8021q が無く実行不能" "SKIP-ENV"
+  record "B4-L2-02" "同じ VLAN ID どうしは疎通する" "到達する" "この kernel が VLAN 非対応で実行不能" "SKIP-ENV"
+  record "B4-L2-03" "VLAN ID 不一致では疎通しない" "到達しない" "この kernel が VLAN 非対応で実行不能" "SKIP-ENV"
+  record "B4-L2-04" "VLAN ID を揃えると復旧する" "到達する" "この kernel が VLAN 非対応で実行不能" "SKIP-ENV"
   VLAN_SKIPPED=1
 fi
 if [[ "${VLAN_SKIPPED:-0}" -eq 0 ]]; then

@@ -1,92 +1,22 @@
 name: server-monitor-routing-lab
 
-# 静的ルーティングと VLAN を実際に触るためのラボ。
+# トポロジは Docker の network ではなく、コンテナの中で network namespace と
+# veth と bridge を自分で組む（labs/routing/topology.sh）。
 #
-#   host-a --- [ segment-a ] --- router --- [ segment-b ] --- host-b
-#                                  |
-#                            [ segment-c ] --- host-c (VLAN 10 / 20)
+# Docker の network を使わない理由は topology.sh の冒頭に書いた。要点は、
+# Docker が endpoint ごとに入れる raw PREROUTING のアンチスプーフ規則により
+# router を経由した L3 疎通が成立しないこと、コンテナ内の /proc/sys が
+# read-only で ip_forward を切り替えられないこと。
 #
-# 既存の labs/network-troubleshooting は Docker の bridge に任せた
-# 2 セグメント構成で、経路は Docker が自動で作る。
-# こちらは意図的に「default gateway に頼らず、自分で経路を書く」構成にして、
-# L2（VLAN、同一セグメント内の到達）と L3（ルーティング）を分けて扱う。
-#
-# 各 host は default route を持たない。router を経由する経路を
-# 明示的に入れない限り、隣のセグメントへは届かない。
+# 必要な権限をこの 1 コンテナへ閉じ込めているので、後始末は down で済み、
+# host 側のネットワークには何も残らない。
 services:
-  router:
+  netlab:
     image: nicolaka/netshoot:v0.13
     command: ["sleep", "infinity"]
-    cap_add:
-      # ip route / ip link / VLAN サブインターフェースの操作に必要。
-      - NET_ADMIN
-    sysctls:
-      # これを入れないと、経路を書いても router が転送しない。
-      # 「経路はあるのに通らない」典型例を再現できるよう、
-      # ドリル側で一度 0 に落として症状を確認する。
-      net.ipv4.ip_forward: "1"
-    networks:
-      segment-a:
-        ipv4_address: 172.30.10.1
-      segment-b:
-        ipv4_address: 172.30.20.1
-      segment-c:
-        ipv4_address: 172.30.30.1
-
-  host-a:
-    image: nicolaka/netshoot:v0.13
-    command: ["sleep", "infinity"]
-    cap_add:
-      - NET_ADMIN
-    networks:
-      segment-a:
-        ipv4_address: 172.30.10.10
-
-  host-b:
-    image: nicolaka/netshoot:v0.13
-    command: ["sleep", "infinity"]
-    cap_add:
-      - NET_ADMIN
-    networks:
-      segment-b:
-        ipv4_address: 172.30.20.10
-
-  host-c:
-    image: nicolaka/netshoot:v0.13
-    command: ["sleep", "infinity"]
-    cap_add:
-      - NET_ADMIN
-    networks:
-      segment-c:
-        ipv4_address: 172.30.30.10
-
-# 各 segment の gateway を .254 へ寄せてある。既定では Docker が bridge 自身へ
-# .1 を割り当てるため、router コンテナに .1 を要求すると衝突して
-# "Address already in use" で起動できない。
-#
-# .1 を router 側に残しているのは、この演習が「router を経由して隣の
-# セグメントへ出る」ことを扱うから。ここで .1 が bridge のままだと、
-# 同一セグメント内の到達を確かめる試験（B4-L2-01）が router ではなく
-# host 側の bridge に応答してもらってしまい、router が死んでいても通る。
-networks:
-  segment-a:
-    name: server-monitor-routing-a
-    internal: true
-    ipam:
-      config:
-        - subnet: 172.30.10.0/24
-          gateway: 172.30.10.254
-  segment-b:
-    name: server-monitor-routing-b
-    internal: true
-    ipam:
-      config:
-        - subnet: 172.30.20.0/24
-          gateway: 172.30.20.254
-  segment-c:
-    name: server-monitor-routing-c
-    internal: true
-    ipam:
-      config:
-        - subnet: 172.30.30.0/24
-          gateway: 172.30.30.254
+    # netns / veth / bridge の作成と、netns ごとの sysctl 書き換えに必要。
+    # NET_ADMIN だけでは /proc/sys が read-only のままで ip_forward を
+    # 切り替えられないため、この演習では privileged が要る。
+    privileged: true
+    volumes:
+      - ./topology.sh:/opt/topology.sh:ro
