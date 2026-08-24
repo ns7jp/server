@@ -58,6 +58,19 @@ record() {
   printf '    [%s] %s -> %s (%s)\n' "$id" "$title" "$observed" "$verdict"
 }
 
+# RTO / RPO は 1 秒未満で終わりうる。date +%s の秒粒度で引き算すると、
+# このラボ規模では実測値が「0 秒」になり、同じ演習でも秒境界のどちらに
+# 落ちるかで 0 か 1 かが変わる。証跡に「事故から復元完了まで 0 秒」と
+# 書いてしまうと、測っていないのか壊れているのかの区別が付かない。
+# ミリ秒で測り、秒へ直して 3 桁まで出す。
+now_ms() { date -u +%s%3N; }
+
+# ミリ秒を "0.412" のような秒表記へ直す。
+as_seconds() {
+  local ms="$1"
+  printf '%d.%03d' "$(( ms / 1000 ))" "$(( ms % 1000 ))"
+}
+
 psql_scalar() {
   "${COMPOSE[@]}" exec -T db psql -U "$DB_USER" -d "$DB_NAME" -tAc "$1" 2>/dev/null | tr -d ' \r\n'
 }
@@ -103,7 +116,7 @@ note "件数=${ROWS_BEFORE} / 内容ハッシュ=${CHECKSUM_BEFORE}"
 
 # --- 2. バックアップ ------------------------------------------------------
 log "2. pg_dump で論理バックアップを取る"
-BACKUP_AT_EPOCH="$(date -u +%s)"
+BACKUP_AT_MS="$(now_ms)"
 BACKUP_AT="$(date -u '+%Y-%m-%d %H:%M:%S')"
 BACKUP_FILE="${BACKUP_DIR}/${DB_NAME}-$(date -u '+%Y%m%dT%H%M%SZ').dump"
 "${COMPOSE[@]}" exec -T db pg_dump -U "$DB_USER" -d "$DB_NAME" --format=custom > "$BACKUP_FILE"
@@ -123,14 +136,14 @@ sleep 2
 "${COMPOSE[@]}" exec -T client curl -fsS --max-time 10 -X POST http://web/api/items \
   -H 'Content-Type: application/json' \
   -d '{"sku":"SKU-9001","name":"バックアップ後に追加した行","quantity":1}' >/dev/null
-LAST_WRITE_EPOCH="$(date -u +%s)"
+LAST_WRITE_MS="$(now_ms)"
 LAST_WRITE_AT="$(date -u '+%Y-%m-%d %H:%M:%S')"
 ROWS_AFTER_WRITE="$(psql_scalar 'SELECT count(*) FROM items;')"
 note "追加後の件数=${ROWS_AFTER_WRITE}"
 
 # --- 4. 事故の再現 --------------------------------------------------------
 log "4. 事故を再現する: items テーブルを DROP する"
-INCIDENT_EPOCH="$(date -u +%s)"
+INCIDENT_MS="$(now_ms)"
 INCIDENT_AT="$(date -u '+%Y-%m-%d %H:%M:%S')"
 "${COMPOSE[@]}" exec -T db psql -U "$DB_USER" -d "$DB_NAME" -c 'DROP TABLE items;' >/dev/null
 APP_STATUS_BROKEN="$(http_status http://web/)"
@@ -143,7 +156,8 @@ fi
 
 # --- 5. 復元 --------------------------------------------------------------
 log "5. pg_restore で復元する"
-RESTORE_START_EPOCH="$(date -u +%s)"
+RESTORE_START_MS="$(now_ms)"
+RESTORE_START_EPOCH="$(( RESTORE_START_MS / 1000 ))"
 # --clean --if-exists で、途中まで残った定義があっても決定的に戻す。
 #
 # pg_restore は無視した警告があると非ゼロで終了することがある
@@ -162,12 +176,13 @@ set +e
 RESTORE_RC=$?
 set -e
 trap cleanup_note ERR
-RESTORE_END_EPOCH="$(date -u +%s)"
+RESTORE_END_MS="$(now_ms)"
+RESTORE_END_EPOCH="$(( RESTORE_END_MS / 1000 ))"
 if [[ $RESTORE_RC -ne 0 ]]; then
   note "pg_restore が rc=${RESTORE_RC} で終了した（後段の照合で成否を判定する）"
   tail -5 "$RESTORE_LOG" | sed 's/^/      /'
 fi
-RTO_SECONDS=$((RESTORE_END_EPOCH - RESTORE_START_EPOCH))
+RTO_SECONDS="$(as_seconds $(( RESTORE_END_MS - RESTORE_START_MS )))"
 note "復元所要時間 (RTO) = ${RTO_SECONDS} 秒"
 
 # --- 6. 突き合わせ --------------------------------------------------------
@@ -211,8 +226,8 @@ else
   record "B3-06" "アプリから見た復旧" "トップ画面が 200 に戻る" "status=${APP_STATUS_RECOVERED}" "FAIL"
 fi
 
-RPO_SECONDS=$((LAST_WRITE_EPOCH - BACKUP_AT_EPOCH))
-DETECT_TO_RESTORE=$((RESTORE_END_EPOCH - INCIDENT_EPOCH))
+RPO_SECONDS="$(as_seconds $(( LAST_WRITE_MS - BACKUP_AT_MS )))"
+DETECT_TO_RESTORE="$(as_seconds $(( RESTORE_END_MS - INCIDENT_MS )))"
 
 # --- 証跡 -----------------------------------------------------------------
 log "証跡を書き出す"
