@@ -50,10 +50,10 @@ AlmaLinux実機への`site.yml`適用も`NOT RUN`です。
 | ephemeral VM の network / UFW | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：`NW-01〜09` / `IT-12` / `ST-01,04` PASS |
 | 独立した管理端末・対象hostでの network / UFW | ❌ **NOT RUN**（[手順](../build-package/09-network-validation-procedure.md)と[結果票テンプレート](templates/network-host-validation.md)のみ） |
 | AlmaLinux / Rocky 9 実機への `site.yml` 適用 | ❌ **NOT RUN**（role と `el9` Molecule scenario のみ） |
-| B-1 ディスク設計・LVM 拡張演習 | ❌ **NOT RUN**（[`scripts/labs/lvm-drill.sh`](../../scripts/labs/lvm-drill.sh) と安全装置テストは実装済み） |
-| B-2 3 層構成の障害切り分け演習 | ❌ **NOT RUN**（[`labs/three-tier/`](../../labs/three-tier/README.md) 実装済み） |
-| B-3 DB バックアップ・復元演習 | ❌ **NOT RUN**（[`labs/three-tier/run-restore-drill.sh`](../../labs/three-tier/run-restore-drill.sh) 実装済み） |
-| B-4 L2 / L3 切り分け演習 | ❌ **NOT RUN**（[`labs/routing/`](../../labs/routing/README.md) 実装済み） |
+| B-1 ディスク設計・LVM 拡張演習 | ❌ **ラボ本体は NOT RUN**（device-mapper が要る）。⚠ script は検証済み: 安全装置テスト 7/7 PASS（実行）、証跡出力部を抽出して実行 |
+| B-2 3 層構成の障害切り分け演習 | ❌ **ラボ本体は NOT RUN**（コンテナが要る）。⚠ script は検証済み: `docker` をスタブ化して 4 通りの入力で通し実行（正常系 / 層分離の破れ / probe 不在 / health check が DB を見ていない） |
+| B-3 DB バックアップ・復元演習 | ❌ **ラボ本体は NOT RUN**（コンテナが要る）。⚠ script は検証済み: `docker` をスタブ化して 2 通りの入力で通し実行（正常系 / `pg_restore` の警告終了） |
+| B-4 L2 / L3 切り分け演習 | ❌ **ラボ本体は NOT RUN**（コンテナが要る）。⚠ script は検証済み: `docker` をスタブ化して 3 通りの入力で通し実行。VLAN 部（`B4-L2-02`〜`04`）は 8021q が無くスタブでも未実行 |
 | AWS `apply` / `destroy` と実費 | ❌ **NOT RUN** |
 | 構成commit / 設定rollback rehearsal | ✅ [2026-08-23](2026-08-23-change-CI-GIT-ROLLBACK.md)：使い捨てUbuntu runnerでcandidate `84e1492`からmain `59aa88e`へGit-mode rollbackを実測。永続hostでは**NOT RUN** |
 | 永続hostの再起動・24h / 72h確認 | ❌ **NOT RUN**（[`acceptance-check.sh`](../../scripts/ops/acceptance-check.sh) の `--mode after-reboot` / `--mode soak` で自動採録できる状態。手順は[10 立ち上げと受け入れ試験](../build-package/10-host-bringup-and-acceptance.md)） |
@@ -63,6 +63,37 @@ AlmaLinux実機への`site.yml`適用も`NOT RUN`です。
 > **この証跡が示す範囲を広げて解釈しない。** 2026-08-22 E2Eと2026-08-23 Git-mode
 > rollbackはGitHub-hosted runner内の自動実測です。独立した管理端末、複数host、組織DNS、
 > D-2、Slack実配信、AWS適用、永続hostの再起動・24h / 72h確認の代替にはしません。
+
+### 「ラボ本体は NOT RUN / script は検証済み」とは何か
+
+B-1 〜 B-4 には、次の 2 つの別々の問いがあります。
+
+| 問い | 状態 |
+| --- | --- |
+| 演習を実機で回して、その結果を証跡として持っているか | **持っていない**（NOT RUN） |
+| 演習の script 自体が、期待どおりの判定を出すか | **確認した** |
+
+後者は、`docker` を差し替えたスタブに置き換えて script をそのまま通しで
+実行し、**正常系だけでなく「壊れている」入力でも FAIL が出ること**まで
+確かめています。演習が空振りで PASS しないことの検査です。
+
+これは実機の実行の代わりにはなりません。**スタブの応答は「実際の nginx /
+PostgreSQL がこう返すはず」という想定**であり、確認できたのは script の
+制御フローと判定ロジックまでです。
+
+それでもこの検証には意味がありました。走らせて初めて次の欠陥が見つかり、
+[#83](https://github.com/ns7jp/server-monitor/pull/83) 〜
+[#86](https://github.com/ns7jp/server-monitor/pull/86) で修正しています。
+`shellcheck` と構文チェックはいずれも通っていました。
+
+| 見つかったもの | 影響 |
+| --- | --- |
+| 層分離の判定が `set -e` に巻き込まれる | **遮断できているときにだけ**演習が中断し、証跡が 1 行も残らない |
+| `set +e` でも ERR trap が実行される | 完走しているのに「演習が途中で終了した」と出る |
+| 実測欄が判定と無関係の固定文字列 | 「適用完了」なのに `FAIL` という行が証跡に残る |
+| RTO / RPO を秒粒度で引き算 | 実測値が「0 秒」になり、測っていないのか壊れているのか読めない |
+| 未検証を `FAIL` と表示 | 証跡は `SKIP-ENV` なのに、実行した人は「落ちた」と読む |
+| `docker version` の 2 行出力 | 証跡の表がその行で崩れる |
 
 ## 試験IDと現在の証跡の対応
 

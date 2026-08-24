@@ -913,3 +913,53 @@ def test_skipped_check_is_not_announced_as_a_failure():
         "SKIP-ENV を記録する条件で FAIL と表示している"
     )
     assert "SKIP:" in message, "未検証であることを表示していない"
+
+
+B_SERIES_LOG_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}-B-[1-4]\.md$")
+
+
+def test_docs_and_evidence_agree_on_whether_b_series_ran():
+    """「B-1〜B-4 は未実行」と書いている以上、証跡ファイルがあってはならない。
+
+    逆に証跡が出たら、README / 演習一覧 / 証跡の索引の 3 つを同時に直す
+    必要がある。片方だけ直して食い違うと、証跡台帳が信用できなくなる。
+    このテストはその 2 つの状態を結び付けて固定する。
+    """
+    logs_dir = ROOT / "docs" / "drills" / "logs"
+    present = sorted(
+        path.name for path in logs_dir.iterdir()
+        if B_SERIES_LOG_PATTERN.match(path.name)
+    )
+    docs = {
+        "README.md": read("README.md"),
+        "docs/drills/README.md": read("docs", "drills", "README.md"),
+        "docs/evidence/README.md": read("docs", "evidence", "README.md"),
+    }
+    if present:
+        for name, text in docs.items():
+            assert "まだ実機で回していない" not in text, (
+                f"{name}: {present} があるのに未実行と書いている"
+            )
+        return
+    # 証跡が無い側。3 文書すべてがそう書いていること。
+    for name, text in docs.items():
+        assert ("まだ実機で回していない" in text
+                or "実機で回した証跡はまだありません" in text
+                or "ラボ本体は NOT RUN" in text), (
+            f"{name}: B-1〜B-4 が未実行であることを書いていない"
+        )
+
+
+def test_stub_verification_is_not_presented_as_a_real_run():
+    """スタブでの検証を実機の実行と混ぜて書かない。
+
+    混ぜた瞬間、この証跡台帳の value proposition が壊れる。
+    """
+    for parts in (("README.md",), ("docs", "drills", "README.md"),
+                  ("docs", "evidence", "README.md")):
+        text = read(*parts)
+        if "スタブ" not in text:
+            continue
+        assert "代わりにはなりません" in text or "代わりにはならない" in text, (
+            f"{'/'.join(parts)}: スタブ検証の限界を書いていない"
+        )
