@@ -1079,3 +1079,21 @@ def test_storage_role_stays_idempotent_over_its_own_logical_volumes():
 
     # 無条件に子を許す形へ退行していないこと。
     assert "storage_device_children | length >= 0" not in tasks
+
+
+def test_selinux_boolean_waits_for_pending_reboot():
+    """disabled -> enforcing は relabel を伴い、reboot するまで実行中の
+    kernel には反映されない。ansible.posix.selinux はそれを
+    reboot_required で返す。
+
+    次の task（container_manage_cgroup boolean の設定）がこれを無視すると、
+    実行中の SELinux はまだ disabled のままなので
+    "SELinux is disabled on this host" で fail する。実機（AlmaLinux 9）
+    で踏んだ。
+    """
+    selinux = read("ansible", "roles", "common", "tasks", "selinux.yml")
+    idx = selinux.index("Ensure the container SELinux boolean is enabled")
+    block = selinux[idx:idx + 400]
+    assert "not (common_selinux_applied.reboot_required" in block, (
+        "boolean 設定が reboot_required を見ていない"
+    )
