@@ -868,3 +868,27 @@ def test_err_trap_is_disarmed_around_tolerated_failures():
             if after != "trap cleanup_note ERR":
                 offenders.append(f"{name}:{end}: 直後で trap を張り直していない")
     assert not offenders, "\n".join(offenders)
+
+
+def test_rto_and_rpo_are_measured_below_one_second():
+    """RTO / RPO は 1 秒未満で終わりうる。
+
+    `date +%s` の秒粒度で引き算すると、このラボ規模では実測値が「0 秒」に
+    なり、しかも秒境界のどちらに落ちるかで同じ演習が 0 か 1 かに揺れる。
+    証跡に「事故から復元完了まで 0 秒」と書いてしまうと、測っていないのか
+    壊れているのかを読み手が区別できない。ミリ秒で測る。
+    """
+    script = read("labs", "three-tier", "run-restore-drill.sh")
+    assert "now_ms() { date -u +%s%3N; }" in script, "ミリ秒で測る helper がない"
+    assert "as_seconds()" in script, "秒表記へ直す helper がない"
+
+    for name in ("RTO_SECONDS", "RPO_SECONDS", "DETECT_TO_RESTORE"):
+        match = re.search(rf"^{name}=(.*)$", script, re.MULTILINE)
+        assert match, f"{name} を計算していない"
+        expression = match.group(1)
+        assert "as_seconds" in expression, f"{name} がミリ秒から計算されていない"
+        assert "_MS" in expression, f"{name} が秒粒度の値を引き算している"
+
+    # 秒粒度の時刻は timeline の表示にだけ使い、差分の計算には使わない。
+    assert 'BACKUP_AT_EPOCH="$(date -u +%s)"' not in script
+    assert 'INCIDENT_EPOCH="$(date -u +%s)"' not in script
