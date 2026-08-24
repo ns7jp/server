@@ -51,9 +51,9 @@ AlmaLinux実機への`site.yml`適用も`NOT RUN`です。
 | 独立した管理端末・対象hostでの network / UFW | ❌ **NOT RUN**（[手順](../build-package/09-network-validation-procedure.md)と[結果票テンプレート](templates/network-host-validation.md)のみ） |
 | AlmaLinux / Rocky 9 実機への `site.yml` 適用 | ❌ **NOT RUN**（role と `el9` Molecule scenario のみ） |
 | B-1 ディスク設計・LVM 拡張演習 | ❌ **ラボ本体は NOT RUN**（device-mapper が要る）。⚠ script は検証済み: 安全装置テスト 7/7 PASS（実行）、証跡出力部を抽出して実行 |
-| B-2 3 層構成の障害切り分け演習 | ❌ **ラボ本体は NOT RUN**（コンテナが要る）。⚠ script は検証済み: `docker` をスタブ化して 4 通りの入力で通し実行（正常系 / 層分離の破れ / probe 不在 / health check が DB を見ていない） |
-| B-3 DB バックアップ・復元演習 | ❌ **ラボ本体は NOT RUN**（コンテナが要る）。⚠ script は検証済み: `docker` をスタブ化して 2 通りの入力で通し実行（正常系 / `pg_restore` の警告終了） |
-| B-4 L2 / L3 切り分け演習 | ❌ **ラボ本体は NOT RUN**（コンテナが要る）。⚠ script は検証済み: `docker` をスタブ化して 3 通りの入力で通し実行。VLAN 部（`B4-L2-02`〜`04`）は 8021q が無くスタブでも未実行 |
+| B-2 3 層構成の障害切り分け演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-2.md)：実コンテナ（Docker 29.3.1）で **9 PASS / 0 FAIL**。層分離の遮断、DB 停止・AP 停止・経路断の切り分けを実測 |
+| B-3 DB バックアップ・復元演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-3.md)：実 PostgreSQL 16 で **7 PASS / 0 FAIL**。RTO **0.149 秒** / RPO **2.344 秒**、内容ハッシュ一致まで実測 |
+| B-4 L2 / L3 切り分け演習 | ❌ **NOT RUN**。実行を試みて**構成上の欠陥を 2 件検出**（下記）。現状の compose では成立しないため、設計を見直すまで実測できない |
 | AWS `apply` / `destroy` と実費 | ❌ **NOT RUN** |
 | 構成commit / 設定rollback rehearsal | ✅ [2026-08-23](2026-08-23-change-CI-GIT-ROLLBACK.md)：使い捨てUbuntu runnerでcandidate `84e1492`からmain `59aa88e`へGit-mode rollbackを実測。永続hostでは**NOT RUN** |
 | 永続hostの再起動・24h / 72h確認 | ❌ **NOT RUN**（[`acceptance-check.sh`](../../scripts/ops/acceptance-check.sh) の `--mode after-reboot` / `--mode soak` で自動採録できる状態。手順は[10 立ち上げと受け入れ試験](../build-package/10-host-bringup-and-acceptance.md)） |
@@ -64,9 +64,24 @@ AlmaLinux実機への`site.yml`適用も`NOT RUN`です。
 > rollbackはGitHub-hosted runner内の自動実測です。独立した管理端末、複数host、組織DNS、
 > D-2、Slack実配信、AWS適用、永続hostの再起動・24h / 72h確認の代替にはしません。
 
+### B-4 が実行できない理由（2026-08-24 実測）
+
+実コンテナで起動を試みて、2 件の欠陥が出た。
+
+| 欠陥 | 内容 |
+| --- | --- |
+| compose が起動しない | router に各セグメントの `.1` を要求していたが、Docker は既定で bridge 自身へ `.1` を割り当てる。`Address already in use` で router が起動しない。**この演習は一度も起動できていなかった。** gateway を `.254` へ寄せて修正済み |
+| Docker が転送を落とす | Docker はコンテナごとに `iptables -t raw -A PREROUTING -d <IP> ! -i <そのbridge> -j DROP` を入れる。別セグメントから router 宛に来たパケットは **FORWARD へ届く前に落ちる**。router を経由した L3 疎通が原理的に成立しない |
+
+2 件目は一時的に該当規則を迂回して疎通することを確認し、規則を戻すと再び不通になることまで実測した（環境固有の設定ではなく Docker 自身の挙動）。
+別途、`sysctl -w net.ipv4.ip_forward` も `/proc/sys` が read-only で失敗する。
+
+Docker の bridge network を 3 つ並べる現在の構成では成立しない。単一の L2 ドメイン上に複数サブネットを載せる形へ設計を変える必要がある。
+
 ### 「ラボ本体は NOT RUN / script は検証済み」とは何か
 
-B-1 〜 B-4 には、次の 2 つの別々の問いがあります。
+B-2 / B-3 は実コンテナで実行し、証跡があります（上表）。B-1 と B-4 は
+未実行で、次の 2 つの別々の問いを分けて書いています。
 
 | 問い | 状態 |
 | --- | --- |
