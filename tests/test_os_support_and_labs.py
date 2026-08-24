@@ -169,7 +169,7 @@ def test_storage_role_probes_signatures_instead_of_trusting_the_lsblk_cache():
     null を返すことがある。これを署名判定に使うと、中身のあるディスクを
     空だと誤認して潰す。wipefs による実読みを正本にすること。
     """
-    tasks = read("ansible", "roles", "storage", "tasks", "main.yml")
+    tasks = storage_role_tasks()
 
     assert "Probe target devices for on-disk signatures" in tasks
     assert "- wipefs" in tasks
@@ -180,20 +180,35 @@ def test_storage_role_probes_signatures_instead_of_trusting_the_lsblk_cache():
     assert "storage_device_probe.rc == 0" in tasks
 
 
+def storage_role_tasks():
+    """storage role の task を、include_tasks を展開した 1 本の文字列で返す。
+
+    本体は manage.yml へ移した（`meta: end_role` が ansible-core 2.16 に無く、
+    Ubuntu 24.04 の既定 Ansible で play ごと落ちたため）。安全装置に関する
+    不変条件は変わらないので、検査対象だけを追随させる。
+    """
+    main = read("ansible", "roles", "storage", "tasks", "main.yml")
+    assert "include_tasks: manage.yml" in main, "main.yml が manage.yml を呼んでいない"
+    assert "storage_volumes | length > 0" in main, "空宣言のときの guard が無い"
+    return main + "\n" + read("ansible", "roles", "storage", "tasks", "manage.yml")
+
+
 def test_storage_role_refuses_to_touch_anything_by_default():
     defaults = read("ansible", "roles", "storage", "defaults", "main.yml")
-    tasks = read("ansible", "roles", "storage", "tasks", "main.yml")
+    tasks = storage_role_tasks()
 
     assert "storage_volumes: []" in defaults
     assert "storage_allow_existing_signature: false" in defaults
     assert "storage_allow_loop_devices: false" in defaults
     # 対象が空なら何もせず終わる。
-    assert "ansible.builtin.meta: end_role" in tasks
-    assert "storage_volumes | length == 0" in tasks
+    # 宣言が無ければ本体を一切呼ばない（lvm2 の導入もしない）。
+    # 手段は問わないが、この不変条件は守る。
+    assert "include_tasks: manage.yml" in tasks
+    assert "storage_volumes | length > 0" in tasks
 
 
 def test_storage_role_refuses_critical_mount_points():
-    tasks = read("ansible", "roles", "storage", "tasks", "main.yml")
+    tasks = storage_role_tasks()
     for critical in ("'/'", "'/boot'", "'/etc'", "'/usr'", "'/dev'"):
         assert critical in tasks, critical
 
@@ -1012,3 +1027,55 @@ def test_routing_topology_can_be_torn_down_and_rebuilt():
     build = topology[topology.index("build() {"):]
     first = build.splitlines()[1].strip()
     assert first == "teardown", f"build の先頭で片付けていない: {first}"
+
+
+def test_storage_role_runs_on_the_ansible_that_ships_with_the_target_os():
+    """対象 OS の既定 Ansible で動かないと、配布物として使えない。
+
+    `meta: end_role` は ansible-core 2.18 以降にしかない。Ubuntu 24.04 LTS が
+    同梱するのは 2.16.3 で、そこでは play ごと
+    「invalid meta action requested: end_role」で失敗する。実機で踏んだ。
+
+    CI では新しい ansible-core を pip で入れているため気付けなかった。
+    lint も構文検査も通っていた。
+    """
+    role = ROOT / "ansible" / "roles" / "storage" / "tasks"
+    offenders = []
+    for path in sorted(role.glob("*.yml")):
+        for number, line in enumerate(path.read_text().splitlines(), start=1):
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            if "end_role" in stripped:
+                offenders.append(f"{path.name}:{number}: {stripped}")
+    assert not offenders, (
+        "ansible-core 2.18 以降でしか動かない書き方が入っている:\n"
+        + "\n".join(offenders)
+    )
+
+
+def test_storage_role_stays_idempotent_over_its_own_logical_volumes():
+    """2 回目の適用で、自分が作った LV に自分の安全装置が止められない。
+
+    安全装置は「子デバイスを持つディスクには触らない」としていたが、
+    2 回目にはこのロールが作った LV が子として見える。そのため
+    site.yml を 2 回流せなかった。実機（Ubuntu 24.04 + LVM）で踏んだ。
+
+    ただし「子がいるなら通す」では安全装置の意味が無くなる。その PV が
+    属している VG を読み、宣言している VG のときだけ許す形であること。
+    """
+    tasks = storage_role_tasks()
+
+    # PV の所属 VG を実際に読んでいる。
+    assert "pvs" in tasks and "vg_name" in tasks, "PV の所属 VG を読んでいない"
+    assert "storage_device_owning_vgs" in tasks
+
+    # 許可の条件が「宣言している VG に属していること」であること。
+    assert "storage_device_owning_vg in storage_device_declared_vgs" in tasks
+    # 空（PV ではない / 読めなかった）を許可に使わない。
+    assert "storage_device_owning_vg != ''" in tasks
+    # partition など lvm 以外の子は従来どおり拒否する。
+    assert "rejectattr('type', 'equalto', 'lvm') | list | length == 0" in tasks
+
+    # 無条件に子を許す形へ退行していないこと。
+    assert "storage_device_children | length >= 0" not in tasks
