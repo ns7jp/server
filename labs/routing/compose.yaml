@@ -60,6 +60,14 @@ services:
       segment-c:
         ipv4_address: 172.30.30.10
 
+# 各 segment の gateway を .254 へ寄せてある。既定では Docker が bridge 自身へ
+# .1 を割り当てるため、router コンテナに .1 を要求すると衝突して
+# "Address already in use" で起動できない。
+#
+# .1 を router 側に残しているのは、この演習が「router を経由して隣の
+# セグメントへ出る」ことを扱うから。ここで .1 が bridge のままだと、
+# 同一セグメント内の到達を確かめる試験（B4-L2-01）が router ではなく
+# host 側の bridge に応答してもらってしまい、router が死んでいても通る。
 networks:
   segment-a:
     name: server-monitor-routing-a
@@ -67,15 +75,18 @@ networks:
     ipam:
       config:
         - subnet: 172.30.10.0/24
+          gateway: 172.30.10.254
   segment-b:
     name: server-monitor-routing-b
     internal: true
     ipam:
       config:
         - subnet: 172.30.20.0/24
+          gateway: 172.30.20.254
   segment-c:
     name: server-monitor-routing-c
     internal: true
     ipam:
       config:
         - subnet: 172.30.30.0/24
+          gateway: 172.30.30.254

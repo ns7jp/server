@@ -171,18 +171,46 @@ else
 fi
 
 # --- 5. 障害 B: AP 停止 ---------------------------------------------------
+# AP が落ちたときに web が返す code は、止めてから何秒後に見たかで変わる。
+# nginx.conf の `resolver 127.0.0.11 valid=10s` が効いている間は、消えた
+# コンテナの IP がまだキャッシュに残っているので、そこへ繋ぎに行って
+# proxy_connect_timeout で 504 になる。キャッシュが切れると名前解決自体が
+# 失敗して 502 になる。実測した遷移:
+#
+#   t=3s, 6s -> 504   ("upstream timed out")
+#   t>=7s    -> 502   ("ap could not be resolved (3: Host not found)")
+#
+# どちらも「web は生きていて、その先が死んでいる」を示すが、示している
+# 中身が違う。504 は「名前は引けるが応答が無い」= プロセス側、502 は
+# 「名前が引けない」= サービス登録 / DNS 側。切り分けではこの差が効くので、
+# 両方の窓を別々の試験として観測する。
 log "5. 障害 B: AP プロセスを停止する"
 "${COMPOSE[@]}" stop ap >/dev/null
 sleep 3
 B_WEB_HEALTH="$(http_status http://web/web-healthz)"
 B_TOP="$(http_status http://web/)"
-note "web-healthz=${B_WEB_HEALTH} / トップ=${B_TOP}"
-if [[ "$B_WEB_HEALTH" == "200" && "$B_TOP" == "502" ]]; then
-  record "B2-05" "AP 停止時に AP 層まで切り分けられる" "web-healthz 200 / トップ 502" \
+note "web-healthz=${B_WEB_HEALTH} / トップ=${B_TOP}（resolver のキャッシュが有効な間）"
+if [[ "$B_WEB_HEALTH" == "200" && "$B_TOP" == "504" ]]; then
+  record "B2-05" "AP 停止直後は上流無応答として現れる" "web-healthz 200 / トップ 504" \
     "web-healthz=${B_WEB_HEALTH}, トップ=${B_TOP}" "PASS"
 else
-  record "B2-05" "AP 停止時に AP 層まで切り分けられる" "web-healthz 200 / トップ 502" \
+  record "B2-05" "AP 停止直後は上流無応答として現れる" "web-healthz 200 / トップ 504" \
     "web-healthz=${B_WEB_HEALTH}, トップ=${B_TOP}" "FAIL"
+fi
+
+# resolver の valid=10s を跨ぐまで待つ。ここを跨ぐと症状が 504 から 502 へ
+# 変わる。同じ障害でも観測した時刻で見え方が変わる、という実例。
+note "resolver のキャッシュ（valid=10s）が切れるまで待つ"
+sleep 10
+B_TOP_AFTER="$(http_status http://web/)"
+B_RESOLVE="$("${COMPOSE[@]}" exec -T netprobe-web sh -c 'getent hosts ap >/dev/null && echo 引ける || echo 引けない' 2>/dev/null | tr -d ' \r\n')"
+note "トップ=${B_TOP_AFTER} / ap の名前解決=${B_RESOLVE}"
+if [[ "$B_TOP_AFTER" == "502" && "$B_RESOLVE" == "引けない" ]]; then
+  record "B2-05b" "キャッシュ失効後は名前解決の失敗として現れる" "トップ 502 / ap を引けない" \
+    "トップ=${B_TOP_AFTER}, 名前解決=${B_RESOLVE}" "PASS"
+else
+  record "B2-05b" "キャッシュ失効後は名前解決の失敗として現れる" "トップ 502 / ap を引けない" \
+    "トップ=${B_TOP_AFTER}, 名前解決=${B_RESOLVE}" "FAIL"
 fi
 
 log "6. 障害 B から復旧する"
@@ -276,6 +304,11 @@ EVIDENCE_HEAD
 - 障害 A と障害 C は AP から見た症状が同じ（readyz 503）。
   DB コンテナ自身の稼働状態と、AP 側の所属ネットワーク・名前解決を見て
   初めて区別できる。症状だけで原因を決めない。
+- **同じ障害でも、観測した時刻で見え方が変わる。** AP を止めた直後は
+  504（名前解決のキャッシュが生きていて、消えた IP へ繋ぎに行き無応答）、
+  \`resolver\` の \`valid=10s\` を過ぎると 502（名前解決そのものが失敗）に
+  変わる。504 は上流のプロセス側、502 はサービス登録 / DNS 側を指すので、
+  拾った時刻を書かずに「502 だった」とだけ報告すると切り分けを誤らせる。
 
 ## この演習で確認していないこと
 

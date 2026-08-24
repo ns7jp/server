@@ -918,36 +918,35 @@ def test_skipped_check_is_not_announced_as_a_failure():
 B_SERIES_LOG_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}-B-[1-4]\.md$")
 
 
-def test_docs_and_evidence_agree_on_whether_b_series_ran():
-    """「B-1〜B-4 は未実行」と書いている以上、証跡ファイルがあってはならない。
+def test_evidence_index_matches_the_logs_on_disk_per_drill():
+    """B-n ごとに、証跡ファイルの有無と証跡の索引の表記を一致させる。
 
-    逆に証跡が出たら、README / 演習一覧 / 証跡の索引の 3 つを同時に直す
-    必要がある。片方だけ直して食い違うと、証跡台帳が信用できなくなる。
-    このテストはその 2 つの状態を結び付けて固定する。
+    実行したのに索引が未実行のままだと成果が埋もれ、実行していないのに
+    実行済みと書けば、この台帳が主張している「実測と未実測の区別」が
+    そこで壊れる。演習ごとに突き合わせる。
     """
     logs_dir = ROOT / "docs" / "drills" / "logs"
-    present = sorted(
-        path.name for path in logs_dir.iterdir()
-        if B_SERIES_LOG_PATTERN.match(path.name)
-    )
-    docs = {
-        "README.md": read("README.md"),
-        "docs/drills/README.md": read("docs", "drills", "README.md"),
-        "docs/evidence/README.md": read("docs", "evidence", "README.md"),
-    }
-    if present:
-        for name, text in docs.items():
-            assert "まだ実機で回していない" not in text, (
-                f"{name}: {present} があるのに未実行と書いている"
-            )
-        return
-    # 証跡が無い側。3 文書すべてがそう書いていること。
-    for name, text in docs.items():
-        assert ("まだ実機で回していない" in text
-                or "実機で回した証跡はまだありません" in text
-                or "ラボ本体は NOT RUN" in text), (
-            f"{name}: B-1〜B-4 が未実行であることを書いていない"
+    index = read("docs", "evidence", "README.md")
+    mismatches = []
+    for n in (1, 2, 3, 4):
+        has_log = any(
+            re.fullmatch(rf"\d{{4}}-\d{{2}}-\d{{2}}-B-{n}\.md", path.name)
+            for path in logs_dir.iterdir()
         )
+        row = next(
+            (line for line in index.splitlines()
+             if line.startswith(f"| B-{n} ")),
+            None,
+        )
+        assert row, f"証跡の索引に B-{n} の行が無い"
+        claims_run = "✅" in row
+        if has_log and not claims_run:
+            mismatches.append(f"B-{n}: 証跡があるのに索引が未実行のまま")
+        if claims_run and not has_log:
+            mismatches.append(f"B-{n}: 証跡が無いのに索引が実行済みと書いている")
+        if claims_run and f"-B-{n}.md" not in row:
+            mismatches.append(f"B-{n}: 実行済みなのに証跡へのリンクが無い")
+    assert not mismatches, "\n".join(mismatches)
 
 
 def test_stub_verification_is_not_presented_as_a_real_run():

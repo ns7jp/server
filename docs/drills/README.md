@@ -27,18 +27,29 @@ B-1 は `losetup` と device-mapper を使うため、通常の Linux kernel を
 
 ### この 4 本の現在の状態
 
-**演習はまだ実機で回していない。** つまり `docs/drills/logs/` に B-1 〜 B-4 の
-証跡は無い。実行できる環境（コンテナ、device-mapper）が手元に無いため。
-
-一方で **script 自体は動く状態にしてある。**
-
-| | 確かめたこと |
+| | 状態 |
 | --- | --- |
-| B-2 / B-3 / B-4 | `docker` を差し替えたスタブに置き換えて**通しで実行**した。正常系だけでなく「壊れている」入力でも FAIL が出ること（＝空振りで PASS しないこと）まで確かめた |
-| B-1 | 通しでは実行していない（device-mapper が要る）。安全装置テストを実行して 7/7 PASS、証跡出力部を出荷ファイルから抽出して実行 |
+| B-2 | ✅ 実コンテナで実行済み（[証跡](logs/2026-08-24-B-2.md)、9 PASS / 0 FAIL） |
+| B-3 | ✅ 実 PostgreSQL で実行済み（[証跡](logs/2026-08-24-B-3.md)、7 PASS / 0 FAIL。RTO 0.149 秒） |
+| B-1 | ❌ 未実行。device-mapper が要る。安全装置テストは実行して 7/7 PASS |
+| B-4 | ❌ 未実行。**現在の compose では成立しない**（後述） |
 
-この 2 つは別の話なので、[証跡の索引](../evidence/README.md)でも分けて
-書いている。スタブでの実行は実機の代わりにはならない。
+### B-4 が成立しない理由
+
+実コンテナで起動を試みて分かったこと。
+
+1. router に各セグメントの `.1` を要求していたが、Docker は既定で bridge 自身へ
+   `.1` を割り当てる。`Address already in use` で router が起動しない。
+   **この演習は一度も起動できていなかった。** gateway を `.254` へ寄せて修正した。
+2. Docker はコンテナごとに
+   `iptables -t raw -A PREROUTING -d <IP> ! -i <そのbridge> -j DROP` を入れる。
+   別セグメントから router 宛に来たパケットは **FORWARD へ届く前に落ちる**ため、
+   router を経由した L3 疎通が原理的に成立しない。該当規則を一時的に迂回すると
+   疎通し、戻すと再び不通になることまで実測した。
+3. `sysctl -w net.ipv4.ip_forward` も `/proc/sys` が read-only で失敗する。
+
+bridge network を 3 つ並べる構成では成立しない。単一の L2 ドメイン上に
+複数サブネットを載せる形へ設計を変える必要がある。
 
 安全装置そのものの検証は [`scripts/labs/storage-guard-test.sh`](../../scripts/labs/storage-guard-test.sh)
 が担当する（存在しないデバイス、`/` への mount、既存署名のあるディスクなどを
