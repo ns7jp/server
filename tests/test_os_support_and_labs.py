@@ -892,3 +892,24 @@ def test_rto_and_rpo_are_measured_below_one_second():
     # 秒粒度の時刻は timeline の表示にだけ使い、差分の計算には使わない。
     assert 'BACKUP_AT_EPOCH="$(date -u +%s)"' not in script
     assert 'INCIDENT_EPOCH="$(date -u +%s)"' not in script
+
+
+def test_skipped_check_is_not_announced_as_a_failure():
+    """SKIP-ENV は「未検証」であって「不合格」ではない。
+
+    routing ラボは 8021q が無い環境で VLAN の演習を SKIP-ENV として記録
+    する。その同じ条件で画面に `FAIL:` と出していると、証跡は SKIP-ENV
+    なのに実行した人は「VLAN の演習が落ちた」と読む。未検証と不合格の
+    取り違えは、この演習群が避けたいものそのもの。
+    """
+    script = read("labs", "routing", "run-drill.sh")
+    body = re.search(
+        r"check_vlan_support\(\) \{.*?\n\}", script, re.DOTALL
+    )
+    assert body, "check_vlan_support が見つからない"
+    message = body.group(0)
+    assert "SKIP-ENV" in script, "SKIP-ENV として記録していない"
+    assert "FAIL:" not in message, (
+        "SKIP-ENV を記録する条件で FAIL と表示している"
+    )
+    assert "SKIP:" in message, "未検証であることを表示していない"
