@@ -27,12 +27,22 @@
 # container_manage_cgroup などの boolean を有効化する必要がある。
 # ここでは「必要な boolean が落ちていないか」を検査だけ行い、
 # 暗黙に無効化しない。
+# disabled -> enforcing はファイルシステムの relabel を伴うため、
+# ansible.posix.selinux は "設定は変えたが reboot するまで実行中の
+# kernel には反映していない" という意味で reboot_required を返す。
+# ここで無視して boolean を設定しようとすると、実行中の SELinux は
+# まだ disabled のままなので "SELinux is disabled on this host" で
+# 失敗する。実機（AlmaLinux 9、disabled から enforcing への切り替え）
+# で踏んだ。reboot 待ちの間は boolean 設定を飛ばし、次回実行（reboot
+# 後）に委ねる。
 - name: Ensure the container SELinux boolean is enabled
   ansible.posix.seboolean:
     name: container_manage_cgroup
     state: true
     persistent: true
-  when: common_selinux_state == 'enforcing'
+  when:
+    - common_selinux_state == 'enforcing'
+    - not (common_selinux_applied.reboot_required | default(false))
 
 - name: Report that a relabel-requiring SELinux change was made
   ansible.builtin.debug:
@@ -40,5 +50,7 @@
       SELinux state changed from
       {{ common_selinux_current.stdout | default('unknown') }} to
       {{ common_selinux_state }}. A reboot with a filesystem relabel is
-      required before this host is considered handed over.
+      required before this host is considered handed over. The
+      container_manage_cgroup boolean was not set this run and will be
+      applied on the next run after reboot.
   when: common_selinux_applied.reboot_required | default(false)
