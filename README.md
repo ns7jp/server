@@ -453,14 +453,24 @@ sudo ./scripts/labs/storage-guard-test.sh
 | **実装コードの生成** | Ansible role、Terraform module、CI workflow、テスト、ラボの雛形 |
 | コードレビュー、リンク・表記の確認 | PR 上でのレビューと修正提案 |
 
-`git log` を見ると、`Author: Claude <noreply@anthropic.com>` のコミットが
-一定数ある。上表の「実装コードの生成」がそれにあたる。
+`git log --no-merges` で数えると、`Author: Claude <noreply@anthropic.com>` または
+`Co-Authored-By: Claude` を含むコミットは **95 件中 49 件**（2026-08-25 時点）。
+プロフィール側は 71 件中 42 件、サイト側は 77 件中 19 件で、
+**範囲はこのリポジトリに限らない**（内訳は
+[プロフィール README](https://github.com/ns7jp/ns7jp/blob/main/README.md#ai-の利用について)）。
 
 **AI が生成した手順や説明を、本人が実行・理解していない状態で実績にはしない。**
-実機の操作、結果の採録、機密情報のマスク、技術選定の最終判断、面接での説明は
-本人が担当する。実際に手を動かし、仮説を外した経緯も含めて記録したものは
-[docs/evidence/](docs/evidence/) と、プロフィール側の
-[学習の一次記録](https://github.com/ns7jp/ns7jp/blob/main/LEARNINGS.md) にある。
+機密情報のマスク、技術選定の最終判断、面接での説明は本人が担当する。
+
+**証跡の実行環境については、次の区別を守る。** B-1〜B-4（2026-08-24）は
+AI 支援セッションの作業環境上で実行しており、独立した物理／VPS ホストでも
+本人の手元 WSL2 でもない。各証跡ファイルの「実施環境」欄に採録時の `uname` を
+そのまま残している。2026-08-18 / 19 の WSL2 上の実測は、証跡に実行者を明記している。
+
+仮説を外した経緯を含む一次記録は、プロフィール側の
+[学習の一次記録](https://github.com/ns7jp/ns7jp/blob/main/LEARNINGS.md)にある
+（**本人のみが編集するファイル**）。実行して見つかった欠陥は
+[欠陥台帳](docs/evidence/defects-found.md)に 1 件ずつ記録している。
 
 ## 現在の制約と次の拡張
 
@@ -472,10 +482,14 @@ sudo ./scripts/labs/storage-guard-test.sh
   [10 立ち上げと受け入れ試験](docs/build-package/10-host-bringup-and-acceptance.md)
   に用意しています。
 - AlmaLinux / Rocky 9 対応は role と Molecule scenario までです。**実機の
-  AlmaLinux ホストへ `site.yml` を適用した証跡はまだありません。**
-- **B-1 〜 B-4 は実行した証跡があります。** ただしラボ環境（loop device /
-  network namespace）での演習なので、物理ディスク、物理スイッチ、VLAN 対応
-  スイッチの設定は対象外です。B-4 の VLAN 部は kernel が `CONFIG_VLAN_8021Q`
+  AlmaLinux ホストへ `site.yml` を適用した証跡も、Molecule `el9` シナリオの
+  実行証跡もまだありません**（`ansible-integration.yml` は `workflow_dispatch`
+  のみで、push / PR では起動しません）。
+- **B-1 〜 B-4 は実行した証跡がありますが、実行環境は AI 支援セッションの
+  作業環境です**（B-1 は qemu 上の Ubuntu 24.04 ゲスト、B-2 / B-3 は Docker
+  コンテナ、B-4 は network namespace）。独立した物理／VPS ホストや、
+  本人の手元 WSL2 での再実行証跡ではありません。ラボ環境の演習なので、
+  物理ディスク、物理スイッチ、VLAN 対応スイッチの設定は対象外です。B-4 の VLAN 部は kernel が `CONFIG_VLAN_8021Q`
   を有効にしている環境でのみ実行でき、証跡を採った環境では未検証（`SKIP-ENV`）
   です。
 - AWS Terraform は構成コードを実装済みですが、AWS上のapply / destroy、費用、復元試験の実測証跡はまだありません。

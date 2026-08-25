@@ -32,9 +32,9 @@
 # kernel には反映していない" という意味で reboot_required を返す。
 # ここで無視して boolean を設定しようとすると、実行中の SELinux は
 # まだ disabled のままなので "SELinux is disabled on this host" で
-# 失敗する。実機（AlmaLinux 9、disabled から enforcing への切り替え）
-# で踏んだ。reboot 待ちの間は boolean 設定を飛ばし、次回実行（reboot
-# 後）に委ねる。
+# 失敗する。ansible.posix.selinux の reboot_required 仕様から想定した
+# 挙動であり、**AlmaLinux 実機での実行証跡は未採録**（証跡台帳を参照）。
+# reboot 待ちの間は boolean 設定を飛ばし、次回実行（reboot 後）に委ねる。
 - name: Ensure the container SELinux boolean is enabled
   ansible.posix.seboolean:
     name: container_manage_cgroup

@@ -19,6 +19,17 @@
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
+# 証跡には「どこで、誰が」流したのかを必ず残す。実行環境を書かない証跡は、
+# あとから「実機で実行した」と読み替えられてしまう（STATUS §0 ルール 9）。
+drill_operator() {
+  printf '%s' "${DRILL_OPERATOR:-未設定（DRILL_OPERATOR 環境変数で指定する）}"
+}
+
+drill_host_line() {
+  printf '%s @ %s' "$(id -un 2>/dev/null || echo unknown)" "$(hostname 2>/dev/null || echo unknown)"
+}
+
+
 LAB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${LAB_DIR}/../.." && pwd)"
 COMPOSE=(docker compose -f "${LAB_DIR}/compose.yaml")
@@ -41,6 +52,51 @@ docker_server_version() {
   local v
   v="$(docker version --format '{{.Server.Version}}' 2>/dev/null | tr -d '\n')" || true
   printf '%s' "${v:-unknown}"
+}
+
+# 証跡の散文は、判定行と同じく実行結果に従わせる。VLAN セクションを
+# SKIP した回に「VLAN ID 不一致を切り分けた」と書いてしまうと、
+# 判定行を機械生成にした意味が無くなる。
+vlan_ran() {
+  [[ "${VLAN_SKIPPED:-0}" -eq 0 ]]
+}
+
+vlan_summary_line() {
+  if vlan_ran; then
+    printf '%s' 'VLAN 10 = 192.168.10.0/24（segment-c 上の 802.1Q サブインターフェース）'
+  else
+    printf '%s' '**未実施**（この kernel が 802.1Q 非対応のため SKIP-ENV）'
+  fi
+}
+
+l2_commands_line() {
+  if vlan_ran; then
+    printf '%s' '`ip -br link`、`ip -d link show <if>.<vlan>`、同セグメントへの `ping`'
+  else
+    printf '%s' '`ip -br link`、同セグメントへの `ping`（VLAN 部は未実施）'
+  fi
+}
+
+vlan_conclusion_block() {
+  if vlan_ran; then
+    cat <<'VLAN_YES'
+- **IP / subnet / link state がすべて正常なのに通らない** → VLAN ID 不一致。
+  L3 の情報だけでは原因にたどり着けない。
+VLAN_YES
+  else
+    cat <<'VLAN_NO'
+> VLAN ID 不一致の切り分けは、この実行では**確認していません**（下記参照）。
+VLAN_NO
+  fi
+}
+
+vlan_not_verified_block() {
+  vlan_ran && return 0
+  cat <<'VLAN_SKIP'
+- **802.1Q VLAN（B4-L2-02 / 03 / 04）は未実施。** この kernel が
+  `CONFIG_VLAN_8021Q` を持たないため、VLAN インターフェースを作成できず
+  SKIP-ENV とした。VLAN ID 不一致の切り分けは、この証跡では示していない。
+VLAN_SKIP
 }
 
 record() {
@@ -270,10 +326,12 @@ mkdir -p "$EVIDENCE_DIR"
 | --- | --- |
 | 実施日時 (UTC) | $(date -u '+%Y-%m-%d %H:%M:%S') |
 | 実施環境 | $(uname -srm) / Docker $(docker_server_version) |
+| 実行ホスト | $(drill_host_line) |
+| 実行者 | $(drill_operator) |
 | commit SHA | $(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo unknown) |
 | 構成 | host-a — router — host-b / host-c（3 セグメント、default route なし） |
 | セグメント | a 172.30.10.0/24 / b 172.30.20.0/24 / c 172.30.30.0/24 |
-| VLAN | VLAN 10 = 192.168.10.0/24（segment-c 上の 802.1Q サブインターフェース） |
+| VLAN | $(vlan_summary_line) |
 
 ## 判定
 
@@ -287,12 +345,13 @@ EVIDENCE_HEAD
 
 ## 切り分けの順序（この演習で使った形）
 
-| 層 | 見るもの | 使ったコマンド |
+| 層 | 見るもの | この演習で実際に使ったコマンド |
 | --- | --- | --- |
-| L1 / L2 | link state、VLAN ID、同一セグメント内の到達 | \`ip -br link\`、\`ip -d link show <if>.<vlan>\`、同セグメントへの \`ping\` |
+| L1 / L2 | link state、VLAN ID、同一セグメント内の到達 | $(l2_commands_line) |
 | L3 | 経路表、往復の経路、転送設定 | \`ip route show\`、\`traceroute -n\`、\`sysctl net.ipv4.ip_forward\` |
-| L4 | ポート単位の到達 | \`nc -z\`、\`ss -lntup\` |
-| L7 | アプリの応答 | \`curl -v\` |
+
+> L4（\`nc -z\` / \`ss -lntup\`）と L7（\`curl -v\`）は、この演習では実行していません。
+> 層別 health による切り分けは [B-2 の 3 層ラボ](../three-tier/README.md)が担当します。
 
 ## この演習が示していること
 
@@ -301,12 +360,11 @@ EVIDENCE_HEAD
   判断しない。
 - **両端の経路表が正しいのに通らない** → 中継側の \`ip_forward\`。
   端末だけ見ていても分からない。
-- **IP / subnet / link state がすべて正常なのに通らない** → VLAN ID 不一致。
-  L3 の情報だけでは原因にたどり着けない。
+$(vlan_conclusion_block)
 
 ## この演習で確認していないこと
 
-- Linux の network namespace 上の再現であり、物理スイッチ、ケーブル、
+$(vlan_not_verified_block)- Linux の network namespace 上の再現であり、物理スイッチ、ケーブル、
   ポート VLAN の設定、リンクアグリゲーション（bonding / LACP）、
   スパニングツリーは対象外。
 - 動的ルーティング（OSPF / BGP）は対象外。静的ルートのみ。

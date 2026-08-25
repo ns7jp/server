@@ -22,16 +22,31 @@
         that:
           - tz.stdout == 'Asia/Tokyo'
 
-    - name: Read sshd_config
-      ansible.builtin.slurp:
-        src: /etc/ssh/sshd_config
-      register: sshd
+    # ファイル本文の grep では Include の順序を読み違えたまま通ってしまう。
+    # sshd が実際に採用する値を検査する。
+    - name: Read the effective sshd configuration
+      ansible.builtin.command:
+        argv:
+          - /usr/sbin/sshd
+          - -T
+      register: sshd_effective
+      changed_when: false
 
-    - name: Assert root SSH login and password authentication are disabled
+    - name: Assert root login and password authentication are effectively disabled
       ansible.builtin.assert:
         that:
-          - "'PermitRootLogin no' in (sshd.content | b64decode)"
-          - "'PasswordAuthentication no' in (sshd.content | b64decode)"
+          - "'permitrootlogin no' in (sshd_effective.stdout | lower)"
+          - "'passwordauthentication no' in (sshd_effective.stdout | lower)"
+
+    - name: Stat the hardening drop-in
+      ansible.builtin.stat:
+        path: /etc/ssh/sshd_config.d/10-hardening.conf
+      register: sshd_dropin
+
+    - name: Assert the hardening drop-in is installed
+      ansible.builtin.assert:
+        that:
+          - sshd_dropin.stat.exists
 
     # Debian には無い RHEL 固有の確認項目。
     - name: Check that the RHEL time synchronization unit is chronyd

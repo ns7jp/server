@@ -19,6 +19,17 @@
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
+# 証跡には「どこで、誰が」流したのかを必ず残す。実行環境を書かない証跡は、
+# あとから「実機で実行した」と読み替えられてしまう（STATUS §0 ルール 9）。
+drill_operator() {
+  printf '%s' "${DRILL_OPERATOR:-未設定（DRILL_OPERATOR 環境変数で指定する）}"
+}
+
+drill_host_line() {
+  printf '%s @ %s' "$(id -un 2>/dev/null || echo unknown)" "$(hostname 2>/dev/null || echo unknown)"
+}
+
+
 LAB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${LAB_DIR}/../.." && pwd)"
 COMPOSE=(docker compose -f "${LAB_DIR}/compose.yaml")
@@ -278,6 +289,8 @@ mkdir -p "$EVIDENCE_DIR"
 | --- | --- |
 | 実施日時 (UTC) | $(date -u '+%Y-%m-%d %H:%M:%S') |
 | 実施環境 | $(uname -srm) / Docker $(docker_server_version) |
+| 実行ホスト | $(drill_host_line) |
+| 実行者 | $(drill_operator) |
 | commit SHA | $(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo unknown) |
 | 構成 | client -> web(nginx) -> ap(gunicorn/Flask) -> db(PostgreSQL 16) |
 | ネットワーク | dmz 172.29.10.0/24 / app-tier 172.29.20.0/24 (internal) / db-tier 172.29.30.0/24 (internal) |

@@ -4,9 +4,22 @@ route:
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
+  routes:
+    # Watchdog は常時発火する。人へ通知するためのものではなく、
+    # 「届かなくなったこと」を外部の dead man's switch が検知するための信号。
+    # 既定の receiver へ流すと 4 時間ごとにノイズになるため、専用経路へ分ける。
+    - matchers:
+        - alertname="Watchdog"
+      receiver: watchdog
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 1m
 
 receivers:
   - name: local-alert-view
+  # 通知先を持たない receiver。ローカル検証では Watchdog をここで受け止める。
+  # 実運用では外部の dead man's switch（Healthchecks.io 等）へ webhook する。
+  - name: watchdog
 
 inhibit_rules:
   - source_matchers:

@@ -451,6 +451,20 @@
     mode: '0644'
   notify: Restart managed Alertmanager service
 
+# 監視対象と environment ラベルを inventory から決める。静的ファイルのままだと
+# environment が 'lab' 固定になり、監視対象の追加もできない。
+- name: Render environment-specific Prometheus configuration before compose starts
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ app_repo_target }}/deploy/prometheus/prometheus.yml"
+    owner: "{{ server_monitor_user }}"
+    group: "{{ server_monitor_group }}"
+    # Prometheus は非 root の container UID で動く。0750 の配備先ディレクトリが
+    # host 側の traversal を防ぐ。
+    mode: '0644'
+    validate: "/usr/bin/env test -s %s"
+  notify: Restart managed Prometheus service
+
 - name: Bring the compose stack up
   community.docker.docker_compose_v2:
     project_src: "{{ app_repo_target }}"

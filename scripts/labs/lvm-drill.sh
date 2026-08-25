@@ -23,6 +23,17 @@
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
+# 証跡には「どこで、誰が」流したのかを必ず残す。実行環境を書かない証跡は、
+# あとから「実機で実行した」と読み替えられてしまう（STATUS §0 ルール 9）。
+drill_operator() {
+  printf '%s' "${DRILL_OPERATOR:-未設定（DRILL_OPERATOR 環境変数で指定する）}"
+}
+
+drill_host_line() {
+  printf '%s @ %s' "$(id -un 2>/dev/null || echo unknown)" "$(hostname 2>/dev/null || echo unknown)"
+}
+
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WORK_DIR="${LVM_DRILL_WORK_DIR:-/var/tmp/server-monitor-lvm-drill}"
 VG_NAME="${LVM_DRILL_VG:-vg_drill}"
@@ -263,6 +274,8 @@ cat <<EVIDENCE_HEAD
 | --- | --- |
 | 実施日時 (UTC) | $(date -u '+%Y-%m-%d %H:%M:%S') |
 | 実施環境 | ${OS_PRETTY_NAME} / kernel $(uname -r) |
+| 実行ホスト | $(drill_host_line) |
+| 実行者 | $(drill_operator) |
 | commit SHA | $(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo 'unknown') |
 | 対象デバイス | ${FIRST_DEVICE} (${BACKING_SIZE}) + ${SECOND_DEVICE} (${BACKING_SIZE}) ※loop device |
 | VG / LV | ${VG_NAME} / ${LV_NAME} |

@@ -2,5 +2,10 @@
 - name: Converge common role
   hosts: all
   become: true
+  vars:
+    # このコンテナへは docker 接続で入っており SSH は使わない。
+    # 実ホストではここを true にせず、common_admin_user と
+    # common_admin_authorized_keys を設定すること。
+    common_allow_keyless_password_lockout: true
   roles:
     - role: common

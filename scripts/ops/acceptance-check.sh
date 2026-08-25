@@ -83,6 +83,7 @@ fi
 PASS_COUNT=0
 FAIL_COUNT=0
 SKIP_COUNT=0
+NA_COUNT=0
 declare -a RESULT_ROWS=()
 
 # 判定は必ずこの関数を通す。結果票に PASS を直書きしないことで、
@@ -90,9 +91,14 @@ declare -a RESULT_ROWS=()
 record() {
   local id="$1" title="$2" expected="$3" observed="$4" verdict="$5"
   RESULT_ROWS+=("| ${id} | ${title} | ${expected} | ${observed} | ${verdict} |")
+  # SKIP と N/A を分ける。
+  #   SKIP = この環境では確認できなかった（未確認。合格ではない）
+  #   N/A  = この script の設計上の対象外（別の証跡が担当する）
+  # 両方を SKIP にまとめると、確認できなかった項目が対象外に紛れる。
   case "$verdict" in
     PASS) PASS_COUNT=$((PASS_COUNT + 1)) ;;
     SKIP) SKIP_COUNT=$((SKIP_COUNT + 1)) ;;
+    N/A)  NA_COUNT=$((NA_COUNT + 1)) ;;
     *)    FAIL_COUNT=$((FAIL_COUNT + 1)) ;;
   esac
   printf '  [%-6s] %-6s %s -> %s\n' "$verdict" "$id" "$title" "$observed"
@@ -134,6 +140,36 @@ count_lines() {
 }
 
 have() { command -v "$1" >/dev/null 2>&1; }
+
+# 受け入れ試験は「引き渡してよいか」を判定する。前提コマンドが無い環境で
+# 個別に SKIP へ落とすと、確認できていない項目を抱えたまま合計が緑になり、
+# 最初の恒久ホストの証跡が「SKIP だらけの緑」になる。
+# 道具が揃っていないことは試験の結果ではなく前提の不備なので、
+# ここで全体を止める（labs/three-tier/run-drill.sh の B2-02 と同じ考え方）。
+REQUIRED_TOOLS=(ip ss systemctl docker awk grep sed getent)
+require_tools() {
+  local missing=() tool
+  for tool in "${REQUIRED_TOOLS[@]}"; do
+    have "$tool" || missing+=("$tool")
+  done
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    cat >&2 <<MSG
+不足しているコマンド: ${missing[*]}
+
+受け入れ試験はこれらを前提にしている。個別に SKIP へ落とすと、確認できて
+いない項目を抱えたまま合計が PASS になるため、ここで停止する。
+対象ホストへ導入してから再実行すること（Debian 系: iproute2 / procps /
+systemd / docker.io、RHEL 系: iproute / systemd / docker-ce）。
+
+どうしても実行したい場合のみ ACCEPTANCE_ALLOW_MISSING_TOOLS=1 を付ける。
+その場合、結果票は「合格」として扱わないこと。
+MSG
+    [[ "${ACCEPTANCE_ALLOW_MISSING_TOOLS:-0}" == "1" ]] || exit 2
+    printf 'ACCEPTANCE_ALLOW_MISSING_TOOLS=1 のため続行する（結果票は合格として扱わない）\n' >&2
+    TOOLS_INCOMPLETE=1
+  fi
+}
+TOOLS_INCOMPLETE=0
 
 require_root() {
   [[ "$(id -u)" -eq 0 ]] || {
@@ -221,7 +257,7 @@ run_acceptance_checks() {
   am="$(http_code "http://127.0.0.1:${ALERTMANAGER_PORT}/-/ready")"
   record IT-08a "Alertmanager readiness" "200" "status=${am}" "$(verdict_eq "$am" 200)"
   # 実 Slack 配信は webhook 秘密値と外部到達が要るため、この script では扱わない。
-  record IT-08 "alert 実配信" "Slack へ到達" "この script の対象外" SKIP
+  record IT-08 "alert 実配信" "Slack へ到達" "この script の設計上の対象外（別途 Slack 実配信の証跡で確認する）" "N/A"
 
   # --- ST-01 bind address -------------------------------------------------
   if have ss; then
@@ -353,6 +389,9 @@ emit_evidence() {
 | boot ID | $(boot_id) |
 | 配備 revision | $(revision) |
 | 配備先 | ${PROJECT_DIR} |
+| 実行ホスト | $(id -un 2>/dev/null || echo unknown) @ $(hostname 2>/dev/null || echo unknown) |
+| 実行者 | ${DRILL_OPERATOR:-未設定（DRILL_OPERATOR 環境変数で指定する）} |
+| 前提コマンド | $( ((TOOLS_INCOMPLETE)) && echo '**不足あり（この結果票は合格として扱わない）**' || echo '揃っている' ) |
 
 ## 判定
 
@@ -362,7 +401,12 @@ HEAD
     printf '%s\n' "${RESULT_ROWS[@]}"
     cat <<TAIL
 
-合計: ${PASS_COUNT} PASS / ${FAIL_COUNT} FAIL / ${SKIP_COUNT} SKIP
+合計: ${PASS_COUNT} PASS / ${FAIL_COUNT} FAIL / ${SKIP_COUNT} SKIP / ${NA_COUNT} N/A
+
+> **SKIP は「この環境で確認できなかった」であり、合格ではありません。**
+> SKIP が 1 件でもある結果票は、引き渡しの合格証跡として使えません。
+> N/A はこの script の設計上の対象外で、別の証跡が担当します。
+> $( ((SKIP_COUNT)) && echo "**この実行には SKIP が ${SKIP_COUNT} 件あります。合格として扱わないでください。**" || echo "この実行に SKIP はありません。" )
 
 ${extra}
 
@@ -383,7 +427,7 @@ ${extra}
 TAIL
   } > "$outfile"
   printf '\n証跡: %s\n' "$outfile"
-  printf '合計: %d PASS / %d FAIL / %d SKIP\n' "$PASS_COUNT" "$FAIL_COUNT" "$SKIP_COUNT"
+  printf '合計: %d PASS / %d FAIL / %d SKIP / %d N/A\n' "$PASS_COUNT" "$FAIL_COUNT" "$SKIP_COUNT" "$NA_COUNT"
 }
 
 save_state() {
@@ -400,6 +444,7 @@ save_state() {
 
 # --- モード別実行 ----------------------------------------------------------
 require_root
+require_tools
 
 case "$MODE" in
   baseline)
@@ -488,5 +533,34 @@ case "$MODE" in
     ;;
 esac
 
-# FAIL が 1 件でもあれば非ゼロ終了。SKIP は成否に含めない。
-[[ $FAIL_COUNT -eq 0 ]]
+# 合否判定。FAIL が無いことに加えて、
+#  - SKIP が無いこと（SKIP は未確認であって合格ではない）
+#  - 判定件数が下限を超えていること（何も実行できていない緑を防ぐ）
+# の 3 つを満たしたときだけ 0 で終わる。
+# baseline モードは状態を保存するだけで判定を行わないため対象外。
+ACCEPTANCE_MIN_CHECKS="${ACCEPTANCE_MIN_CHECKS:-10}"
+
+if [[ "$MODE" == "baseline" ]]; then
+  exit 0
+fi
+
+exit_code=0
+if [[ $FAIL_COUNT -ne 0 ]]; then
+  printf 'FAIL が %d 件ある。\n' "$FAIL_COUNT" >&2
+  exit_code=1
+fi
+if [[ $SKIP_COUNT -ne 0 ]]; then
+  printf 'SKIP が %d 件ある。SKIP は未確認であり合格ではないため、合格としない。\n' "$SKIP_COUNT" >&2
+  exit_code=1
+fi
+if [[ $((PASS_COUNT + FAIL_COUNT)) -lt ${ACCEPTANCE_MIN_CHECKS} ]]; then
+  printf '判定できた項目が %d 件で下限 %s 件に満たない。実行できていない試験がある。\n' \
+    "$((PASS_COUNT + FAIL_COUNT))" "${ACCEPTANCE_MIN_CHECKS}" >&2
+  exit_code=1
+fi
+if ((TOOLS_INCOMPLETE)); then
+  printf '前提コマンドが不足したまま実行した。この結果票は合格として扱わない。\n' >&2
+  exit_code=1
+fi
+exit "$exit_code"
+

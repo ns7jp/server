@@ -69,6 +69,10 @@
   ansible.builtin.include_tasks: "firewall-{{ common_firewall_backend }}.yml"
   when: common_manage_firewall | bool
 
+# 鍵で入れる管理者アカウントの用意は、必ず SSH の締め付けより前に行う。
+- name: Ensure key-based administrative access exists
+  ansible.builtin.include_tasks: admin-access.yml
+
 - name: Harden SSH server configuration
   ansible.builtin.include_tasks: ssh.yml
 

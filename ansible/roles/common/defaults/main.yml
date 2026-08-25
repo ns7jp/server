@@ -15,6 +15,27 @@ common_enable_epel: true
 common_disable_root_ssh: true
 common_password_authentication: false
 
+# sshd は最初に得た値を採用し、Ubuntu 22.04 / 24.04 も AlmaLinux / Rocky 9 も
+# sshd_config の先頭で drop-in を読む。cloud image の 50-cloud-init.conf に
+# 負けないよう 10- で始める。
+common_sshd_dropin_path: /etc/ssh/sshd_config.d/10-hardening.conf
+# ファイルの中身ではなく sshd -T の実効値を検査するかどうか。
+# 既定 true。false にする場合は、その理由を証跡へ残すこと。
+common_verify_sshd_effective: true
+
+# 鍵で入れる管理者アカウント。恒久ホストでは必ず設定する。
+# 空のままでも既存の authorized_keys があれば適用できるが、
+# どちらも無い状態で password 認証を落とすことは拒否する。
+common_admin_user: "{{ server_monitor_admin_user | default('') }}"
+common_admin_authorized_keys: "{{ server_monitor_admin_authorized_keys | default([]) }}"
+# true にすると、role が管理する鍵以外を authorized_keys から取り除く。
+common_admin_authorized_keys_exclusive: false
+common_admin_sudo_nopasswd: false
+common_admin_sudo_group: "{{ common_default_sudo_group }}"
+# SSH 以外の手段で接続している場合（docker 接続の Molecule コンテナ、
+# クラウドのシリアルコンソールなど）にだけ true にする。
+common_allow_keyless_password_lockout: false
+
 # firewall を実際に操作するか。既定 true。
 # firewalld / ufw は host 側の nftables / iptables kernel module を使うため、
 # 一部のコンテナ環境では操作できない。docker role の docker_manage_service や

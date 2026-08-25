@@ -1,0 +1,96 @@
+---
+# password 認証と root ログインを落とす前に、鍵で入れる管理者アカウントを
+# 用意する。この順序を逆にすると、鍵配布に失敗した時点でホストから
+# 締め出される。site.yml を初めて恒久ホストへ流すときに最も起きやすい事故。
+- name: Refuse an admin account without any authorized key
+  ansible.builtin.assert:
+    that:
+      - (common_admin_authorized_keys | default([]) | length) > 0
+    fail_msg: >-
+      common_admin_user is set to '{{ common_admin_user }}' but
+      common_admin_authorized_keys is empty. Creating an interactive admin
+      account with no key while password authentication is being disabled
+      would lock this host out. Provide at least one public key.
+  when: (common_admin_user | default('') | length) > 0
+
+- name: Ensure the admin group exists
+  ansible.builtin.group:
+    name: "{{ common_admin_user }}"
+    state: present
+  when: (common_admin_user | default('') | length) > 0
+
+- name: Ensure the admin account exists
+  ansible.builtin.user:
+    name: "{{ common_admin_user }}"
+    group: "{{ common_admin_user }}"
+    groups: "{{ common_admin_sudo_group }}"
+    append: true
+    shell: /bin/bash
+    create_home: true
+    state: present
+  when: (common_admin_user | default('') | length) > 0
+
+- name: Install the admin authorized keys
+  ansible.posix.authorized_key:
+    user: "{{ common_admin_user }}"
+    key: "{{ common_admin_authorized_keys | join('\n') }}"
+    exclusive: "{{ common_admin_authorized_keys_exclusive | bool }}"
+    state: present
+  when: (common_admin_user | default('') | length) > 0
+
+# sudoers は本体を編集せず drop-in に置く。visudo -cf での検証を必ず通し、
+# 壊れた sudoers を書いて sudo 自体が使えなくなる事故を防ぐ。
+- name: Install the admin sudoers drop-in
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/10-{{ common_admin_user }}"
+    owner: root
+    group: root
+    mode: '0440'
+    content: |
+      # Managed by the common role. Do not edit by hand.
+      {{ common_admin_user }} ALL=(ALL:ALL) {{ 'NOPASSWD:ALL' if (common_admin_sudo_nopasswd | bool) else 'ALL' }}
+    validate: /usr/sbin/visudo -cf %s
+  when: (common_admin_user | default('') | length) > 0
+
+# 管理者アカウントを明示していない場合でも、鍵で入れる非 root アカウントが
+# 1 つも無い状態で password 認証を落とすのは締め出しと同義なので、そこで止める。
+- name: Look for a non-root account that already has an SSH authorized key
+  ansible.builtin.command:
+    argv:
+      - find
+      - /home
+      - -mindepth
+      - '3'
+      - -maxdepth
+      - '3'
+      - -path
+      - '*/.ssh/authorized_keys'
+      - -size
+      - '+0c'
+      - -print
+      - -quit
+  register: common_existing_authorized_key
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when:
+    - not (common_password_authentication | bool)
+    - not (common_allow_keyless_password_lockout | bool)
+
+- name: Refuse to disable password authentication with no usable SSH key on the host
+  ansible.builtin.assert:
+    that:
+      - >-
+        (common_admin_user | default('') | length) > 0
+        or ((common_existing_authorized_key.stdout | default('')) | trim | length) > 0
+    fail_msg: >-
+      Password authentication is about to be disabled, but no non-root account
+      on this host has a non-empty ~/.ssh/authorized_keys and
+      common_admin_user is not set. Applying this role would lock the host out.
+      Set common_admin_user and common_admin_authorized_keys, or set
+      common_allow_keyless_password_lockout=true if you connect by another
+      means (for example a Molecule container over the docker connection,
+      or a cloud serial console).
+  when:
+    - not (common_password_authentication | bool)
+    - not (common_allow_keyless_password_lockout | bool)

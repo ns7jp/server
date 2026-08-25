@@ -35,3 +35,6 @@ common_default_firewall_backend: ufw
 
 # SELinux は RHEL 系のみ。Debian 系では該当タスクを実行しない。
 common_selinux_supported: false
+
+# sudo 権限を与えるグループ。Debian 系は sudo、RHEL 系は wheel。
+common_default_sudo_group: sudo
