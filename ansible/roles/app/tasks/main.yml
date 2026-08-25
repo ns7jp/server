@@ -332,6 +332,7 @@
           - "--exclude=/.artifacts/"
           - "--exclude=/.server-monitor-deploy-revision"
           - "--exclude=/deploy/alertmanager/alertmanager.ansible.yml"
+          - "--exclude=/deploy/prometheus/prometheus.ansible.yml"
           - "--exclude=/deploy/secrets/*.txt"
           - "--exclude=/deploy/tls/server.key"
           - "--exclude=/deploy/tls/server.crt"
