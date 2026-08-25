@@ -1241,6 +1241,15 @@ def test_prometheus_render_does_not_overwrite_the_tracked_static_file():
     assert "deploy/prometheus/prometheus.ansible.yml:/etc/prometheus/prometheus.yml:ro" in compose_ansible
     assert "deploy/prometheus/prometheus.ansible.yml" in gitignore
 
+    # alertmanager.ansible.yml と同様、この file は "Synchronize tracked
+    # release and delete stale target drift" の delete=true にとって git
+    # 管理外のドリフトに見える。rsync の --exclude で保護しないと、適用の
+    # たびに sync が削除し、template task がまた作り直す、を繰り返して
+    # 2 回目の適用が永遠に changed=0 にならない（1 つ前のコミットで
+    # prometheus.yml を直接上書きしていたのと同じ形の非冪等バグが、
+    # 別名にしただけでは解消しなかった。CI で 2 回連続して踏んだ）。
+    assert "--exclude=/deploy/prometheus/prometheus.ansible.yml" in tasks
+
     # ansible_managed は既定でレンダー時刻を含み、別名にしても
     # 每回 changed になる。alertmanager.yml.j2 も使っていない。
     template = read("ansible", "roles", "app", "templates", "prometheus.yml.j2")
