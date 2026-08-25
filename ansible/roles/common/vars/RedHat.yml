@@ -31,3 +31,6 @@ common_chrony_service_name: chronyd
 common_default_firewall_backend: firewalld
 
 common_selinux_supported: true
+
+# sudo 権限を与えるグループ。Debian 系は sudo、RHEL 系は wheel。
+common_default_sudo_group: wheel

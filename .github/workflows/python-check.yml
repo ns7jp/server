@@ -37,6 +37,7 @@ jobs:
           cp deploy/secrets/grafana_admin_password.txt.example deploy/secrets/grafana_admin_password.txt
           cp deploy/secrets/slack_webhook_url.txt.example deploy/secrets/slack_webhook_url.txt
           cp deploy/alertmanager/alertmanager.yml deploy/alertmanager/alertmanager.ansible.yml
+          cp deploy/prometheus/prometheus.yml deploy/prometheus/prometheus.ansible.yml
           docker compose config --quiet
           docker compose -f compose.yaml -f compose.slack.yaml.example config --quiet
           docker compose -f compose.yaml -f compose.ansible.yaml config --quiet

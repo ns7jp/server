@@ -1,8 +1,11 @@
+{# Ansible-managed Prometheus configuration. Do not edit on the host. #}
+{# ansible_managed は既定でレンダー時刻を含み、毎回 changed になるため使わない
+   （alertmanager.yml.j2 と同じ方針）。 #}
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    monitor: server-monitor-lab
+    monitor: {{ app_prometheus_monitor_label }}
 
 rule_files:
   - /etc/prometheus/rules.yml
@@ -22,20 +25,30 @@ scrape_configs:
     static_configs:
       - targets: ["app:5000"]
         labels:
-          environment: lab
+          environment: {{ server_monitor_environment }}
 
+  # 監視サーバー 1 台が N 台の node_exporter を scrape する形。
+  # 監視対象を増やすときは、監視スタックをもう 1 式立てるのではなく
+  # app_node_exporter_targets へ 1 行足す。
   - job_name: linux-node
     static_configs:
       - targets: ["node-exporter:9100"]
         labels:
-          environment: lab
+          environment: {{ server_monitor_environment }}
+          host: {{ inventory_hostname }}
+{% for target in app_node_exporter_targets %}
+      - targets: ["{{ target.address }}"]
+        labels:
+          environment: {{ target.environment | default(server_monitor_environment) }}
+          host: {{ target.host | default(target.address | regex_replace(':.*$', '')) }}
+{% endfor %}
 
   # アラート経路自体の生存監視（「監視の監視」）
   - job_name: alertmanager
     static_configs:
       - targets: ["alertmanager:9093"]
         labels:
-          environment: lab
+          environment: {{ server_monitor_environment }}
 
   # Prometheus 自身。これが無いと prometheus_rule_evaluation_failures_total も
   # prometheus_notifications_dropped_total も取れず、「監視の監視」を名乗れない。
@@ -43,14 +56,14 @@ scrape_configs:
     static_configs:
       - targets: ["localhost:9090"]
         labels:
-          environment: lab
+          environment: {{ server_monitor_environment }}
 
   # blackbox-exporter 自身の up メトリクス
   - job_name: blackbox
     static_configs:
       - targets: ["blackbox:9115"]
         labels:
-          environment: lab
+          environment: {{ server_monitor_environment }}
 
   # SLI: ユーザーが触る入口 (nginx) を通して /healthz を 30 秒ごとに probe する。
   - job_name: blackbox-probe-health
@@ -63,7 +76,7 @@ scrape_configs:
       - targets:
           - http://nginx:8080/healthz
         labels:
-          environment: lab
+          environment: {{ server_monitor_environment }}
           slo_service: server-monitor
     relabel_configs:
       - source_labels: [__address__]

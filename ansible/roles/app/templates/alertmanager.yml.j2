@@ -10,9 +10,27 @@ route:
   group_wait: {{ app_alertmanager_group_wait }}
   group_interval: {{ app_alertmanager_group_interval }}
   repeat_interval: {{ app_alertmanager_repeat_interval }}
+  routes:
+    # Watchdog は常時発火する。人へ通知するためのものではなく、
+    # 「届かなくなったこと」を外部の dead man's switch が検知するための信号。
+    # 既定の receiver へ流すと 4 時間ごとにノイズになるため、専用経路へ分ける。
+    - matchers:
+        - alertname="Watchdog"
+      receiver: watchdog
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 1m
 
 receivers:
   - name: local-alert-view
+  # 通知先を持たない receiver。Watchdog は人へ通知するためのものではなく、
+  # 「届かなくなったこと」を外部の dead man's switch が検知するための信号。
+  - name: watchdog
+{% if app_watchdog_webhook_url | length > 0 %}
+    webhook_configs:
+      - url: {{ app_watchdog_webhook_url | quote }}
+        send_resolved: false
+{% endif %}
 {% if app_alertmanager_slack_enabled | bool %}
   - name: slack-alerts
     slack_configs:

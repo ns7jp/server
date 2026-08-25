@@ -7,6 +7,7 @@ __pycache__/
 deploy/secrets/*.txt
 !deploy/secrets/*.example
 deploy/alertmanager/alertmanager.ansible.yml
+deploy/prometheus/prometheus.ansible.yml
 
 # Terraform
 **/.terraform/

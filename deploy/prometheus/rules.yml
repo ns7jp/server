@@ -21,6 +21,43 @@ groups:
           description: "node-exporter has not been reachable for two minutes."
           runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/service-down.md"
 
+      # 常時発火し続ける「死活の死活」。これが Alertmanager に届かなくなった
+      # ことをもって、Prometheus ごと落ちた／配送経路が切れたと判断する。
+      # 監視の監視を名乗る以上、これが無いと「静かなのは平和だからか、
+      # 監視が死んでいるからか」を区別できない。
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: none
+        annotations:
+          summary: "This alert is always firing on purpose"
+          description: >-
+            Watchdog が届かなくなったら、Prometheus か Alertmanager か
+            その間の経路が止まっている。受信側で「一定時間 Watchdog が
+            来ないこと」を検知する。
+
+      # Prometheus 自身の健全性。rule 評価や通知送出が静かに壊れると、
+      # アラートが「発火しないこと」で異常が見えなくなる。
+      - alert: PrometheusRuleEvaluationFailing
+        expr: increase(prometheus_rule_evaluation_failures_total[10m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus is failing to evaluate rules"
+          description: "アラートルールの評価が失敗している。発火しないことが正常とは限らない。"
+          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/alertmanager-down.md"
+
+      - alert: PrometheusNotificationsDropped
+        expr: increase(prometheus_notifications_dropped_total[10m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus is dropping notifications to Alertmanager"
+          description: "発火はしているが Alertmanager へ届いていない。"
+          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/alertmanager-down.md"
+
       # 監視の監視: アラート配送経路自体が止まっていないか
       - alert: AlertmanagerDown
         expr: up{job="alertmanager"} == 0

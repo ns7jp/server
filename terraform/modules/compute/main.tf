@@ -120,6 +120,49 @@ resource "aws_iam_role_policy_attachment" "cloudwatch" {
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
 }
 
+# amazon.aws.aws_ssm connection plugin は、S3 バケット経由でファイルを
+# 受け渡す。AmazonSSMManagedInstanceCore にはその S3 権限が含まれないため、
+# これが無いと apply は通っても次の「Ansible で構成を適用」の段階で
+# AccessDenied になる。ssh_ingress_cidrs = [] の環境では SSM が唯一の
+# 経路なので、そこで詰まると入る手段が無くなる。
+data "aws_partition" "current" {}
+
+resource "aws_iam_role_policy" "ssm_file_transfer" {
+  count = var.ssm_file_transfer_bucket == "" ? 0 : 1
+
+  name = "${local.name}-ssm-file-transfer"
+  role = aws_iam_role.instance.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = concat([
+      {
+        Sid    = "AllowSsmTransferObjects"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+        ]
+        Resource = "arn:${data.aws_partition.current.partition}:s3:::${var.ssm_file_transfer_bucket}/*"
+      },
+      {
+        Sid      = "AllowSsmTransferBucketList"
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket", "s3:GetBucketLocation"]
+        Resource = "arn:${data.aws_partition.current.partition}:s3:::${var.ssm_file_transfer_bucket}"
+      },
+      ], var.ssm_file_transfer_kms_key_arn == "" ? [] : [
+      {
+        Sid      = "AllowSsmTransferKms"
+        Effect   = "Allow"
+        Action   = ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"]
+        Resource = var.ssm_file_transfer_kms_key_arn
+      },
+    ])
+  })
+}
+
 resource "aws_iam_role_policy_attachment" "additional" {
   for_each = toset(var.additional_iam_policy_arns)
 

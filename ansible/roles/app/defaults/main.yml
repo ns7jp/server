@@ -25,3 +25,19 @@ app_alertmanager_webhook_url: ""
 app_alertmanager_group_wait: 30s
 app_alertmanager_group_interval: 5m
 app_alertmanager_repeat_interval: 4h
+
+# Prometheus 設定。以前は deploy/prometheus/prometheus.yml を無加工で配布して
+# いたため、environment ラベルが 'lab' に固定され、監視対象を増やす方法も
+# 「監視スタックをもう 1 式立てる」しか無かった。テンプレート化して、
+# server_monitor_environment と監視対象一覧を inventory から与えられるようにする。
+app_prometheus_monitor_label: "server-monitor-{{ server_monitor_environment }}"
+# 監視サーバー 1 台が N 台を scrape する形。1 台足すときはここへ 1 行足す。
+#   app_node_exporter_targets:
+#     - address: "10.0.1.21:9100"
+#       host: web-01
+#     - address: "10.0.1.22:9100"
+#       host: db-01
+app_node_exporter_targets: []
+# 外部の dead man's switch の URL。設定すると Watchdog をそこへ送る。
+# 空のままだと Watchdog は通知先を持たない receiver で止まる。
+app_watchdog_webhook_url: ""

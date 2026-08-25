@@ -30,12 +30,21 @@ AlertmanagerからSlackへの実配信、D-2、AWS適用、永続hostの再起�
 実管理端末・組織DNS・cloud firewallを含むproduction相当のnetwork検証は、現在も
 `NOT RUN`です。
 
-**AlmaLinux / Rocky 9対応（roleとMolecule scenario）、B-1〜B-4の構築演習
-（LVM、3層構成、DB復元、L2/L3）を追加しました。** これらはroleとscriptとして
-実装済みで、CIで構文・安全装置まで検査していますが、
-**実機での実行証跡（`docs/drills/logs/`配下の日付付きファイル）はまだありません**。
-実行するとscriptが証跡を自動生成するので、生成された結果を確認してから採録します。
-AlmaLinux実機への`site.yml`適用も`NOT RUN`です。
+**AlmaLinux / Rocky 9 対応（role と Molecule scenario）、B-1〜B-4 の構築演習
+（LVM、3 層構成、DB 復元、L2 / L3）を追加しました。**
+B-1〜B-4 は 2026-08-24 に実行し、証跡を採録済みです（下表）。
+ただし**実行環境は AI 支援セッションの作業環境**で、B-1 は qemu 上の Ubuntu 24.04
+ゲスト、B-2 / B-3 は Docker コンテナ、B-4 は network namespace です。
+**独立した物理／VPS ホストや、本人の手元 WSL2 での再実行証跡ではありません。**
+各証跡ファイルの「実施環境」欄に、採録時の `uname` をそのまま残しています。
+
+CI が検査しているのは構文と静的テストまでです（`python-check.yml` の `bash -n` と
+pytest、`backup-verify.yml` の shellcheck 3 本）。**`labs/` と `scripts/labs/` には
+shellcheck が掛かっておらず、安全装置の実行テストと B-1〜B-4 は CI では走りません。**
+
+AlmaLinux 実機への `site.yml` 適用と、Molecule `el9` シナリオの実行証跡は
+どちらも `NOT RUN` です（`ansible-integration.yml` は `workflow_dispatch` のみで、
+push / PR では起動しません）。
 
 | 区分 | 状態 |
 | --- | --- |
@@ -50,7 +59,7 @@ AlmaLinux実機への`site.yml`適用も`NOT RUN`です。
 | ephemeral VM の network / UFW | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：`NW-01〜09` / `IT-12` / `ST-01,04` PASS |
 | 独立した管理端末・対象hostでの network / UFW | ❌ **NOT RUN**（[手順](../build-package/09-network-validation-procedure.md)と[結果票テンプレート](templates/network-host-validation.md)のみ） |
 | AlmaLinux / Rocky 9 実機への `site.yml` 適用 | ❌ **NOT RUN**（role と `el9` Molecule scenario のみ） |
-| B-1 ディスク設計・LVM 拡張演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-1.md)：**5 PASS / 0 FAIL**。初回適用・冪等性・ENOSPC 再現・PV 追加による online 拡張（220M→457M、mount 維持）を実測。安全装置テストは別途 7/7 PASS |
+| B-1 ディスク設計・LVM 拡張演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-1.md)：**5 PASS / 0 FAIL**。初回適用・冪等性・ENOSPC 再現・PV 追加による online 拡張（220M→457M、mount 維持）を実測。安全装置テスト（`storage-guard-test.sh`、7 ケース）は**実行証跡を未採録**。script は証跡を自動生成するようになったので、device-mapper のある環境で実行して採録する |
 | B-2 3 層構成の障害切り分け演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-2.md)：実コンテナ（Docker 29.3.1）で **9 PASS / 0 FAIL**。層分離の遮断、DB 停止・AP 停止・経路断の切り分けを実測 |
 | B-3 DB バックアップ・復元演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-3.md)：実 PostgreSQL 16 で **7 PASS / 0 FAIL**。RTO **0.149 秒** / RPO **2.344 秒**、内容ハッシュ一致まで実測 |
 | B-4 L2 / L3 切り分け演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-4.md)：**6 PASS / 0 FAIL / 3 SKIP-ENV**。静的ルート・戻り経路の欠落・`ip_forward` を実測。VLAN 部はこの kernel が `CONFIG_VLAN_8021Q` 無効のため未検証 |
@@ -99,20 +108,23 @@ partition や他人の VG の LV が載っているディスクは従来どお�
 
 VLAN 部（`B4-L2-02`〜`04`）だけは、この環境の kernel が `CONFIG_VLAN_8021Q is not set` でビルドされているため実行できない。モジュール読み込みでは解決しない kernel 設定レベルの制約なので、`SKIP-ENV`（未検証）として記録している。
 
-### 「ラボ本体は NOT RUN / script は検証済み」とは何か
+### B-1 〜 B-4 について、何がどこまで確認できているか
 
-**B-1 〜 B-4 はすべて実行し、証跡があります**（上表）。以前は「ラボ本体は
-未実行 / script は検証済み」を分けて書いていましたが、その区別はもう
-不要になりました。参考までに、その 2 つの問いの違いは次のとおりです。
+2 つの別々の問いがあります。混ぜて読むと実態より広く見えます。
 
 | 問い | 状態 |
 | --- | --- |
-| 演習を実機で回して、その結果を証跡として持っているか | **持っていない**（NOT RUN） |
 | 演習の script 自体が、期待どおりの判定を出すか | **確認した** |
+| 演習を実行し、その結果を証跡として持っているか | **持っている**（2026-08-24、上表） |
+| その実行が、独立した物理／VPS ホスト上のものか | **違う**（AI 支援セッションの作業環境） |
+| その実行が、本人の手元（WSL2）で再現されているか | **していない**（再実行を予定） |
 
-後者は、`docker` を差し替えたスタブに置き換えて script をそのまま通しで
+1 つ目は、`docker` を差し替えたスタブに置き換えて script をそのまま通しで
 実行し、**正常系だけでなく「壊れている」入力でも FAIL が出ること**まで
 確かめています。演習が空振りで PASS しないことの検査です。
+
+3 つ目・4 つ目が、この演習群の現在の限界です。証跡の「実施環境」欄
+（B-2 / B-3 / B-4 は `Linux 6.18.44-fc-v21`）がそれを示しています。
 
 これは実機の実行の代わりにはなりません。**スタブの応答は「実際の nginx /
 PostgreSQL がこう返すはず」という想定**であり、確認できたのは script の

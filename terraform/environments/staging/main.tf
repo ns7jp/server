@@ -148,6 +148,13 @@ module "compute" {
   instance_type         = var.instance_type
   alb_security_group_id = module.alb.alb_security_group_id
   ssh_ingress_cidrs     = var.ssh_ingress_cidrs
+  # ssh_ingress_cidrs を空にすると SSM が唯一の経路になる。
+  # amazon.aws.aws_ssm は S3 バケット経由でファイルを渡すので、controller 側
+  # （aws_iam_policy.ssm_transfer_controller）だけでなく、**管理対象ノード側**
+  # にも同じバケットへの読み書き権限が要る。
+  # AmazonSSMManagedInstanceCore にはこの S3 権限が含まれないため、これが無いと
+  # apply は通っても「Ansible で構成を適用」の段階で AccessDenied になる。
+  ssm_file_transfer_bucket = aws_s3_bucket.ssm_transfer.bucket
   # D-2の障害注入中に定時startが競合しないよう、短命stagingは手動で停止・破棄する。
   schedule_stop_enabled = false
   tags                  = merge(local.common_tags, { AlbHealthCheckSourceCidr = var.vpc_cidr })

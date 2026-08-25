@@ -76,3 +76,18 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# amazon.aws.aws_ssm connection plugin が使う S3 バケット名。
+# 空のままだと SSM 経由の Ansible 適用ができない（AccessDenied）。
+# ssh_ingress_cidrs を空にして SSM だけで運用する環境では必ず指定する。
+variable "ssm_file_transfer_bucket" {
+  description = "S3 bucket used by the amazon.aws.aws_ssm connection plugin for file transfer. Empty disables the grant."
+  type        = string
+  default     = ""
+}
+
+variable "ssm_file_transfer_kms_key_arn" {
+  description = "KMS key ARN protecting the SSM file transfer bucket, if it is SSE-KMS encrypted."
+  type        = string
+  default     = ""
+}

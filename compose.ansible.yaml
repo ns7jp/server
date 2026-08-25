@@ -4,3 +4,6 @@ services:
   alertmanager:
     volumes:
       - ./deploy/alertmanager/alertmanager.ansible.yml:/etc/alertmanager/alertmanager.yml:ro
+  prometheus:
+    volumes:
+      - ./deploy/prometheus/prometheus.ansible.yml:/etc/prometheus/prometheus.yml:ro

@@ -10,7 +10,57 @@
     mode: '0755'
   when: ansible_os_family == 'Debian'
 
-- name: Disable root SSH login
+# Ubuntu 22.04 / 24.04 も AlmaLinux / Rocky 9 も、既定の sshd_config は先頭で
+# /etc/ssh/sshd_config.d/*.conf を読み込む。sshd は「最初に得た値を採用」する
+# ため、本体だけを書き換えても drop-in に負ける。cloud image が置く
+# 50-cloud-init.conf が PasswordAuthentication yes を持っていると、
+# 本体に no と書いても password 認証が生き残る。
+# そのため drop-in を持つ環境では drop-in 側へ書き、
+# 名前を 10- で始めて cloud-init（50-）より先に読ませる。
+- name: Detect whether sshd_config includes a drop-in directory
+  ansible.builtin.command:
+    argv:
+      - grep
+      - -Eq
+      - '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\.d/'
+      - /etc/ssh/sshd_config
+  register: common_sshd_include_probe
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Record whether the drop-in mechanism is available
+  ansible.builtin.set_fact:
+    common_sshd_uses_dropin: "{{ common_sshd_include_probe.rc == 0 }}"
+
+- name: Ensure the sshd drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: common_sshd_uses_dropin | bool
+
+- name: Install the sshd hardening drop-in
+  ansible.builtin.copy:
+    dest: "{{ common_sshd_dropin_path }}"
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      # Managed by the common role. Do not edit by hand.
+      # 10- で始めるのは、cloud-init が置く 50-cloud-init.conf より先に
+      # 読ませるため。sshd は最初に得た値を採用する。
+      PermitRootLogin {{ 'no' if (common_disable_root_ssh | bool) else 'yes' }}
+      PasswordAuthentication {{ 'yes' if (common_password_authentication | bool) else 'no' }}
+      KbdInteractiveAuthentication {{ 'yes' if (common_password_authentication | bool) else 'no' }}
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Reload sshd
+  when: common_sshd_uses_dropin | bool
+
+# drop-in を持たない環境（Include のない古い sshd_config）向けの後方互換経路。
+- name: Disable root SSH login in the main configuration
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
     regexp: '^#?PermitRootLogin'
@@ -19,9 +69,11 @@
     state: present
     validate: '/usr/sbin/sshd -t -f %s'
   notify: Reload sshd
-  when: common_disable_root_ssh | bool
+  when:
+    - common_disable_root_ssh | bool
+    - not (common_sshd_uses_dropin | bool)
 
-- name: Disable SSH password authentication
+- name: Disable SSH password authentication in the main configuration
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
     regexp: '^#?PasswordAuthentication'
@@ -30,29 +82,40 @@
     state: present
     validate: '/usr/sbin/sshd -t -f %s'
   notify: Reload sshd
-  when: not (common_password_authentication | bool)
+  when:
+    - not (common_password_authentication | bool)
+    - not (common_sshd_uses_dropin | bool)
 
-# AlmaLinux / Rocky 9 は /etc/ssh/sshd_config.d/*.conf を先に読み込む。
-# 本体だけを書き換えても drop-in 側の設定に負けるため、drop-in を検査して
-# 上書きされていないことを確認する。気付かないまま password 認証が
-# 生き続ける事故を防ぐ。
+# 自分より先に読まれる drop-in（ファイル名が 10-hardening.conf より前に
+# ソートされるもの）だけが、この role の設定を上書きできる。
 - name: Find sshd drop-in configuration files
   ansible.builtin.find:
     paths: /etc/ssh/sshd_config.d
     patterns: '*.conf'
   register: common_sshd_dropins
-  when: ansible_os_family == 'RedHat'
+  when: common_sshd_uses_dropin | bool
 
-- name: Read sshd drop-in configuration files
+# sshd は Include されたファイルを glob 順（＝ファイル名のソート順）で
+# 読み、値を持つ最初のものを採用する。したがって、この role が書く
+# drop-in より「後」に読まれるファイルが何を書いていても、そのファイルは
+# 勝てない。Ubuntu / Azure の cloud image は 50-cloud-init.conf や
+# 60-cloudimg-settings.conf に PasswordAuthentication yes を持つのが標準
+# （sudo 前の初回ログイン用）だが、10- のこの role の方が先に読まれるため
+# 無害。ここでは「先に読まれてしまう」ファイル（名前が辞書順で this role
+# より前）だけを対象に検査する。
+- name: Read sshd drop-in files that sort before this role's drop-in
   ansible.builtin.slurp:
     src: "{{ item.path }}"
-  loop: "{{ common_sshd_dropins.files | default([]) }}"
+  loop: >-
+    {{ (common_sshd_dropins.files | default([]))
+       | selectattr('path', 'lt', common_sshd_dropin_path)
+       | list }}
   loop_control:
     label: "{{ item.path }}"
   register: common_sshd_dropin_contents
-  when: ansible_os_family == 'RedHat'
+  when: common_sshd_uses_dropin | bool
 
-- name: Refuse a drop-in that re-enables root login or password authentication
+- name: Refuse a drop-in that sorts first and re-enables root login or password authentication
   ansible.builtin.assert:
     that:
       - >-
@@ -62,12 +125,48 @@
         (common_password_authentication | bool)
         or 'passwordauthentication yes' not in common_sshd_dropin_text
     fail_msg: >-
-      /etc/ssh/sshd_config.d contains a drop-in that re-enables root login or
-      password authentication, which overrides /etc/ssh/sshd_config on RHEL 9.
-      Remove or correct the drop-in before applying this role.
+      /etc/ssh/sshd_config.d contains a drop-in that sorts before
+      {{ common_sshd_dropin_path }} and re-enables root login or password
+      authentication. sshd takes the first value it sees, so that file wins
+      over this role. Remove it, or rename it to sort after
+      {{ common_sshd_dropin_path }}.
   vars:
     common_sshd_dropin_text: >-
       {{ common_sshd_dropin_contents.results | default([])
          | map(attribute='content') | select('defined')
          | map('b64decode') | join('\n') | lower }}
-  when: ansible_os_family == 'RedHat'
+  when: common_sshd_uses_dropin | bool
+
+# ここまでは「ファイルに何が書いてあるか」の検査。sshd が実際にどの値で
+# 動くかは sshd -T でしか分からない。Include の順序や Match ブロックを
+# 読み違えたまま「無効化できたつもり」になる事故を防ぐため、
+# 実効値そのものを検査する。
+- name: Read the effective sshd configuration
+  ansible.builtin.command:
+    argv:
+      - /usr/sbin/sshd
+      - -T
+  register: common_sshd_effective
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: common_verify_sshd_effective | bool
+
+- name: Assert the effective sshd configuration matches the intended hardening
+  ansible.builtin.assert:
+    that:
+      - common_sshd_effective.rc == 0
+      - >-
+        not (common_disable_root_ssh | bool)
+        or 'permitrootlogin no' in common_sshd_effective_text
+      - >-
+        (common_password_authentication | bool)
+        or 'passwordauthentication no' in common_sshd_effective_text
+    fail_msg: >-
+      sshd -T reports an effective configuration that does not match the
+      intended hardening (rc={{ common_sshd_effective.rc | default('n/a') }}).
+      stderr: {{ common_sshd_effective.stderr | default('') }}
+      This usually means a drop-in or Match block overrides the role.
+  vars:
+    common_sshd_effective_text: "{{ (common_sshd_effective.stdout | default('')) | lower }}"
+  when: common_verify_sshd_effective | bool

@@ -109,15 +109,88 @@ def test_firewalld_rate_limit_is_installed_before_the_open_ssh_rule_is_removed()
     assert 'limit value="{{ common_firewalld_ssh_rate_limit }}"' in firewalld
 
 
-def test_redhat_ssh_hardening_checks_drop_in_overrides():
-    """RHEL 9 は sshd_config.d/*.conf が本体より優先される。
+def test_ssh_hardening_uses_a_drop_in_on_every_supported_os():
+    """drop-in が本体より優先されるのは RHEL 9 だけではない。
 
-    本体だけ書き換えて満足すると、drop-in 側で password 認証が
-    生き残っていることに気付けない。
+    Ubuntu 22.04 / 24.04 の既定 sshd_config も先頭で
+    `Include /etc/ssh/sshd_config.d/*.conf` を読み、sshd は最初に得た値を
+    採用する。cloud image が置く 50-cloud-init.conf が
+    `PasswordAuthentication yes` を持っていると、本体に no と書いても
+    password 認証が生き残る。
+
+    以前は drop-in の検査を `ansible_os_family == 'RedHat'` に限定していた
+    ため、Debian 系の実ホストでこれを見逃す構造だった。
     """
     ssh_tasks = read("ansible", "roles", "common", "tasks", "ssh.yml")
+    defaults = read("ansible", "roles", "common", "defaults", "main.yml")
+
+    # drop-in を持つ環境では drop-in 側へ書く。
     assert "/etc/ssh/sshd_config.d" in ssh_tasks
-    assert "Refuse a drop-in that re-enables root login or password authentication" in ssh_tasks
+    assert "Install the sshd hardening drop-in" in ssh_tasks
+    # cloud-init の 50- より先に読ませるため 10- で始める。
+    assert "sshd_config.d/10-hardening.conf" in defaults
+
+    # drop-in の検査が RedHat 限定に戻っていないこと。
+    refuse_idx = ssh_tasks.index(
+        "Refuse a drop-in that sorts first and re-enables root login or password authentication"
+    )
+    refuse_block = ssh_tasks[refuse_idx:]
+    assert "ansible_os_family == 'RedHat'" not in refuse_block
+
+    # PR #92 の CI で実際に踏んだ欠陥: Ubuntu / Azure の cloud image は
+    # 60-cloudimg-settings.conf に PasswordAuthentication yes を持つのが
+    # 標準（10-hardening.conf より後に読まれるので無害）。「他のどの
+    # drop-in も見ない」形に戻すと、この標準構成へ適用するだけで
+    # 誤って fail する。this role より後に読まれるファイルは対象外に
+    # すること（sort 順の比較そのものを検査する）。
+    find_idx = ssh_tasks.index("Find sshd drop-in configuration files")
+    read_idx = ssh_tasks.index("Read sshd drop-in files that sort before this role's drop-in")
+    read_block = ssh_tasks[read_idx:refuse_idx]
+    assert find_idx < read_idx
+    assert "selectattr('path', 'lt', common_sshd_dropin_path)" in read_block
+
+
+def test_ssh_hardening_verifies_the_effective_configuration():
+    """ファイル本文の grep では Include の順序を読み違えたまま通ってしまう。
+
+    sshd が実際に採用する値（sshd -T）を検査する。
+    """
+    ssh_tasks = read("ansible", "roles", "common", "tasks", "ssh.yml")
+    assert "Read the effective sshd configuration" in ssh_tasks
+    assert "'permitrootlogin no' in common_sshd_effective_text" in ssh_tasks
+    assert "'passwordauthentication no' in common_sshd_effective_text" in ssh_tasks
+
+    for scenario in ("default", "el9"):
+        verify = read(
+            "ansible", "roles", "common", "molecule", scenario, "verify.yml"
+        )
+        assert "/usr/sbin/sshd" in verify and "-T" in verify
+        assert "'permitrootlogin no' in (sshd_effective.stdout | lower)" in verify
+
+
+def test_password_authentication_is_not_disabled_without_a_usable_key():
+    """鍵で入れる口を用意する前に password 認証を落とすと締め出される。
+
+    恒久ホストへ site.yml を初めて流すときに最も起きやすい事故なので、
+    role 側で止める。
+    """
+    admin = read("ansible", "roles", "common", "tasks", "admin-access.yml")
+    main = read("ansible", "roles", "common", "tasks", "main.yml")
+
+    # 管理者アカウントの用意は SSH の締め付けより前。
+    assert main.index("admin-access.yml") < main.index("ssh.yml")
+
+    # 鍵の無い管理者アカウントを作らない。
+    assert "Refuse an admin account without any authorized key" in admin
+    assert "ansible.posix.authorized_key" in admin
+
+    # sudoers は drop-in + visudo 検証。壊れた sudoers を書かない。
+    assert "/etc/sudoers.d/10-" in admin
+    assert "validate: /usr/sbin/visudo -cf %s" in admin
+
+    # 鍵がどこにも無い状態で password 認証を落とすことを拒否する。
+    assert "Refuse to disable password authentication with no usable SSH key on the host" in admin
+    assert "common_allow_keyless_password_lockout" in admin
 
 
 def test_selinux_is_not_silently_weakened():
@@ -499,14 +572,33 @@ def test_acceptance_check_never_prints_secret_values():
     assert "<masked-ip>" in script
 
 
-def test_acceptance_check_distinguishes_skip_from_pass():
-    """SKIP を PASS に混ぜない。「確認していない」は「問題なし」ではない。"""
+def test_acceptance_check_does_not_pass_with_unverified_items():
+    """SKIP を PASS に混ぜないだけでなく、SKIP のある結果票を合格にしない。
+
+    このスクリプトは、初めて手に入れる恒久ホストの受け入れ証跡を生む
+    唯一の経路である。前提コマンドが無い環境で個別に SKIP へ落として
+    合計を緑にすると、確認できていない項目を抱えたまま「合格」の結果票が
+    できてしまう。labs/three-tier/run-drill.sh の B2-02 と同じく
+    fail-closed にする。
+    """
     script = read("scripts", "ops", "acceptance-check.sh")
 
     assert "SKIP_COUNT" in script
     assert "SKIP) SKIP_COUNT=$((SKIP_COUNT + 1)) ;;" in script
-    # 終了コードは FAIL だけで決まる（SKIP は成否に含めない）
-    assert "[[ $FAIL_COUNT -eq 0 ]]" in script
+
+    # 設計上の対象外（N/A）と、確認できなかった（SKIP）を分ける。
+    assert "N/A)  NA_COUNT=$((NA_COUNT + 1)) ;;" in script
+
+    # 前提コマンドが欠けたら個別 SKIP ではなく全体を止める。
+    assert "require_tools" in script
+    assert "REQUIRED_TOOLS=(" in script
+    assert "ACCEPTANCE_ALLOW_MISSING_TOOLS" in script
+
+    # 終了判定は FAIL だけで決まらない。
+    assert "[[ $FAIL_COUNT -eq 0 ]]" not in script
+    assert "SKIP が %d 件ある" in script
+    assert "ACCEPTANCE_MIN_CHECKS" in script
+
     # heredoc 内なので source ではバッククォートがエスケープされている。
     # 記法に依存しないよう、文言そのものを見る。
     assert "は「確認していない」であって「問題なし」ではない" in script
@@ -1034,7 +1126,8 @@ def test_storage_role_runs_on_the_ansible_that_ships_with_the_target_os():
 
     `meta: end_role` は ansible-core 2.18 以降にしかない。Ubuntu 24.04 LTS が
     同梱するのは 2.16.3 で、そこでは play ごと
-    「invalid meta action requested: end_role」で失敗する。実機で踏んだ。
+    「invalid meta action requested: end_role」で失敗する。
+    qemu 上の Ubuntu 24.04 で B-1 を実行して踏んだ。
 
     CI では新しい ansible-core を pip で入れているため気付けなかった。
     lint も構文検査も通っていた。
@@ -1059,7 +1152,7 @@ def test_storage_role_stays_idempotent_over_its_own_logical_volumes():
 
     安全装置は「子デバイスを持つディスクには触らない」としていたが、
     2 回目にはこのロールが作った LV が子として見える。そのため
-    site.yml を 2 回流せなかった。実機（Ubuntu 24.04 + LVM）で踏んだ。
+    site.yml を 2 回流せなかった。qemu 上の Ubuntu 24.04 + LVM で踏んだ。
 
     ただし「子がいるなら通す」では安全装置の意味が無くなる。その PV が
     属している VG を読み、宣言している VG のときだけ許す形であること。
@@ -1088,8 +1181,9 @@ def test_selinux_boolean_waits_for_pending_reboot():
 
     次の task（container_manage_cgroup boolean の設定）がこれを無視すると、
     実行中の SELinux はまだ disabled のままなので
-    "SELinux is disabled on this host" で fail する。実機（AlmaLinux 9）
-    で踏んだ。
+    "SELinux is disabled on this host" で fail する。
+    ansible.posix.selinux の reboot_required 仕様から想定した挙動で、
+    AlmaLinux 実機での実行証跡は未採録。
     """
     selinux = read("ansible", "roles", "common", "tasks", "selinux.yml")
     idx = selinux.index("Ensure the container SELinux boolean is enabled")
@@ -1097,3 +1191,93 @@ def test_selinux_boolean_waits_for_pending_reboot():
     assert "not (common_selinux_applied.reboot_required" in block, (
         "boolean 設定が reboot_required を見ていない"
     )
+
+
+def test_prometheus_config_is_templated_per_environment():
+    """静的ファイルを無加工で配ると environment ラベルが 'lab' 固定になる。
+
+    server_monitor_environment は inventory で production / staging / ci と
+    切り替わるのに、Prometheus のラベルだけがその変数系から外れていた。
+    """
+    template = read("ansible", "roles", "app", "templates", "prometheus.yml.j2")
+    tasks = read("ansible", "roles", "app", "tasks", "main.yml")
+    defaults = read("ansible", "roles", "app", "defaults", "main.yml")
+
+    assert "environment: {{ server_monitor_environment }}" in template
+    assert "environment: lab" not in template
+    assert "src: prometheus.yml.j2" in tasks
+    assert "app_prometheus_monitor_label" in defaults
+
+
+def test_prometheus_can_scrape_more_than_one_host():
+    """実務の監視は「監視サーバー 1 台が N 台を scrape する」形。
+
+    監視対象を増やす方法が「監視スタックをもう 1 式立てる」しか無い状態を
+    戻さない。
+    """
+    template = read("ansible", "roles", "app", "templates", "prometheus.yml.j2")
+    defaults = read("ansible", "roles", "app", "defaults", "main.yml")
+
+    assert "{% for target in app_node_exporter_targets %}" in template
+    assert "app_node_exporter_targets: []" in defaults
+
+
+def test_prometheus_render_does_not_overwrite_the_tracked_static_file():
+    """PR #92 の full-stack-e2e CI で実際に踏んだ非冪等バグ。
+
+    deploy/prometheus/prometheus.yml は git 管理下で、毎回の適用ごとに
+    「Synchronize tracked release」タスクがその内容へ巻き戻す。テンプレートが
+    同じパスへ直接 render すると、sync が静的版へ戻す → template task が
+    また上書きする、を毎回繰り返し、2 回目の適用が永遠に changed=0 に
+    ならない。alertmanager.yml.j2 と同じく、別名（*.ansible.yml、
+    git 管理外）へ render し、compose.ansible.yaml でだけ差し替える。
+    """
+    tasks = read("ansible", "roles", "app", "tasks", "main.yml")
+    compose_ansible = read("compose.ansible.yaml")
+    gitignore = read(".gitignore")
+
+    assert "dest: \"{{ app_repo_target }}/deploy/prometheus/prometheus.ansible.yml\"" in tasks
+    assert "dest: \"{{ app_repo_target }}/deploy/prometheus/prometheus.yml\"" not in tasks
+    assert "deploy/prometheus/prometheus.ansible.yml:/etc/prometheus/prometheus.yml:ro" in compose_ansible
+    assert "deploy/prometheus/prometheus.ansible.yml" in gitignore
+
+    # ansible_managed は既定でレンダー時刻を含み、別名にしても
+    # 每回 changed になる。alertmanager.yml.j2 も使っていない。
+    template = read("ansible", "roles", "app", "templates", "prometheus.yml.j2")
+    assert "ansible_managed" not in template.replace(
+        "ansible_managed は既定でレンダー時刻を含み、毎回 changed になるため使わない", ""
+    )
+
+
+def test_prometheus_watches_itself():
+    """Prometheus 自身を scrape していないと「監視の監視」を名乗れない。
+
+    rule 評価の失敗も通知の取りこぼしも観測できず、
+    「静かなのは平和だからか、監視が死んでいるからか」を区別できない。
+    """
+    static_config = read("deploy", "prometheus", "prometheus.yml")
+    template = read("ansible", "roles", "app", "templates", "prometheus.yml.j2")
+    rules = read("deploy", "prometheus", "rules.yml")
+
+    for config in (static_config, template):
+        assert "job_name: prometheus" in config
+
+    assert "alert: Watchdog" in rules
+    assert "expr: vector(1)" in rules
+    assert "prometheus_rule_evaluation_failures_total" in rules
+    assert "prometheus_notifications_dropped_total" in rules
+
+
+def test_watchdog_does_not_page_humans():
+    """常時発火する Watchdog を既定 receiver へ流すとノイズになる。
+
+    人への通知ではなく、外部の dead man's switch が「届かなくなったこと」を
+    検知するための信号なので、専用経路へ分ける。
+    """
+    static_config = read("deploy", "alertmanager", "alertmanager.yml")
+    template = read("ansible", "roles", "app", "templates", "alertmanager.yml.j2")
+
+    for config in (static_config, template):
+        assert 'alertname="Watchdog"' in config
+        assert "receiver: watchdog" in config
+        assert "- name: watchdog" in config

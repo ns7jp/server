@@ -4,7 +4,7 @@
 # 以前は `meta: end_role` で打ち切っていたが、これは ansible-core 2.18 以降に
 # しかない。Ubuntu 24.04 LTS が同梱するのは 2.16 で、そこでは
 # 「invalid meta action requested: end_role」で play ごと失敗する。
-# 実機（Ubuntu 24.04 + ansible-core 2.16.3）で踏んだ。
+# qemu 上の Ubuntu 24.04（ansible-core 2.16.3）で B-1 を実行して踏んだ。
 #
 # 対象 OS の既定 Ansible で動かないと、配布物として使えない。
 # include_tasks + when なら古い版でも動くので、そちらへ寄せた。

@@ -125,6 +125,18 @@ resource "aws_s3_bucket_lifecycle_configuration" "access_logs" {
 
 data "aws_caller_identity" "current" {}
 
+# ALB のアクセスログ配信の principal は、リージョンによって 2 通りある。
+#   - 2022-08 以降に追加されたリージョン: service principal
+#     logdelivery.elasticloadbalancing.amazonaws.com
+#   - それ以前からあるリージョン（ap-northeast-1 を含む）: リージョンごとの
+#     ELB アカウント ID（東京は 582318560864）
+# service principal だけを書くと、ap-northeast-1 では aws_lb 作成時に
+# "Access Denied for bucket ... Please check S3bucket permission" で失敗し、
+# ALB が作れないまま以降のリソースが全部止まる。
+# aws_elb_service_account がリージョンに応じた正しい ARN を返すので、
+# それを使って両方を許可する。
+data "aws_elb_service_account" "current" {}
+
 resource "aws_s3_bucket_policy" "access_logs" {
   bucket = aws_s3_bucket.access_logs.id
 
@@ -132,13 +144,27 @@ resource "aws_s3_bucket_policy" "access_logs" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowELBLogDelivery"
+        Sid    = "AllowELBLogDeliveryAccount"
+        Effect = "Allow"
+        Principal = {
+          AWS = data.aws_elb_service_account.current.arn
+        }
+        Action   = "s3:PutObject"
+        Resource = "${aws_s3_bucket.access_logs.arn}/${local.name}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
+      },
+      {
+        Sid    = "AllowELBLogDeliveryService"
         Effect = "Allow"
         Principal = {
           Service = "logdelivery.elasticloadbalancing.amazonaws.com"
         }
         Action   = "s3:PutObject"
         Resource = "${aws_s3_bucket.access_logs.arn}/${local.name}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
+        Condition = {
+          StringEquals = {
+            "s3:x-amz-acl" = "bucket-owner-full-control"
+          }
+        }
       },
       {
         Sid    = "DenyInsecureTransport"

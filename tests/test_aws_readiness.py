@@ -266,3 +266,99 @@ def test_terraform_files_have_balanced_braces() -> None:
     for path in (ROOT / "terraform").rglob("*.tf"):
         content = path.read_text(encoding="utf-8")
         assert content.count("{") == content.count("}"), path
+
+
+def test_dependabot_terraform_directories_match_version_constraint_files() -> None:
+    """Dependabot の監視対象と、provider 制約を宣言しているディレクトリを一致させる。
+
+    provider 制約は複数の versions.tf に分散している。一部だけが更新されると
+    `~> 5.50, ~> 6.58` のような両立しない制約になり、terraform init が必ず
+    失敗する（PR #44 / #45 で実際に起きた）。
+
+    そのとき対策として `directories` を列挙したが、件数をコメントへ手で固定
+    したため environments/staging の登録漏れに気づけなかった。
+    網羅すべき集合を手で列挙した時点で、次に漏れる。集合の一致を検査する。
+    """
+    import yaml
+
+    config = yaml.safe_load((ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8"))
+    terraform_updates = [u for u in config["updates"] if u["package-ecosystem"] == "terraform"]
+    assert terraform_updates, "terraform ecosystem entry is missing"
+
+    watched = set()
+    for update in terraform_updates:
+        for directory in update.get("directories", []):
+            watched.add(directory.rstrip("/") or "/")
+        if "directory" in update:
+            watched.add(update["directory"].rstrip("/") or "/")
+
+    declared = set()
+    for path in (ROOT / "terraform").rglob("*.tf"):
+        if "required_providers" not in path.read_text(encoding="utf-8"):
+            continue
+        declared.add("/" + path.parent.relative_to(ROOT).as_posix())
+
+    assert declared, "no terraform files declare required_providers"
+    assert declared == watched, (
+        "dependabot.yml directories and the directories declaring required_providers differ.\n"
+        f"  only in dependabot.yml: {sorted(watched - declared)}\n"
+        f"  only in terraform/:     {sorted(declared - watched)}"
+    )
+
+
+def test_aws_provider_version_constraints_are_identical() -> None:
+    """全 versions.tf の aws provider 制約が 1 つに揃っていること。
+
+    ばらけた瞬間に terraform init が失敗する。
+    """
+    constraints = {}
+    for path in (ROOT / "terraform").rglob("versions.tf"):
+        content = path.read_text(encoding="utf-8")
+        match = re.search(
+            r'aws\s*=\s*\{[^}]*?version\s*=\s*"([^"]+)"', content, re.DOTALL
+        )
+        if match:
+            constraints[path.relative_to(ROOT).as_posix()] = match.group(1)
+    assert constraints, "no aws provider constraints found"
+    assert len(set(constraints.values())) == 1, constraints
+
+
+def test_managed_node_can_use_the_ssm_file_transfer_bucket() -> None:
+    """SSM 経由で Ansible を流すには、管理対象ノード側にも S3 権限が要る。
+
+    AmazonSSMManagedInstanceCore には amazon.aws.aws_ssm が使う S3 転送
+    バケットの権限が含まれない。controller 側の policy だけを用意しても、
+    apply は通るが構成適用の段階で AccessDenied になる。
+    ssh_ingress_cidrs = [] の環境では SSM が唯一の経路なので、そこで
+    詰まると入る手段が無くなる。
+    """
+    compute = text("terraform/modules/compute/main.tf")
+    staging = text("terraform/environments/staging/main.tf")
+    assert 'resource "aws_iam_role_policy" "ssm_file_transfer"' in compute
+    assert "s3:GetObject" in compute and "s3:PutObject" in compute
+    assert "ssm_file_transfer_bucket = aws_s3_bucket.ssm_transfer.bucket" in staging
+
+
+def test_alb_access_log_bucket_allows_the_regional_elb_account() -> None:
+    """ALB アクセスログの principal は、リージョンによって 2 通りある。
+
+    ap-northeast-1（全 tfvars の既定）はサービスプリンシパルではなく
+    リージョンごとの ELB アカウント ID を要求する。service principal だけを
+    書くと aws_lb 作成時に Access Denied になり、ALB が作れないまま以降が
+    全部止まる。
+    """
+    alb = text("terraform/modules/alb/main.tf")
+    assert 'data "aws_elb_service_account" "current"' in alb
+    assert "data.aws_elb_service_account.current.arn" in alb
+
+
+def test_backup_vault_policy_cannot_lock_out_the_caller() -> None:
+    """resource-based policy の explicit Deny はアカウント管理者でも回避できない。
+
+    例外リストに実行中の principal を入れ忘れると、以後 vault policy を
+    書き換えられず、recovery point も消せず、terraform destroy も通らない。
+    """
+    backup = text("terraform/modules/backup/main.tf")
+    assert "vault_policy_admin_arns" in backup
+    assert "caller_role_arn" in backup
+    assert 'data.aws_caller_identity.current.arn' in backup

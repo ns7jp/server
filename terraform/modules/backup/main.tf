@@ -58,6 +58,25 @@ resource "aws_backup_vault" "this" {
   tags = merge(local.tags, { Name = "${local.name}-vault" })
 }
 
+locals {
+  # terraform を実行している principal。assumed-role の ARN は
+  # arn:aws:sts::<acct>:assumed-role/<role>/<session> の形で来るので、
+  # policy の条件で使える arn:aws:iam::<acct>:role/<role> へ直す。
+  caller_arn = data.aws_caller_identity.current.arn
+  caller_role_arn = can(regex("^arn:[^:]+:sts::[0-9]+:assumed-role/", local.caller_arn)) ? format(
+    "arn:%s:iam::%s:role/%s",
+    data.aws_partition.current.partition,
+    data.aws_caller_identity.current.account_id,
+    split("/", local.caller_arn)[1],
+  ) : local.caller_arn
+
+  # 自己ロックアウトを防ぐため、実行中の principal を必ず例外へ含める。
+  vault_policy_admin_arns = distinct(concat(
+    var.recovery_point_delete_principal_arns,
+    [local.caller_role_arn],
+  ))
+}
+
 resource "aws_backup_vault_policy" "this" {
   count = var.protect_recovery_points ? 1 : 0
 
@@ -78,7 +97,7 @@ resource "aws_backup_vault_policy" "this" {
         Condition = {
           ArnNotEquals = {
             "aws:PrincipalArn" = concat(
-              var.recovery_point_delete_principal_arns,
+              local.vault_policy_admin_arns,
               [
                 aws_iam_role.backup.arn,
                 "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/backup.amazonaws.com/AWSServiceRoleForBackup",
@@ -87,6 +106,11 @@ resource "aws_backup_vault_policy" "this" {
           }
         }
       },
+      # resource-based policy の explicit Deny はアカウント管理者でも
+      # 回避できない。ここで列挙し忘れた principal は、以後この vault の
+      # policy を書き換えられず、recovery point も消せず、terraform destroy
+      # も通らなくなる（自己ロックアウト）。
+      # そのため、実行中の principal を必ず例外へ含める。
       {
         Sid       = "DenyVaultPolicyMutation"
         Effect    = "Deny"
@@ -98,7 +122,7 @@ resource "aws_backup_vault_policy" "this" {
         Resource = "*"
         Condition = {
           ArnNotEquals = {
-            "aws:PrincipalArn" = var.recovery_point_delete_principal_arns
+            "aws:PrincipalArn" = local.vault_policy_admin_arns
           }
         }
       },

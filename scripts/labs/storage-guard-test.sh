@@ -7,7 +7,9 @@
 # デバイス・既存署名を持つ loop device などを与えて、role が LVM 操作へ
 # 進む前に失敗することを確認する。
 #
-# device-mapper が無い環境でも動く（どの case も LV 作成の手前で止まるため）。
+# case 1〜6 は LV 作成の手前で止まるため device-mapper が無い環境でも動く。
+# case 7 だけは正常系で、LVM 操作まで到達する。device-mapper が無い環境では
+# この case を SKIP-ENV とし、PASS には数えない。
 #
 #   sudo ./scripts/labs/storage-guard-test.sh
 # ---------------------------------------------------------------------------
@@ -20,6 +22,17 @@ DRILL_PYTHON="${STORAGE_GUARD_PYTHON:-/usr/bin/python3}"
 
 PASS_COUNT=0
 FAIL_COUNT=0
+SKIP_COUNT=0
+RUN_DATE="$(date -u '+%Y-%m-%d')"
+EVIDENCE_DIR="${STORAGE_GUARD_EVIDENCE_DIR:-${REPO_ROOT}/docs/drills/logs}"
+EVIDENCE_FILE="${EVIDENCE_DIR}/${RUN_DATE}-B-1-guard.md"
+declare -a RESULT_ROWS=()
+
+# device-mapper が無いと LVM 操作そのものが行えない。case 7（正常系）は
+# そこへ到達するので、無い環境では実行せず SKIP-ENV として記録する。
+has_device_mapper() {
+  [[ -c /dev/mapper/control ]] && command -v dmsetup >/dev/null 2>&1
+}
 
 log()  { printf '\n--- %s ---\n' "$*"; }
 fail() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
@@ -75,30 +88,49 @@ run_case() {
   set -e
 
   log "$title"
+  local case_id="${title%%:*}" case_title="${title#*: }" expected observed verdict
   case "$expectation" in
     refuse)
+      expected="安全装置が LVM 操作の手前で止める"
       if [[ $rc -ne 0 ]] && grep -qE 'Refusing to use|Invalid storage volume definition' <<<"$output"; then
-        echo "OK: 安全装置が LVM 操作の手前で止めた"
-        grep -qE 'Ensure the volume group exists.*changed' <<<"$output" \
-          && { echo "  しかし VG を作成していた"; FAIL_COUNT=$((FAIL_COUNT + 1)); return; }
-        PASS_COUNT=$((PASS_COUNT + 1))
+        if grep -qE 'Ensure the volume group exists.*changed' <<<"$output"; then
+          echo "NG: 止めたが VG を作成していた"
+          observed="止めたが VG を作成していた"; verdict=FAIL
+        else
+          echo "OK: 安全装置が LVM 操作の手前で止めた"
+          observed="rc=${rc} で LVM 操作の手前で停止"; verdict=PASS
+        fi
       else
         echo "NG: 止まらなかった (rc=${rc})"
         sed -n '/TASK/,$p' <<<"$output" | tail -15
-        FAIL_COUNT=$((FAIL_COUNT + 1))
+        observed="止まらなかった (rc=${rc})"; verdict=FAIL
       fi
       ;;
     pass_guard)
+      # ガード文言が出ないことだけでは「通過した」証明にならない。
+      # 別の理由で play が落ちていても同じ見え方になるため、
+      # 終了コードそのものを見る。
+      expected="安全装置を通過し rc=0"
       if grep -qE 'Refusing to use|Invalid storage volume definition' <<<"$output"; then
         echo "NG: 正常な入力なのに安全装置が止めた"
         sed -n '/TASK/,$p' <<<"$output" | tail -15
-        FAIL_COUNT=$((FAIL_COUNT + 1))
+        observed="正常な入力なのに安全装置が止めた"; verdict=FAIL
+      elif [[ $rc -ne 0 ]]; then
+        echo "NG: 安全装置ではない理由で play が失敗した (rc=${rc})"
+        sed -n '/TASK/,$p' <<<"$output" | tail -15
+        observed="安全装置ではない理由で失敗 (rc=${rc})"; verdict=FAIL
       else
-        echo "OK: 安全装置を通過し、LVM 操作まで到達した"
-        PASS_COUNT=$((PASS_COUNT + 1))
+        echo "OK: 安全装置を通過し、LVM 操作まで到達した (rc=0)"
+        observed="通過し LVM 操作まで到達 (rc=0)"; verdict=PASS
       fi
       ;;
   esac
+  RESULT_ROWS+=("| ${case_id} | ${case_title} | ${expected} | ${observed} | ${verdict} |")
+  if [[ "$verdict" == PASS ]]; then
+    PASS_COUNT=$((PASS_COUNT + 1))
+  else
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  fi
 }
 
 run_case "case 1: 存在しないデバイス" refuse \
@@ -153,6 +185,13 @@ run_case "case 6: loop device だが許可していない" refuse \
           fstype: ext4
           mount: /mnt/guard"
 
+if ! has_device_mapper; then
+  echo
+  echo "--- case 7: 空の loop device を明示的に許可（正常系） ---"
+  echo "SKIP-ENV: device-mapper が無いため LVM 操作へ到達できない。PASS には数えない。"
+  SKIP_COUNT=$((SKIP_COUNT + 1))
+  RESULT_ROWS+=("| case 7 | 空の loop device を明示的に許可（正常系） | 安全装置を通過し rc=0 | device-mapper が無く実行不能 | SKIP-ENV |")
+else
 run_case "case 7: 空の loop device を明示的に許可（正常系）" pass_guard \
 "        - vg: vg_guard
           devices:
@@ -161,8 +200,47 @@ run_case "case 7: 空の loop device を明示的に許可（正常系）" pass_
           fstype: ext4
           mount: /mnt/guard" \
 "      storage_allow_loop_devices: true"
+fi
 
 printf '\n========================================\n'
-printf 'storage role 安全装置テスト: %d PASS / %d FAIL\n' "$PASS_COUNT" "$FAIL_COUNT"
+printf 'storage role 安全装置テスト: %d PASS / %d FAIL / %d SKIP-ENV\n' \
+  "$PASS_COUNT" "$FAIL_COUNT" "$SKIP_COUNT"
 printf '========================================\n'
+
+# 実行結果から証跡を生成する。手で PASS を書き込む余地を残さないため、
+# 判定行は run_case が積んだものだけを出力する。
+mkdir -p "$EVIDENCE_DIR"
+{
+  cat <<EVIDENCE_HEAD
+# B-1 補足: storage role 安全装置 negative test — ${RUN_DATE}
+
+> このファイルは \`scripts/labs/storage-guard-test.sh\` が実行結果から生成した。
+> 判定は script が実測値と期待値を比較した結果で、手で書き換えていない。
+
+## 実施情報
+
+| 項目 | 値 |
+| --- | --- |
+| 実施日時 (UTC) | $(date -u '+%Y-%m-%d %H:%M:%S') |
+| 実施環境 | $(uname -srm) |
+| 実行ホスト | $(id -un 2>/dev/null || echo unknown) @ $(hostname 2>/dev/null || echo unknown) |
+| 実行者 | ${DRILL_OPERATOR:-未設定（DRILL_OPERATOR 環境変数で指定する）} |
+| commit SHA | $(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo unknown) |
+| device-mapper | $(has_device_mapper && echo あり || echo なし) |
+
+## 判定
+
+| ID | 試験 | 期待結果 | 実測 | 結果 |
+| --- | --- | --- | --- | --- |
+EVIDENCE_HEAD
+  printf '%s\n' "${RESULT_ROWS[@]}"
+  cat <<EVIDENCE_TAIL
+
+合計: ${PASS_COUNT} PASS / ${FAIL_COUNT} FAIL / ${SKIP_COUNT} SKIP-ENV
+
+> SKIP-ENV は「この環境で確認できなかった」であり、合格ではありません。
+EVIDENCE_TAIL
+} > "$EVIDENCE_FILE"
+printf '証跡: %s\n' "$EVIDENCE_FILE"
+
 [[ $FAIL_COUNT -eq 0 ]]
