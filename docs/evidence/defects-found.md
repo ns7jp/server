@@ -20,10 +20,11 @@
 
 | 区分 | 件数 |
 | --- | --- |
-| 総数 | 26 |
+| 総数 | 29 |
 | うち **偽 PASS**（壊れているのに合格と判定していた） | 6 |
 | うち **証跡が壊れる / 残らない** | 5 |
 | うち **一度も起動・実行できていなかった** | 4 |
+| うち **対象 OS / イメージで動かない**（#25〜29） | 4 |
 | 静的検査（shellcheck / ansible-lint / molecule / 構文検査）で捕まえられたもの | 0 |
 
 **静的検査で捕まえられたものは 1 件もありません。** 修正時点で shellcheck と構文検査は
@@ -60,6 +61,9 @@
 | 24 | VLAN の有無を `/sys/module/8021q` の存在で判定していたため、**組み込み（`=y`）でビルドされた kernel を「無い」と誤判定**する | パス確認としては正しい | 実行 | 誤判定 | [#89](https://github.com/ns7jp/server-monitor/pull/89) |
 | 25 | `meta: end_role` は ansible-core 2.18 以降にしかない。**Ubuntu 24.04 LTS が同梱するのは 2.16.3 で、そこでは storage role が play ごと落ちる。** CI は pip で入れた 2.21.3 を使っていたため通っていた | **ansible-lint も molecule も構文検査も捕まえていない。** 検査に使う版と配布先の版が違うことが原因 | 実機（qemu 上の Ubuntu 24.04）で B-1 を実行 | 対象 OS で動かない | [#90](https://github.com/ns7jp/server-monitor/pull/90) |
 | 26 | storage role が冪等でない。1 回目は成功するが、2 回目は **自分が作った LV を自分の安全装置が「子デバイスがある」として拒否する**。`site.yml` を 2 回流せず、Ansible の role として成立していなかった | 1 回目だけを見る検査では出ない | 同上 | 冪等性の破れ | [#90](https://github.com/ns7jp/server-monitor/pull/90) |
+| 27 | el9 の Molecule scenario が role 本体のタスクへ到達する前（Gathering Facts の時点）で毎回失敗する。`sudo: PAM account management error: Authentication service cannot retrieve authentication info`。**common / docker 両 role で再現し、2 回連続で再現**（flake ではない） | ansible-lint・molecule scenario の構文検査・syntax-check のいずれも捕まえない。実行しないと出ない | 2026-08-25 に `ansible-integration.yml` を el9 で初めて実行 | 対象イメージで動かない | [#98](https://github.com/ns7jp/server-monitor/pull/98) |
+| 28 | RHEL 系で `curl` パッケージのインストールが dnf の依存解決で失敗する。AlmaLinux / Rocky の最小構成イメージが同梱する `curl-minimal` と provides が衝突する（`package curl-minimal ... conflicts with curl ... from baseos`）。common role・docker role の両方で同じ型を踏んでいた | 同上。パッケージの実インストールでしか出ない | 同上（#27 の修正後に到達した次のエラー） | 対象 OS で動かない | [#98](https://github.com/ns7jp/server-monitor/pull/98) |
+| 29 | `sshd -t` によるドロップイン検証が、ホスト鍵が 1 つも無い状態で必ず失敗する（`sshd: no hostkeys available -- exiting`）。`openssh-server` インストール直後の最小構成コンテナでは鍵生成サービスがまだ走っていない | 同上。ホスト鍵が既にある開発環境では再現しない | 同上（#28 の修正後に到達した次のエラー） | 対象 OS で動かない | [#99](https://github.com/ns7jp/server-monitor/pull/99) |
 
 ## この台帳に載せていないもの
 
@@ -73,7 +77,10 @@
 
 **言えること**: 静的検査（shellcheck / ansible-lint / molecule / 構文検査）を全部通しても、
 「一度も起動できていない」「壊れているのに PASS する」「証跡が残らない」ものは残ります。
-26 件のうち **6 件が偽 PASS** で、テストが無いより悪い状態でした。
+29 件のうち **6 件が偽 PASS** で、テストが無いより悪い状態でした。
+うち 3 件（#27〜29）は 2026-08-25 に el9 の Molecule scenario を初めて実行して
+見つけたもので、いずれも「対象 OS の既定パッケージ・イメージでは動かない」型でした。
+1 件直すと次のエラーが出る、を 3 回繰り返しています。
 
 **言えないこと**: これは学習ラボでの件数であり、本番システムの品質指標ではありません。
 また、そもそも自分（と AI 支援）が書いたコードの欠陥なので、
