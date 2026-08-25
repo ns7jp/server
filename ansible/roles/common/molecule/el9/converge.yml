@@ -1,7 +1,14 @@
 ---
 - name: Converge common role on RHEL family
   hosts: all
-  become: true
+  # geerlingguy/docker-rockylinux9-ansible の PAM スタックには既知の不具合が
+  # あり、root で接続した状態から sudo を呼ぶだけで
+  # "PAM account management error: Authentication service cannot retrieve
+  # authentication info" となって毎回失敗する（役割固有のタスクへ到達する
+  # 前、Gathering Facts の時点で落ちる）。docker 接続はこのイメージへ
+  # 最初から root で入るため、権限昇格そのものが不要。become を使わず
+  # root 接続のまま実行する。
+  become: false
   vars:
     # このコンテナへは docker 接続で入っており SSH は使わない。
     # 実ホストではここを true にせず、common_admin_user と

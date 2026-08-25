@@ -1290,3 +1290,48 @@ def test_watchdog_does_not_page_humans():
         assert 'alertname="Watchdog"' in config
         assert "receiver: watchdog" in config
         assert "- name: watchdog" in config
+
+
+def test_el9_molecule_scenarios_do_not_use_broken_sudo():
+    """geerlingguy/docker-rockylinux9-ansible の PAM スタックは、root で
+    接続した状態から sudo を呼ぶだけで
+    "PAM account management error: Authentication service cannot retrieve
+    authentication info" となり、役割固有のタスクへ到達する前
+    （Gathering Facts の時点）で毎回失敗する。2026-08-25 に
+    ansible-integration.yml を workflow_dispatch で実際に実行し、
+    common / el9 と docker / el9 の両方で再現を確認した（2 回連続）。
+
+    docker 接続はこのイメージへ最初から root で入るため、become による
+    権限昇格そのものが不要。become: false に固定し、元に戻らないようにする。
+    """
+    for path in (
+        ("common", "molecule", "el9", "converge.yml"),
+        ("common", "molecule", "el9", "verify.yml"),
+        ("docker", "molecule", "el9", "prepare.yml"),
+        ("docker", "molecule", "el9", "converge.yml"),
+        ("docker", "molecule", "el9", "verify.yml"),
+    ):
+        content = read("ansible", "roles", *path)
+        assert "become: false" in content, path
+        assert "become: true" not in content, path
+
+
+def test_redhat_package_install_allows_erasing_curl_minimal():
+    """AlmaLinux / Rocky の最小構成イメージは curl-minimal を同梱しており、
+    フル機能の curl パッケージと provides が衝突する
+    ("package curl-minimal ... conflicts with curl ... from baseos")。
+
+    2026-08-25 に ansible-integration.yml を el9 で初めて実行し、
+    common / docker 両方の role で実際に踏んだ。allowerasing なしの
+    dnf task は curl を明示的にインストールしようとした時点で必ず失敗する。
+    """
+    common_packages = read("ansible", "roles", "common", "tasks", "packages.yml")
+    docker_main = read("ansible", "roles", "docker", "tasks", "main.yml")
+
+    common_idx = common_packages.index("Ensure required packages are installed (RedHat family)")
+    common_block = common_packages[common_idx:]
+    assert "allowerasing: true" in common_block
+
+    docker_idx = docker_main.index("Ensure prerequisites are installed (RedHat family)")
+    docker_block = docker_main[docker_idx:]
+    assert "allowerasing: true" in docker_block

@@ -1,7 +1,14 @@
 ---
 - name: Verify common role outcomes on RHEL family
   hosts: all
-  become: true
+  # geerlingguy/docker-rockylinux9-ansible の PAM スタックには既知の不具合が
+  # あり、root で接続した状態から sudo を呼ぶだけで
+  # "PAM account management error: Authentication service cannot retrieve
+  # authentication info" となって毎回失敗する（役割固有のタスクへ到達する
+  # 前、Gathering Facts の時点で落ちる）。docker 接続はこのイメージへ
+  # 最初から root で入るため、権限昇格そのものが不要。become を使わず
+  # root 接続のまま実行する。
+  become: false
   gather_facts: true
   tasks:
     - name: Assert the role detected the RedHat family
