@@ -13,6 +13,8 @@ CONFIRMED_DISPOSABLE=0
 TMP_ROOT=""
 CLIENT_CONTAINER="server-monitor-e2e-client"
 CLIENT_CREATED=0
+SECOND_NODE_CONTAINER="server-monitor-e2e-second-node"
+SECOND_NODE_CREATED=0
 SSH_TEST_USER="server-monitor-e2e"
 SSH_USER_CREATED=0
 RESTORE_PROJECT=""
@@ -73,9 +75,9 @@ mkdir -p "${EVIDENCE_DIR}"
 EVIDENCE_DIR=$(cd -- "${EVIDENCE_DIR}" && pwd -P)
 
 IDS=(
-  ENV IT-01 IT-02 STACK IT-03 IT-04 IT-05 IT-08-local IT-09 IT-10
+  ENV IT-01 IT-02 STACK IT-03 IT-13 IT-04 IT-05 IT-08-local IT-09 IT-10
   NW-01 NW-02 NW-03 NW-04 NW-05 NW-06 NW-07 NW-08 NW-09 IT-12
-  ST-01 ST-02 ST-04
+  ST-01 ST-02 ST-04 ST-05
 )
 declare -A STATUS DETAIL DESCRIPTION
 
@@ -84,6 +86,7 @@ DESCRIPTION[IT-01]="site.yml 新規一括適用"
 DESCRIPTION[IT-02]="site.yml 2回目 changed=0"
 DESCRIPTION[STACK]="core 10 services と E2E sink の稼働・Docker API proxy制限"
 DESCRIPTION[IT-03]="Prometheus linux-node up=1"
+DESCRIPTION[IT-13]="監視サーバー1台がN台を scrape する（2台目 node_exporter が up=1）"
 DESCRIPTION[IT-04]="UI Basic 認証"
 DESCRIPTION[IT-05]="metrics Bearer 認証"
 DESCRIPTION[IT-08-local]="Alertmanager からローカル webhook への FIRING / RESOLVED 配送"
@@ -102,6 +105,7 @@ DESCRIPTION[IT-12]="NW-01〜09 の ephemeral VM network 検証"
 DESCRIPTION[ST-01]="管理 port の loopback bind"
 DESCRIPTION[ST-02]="app container の non-root user"
 DESCRIPTION[ST-04]="UFW active / default deny / SSH limit"
+DESCRIPTION[ST-05]="storage role 安全装置 negative test（7ケース）"
 
 for id in "${IDS[@]}"; do
   STATUS["${id}"]="NOT RUN"
@@ -206,6 +210,9 @@ cleanup() {
   set +e
   if [[ "${CLIENT_CREATED}" -eq 1 ]]; then
     run_as_root docker rm -f "${CLIENT_CONTAINER}" >/dev/null 2>&1
+  fi
+  if [[ "${SECOND_NODE_CREATED}" -eq 1 ]]; then
+    run_as_root docker rm -f "${SECOND_NODE_CONTAINER}" >/dev/null 2>&1
   fi
   if [[ "${SSH_USER_CREATED}" -eq 1 ]]; then
     run_as_root userdel --remove "${SSH_TEST_USER}" >/dev/null 2>&1
@@ -390,6 +397,50 @@ if python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["status"]=="suc
   mark IT-03 PASS "Prometheus API で up{job=linux-node}=1"
 else
   mark IT-03 FAIL "Prometheus linux-node query did not return 1"
+fi
+
+# IT-13: 「監視サーバー1台がN台を scrape する」の実演。
+# prometheus.yml.j2 の app_node_exporter_targets（ci.yml で設定済み）で
+# 名前だけ予約しておいたコンテナを、compose が作った internal network へ
+# 後から attach する。Prometheus は起動時から名前を知っているので、
+# コンテナが現れた時点で up=1 に変わる。
+# compose.yaml の `name: server-monitor-lab` から決まる internal network 名。
+# `docker compose ps --format` は go-template を取らない（table/json のみ）ため、
+# パースに頼らず compose 側の project name から直接組み立てる。
+compose_network="server-monitor-lab_monitoring"
+if run_as_root docker network inspect "${compose_network}" >/dev/null 2>&1; then
+  # host の実プロセス・ファイルシステムは見せない。ここで確かめたいのは
+  # 「Prometheus が名前で見つけて up=1 にできる 2 台目が存在する」ことだけで、
+  # そのホストの実メトリクスの中身ではない。
+  run_as_root docker run -d --rm \
+    --name "${SECOND_NODE_CONTAINER}" \
+    --network "${compose_network}" \
+    quay.io/prometheus/node-exporter:v1.8.2 \
+    > "${EVIDENCE_DIR}/second-node-exporter-start.txt" 2>&1 \
+    && SECOND_NODE_CREATED=1
+fi
+
+it13_targets=0
+if [[ "${SECOND_NODE_CREATED}" -eq 1 ]]; then
+  for _ in $(seq 1 30); do
+    prom_multi_query=$(curl -fsS --get --data-urlencode 'query=up{job="linux-node"}' \
+      http://127.0.0.1:9090/api/v1/query)
+    printf '%s\n' "${prom_multi_query}" > "${EVIDENCE_DIR}/prometheus-linux-node-multi.json"
+    it13_targets=$(python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+results = d.get("data", {}).get("result", [])
+up = [r for r in results if r.get("value", [None, None])[1] == "1"]
+print(len(up))
+' <<< "${prom_multi_query}")
+    [[ "${it13_targets}" -ge 2 ]] && break
+    sleep 2
+  done
+fi
+if [[ "${it13_targets}" -ge 2 ]]; then
+  mark IT-13 PASS "linux-node job の up=1 ターゲットが ${it13_targets} 件（1台構成の scrape 追加を実演）"
+else
+  mark IT-13 FAIL "2 台目 node_exporter を追加しても up=1 が ${it13_targets} 件のまま（second-node-exporter-start.txt 参照）"
 fi
 
 ui_unauth=$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/)
@@ -634,6 +685,23 @@ if [[ "${network_all_pass}" -eq 1 ]]; then
   mark IT-12 PASS "GitHub Actions ephemeral VM と別Docker namespaceで NW-01〜09 を完走"
 else
   mark IT-12 FAIL "NW-01〜09 に未完了または失敗あり"
+fi
+
+echo "=== ST-05: storage role safety-guard negative tests ==="
+# device-mapper が使える実 VM（GitHub-hosted runner）でのみ意味を持つ。
+# scripts/labs/storage-guard-test.sh 自身が case 1〜7 の判定から
+# docs/drills/logs/<日付>-B-1-guard.md 相当の証跡を生成する。
+# ここでは E2E の証跡ディレクトリへ出力させ、成果物として一緒に採録する。
+# storage-guard-test.sh 自身が root を要求する。run_as_root は sudo の
+# 環境をリセットするため、env で明示的に渡す。
+if run_as_root env \
+  "DRILL_OPERATOR=full-stack-e2e ${GITHUB_RUN_ID:-local}" \
+  "STORAGE_GUARD_EVIDENCE_DIR=${EVIDENCE_DIR}" \
+  bash "${ROOT_DIR}/scripts/labs/storage-guard-test.sh" \
+  > "${EVIDENCE_DIR}/storage-guard-test.log" 2>&1; then
+  mark ST-05 PASS "storage-guard-test.log / *-B-1-guard.md を参照。7 ケース中 FAIL 0 件"
+else
+  mark ST-05 FAIL "storage-guard-test.log を参照。安全装置の negative test で FAIL あり"
 fi
 
 required_all_pass=1
