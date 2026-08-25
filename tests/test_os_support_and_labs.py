@@ -1290,3 +1290,27 @@ def test_watchdog_does_not_page_humans():
         assert 'alertname="Watchdog"' in config
         assert "receiver: watchdog" in config
         assert "- name: watchdog" in config
+
+
+def test_el9_molecule_scenarios_do_not_use_broken_sudo():
+    """geerlingguy/docker-rockylinux9-ansible の PAM スタックは、root で
+    接続した状態から sudo を呼ぶだけで
+    "PAM account management error: Authentication service cannot retrieve
+    authentication info" となり、役割固有のタスクへ到達する前
+    （Gathering Facts の時点）で毎回失敗する。2026-08-25 に
+    ansible-integration.yml を workflow_dispatch で実際に実行し、
+    common / el9 と docker / el9 の両方で再現を確認した（2 回連続）。
+
+    docker 接続はこのイメージへ最初から root で入るため、become による
+    権限昇格そのものが不要。become: false に固定し、元に戻らないようにする。
+    """
+    for path in (
+        ("common", "molecule", "el9", "converge.yml"),
+        ("common", "molecule", "el9", "verify.yml"),
+        ("docker", "molecule", "el9", "prepare.yml"),
+        ("docker", "molecule", "el9", "converge.yml"),
+        ("docker", "molecule", "el9", "verify.yml"),
+    ):
+        content = read("ansible", "roles", *path)
+        assert "become: false" in content, path
+        assert "become: true" not in content, path
