@@ -132,10 +132,22 @@ def test_ssh_hardening_uses_a_drop_in_on_every_supported_os():
 
     # drop-in の検査が RedHat 限定に戻っていないこと。
     refuse_idx = ssh_tasks.index(
-        "Refuse another drop-in that re-enables root login or password authentication"
+        "Refuse a drop-in that sorts first and re-enables root login or password authentication"
     )
     refuse_block = ssh_tasks[refuse_idx:]
     assert "ansible_os_family == 'RedHat'" not in refuse_block
+
+    # PR #92 の CI で実際に踏んだ欠陥: Ubuntu / Azure の cloud image は
+    # 60-cloudimg-settings.conf に PasswordAuthentication yes を持つのが
+    # 標準（10-hardening.conf より後に読まれるので無害）。「他のどの
+    # drop-in も見ない」形に戻すと、この標準構成へ適用するだけで
+    # 誤って fail する。this role より後に読まれるファイルは対象外に
+    # すること（sort 順の比較そのものを検査する）。
+    find_idx = ssh_tasks.index("Find sshd drop-in configuration files")
+    read_idx = ssh_tasks.index("Read sshd drop-in files that sort before this role's drop-in")
+    read_block = ssh_tasks[read_idx:refuse_idx]
+    assert find_idx < read_idx
+    assert "selectattr('path', 'lt', common_sshd_dropin_path)" in read_block
 
 
 def test_ssh_hardening_verifies_the_effective_configuration():

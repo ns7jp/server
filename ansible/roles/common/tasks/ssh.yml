@@ -95,19 +95,27 @@
   register: common_sshd_dropins
   when: common_sshd_uses_dropin | bool
 
-- name: Read the other sshd drop-in files
+# sshd は Include されたファイルを glob 順（＝ファイル名のソート順）で
+# 読み、値を持つ最初のものを採用する。したがって、この role が書く
+# drop-in より「後」に読まれるファイルが何を書いていても、そのファイルは
+# 勝てない。Ubuntu / Azure の cloud image は 50-cloud-init.conf や
+# 60-cloudimg-settings.conf に PasswordAuthentication yes を持つのが標準
+# （sudo 前の初回ログイン用）だが、10- のこの role の方が先に読まれるため
+# 無害。ここでは「先に読まれてしまう」ファイル（名前が辞書順で this role
+# より前）だけを対象に検査する。
+- name: Read sshd drop-in files that sort before this role's drop-in
   ansible.builtin.slurp:
     src: "{{ item.path }}"
   loop: >-
     {{ (common_sshd_dropins.files | default([]))
-       | rejectattr('path', 'equalto', common_sshd_dropin_path)
+       | selectattr('path', 'lt', common_sshd_dropin_path)
        | list }}
   loop_control:
     label: "{{ item.path }}"
   register: common_sshd_dropin_contents
   when: common_sshd_uses_dropin | bool
 
-- name: Refuse another drop-in that re-enables root login or password authentication
+- name: Refuse a drop-in that sorts first and re-enables root login or password authentication
   ansible.builtin.assert:
     that:
       - >-
@@ -117,11 +125,11 @@
         (common_password_authentication | bool)
         or 'passwordauthentication yes' not in common_sshd_dropin_text
     fail_msg: >-
-      /etc/ssh/sshd_config.d contains another drop-in that re-enables root
-      login or password authentication. sshd takes the first value it sees,
-      so whichever file sorts first wins. Remove or correct that file before
-      applying this role. (This role writes {{ common_sshd_dropin_path }},
-      named 10- so that it is read before cloud-init's 50-cloud-init.conf.)
+      /etc/ssh/sshd_config.d contains a drop-in that sorts before
+      {{ common_sshd_dropin_path }} and re-enables root login or password
+      authentication. sshd takes the first value it sees, so that file wins
+      over this role. Remove it, or rename it to sort after
+      {{ common_sshd_dropin_path }}.
   vars:
     common_sshd_dropin_text: >-
       {{ common_sshd_dropin_contents.results | default([])
