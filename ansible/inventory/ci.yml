@@ -23,3 +23,10 @@ all:
           app_alertmanager_group_wait: 1s
           app_alertmanager_group_interval: 1s
           app_alertmanager_repeat_interval: 1h
+          # 「監視サーバー1台がN台を scrape する」ことを E2E で実演するための
+          # 2台目。run-full-stack.sh が site.yml 適用後にこの名前のコンテナを
+          # monitoring network へ attach する（IT-13）。この時点ではまだ
+          # 存在しないが、Prometheus は down のまま待ち、起動後に up=1 になる。
+          app_node_exporter_targets:
+            - address: "server-monitor-e2e-second-node:9100"
+              host: second-node

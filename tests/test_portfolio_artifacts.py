@@ -1146,3 +1146,50 @@ def test_full_stack_ci_executes_scoped_git_mode_rollback_rehearsal():
     assert "rollback-actual-runtime-manifest.sha256" in workflow
     assert "test -s \"$evidence_dir/change-rollback-summary.md\"" in workflow
 
+
+
+def test_e2e_demonstrates_prometheus_scraping_a_second_host():
+    """「監視サーバー1台が N 台を scrape する」を、VPS を待たずに実演する。
+
+    prometheus.yml.j2 を app_node_exporter_targets でテンプレート化しただけでは
+    「動くはず」で終わる。ephemeral VM である full-stack-e2e の中で実際に
+    2 台目の node_exporter を monitoring network へ attach し、Prometheus の
+    up{job="linux-node"} が 2 件以上になることを確認する。
+    """
+    ci_inventory = (ROOT / "ansible" / "inventory" / "ci.yml").read_text(
+        encoding="utf-8"
+    )
+    runner = (ROOT / "scripts" / "e2e" / "run-full-stack.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "app_node_exporter_targets" in ci_inventory
+    assert "server-monitor-e2e-second-node" in ci_inventory
+
+    assert 'DESCRIPTION[IT-13]=' in runner
+    assert "server-monitor-lab_monitoring" in runner
+    assert "SECOND_NODE_CREATED=1" in runner
+    assert '"${it13_targets}" -ge 2' in runner
+    # cleanup path must exist so the container doesn't leak past the run.
+    assert 'run_as_root docker rm -f "${SECOND_NODE_CONTAINER}"' in runner
+
+
+def test_e2e_runs_the_storage_guard_negative_tests():
+    """storage-guard-test.sh は device-mapper が要るためこのセッションでは
+    実行証跡を採録できなかったが、full-stack-e2e の ephemeral VM
+    （GitHub-hosted runner、コンテナではない）には device-mapper がある。
+    そこで実行して、初めて実行証跡を持たせる。
+    """
+    runner = (ROOT / "scripts" / "e2e" / "run-full-stack.sh").read_text(
+        encoding="utf-8"
+    )
+    assert 'DESCRIPTION[ST-05]=' in runner
+    assert "scripts/labs/storage-guard-test.sh" in runner
+    # root で実行しないと storage-guard-test.sh 自身の require_root で
+    # 即座に失敗する。run_as_root 経由で、かつ sudo が環境をリセットしても
+    # 変数が渡るよう env 経由にしていること。
+    call_start = runner.index("if run_as_root env")
+    call_end = runner.index("scripts/labs/storage-guard-test.sh", call_start)
+    call_block = runner[call_start:call_end]
+    assert "STORAGE_GUARD_EVIDENCE_DIR=" in call_block
+    assert "DRILL_OPERATOR=" in call_block
