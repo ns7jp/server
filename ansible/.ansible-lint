@@ -14,3 +14,10 @@ warn_list:
   - command-instead-of-shell
   - experimental
 use_default_rules: true
+# command-instead-of-module はここに一括では入れない。role 内の各使用箇所は
+# `realpath -m`（未存在パスをmutationの前に正規化して検証する。stat は
+# 対象が存在しないと使えず代用できない）か、git のプランビングコマンド
+# （rev-parse / status --porcelain / ls-tree / archive、ansible.builtin.git
+# は clone/checkout 用で個別クエリを持たない）のいずれかで、command 以外に
+# 手段が無い。個別の `# noqa: command-instead-of-module` のまま残し、新規
+# コマンド使用が紛れ込んだときにも lint が引っかかるようにしている。
