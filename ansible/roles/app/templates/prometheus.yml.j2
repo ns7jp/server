@@ -1,6 +1,6 @@
-# {{ ansible_managed }}
-# 正本はこのテンプレート。deploy/prometheus/prometheus.yml は compose を
-# 単体で動かすときの既定値で、Ansible 配備時はこちらが上書きする。
+{# Ansible-managed Prometheus configuration. Do not edit on the host. #}
+{# ansible_managed は既定でレンダー時刻を含み、毎回 changed になるため使わない
+   （alertmanager.yml.j2 と同じ方針）。 #}
 global:
   scrape_interval: 15s
   evaluation_interval: 15s

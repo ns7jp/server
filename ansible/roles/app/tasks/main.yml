@@ -453,10 +453,17 @@
 
 # 監視対象と environment ラベルを inventory から決める。静的ファイルのままだと
 # environment が 'lab' 固定になり、監視対象の追加もできない。
+#
+# alertmanager.ansible.yml と同じパターンで、git 管理下の
+# deploy/prometheus/prometheus.yml は上書きせず、別名で render する。
+# 上書きすると「Synchronize tracked release」タスクが次の適用で
+# git 管理下の静的ファイルへ巻き戻し、それをこのタスクがまた上書きし直す
+# という無限ループになり、2 回目の適用が二度と changed=0 にならない
+# （PR #92 の CI で実際に踏んだ）。
 - name: Render environment-specific Prometheus configuration before compose starts
   ansible.builtin.template:
     src: prometheus.yml.j2
-    dest: "{{ app_repo_target }}/deploy/prometheus/prometheus.yml"
+    dest: "{{ app_repo_target }}/deploy/prometheus/prometheus.ansible.yml"
     owner: "{{ server_monitor_user }}"
     group: "{{ server_monitor_group }}"
     # Prometheus は非 root の container UID で動く。0750 の配備先ディレクトリが

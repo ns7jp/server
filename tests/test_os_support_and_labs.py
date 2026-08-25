@@ -1222,6 +1222,33 @@ def test_prometheus_can_scrape_more_than_one_host():
     assert "app_node_exporter_targets: []" in defaults
 
 
+def test_prometheus_render_does_not_overwrite_the_tracked_static_file():
+    """PR #92 の full-stack-e2e CI で実際に踏んだ非冪等バグ。
+
+    deploy/prometheus/prometheus.yml は git 管理下で、毎回の適用ごとに
+    「Synchronize tracked release」タスクがその内容へ巻き戻す。テンプレートが
+    同じパスへ直接 render すると、sync が静的版へ戻す → template task が
+    また上書きする、を毎回繰り返し、2 回目の適用が永遠に changed=0 に
+    ならない。alertmanager.yml.j2 と同じく、別名（*.ansible.yml、
+    git 管理外）へ render し、compose.ansible.yaml でだけ差し替える。
+    """
+    tasks = read("ansible", "roles", "app", "tasks", "main.yml")
+    compose_ansible = read("compose.ansible.yaml")
+    gitignore = read(".gitignore")
+
+    assert "dest: \"{{ app_repo_target }}/deploy/prometheus/prometheus.ansible.yml\"" in tasks
+    assert "dest: \"{{ app_repo_target }}/deploy/prometheus/prometheus.yml\"" not in tasks
+    assert "deploy/prometheus/prometheus.ansible.yml:/etc/prometheus/prometheus.yml:ro" in compose_ansible
+    assert "deploy/prometheus/prometheus.ansible.yml" in gitignore
+
+    # ansible_managed は既定でレンダー時刻を含み、別名にしても
+    # 每回 changed になる。alertmanager.yml.j2 も使っていない。
+    template = read("ansible", "roles", "app", "templates", "prometheus.yml.j2")
+    assert "ansible_managed" not in template.replace(
+        "ansible_managed は既定でレンダー時刻を含み、毎回 changed になるため使わない", ""
+    )
+
+
 def test_prometheus_watches_itself():
     """Prometheus 自身を scrape していないと「監視の監視」を名乗れない。
 
