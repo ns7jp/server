@@ -70,11 +70,13 @@ ALB の target は Flask / Nginx のサービス入口（`:8080`）であり、�
 | --- | --- | --- |
 | ローカル学習 | Compose 上の Prometheus / Loki / Grafana / Alloy | 追加なし |
 | AWS アプリ可用性の外部観測 | ALB / EC2 の CloudWatch alarm を Terraform で定義 | CloudWatch Synthetics 等、対象ホスト外からの `/healthz` probe |
-| 中央 metrics / logs | 未実装。node-local データは正本にしない | AMP `remote_write`、CloudWatch Logs または object storage backed Loki |
+| 中央 metrics / logs | 未実装。node-local データは正本にしない | AMP `remote_write`、CloudWatch Logs または object storage backed Loki（詳細設計は[外部 probe / 中央 telemetry 設計](roadmap/external-probe-central-telemetry.md)） |
 
 Compose 内の blackbox-exporter はラボでの SLI 計算には有効だが、同じホストが
 停止すると probe 自体も止まる。AWS で外形 SLO を主張するには、ホスト外の probe
-と中央保存された観測結果の証跡を追加する。
+と中央保存された観測結果の証跡を追加する。構成図・採用方針・Definition of Done は
+[外部 probe / 中央 telemetry 設計](roadmap/external-probe-central-telemetry.md)に
+まとめてあり、実装はしていないが空白ではない。
 
 ## モジュール責務
 
