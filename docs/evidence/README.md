@@ -42,9 +42,16 @@ CI が検査しているのは構文と静的テストまでです（`python-che
 pytest、`backup-verify.yml` の shellcheck 3 本）。**`labs/` と `scripts/labs/` には
 shellcheck が掛かっておらず、安全装置の実行テストと B-1〜B-4 は CI では走りません。**
 
-AlmaLinux 実機への `site.yml` 適用と、Molecule `el9` シナリオの実行証跡は
-どちらも `NOT RUN` です（`ansible-integration.yml` は `workflow_dispatch` のみで、
-push / PR では起動しません）。
+AlmaLinux 実機への `site.yml` 適用は `NOT RUN` です。
+
+**Molecule `el9` シナリオは 2026-08-25 に実行証跡を採録しました**
+（[run #14](https://github.com/ns7jp/server-monitor/actions/runs/32811100007)、
+main `5480662`、common / docker role の el9 scenario ともに成功）。
+初回実行（[run #9](https://github.com/ns7jp/server-monitor/actions/runs/32809471372)）
+は 3 件の実欠陥に阻まれて失敗し、1 件ずつ実行して直しました。
+[欠陥台帳](defects-found.md) に追加しています。実機の AlmaLinux / Rocky 9
+ホストへの適用ではなく、コンテナ（`geerlingguy/docker-rockylinux9-ansible`）上の
+検証です。
 
 | 区分 | 状態 |
 | --- | --- |
@@ -58,7 +65,8 @@ push / PR では起動しません）。
 | ネットワーク切り分けの一次メモ | ✅ [2026-08-21](2026-08-21-network-firstlook.md)：公開port不成立を切り分け。2026-08-22に内部segmentを維持した`host-access`構成へ修正し、E2Eでloopback bind / namespace遮断 / SSH tunnelを確認 |
 | ephemeral VM の network / UFW | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：`NW-01〜09` / `IT-12` / `ST-01,04` PASS |
 | 独立した管理端末・対象hostでの network / UFW | ❌ **NOT RUN**（[手順](../build-package/09-network-validation-procedure.md)と[結果票テンプレート](templates/network-host-validation.md)のみ） |
-| AlmaLinux / Rocky 9 実機への `site.yml` 適用 | ❌ **NOT RUN**（role と `el9` Molecule scenario のみ） |
+| AlmaLinux / Rocky 9 の Molecule `el9` シナリオ | ✅ [2026-08-25](https://github.com/ns7jp/server-monitor/actions/runs/32811100007)：common / docker 両 role の el9 scenario が成功。コンテナ上の検証で、実機ホストへの適用ではない |
+| AlmaLinux / Rocky 9 実機への `site.yml` 適用 | ❌ **NOT RUN**（role は el9 コンテナで検証済み） |
 | B-1 ディスク設計・LVM 拡張演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-1.md)：**5 PASS / 0 FAIL**。初回適用・冪等性・ENOSPC 再現・PV 追加による online 拡張（220M→457M、mount 維持）を実測。安全装置テスト（`storage-guard-test.sh`、7 ケース）は**実行証跡を未採録**。script は証跡を自動生成するようになったので、device-mapper のある環境で実行して採録する |
 | B-2 3 層構成の障害切り分け演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-2.md)：実コンテナ（Docker 29.3.1）で **9 PASS / 0 FAIL**。層分離の遮断、DB 停止・AP 停止・経路断の切り分けを実測 |
 | B-3 DB バックアップ・復元演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-3.md)：実 PostgreSQL 16 で **7 PASS / 0 FAIL**。RTO **0.149 秒** / RPO **2.344 秒**、内容ハッシュ一致まで実測 |

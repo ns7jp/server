@@ -481,10 +481,10 @@ AI 支援セッションの作業環境上で実行しており、独立した�
   結果票を自動生成する仕組みは
   [10 立ち上げと受け入れ試験](docs/build-package/10-host-bringup-and-acceptance.md)
   に用意しています。
-- AlmaLinux / Rocky 9 対応は role と Molecule scenario までです。**実機の
-  AlmaLinux ホストへ `site.yml` を適用した証跡も、Molecule `el9` シナリオの
-  実行証跡もまだありません**（`ansible-integration.yml` は `workflow_dispatch`
-  のみで、push / PR では起動しません）。
+- AlmaLinux / Rocky 9 対応は role と Molecule scenario です。**Molecule `el9`
+  は 2026-08-25 に [実行証跡](https://github.com/ns7jp/server-monitor/actions/runs/32811100007)
+  を採録しました**（common / docker 両 role、コンテナ上での検証）。実機の
+  AlmaLinux ホストへ `site.yml` を適用した証跡はまだありません。
 - **B-1 〜 B-4 は実行した証跡がありますが、実行環境は AI 支援セッションの
   作業環境です**（B-1 は qemu 上の Ubuntu 24.04 ゲスト、B-2 / B-3 は Docker
   コンテナ、B-4 は network namespace）。独立した物理／VPS ホストや、
