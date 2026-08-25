@@ -29,11 +29,15 @@
     cache_valid_time: 3600
   when: ansible_os_family == 'Debian'
 
+# AlmaLinux / Rocky の最小構成イメージは curl-minimal を同梱しており、
+# フル機能の curl と provides が衝突する（common role の packages.yml と
+# 同じ理由）。
 - name: Ensure prerequisites are installed (RedHat family)
   ansible.builtin.dnf:
     name: "{{ docker_prerequisite_packages }}"
     state: present
     update_cache: true
+    allowerasing: true
   when: ansible_os_family == 'RedHat'
 
 - name: Configure the Docker repository and install the engine

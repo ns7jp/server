@@ -18,9 +18,14 @@
     - ansible_os_family == 'RedHat'
     - common_enable_epel | bool
 
+# AlmaLinux / Rocky の最小構成イメージは curl-minimal を同梱しており、
+# フル機能の curl と provides が衝突する。dnf 単体では
+# "package curl-minimal ... conflicts with curl" で止まるため、
+# `dnf install curl --allowerasing` と同じ動作を allowerasing で行う。
 - name: Ensure required packages are installed (RedHat family)
   ansible.builtin.dnf:
     name: "{{ common_required_packages + common_extra_packages }}"
     state: present
     update_cache: true
+    allowerasing: true
   when: ansible_os_family == 'RedHat'

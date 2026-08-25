@@ -1314,3 +1314,24 @@ def test_el9_molecule_scenarios_do_not_use_broken_sudo():
         content = read("ansible", "roles", *path)
         assert "become: false" in content, path
         assert "become: true" not in content, path
+
+
+def test_redhat_package_install_allows_erasing_curl_minimal():
+    """AlmaLinux / Rocky の最小構成イメージは curl-minimal を同梱しており、
+    フル機能の curl パッケージと provides が衝突する
+    ("package curl-minimal ... conflicts with curl ... from baseos")。
+
+    2026-08-25 に ansible-integration.yml を el9 で初めて実行し、
+    common / docker 両方の role で実際に踏んだ。allowerasing なしの
+    dnf task は curl を明示的にインストールしようとした時点で必ず失敗する。
+    """
+    common_packages = read("ansible", "roles", "common", "tasks", "packages.yml")
+    docker_main = read("ansible", "roles", "docker", "tasks", "main.yml")
+
+    common_idx = common_packages.index("Ensure required packages are installed (RedHat family)")
+    common_block = common_packages[common_idx:]
+    assert "allowerasing: true" in common_block
+
+    docker_idx = docker_main.index("Ensure prerequisites are installed (RedHat family)")
+    docker_block = docker_main[docker_idx:]
+    assert "allowerasing: true" in docker_block
