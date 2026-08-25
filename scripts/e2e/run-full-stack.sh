@@ -698,7 +698,7 @@ if run_as_root env \
   "DRILL_OPERATOR=full-stack-e2e ${GITHUB_RUN_ID:-local}" \
   "STORAGE_GUARD_EVIDENCE_DIR=${EVIDENCE_DIR}" \
   bash "${ROOT_DIR}/scripts/labs/storage-guard-test.sh" \
-  > "${EVIDENCE_DIR}/storage-guard-test.log" 2>&1; then
+  2>&1 | tee "${EVIDENCE_DIR}/storage-guard-test.log"; then
   mark ST-05 PASS "storage-guard-test.log / *-B-1-guard.md を参照。7 ケース中 FAIL 0 件"
 else
   mark ST-05 FAIL "storage-guard-test.log を参照。安全装置の negative test で FAIL あり"
