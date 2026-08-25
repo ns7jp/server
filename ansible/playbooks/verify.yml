@@ -48,10 +48,16 @@
       until: prom_ready.status == 200
 
     - name: Wait for linux-node target to be scraped successfully
+      # app_node_exporter_targets で追加した他ホストは、この play の時点では
+      # まだ存在しないことがある（例: full-stack-e2e の IT-13 は site.yml 適用後に
+      # 2 台目を attach する）。result[0] は Prometheus 側の返却順に依存し、
+      # このホスト自身のターゲットとは限らないため、instance ラベルで
+      # 自分自身（node-exporter:9100、prometheus.yml.j2 が常にこの名前で
+      # 自ホストを scrape する）だけを名指しで検査する。
       ansible.builtin.uri:
         url: >-
           http://127.0.0.1:{{ prometheus_port
-          }}/api/v1/query?query=up%7Bjob%3D%22linux-node%22%7D
+          }}/api/v1/query?query=up%7Bjob%3D%22linux-node%22%2Cinstance%3D%22node-exporter%3A9100%22%7D
         return_content: true
         status_code: 200
       register: linux_node_up
