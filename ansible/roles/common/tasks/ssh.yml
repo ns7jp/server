@@ -1,4 +1,16 @@
 ---
+# `sshd -t` はホスト鍵が最低 1 つ無いと "no hostkeys available -- exiting"
+# で必ず失敗する。openssh-server パッケージのインストール直後（特に
+# 最小構成のコンテナイメージ）はホスト鍵の生成サービスがまだ走って
+# いないことがあり、drop-in の validate がこの時点で落ちる。
+# ssh-keygen -A は既存の鍵には触れず、無い種類だけを生成する。
+- name: Ensure SSH host keys exist before validating sshd configuration
+  ansible.builtin.command:
+    argv:
+      - ssh-keygen
+      - -A
+    creates: /etc/ssh/ssh_host_rsa_key
+
 # Debian の sshd -t は /run/sshd の存在を前提にする。RHEL 系では
 # /var/empty/sshd を使うため、ここでは Debian 系だけを対象にする。
 - name: Ensure sshd runtime directory exists for configuration validation

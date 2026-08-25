@@ -1335,3 +1335,16 @@ def test_redhat_package_install_allows_erasing_curl_minimal():
     docker_idx = docker_main.index("Ensure prerequisites are installed (RedHat family)")
     docker_block = docker_main[docker_idx:]
     assert "allowerasing: true" in docker_block
+
+
+def test_ssh_host_keys_are_generated_before_validation():
+    """`sshd -t` はホスト鍵が無いと "no hostkeys available -- exiting" で
+    必ず失敗する。openssh-server インストール直後（特に最小構成の
+    コンテナイメージ）はまだ鍵が無いことがある。2026-08-25 に
+    ansible-integration.yml の common / el9 で実際に踏んだ。
+    """
+    ssh_tasks = read("ansible", "roles", "common", "tasks", "ssh.yml")
+    keygen_idx = ssh_tasks.index("ssh-keygen")
+    validate_idx = ssh_tasks.index("validate: /usr/sbin/sshd -t -f %s")
+    assert keygen_idx < validate_idx
+    assert "creates: /etc/ssh/ssh_host_rsa_key" in ssh_tasks
