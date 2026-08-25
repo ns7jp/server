@@ -1193,3 +1193,46 @@ def test_e2e_runs_the_storage_guard_negative_tests():
     call_block = runner[call_start:call_end]
     assert "STORAGE_GUARD_EVIDENCE_DIR=" in call_block
     assert "DRILL_OPERATOR=" in call_block
+
+
+def test_evidence_index_still_claims_it13_and_st05_are_run():
+    """IT-13 / ST-05 は 06-test-specification.md の公式番号体系とは別の、
+    run-full-stack.sh 内で完結する固有 ID である。
+
+    その run-full-stack.sh 側で ID を rename・削除したのに
+    docs/evidence/README.md の記載だけが古いまま残る、あるいはその逆
+    （README だけが実行済みと主張して runner 側の ID が無くなる）と、
+    この台帳が掲げる「実行していない検証を成功実績として記載しない」
+    という原則が壊れる。両者を突き合わせる。
+    """
+    runner = (ROOT / "scripts" / "e2e" / "run-full-stack.sh").read_text(
+        encoding="utf-8"
+    )
+    index = (ROOT / "docs" / "evidence" / "README.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'DESCRIPTION[IT-13]=' in runner
+    assert 'DESCRIPTION[ST-05]=' in runner
+
+    it13_row = next(
+        (line for line in index.splitlines()
+         if line.startswith("| 監視サーバー1台がN台をscrapeする実演")),
+        None,
+    )
+    assert it13_row, "証跡の索引に IT-13（複数台 scrape の実演）の行が無い"
+    assert "✅" in it13_row, "IT-13 の行があるのに実行済みと書いていない"
+    assert "IT-13" in it13_row
+    assert "actions/runs/" in it13_row, "IT-13 の行に実行結果へのリンクが無い"
+
+    b1_row = next(
+        (line for line in index.splitlines() if line.startswith("| B-1 ")),
+        None,
+    )
+    assert b1_row, "証跡の索引に B-1 の行が無い"
+    assert "ST-05" in b1_row, (
+        "B-1 の行に storage-guard-test.sh (ST-05) の実行結果への言及が無い"
+    )
+    assert "未採録" not in b1_row, (
+        "storage-guard-test.sh は実行済みなのに、索引がまだ未採録と書いている"
+    )
