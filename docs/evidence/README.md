@@ -38,6 +38,14 @@ B-1〜B-4 は 2026-08-24 に実行し、証跡を採録済みです（下表）�
 **独立した物理／VPS ホストや、本人の手元 WSL2 での再実行証跡ではありません。**
 各証跡ファイルの「実施環境」欄に、採録時の `uname` をそのまま残しています。
 
+**監視サーバー1台がN台をscrapeする実演（IT-13）と、`storage-guard-test.sh`
+安全装置negative test（ST-05）の実行証跡を追加しました。**
+どちらも2026-08-25、`full-stack-e2e`のephemeral VM（GitHub-hosted runner、
+device-mapperあり）上で実測しています
+（[run 32816412328](https://github.com/ns7jp/server-monitor/actions/runs/32816412328)、
+main `774d71c`）。IDは`06-test-specification.md`の公式番号体系とは別に、
+`run-full-stack.sh`内で完結する固有IDです。
+
 CI が検査しているのは構文と静的テストまでです（`python-check.yml` の `bash -n` と
 pytest、`backup-verify.yml` の shellcheck 3 本）。**`labs/` と `scripts/labs/` には
 shellcheck が掛かっておらず、安全装置の実行テストと B-1〜B-4 は CI では走りません。**
@@ -64,10 +72,11 @@ main `5480662`、common / docker role の el9 scenario ともに成功）。
 | 二セグメント障害ラボの実測 | ✅ [2026-08-19](2026-08-19-network-drill.md)（障害注入→切り分け→復旧、PASS） |
 | ネットワーク切り分けの一次メモ | ✅ [2026-08-21](2026-08-21-network-firstlook.md)：公開port不成立を切り分け。2026-08-22に内部segmentを維持した`host-access`構成へ修正し、E2Eでloopback bind / namespace遮断 / SSH tunnelを確認 |
 | ephemeral VM の network / UFW | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：`NW-01〜09` / `IT-12` / `ST-01,04` PASS |
+| 監視サーバー1台がN台をscrapeする実演 | ✅ [2026-08-25](https://github.com/ns7jp/server-monitor/actions/runs/32816412328)：`full-stack-e2e` の ephemeral VM 上で、2台目の node_exporter を実行時に internal network へ attach し、Prometheus が名前解決だけで `up=1` に切り替わることを `run-full-stack.sh` 内 ID `IT-13` として実測（main `774d71c`） |
 | 独立した管理端末・対象hostでの network / UFW | ❌ **NOT RUN**（[手順](../build-package/09-network-validation-procedure.md)と[結果票テンプレート](templates/network-host-validation.md)のみ） |
 | AlmaLinux / Rocky 9 の Molecule `el9` シナリオ | ✅ [2026-08-25](https://github.com/ns7jp/server-monitor/actions/runs/32811100007)：common / docker 両 role の el9 scenario が成功。コンテナ上の検証で、実機ホストへの適用ではない |
 | AlmaLinux / Rocky 9 実機への `site.yml` 適用 | ❌ **NOT RUN**（role は el9 コンテナで検証済み） |
-| B-1 ディスク設計・LVM 拡張演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-1.md)：**5 PASS / 0 FAIL**。初回適用・冪等性・ENOSPC 再現・PV 追加による online 拡張（220M→457M、mount 維持）を実測。安全装置テスト（`storage-guard-test.sh`、7 ケース）は**実行証跡を未採録**。script は証跡を自動生成するようになったので、device-mapper のある環境で実行して採録する |
+| B-1 ディスク設計・LVM 拡張演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-1.md)：**5 PASS / 0 FAIL**。初回適用・冪等性・ENOSPC 再現・PV 追加による online 拡張（220M→457M、mount 維持）を実測。安全装置テスト（`storage-guard-test.sh`、7 ケース）は[2026-08-25](https://github.com/ns7jp/server-monitor/actions/runs/32816412328)、`full-stack-e2e` の ephemeral VM（device-mapper あり）で `run-full-stack.sh` 内 ID `ST-05` として実行し PASS。証跡本体（`storage-guard-test.log` / `*-B-1-guard.md`）は当該 run の artifact に含まれる |
 | B-2 3 層構成の障害切り分け演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-2.md)：実コンテナ（Docker 29.3.1）で **9 PASS / 0 FAIL**。層分離の遮断、DB 停止・AP 停止・経路断の切り分けを実測 |
 | B-3 DB バックアップ・復元演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-3.md)：実 PostgreSQL 16 で **7 PASS / 0 FAIL**。RTO **0.149 秒** / RPO **2.344 秒**、内容ハッシュ一致まで実測 |
 | B-4 L2 / L3 切り分け演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-4.md)：**6 PASS / 0 FAIL / 3 SKIP-ENV**。静的ルート・戻り経路の欠落・`ip_forward` を実測。VLAN 部はこの kernel が `CONFIG_VLAN_8021Q` 無効のため未検証 |
