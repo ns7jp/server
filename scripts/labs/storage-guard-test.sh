@@ -19,6 +19,12 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 WORK_DIR="${STORAGE_GUARD_WORK_DIR:-/var/tmp/server-monitor-storage-guard}"
 DRILL_PYTHON="${STORAGE_GUARD_PYTHON:-/usr/bin/python3}"
 [[ -x "$DRILL_PYTHON" ]] || DRILL_PYTHON="$(command -v python3)"
+# sudo は既定で secure_path により PATH をリセットするため、pip/venv で
+# 入れた ansible-playbook が呼び出し元の PATH 上にあっても root からは
+# 見えないことがある（full-stack-e2e の run_as_root env 経由の呼び出しで
+# 実際に "ansible-playbook が無い" で落ちた）。呼び出し元が解決済みの絶対
+# パスを渡せるようにし、無ければ通常どおり PATH から探す。
+ANSIBLE_PLAYBOOK_BIN="${STORAGE_GUARD_ANSIBLE_PLAYBOOK:-ansible-playbook}"
 
 PASS_COUNT=0
 FAIL_COUNT=0
@@ -39,7 +45,7 @@ fail() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
 
 [[ "$(id -u)" -eq 0 ]] || fail "loop device を扱うため root で実行する"
 command -v losetup >/dev/null 2>&1 || fail "losetup が無い"
-command -v ansible-playbook >/dev/null 2>&1 || fail "ansible-playbook が無い"
+command -v "$ANSIBLE_PLAYBOOK_BIN" >/dev/null 2>&1 || fail "ansible-playbook が無い"
 
 cleanup() {
   local backing dev
@@ -83,7 +89,7 @@ run_case() {
 
   set +e
   output="$(ANSIBLE_ROLES_PATH="${REPO_ROOT}/ansible/roles" \
-    ansible-playbook -i "$inventory" "${REPO_ROOT}/ansible/playbooks/storage.yml" 2>&1)"
+    "$ANSIBLE_PLAYBOOK_BIN" -i "$inventory" "${REPO_ROOT}/ansible/playbooks/storage.yml" 2>&1)"
   rc=$?
   set -e
 
