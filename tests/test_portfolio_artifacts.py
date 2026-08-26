@@ -1183,7 +1183,7 @@ def test_e2e_runs_the_storage_guard_negative_tests():
     runner = (ROOT / "scripts" / "e2e" / "run-full-stack.sh").read_text(
         encoding="utf-8"
     )
-    assert 'DESCRIPTION[ST-05]=' in runner
+    assert 'DESCRIPTION[ST-06]=' in runner
     assert "scripts/labs/storage-guard-test.sh" in runner
     # root で実行しないと storage-guard-test.sh 自身の require_root で
     # 即座に失敗する。run_as_root 経由で、かつ sudo が環境をリセットしても
@@ -1196,8 +1196,8 @@ def test_e2e_runs_the_storage_guard_negative_tests():
 
 
 def test_evidence_index_still_claims_it13_and_st05_are_run():
-    """IT-13 / ST-05 は 06-test-specification.md の公式番号体系とは別の、
-    run-full-stack.sh 内で完結する固有 ID である。
+    """IT-13 / ST-06 は run-full-stack.sh 内で完結する実行時 ID で、
+    06-test-specification.md にも対応する行を追加している。
 
     その run-full-stack.sh 側で ID を rename・削除したのに
     docs/evidence/README.md の記載だけが古いまま残る、あるいはその逆
@@ -1213,7 +1213,7 @@ def test_evidence_index_still_claims_it13_and_st05_are_run():
     )
 
     assert 'DESCRIPTION[IT-13]=' in runner
-    assert 'DESCRIPTION[ST-05]=' in runner
+    assert 'DESCRIPTION[ST-06]=' in runner
 
     it13_row = next(
         (line for line in index.splitlines()
@@ -1230,8 +1230,8 @@ def test_evidence_index_still_claims_it13_and_st05_are_run():
         None,
     )
     assert b1_row, "証跡の索引に B-1 の行が無い"
-    assert "ST-05" in b1_row, (
-        "B-1 の行に storage-guard-test.sh (ST-05) の実行結果への言及が無い"
+    assert "ST-06" in b1_row, (
+        "B-1 の行に storage-guard-test.sh (ST-06) の実行結果への言及が無い"
     )
     assert "未採録" not in b1_row, (
         "storage-guard-test.sh は実行済みなのに、索引がまだ未採録と書いている"
