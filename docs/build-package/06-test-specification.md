@@ -85,6 +85,7 @@
 | IT-10 | backup restore | snapshot を別 volume へ復元 | 内容一致 | NOT RUN | — |
 | IT-11 | network fault | 二セグメントラボを実行 | 失敗、原因特定、復旧 | NOT RUN | — |
 | IT-12 | 実ホスト network | [NW-01〜09](09-network-validation-procedure.md)を実行 | IP / DNS / route / listen / HTTP / packet / FW が設計どおり | NOT RUN | [結果票テンプレート](../evidence/templates/network-host-validation.md) |
+| IT-13 | 複数台 scrape | 2 台目の node_exporter を追加 | Prometheus が名前解決だけで対象を `up=1` に切り替える | NOT RUN | — |
 
 ## セキュリティ試験
 
@@ -95,6 +96,7 @@
 | ST-03 | secret tracking | `git ls-files deploy/secrets` | 実値なし | NOT RUN | — |
 | ST-04 | firewall | `ufw status verbose` | 許可通信だけ開放 | NOT RUN | — |
 | ST-05 | secret scan | CI security scan | high severity なし | NOT RUN | — |
+| ST-06 | storage 安全装置 | `storage-guard-test.sh`（negative test 7 ケース） | 意図した拒否がすべて成立 | NOT RUN | — |
 
 ## 終了判定
 
