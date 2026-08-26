@@ -77,7 +77,7 @@ EVIDENCE_DIR=$(cd -- "${EVIDENCE_DIR}" && pwd -P)
 IDS=(
   ENV IT-01 IT-02 STACK IT-03 IT-13 IT-04 IT-05 IT-08-local IT-09 IT-10
   NW-01 NW-02 NW-03 NW-04 NW-05 NW-06 NW-07 NW-08 NW-09 IT-12
-  ST-01 ST-02 ST-04 ST-05
+  ST-01 ST-02 ST-04 ST-06
 )
 declare -A STATUS DETAIL DESCRIPTION
 
@@ -105,7 +105,7 @@ DESCRIPTION[IT-12]="NW-01〜09 の ephemeral VM network 検証"
 DESCRIPTION[ST-01]="管理 port の loopback bind"
 DESCRIPTION[ST-02]="app container の non-root user"
 DESCRIPTION[ST-04]="UFW active / default deny / SSH limit"
-DESCRIPTION[ST-05]="storage role 安全装置 negative test（7ケース）"
+DESCRIPTION[ST-06]="storage role 安全装置 negative test（7ケース）"
 
 for id in "${IDS[@]}"; do
   STATUS["${id}"]="NOT RUN"
@@ -687,7 +687,7 @@ else
   mark IT-12 FAIL "NW-01〜09 に未完了または失敗あり"
 fi
 
-echo "=== ST-05: storage role safety-guard negative tests ==="
+echo "=== ST-06: storage role safety-guard negative tests ==="
 # device-mapper が使える実 VM（GitHub-hosted runner）でのみ意味を持つ。
 # scripts/labs/storage-guard-test.sh 自身が case 1〜7 の判定から
 # docs/drills/logs/<日付>-B-1-guard.md 相当の証跡を生成する。
@@ -700,9 +700,9 @@ if run_as_root env \
   "STORAGE_GUARD_ANSIBLE_PLAYBOOK=$(command -v ansible-playbook)" \
   bash "${ROOT_DIR}/scripts/labs/storage-guard-test.sh" \
   2>&1 | tee "${EVIDENCE_DIR}/storage-guard-test.log"; then
-  mark ST-05 PASS "storage-guard-test.log / *-B-1-guard.md を参照。7 ケース中 FAIL 0 件"
+  mark ST-06 PASS "storage-guard-test.log / *-B-1-guard.md を参照。7 ケース中 FAIL 0 件"
 else
-  mark ST-05 FAIL "storage-guard-test.log を参照。安全装置の negative test で FAIL あり"
+  mark ST-06 FAIL "storage-guard-test.log を参照。安全装置の negative test で FAIL あり"
 fi
 
 required_all_pass=1
