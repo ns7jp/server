@@ -3,7 +3,13 @@
 このディレクトリは、設計資料や構成コードが存在することと、実環境で確認した結果を
 混同しないための台帳である。実行していない検証を成功実績として記載しない。
 
-## 要約（2026-08-23 更新）
+## 要約（2026-08-27 更新）
+
+2026-08-27、現行 `main` の `b97ccbc30b6c57cbf13bc283bdf0ffbbb4313083` を基点とする
+作業ツリーで、[Windows ローカル静的・単体検証](2026-08-27-local-static-validation.md)を実施しました。
+pytest、Python compile、tracked shell script 15 本の構文、dashboard JSON 2 件、YAML 100 件、
+追跡 secret file の境界を確認しています。この作業ツリーは文書・test追加を含む **dirty tree** であり、
+Linux / Docker / Ansible / Terraform runtime は `NOT RUN` です。過去の E2E を現行差分の実測へ読み替えません。
 
 **Ansibleロール単体だけでなく、`site.yml`によるhost全体の新規構築・冪等性、
 監視stack、認証、network/UFW、D-1、backup restore、使い捨てrunner上のGit-mode
@@ -63,6 +69,7 @@ main `5480662`、common / docker role の el9 scenario ともに成功）。
 
 | 区分 | 状態 |
 | --- | --- |
+| 現行作業ツリーのローカル静的・単体検証 | ✅ [2026-08-27](2026-08-27-local-static-validation.md)：pytest 149件、compile、shell 15本、JSON 2件、YAML 100件、secret追跡境界をWindowsで確認。基点は`b97ccbc` + 未コミット差分。Linux runtimeは**NOT RUN** |
 | CI による自動検証 | ✅ 継続的に実行中（構文・設定整合・依存脆弱性・秘密値混入・バックアップスクリプト） |
 | 現行mainのMolecule / Backup再検証 | ✅ [2026-08-23](2026-08-23-current-main-ci-refresh.md)：4 roleとbackup archive smokeを`59aa88e`で再実行。AWS jobは設定なしでskip |
 | Full-stack E2E | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：新規構築、2回目`changed=0`、11 containers、認証、Docker API proxy、local通知、network/UFW、D-1、3-volume restoreを23/23 PASS |
@@ -168,6 +175,7 @@ PostgreSQL がこう返すはず」という想定**であり、確認できた�
 
 | 試験ID | 現在の証跡 | 境界 |
 | --- | --- | --- |
+| UT-01、UT-06、ST-03 | [2026-08-27 Windowsローカル検証](2026-08-27-local-static-validation.md) | `b97ccbc`を基点とするdirty treeのPython / 成果物 / tracked secret検査。Linux runtimeやimmutable commitのCIではない |
 | UT-01〜04、ST-03、ST-05 | [PR #75の5 workflow](2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証) | Python / Compose / monitoring config / Ansible / securityのCI。runtime試験の代替ではない |
 | UT-05 | [2026-08-19 Terraform check](2026-08-19-ci-baseline.md) | 当時commitの`fmt / validate / static scan`。AWS applyではなく、PR #75 commitの再検証でもない |
 | IT-01〜05、IT-09〜10、ST-01〜02、ST-04 | [2026-08-22 PR #75 E2E](2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証) | disposable Ubuntu runner内で実測 |
@@ -186,7 +194,7 @@ repository内で完結する構成commit / 設定rollback rehearsalは採録済�
 | 対象 | リポジトリで確認できる成果物 | 実行証跡 |
 | --- | --- | --- |
 | アプリ/API の認証・マスキング | `tests/`、`python-check.yml` | CI 実行結果を PR で確認。[2026-08-19: 4 workflow の直近成功ログを台帳化](2026-08-19-ci-baseline.md) |
-| ローカル Python / 成果物検査 | `tests/` | [2026-08-11: 14 tests PASS](2026-08-11-local-code-validation.md) |
+| ローカル Python / 成果物検査 | `tests/` | [2026-08-27: 149 tests PASS + 静的検査](2026-08-27-local-static-validation.md)。[2026-08-11: 14 tests PASS](2026-08-11-local-code-validation.md)は履歴 |
 | Compose / Prometheus / Loki / Alloy 設定 | `compose.yaml`、`deploy/`、`python-check.yml` | [2026-08-18: Linux(WSL2)上での起動・Grafana実画面・Lokiログ検索を採録](2026-08-18-local-observability.md) |
 | Ansible roles | `ansible/`、`ansible-check.yml` | 構文・lint 検証に加え、[2026-08-17: 4 ロールの `molecule test` 完走](2026-08-17-molecule.md)（create → converge → idempotence → verify）。[実行手順](molecule-via-github-actions.md) |
 | Ansible full site E2E | `full-stack-e2e.yml`、`scripts/e2e/run-full-stack.sh` | [2026-08-22実測](2026-08-22-full-stack-e2e.md) / [実行・証跡採録手順](../e2e-validation.md) |
@@ -222,6 +230,8 @@ repository内で完結する構成commit / 設定rollback rehearsalは採録済�
 | Grafana / Loki / Alertmanager ローカル採録 | `docs/evidence/YYYY-MM-DD-local-observability.md` |
 | Alertmanager → Slack 実配信 | `docs/evidence/YYYY-MM-DD-slack-delivery.md` |
 | Linux 新規構築・試験 | `docs/evidence/YYYY-MM-DD-build-validation.md` |
+| ローカル静的・単体検証 | `docs/evidence/YYYY-MM-DD-local-static-validation.md` |
+| 作業結果・引き渡し報告 | `docs/evidence/YYYY-MM-DD-work-result-<change-id>.md` |
 | 永続host再起動・24h / 72h確認 | `docs/evidence/YYYY-MM-DD-host-reboot-72h.md` |
 | 二セグメント通信障害 | `docs/evidence/YYYY-MM-DD-network-drill.md` |
 | Linux 実ホスト network / UFW | `docs/evidence/YYYY-MM-DD-network-host-validation.md` |
@@ -240,6 +250,7 @@ repository内で完結する構成commit / 設定rollback rehearsalは採録済�
 | Molecule フル実行 | [templates/molecule.md](templates/molecule.md) |
 | Linux 実ホスト network / UFW | [templates/network-host-validation.md](templates/network-host-validation.md) |
 | 仮説 → コマンド → 結果 → 学び | [templates/troubleshooting-worklog.md](templates/troubleshooting-worklog.md) |
+| 作業結果・引き渡し報告 | [../build-package/11-work-result-report.md](../build-package/11-work-result-report.md) |
 | D-1 プロセスダウン | [../drills/logs/TEMPLATE-D-1-process-down.md](../drills/logs/TEMPLATE-D-1-process-down.md) |
 | D-2 ホスト障害復旧 | [../drills/logs/TEMPLATE-D-2-host-failure.md](../drills/logs/TEMPLATE-D-2-host-failure.md) |
 

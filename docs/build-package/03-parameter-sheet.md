@@ -2,6 +2,34 @@
 
 値の正本は Ansible variables、Compose、各設定ファイルです。この表はレビューと引き渡し用の索引です。
 
+## 文書管理
+
+| 項目 | 設計値 / 状態 |
+| --- | --- |
+| 案件 ID | `SM-LAB-001` |
+| 対象環境 | `staging`（基準）。引き渡し時に実環境名へ置換 |
+| 対象ホスト | `monitor-01`（論理名）。実 FQDN / IP は `NOT SET` |
+| 設定値の正本 | `ansible/inventory/`、`ansible/roles/*/defaults/`、`compose.yaml`、`deploy/` |
+| 実績値の正本 | 対象ホストごとの日付付き evidence |
+| 適用 commit SHA | `NOT SET` — branch 名ではなく 40 桁 SHA を記録 |
+| 最終レビュー / 承認 | `NOT SET` |
+
+「設計値」はコードから確認できる値、「実績値」は対象ホストでコマンド出力を採録した値です。実績欄の `NOT RUN` を、設計値から推測して埋めません。
+
+## ホスト識別・ネットワーク
+
+| 項目 | 設計値 | 実績値 | 正本 / 確認方法 |
+| --- | --- | --- | --- |
+| inventory hostname | `monitor-01` | `NOT RUN` | `ansible/inventory/staging.local.yml` / `hostnamectl --static` |
+| FQDN | 環境ごとに決定 | `NOT RUN` | inventory / `hostname --fqdn` |
+| IPv4 / prefix | 環境ごとに決定 | `NOT RUN` | inventory / `ip -br addr` |
+| default gateway | 環境ごとに決定 | `NOT RUN` | `ip route` |
+| DNS resolver | 環境ごとに決定 | `NOT RUN` | `resolvectl status` |
+| 管理元 CIDR | production では必須 | `NOT RUN` | `server_monitor_ssh_source_cidr` / UFW または上流 FW |
+| SSH user | staging 例は `ubuntu` | `NOT RUN` | local inventory / `id` |
+| SSH port | `22/tcp` | `NOT RUN` | UFW / `ss -lntup` |
+| timezone | `Asia/Tokyo` | `NOT RUN` | `timedatectl` |
+
 ## OS
 
 対象 OS は 2 系統。値が分かれるものは両方を書く。片方だけ書くと、
@@ -99,6 +127,17 @@ registry上のtag不変性まで保証するdigest固定ではありません。
 | latency SLO | p95 500 ms 未満 / 28 日 | `docs/slo.md` |
 | backup schedule | 毎日 03:30（host timezone: Asia/Tokyo） | `ansible/roles/backup/defaults/main.yml` |
 | backup retention | 14 日 | `ansible/roles/backup/defaults/main.yml` |
+
+## 配備パス・サービス
+
+| 対象 | 設計値 | 確認方法 |
+| --- | --- | --- |
+| 配備ルート | `/opt/server-monitor` | `readlink -f /opt/server-monitor` |
+| revision marker | `/opt/server-monitor/.server-monitor-deploy-revision` | 内容が適用 SHA と一致すること |
+| Compose files | `compose.yaml` + `compose.ansible.yaml` | `docker compose ... config` |
+| backup unit | `server-monitor-backup.service` / `.timer` | `systemctl status` / `list-timers` |
+| 主要ログ | Docker logs、`/var/log`、systemd journal | Loki / `journalctl` |
+| backup directory | `/var/backups/server-monitor` | `findmnt` / directory owner・mode |
 
 ## 公開ポート
 

@@ -17,7 +17,7 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 ## 採用ご担当者向け：最初に見る 3 点
 
 1. **2分15秒デモ** — [保存済み実測証跡リプレイ](https://ns7jp.github.io/demo.html)。2026-08-18/19のscreen shotとD-1 logを再構成した閲覧用映像で、実操作の連続録画ではありません。[2026-08-22 E2E](docs/evidence/2026-08-22-full-stack-e2e.md)では実terminalの`demo.cast`もartifact化しました。
-2. **構成と構築工程** — [構成図](docs/architecture.md) / [Linux server構築案件pack](docs/build-package/README.md)。
+2. **構成と構築工程** — [構成図](docs/architecture.md) / [Linux server構築案件pack](docs/build-package/README.md)。要件 → 設計 → パラメータ → 構築 → 試験 → 作業結果 → 引き渡しを 1 案件として追跡できます。
 3. **実測証跡** — [検証証跡台帳](docs/evidence/README.md) / [新規host一気通貫E2E](docs/e2e-validation.md)。未実行をPASSにしません。
 
 > **実測の現状（2026-08-22）**: PR #75のruntime変更最終commit
@@ -98,7 +98,7 @@ flowchart LR
 
 | 文書 | 内容 |
 | --- | --- |
-| [Linux サーバー構築案件パック](docs/build-package/README.md) | 基本・詳細設計、パラメータ、ネットワーク、構築、試験、引き渡し |
+| [Linux サーバー構築案件パック](docs/build-package/README.md) | 要件から設計、パラメータ、構築、試験、作業結果、引き渡しまでの標準成果物一式 |
 | [インフラ監視ラボ設計](docs/architecture.md) | 構成図、設計判断、監視条件 |
 | [セキュリティ設計](docs/security.md) | 認証、秘密管理、公開範囲、残存リスク |
 | [構築・配備手順](docs/deployment.md) | Docker Compose と native Linux 配備例 |
