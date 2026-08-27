@@ -95,5 +95,7 @@ ssh monitor-01 'ufw status verbose'
 - 結果票、実行ログ、画面、費用（AWS 使用時）を保存
 - 一時的な firewall 許可とテストデータを削除
 - 未解決事項を Issue 化
-- [引き渡しチェックリスト](07-handover-checklist.md)を確認
+- [作業結果・引き渡し報告書](11-work-result-report.md)を日付付き evidence へ複製し、計画対実績、実行時間、対象 commit、差異、障害、残存リスクを記入
+- 報告書の試験集計と個別結果票の件数が一致することを確認
+- [引き渡しチェックリスト](07-handover-checklist.md)を確認し、`NOT RUN` / `BLOCKED` が残る場合は受領可にしない
 

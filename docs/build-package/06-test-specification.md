@@ -68,6 +68,7 @@
 | UT-03 | Prometheus rules | `promtool check rules ...` | SUCCESS | NOT RUN | — |
 | UT-04 | Ansible syntax | `ansible-playbook ... --syntax-check` | exit 0 | NOT RUN | — |
 | UT-05 | Terraform validate | `terraform validate` | Success | NOT RUN | — |
+| UT-06 | 成果物リンク | `pytest tests/test_portfolio_artifacts.py -k internal_markdown_links` | README / docs の相対リンクがすべてリポジトリ内で解決 | NOT RUN | — |
 
 ## 構築・結合試験
 
@@ -100,7 +101,7 @@
 
 ## 終了判定
 
-- 必須 ID: UT-01〜04、IT-01〜09、IT-12、ST-01〜05
+- 必須 ID: UT-01〜04、UT-06、IT-01〜09、IT-12、ST-01〜05
 - `FAIL` または `BLOCKED` が 1 件でもあれば構築完了としません。
 - 必須 ID に `NOT RUN` が残る場合も構築完了としません。
 - AWS を使用しない検証では UT-05 を `BLOCKED (AWS credentials not used)` とせず、ローカル `validate` の結果を記録します。

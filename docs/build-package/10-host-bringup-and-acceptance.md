@@ -135,6 +135,7 @@ journalctl -u server-monitor-soak -f
 - [ ] SKIP の項目が「未確認」であることを本文に残している
 - [ ] host 名 / IP / 秘密値が出ていない（`--no-mask` を使っていない）
 - [ ] [検証証跡台帳](../evidence/README.md) の該当行を `NOT RUN` から更新した
+- [ ] [作業結果・引き渡し報告書](11-work-result-report.md)を日付付き evidence へ複製し、結果票の件数、差異、残存リスク、受領判定を記入した
 - [ ] 06 の**原本は `NOT RUN` のまま**（上書きしない）
 
 ## 7. この手順で埋まらないもの

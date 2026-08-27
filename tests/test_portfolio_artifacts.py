@@ -68,6 +68,8 @@ def test_build_package_contains_all_delivery_documents():
         "07-handover-checklist.md",
         "08-change-rollback-plan.md",
         "09-network-validation-procedure.md",
+        "10-host-bringup-and-acceptance.md",
+        "11-work-result-report.md",
     }
     actual = {path.name for path in (ROOT / "docs" / "build-package").glob("*.md")}
     assert required <= actual
@@ -79,6 +81,31 @@ def test_test_specification_does_not_claim_unrun_results():
     )
     assert "NOT RUN" in text
     assert "PASS / FAIL / BLOCKED / NOT RUN" in text
+
+
+def test_work_result_report_keeps_completion_and_evidence_boundaries():
+    report = (
+        ROOT / "docs" / "build-package" / "11-work-result-report.md"
+    ).read_text(encoding="utf-8")
+    index = (ROOT / "docs" / "build-package" / "README.md").read_text(
+        encoding="utf-8"
+    )
+    handover = (
+        ROOT / "docs" / "build-package" / "07-handover-checklist.md"
+    ).read_text(encoding="utf-8")
+
+    for expected in (
+        "対象 commit SHA",
+        "実績開始–終了 / 所要時間",
+        "PASS / FAIL / BLOCKED / NOT RUN",
+        "設計値と実績値の差異",
+        "残存リスク・未実施",
+        "引き渡し可否",
+        "NOT READY",
+    ):
+        assert expected in report
+    assert "11-work-result-report.md" in index
+    assert "11-work-result-report.md" in handover
 
 
 def test_network_lab_declares_two_distinct_subnets():

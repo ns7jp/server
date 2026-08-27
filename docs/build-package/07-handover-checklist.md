@@ -10,6 +10,7 @@
 | 引き渡し対象host/管理端末の network IT-12 | `NOT RUN` |
 | ephemeral runnerの構成commit / 設定rollback rehearsal | `PASS`（[2026-08-23 CI実測](../evidence/2026-08-23-change-CI-GIT-ROLLBACK.md)。D-1 / volume restoreとは別） |
 | 引き渡し対象hostの構成commit / 設定rollback rehearsal | `NOT RUN`（対象host未指定） |
+| 作業結果報告書 | 原本作成済み。対象ホストの報告は `NOT SET` |
 | 必須試験完了 | `NOT READY` |
 | 受領 | `NOT SET` |
 
@@ -23,6 +24,7 @@
 - [ ] 必須試験がすべて `PASS` した
 - [ ] 未解決 Issue、制約、残存リスクを説明した
 - [ ] 監視対象、閾値、通知先、対応時間帯を説明した
+- [ ] [作業結果・引き渡し報告書](11-work-result-report.md)を日付付き evidence へ複製し、計画対実績と試験集計を記入した
 
 ## 運用
 
@@ -90,5 +92,6 @@
 | 試験結果票 | `NOT SET` |
 | network 結果票 | `NOT SET` |
 | 変更 / rollback 記録 | `NOT SET` |
+| 作業結果報告書 | `NOT SET` |
 | 秘密値受け渡し完了（値は記載しない） | `NOT SET` |
 
