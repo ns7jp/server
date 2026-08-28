@@ -18,7 +18,8 @@
 ```mermaid
 flowchart LR
     User[利用者] --> ALB[ALB / Nginx]
-    Synthetic[External probe<br/>CloudWatch Synthetics]
+    Synthetic["`External probe
+    CloudWatch Synthetics`"]
     Synthetic -->|GET /healthz| ALB
 
     subgraph Nodes[app nodes]
