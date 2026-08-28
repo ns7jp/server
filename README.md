@@ -97,18 +97,22 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 
 ```mermaid
 flowchart LR
-    Operator["運用担当者"] -->|"Basic 認証"| Nginx["Nginx<br/>loopback 公開"]
-    Nginx --> App["Flask + Gunicorn<br/>non-root"]
+    Operator["運用担当者"] -->|"Basic 認証"| Nginx["`Nginx
+    loopback 公開`"]
+    Nginx --> App["`Flask + Gunicorn
+    non-root`"]
     Prometheus -->|"Bearer token /metrics"| App
     Prometheus --> Exporter["node-exporter"]
     Exporter --> Host["Linux host"]
     Prometheus --> Grafana
     Prometheus --> Alertmanager
     Alertmanager -.->|"秘密値設定後"| Slack["Slack"]
-    Alloy["Grafana Alloy<br/>ログ収集"] -->|"/var/log"| Host
+    Alloy["`Grafana Alloy
+    ログ収集`"] -->|"/var/log"| Host
     Alloy -->|"GET/HEADのみ"| DockerProxy["Docker API proxy"]
     DockerProxy -->|"socket / private network"| Host
-    Alloy --> Loki["Loki<br/>ログ保存"]
+    Alloy --> Loki["`Loki
+    ログ保存`"]
     Loki -->|"LogQL"| Grafana
 ```
 

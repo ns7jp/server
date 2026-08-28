@@ -11,14 +11,25 @@ L2（VLAN、同一セグメント内の到達）と L3（ルーティング、�
 
 ```mermaid
 flowchart LR
-    HostA["host-a<br/>172.30.10.10"]
-    Router["router<br/>172.30.10.1<br/>172.30.20.1<br/>172.30.30.1"]
-    HostB["host-b<br/>172.30.20.10"]
-    HostC["host-c<br/>172.30.30.10<br/>VLAN10: 192.168.10.10"]
+    HostA["`host-a
+    172.30.10.10`"]
+    Router["`router
+    172.30.10.1
+    172.30.20.1
+    172.30.30.1`"]
+    HostB["`host-b
+    172.30.20.10`"]
+    HostC["`host-c
+    172.30.30.10
+    VLAN10: 192.168.10.10`"]
 
-    HostA ---|"segment-a<br/>172.30.10.0/24"| Router
-    Router ---|"segment-b<br/>172.30.20.0/24"| HostB
-    Router ---|"segment-c<br/>172.30.30.0/24<br/>+ 802.1Q VLAN 10"| HostC
+    HostA ---|"`segment-a
+    172.30.10.0/24`"| Router
+    Router ---|"`segment-b
+    172.30.20.0/24`"| HostB
+    Router ---|"`segment-c
+    172.30.30.0/24
+    + 802.1Q VLAN 10`"| HostC
 ```
 
 各ホストは **default route を持たない**。隣のセグメントへ届かせるには、
