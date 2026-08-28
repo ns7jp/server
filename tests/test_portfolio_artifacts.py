@@ -97,6 +97,37 @@ def test_beginner_guide_keeps_safe_learning_path_and_evidence_boundary():
         assert troubleshooting_step in guide
 
 
+def test_server_building_keyword_glossary_is_detailed_and_repo_specific():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    guide = (ROOT / "docs" / "beginner-learning-guide.md").read_text(
+        encoding="utf-8"
+    )
+    glossary = (ROOT / "docs" / "server-building-keywords.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "server-building-keywords.md" in readme
+    assert "server-building-keywords.md" in guide
+    assert len(re.findall(r"^### ", glossary, flags=re.MULTILINE)) >= 70
+    for category in (
+        "サーバーとOSの基礎",
+        "Linux操作とファイル管理",
+        "ネットワーク",
+        "Dockerとコンテナ",
+        "AnsibleとTerraform",
+        "監視と可観測性",
+        "セキュリティ",
+        "運用、障害対応、ポートフォリオ証跡",
+    ):
+        assert category in glossary
+    for learning_label in ("**一言**", "**意味**", "**このリポジトリ**", "**確認**"):
+        assert glossary.count(learning_label) >= 70
+    for evidence_boundary in ("PASS", "FAIL", "BLOCKED", "NOT RUN"):
+        assert evidence_boundary in glossary
+    for safety_boundary in ("terraform apply", "sudo", "秘密値", "破棄できるLinux検証環境"):
+        assert safety_boundary in glossary
+
+
 def test_test_specification_does_not_claim_unrun_results():
     text = (ROOT / "docs" / "build-package" / "06-test-specification.md").read_text(
         encoding="utf-8"

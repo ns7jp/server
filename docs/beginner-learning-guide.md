@@ -188,6 +188,10 @@ commit SHA:
 
 ## 用語集
 
+以下は最初に覚える最小用語集です。Linux、ネットワーク、Docker、Ansible、監視、
+セキュリティ、障害対応、設計・試験まで詳しく調べる場合は、
+[未経験者向けサーバー構築キーワード集](server-building-keywords.md)を使ってください。
+
 | 用語 | やさしい説明 |
 | --- | --- |
 | サーバー | ネットワーク経由で機能やデータを提供するコンピューターまたはソフトウェア |
@@ -226,6 +230,7 @@ commit SHA:
 
 ## 次に進む道
 
+- 用語を詳しく学ぶ: [サーバー構築キーワード集](server-building-keywords.md)
 - 構築工程を学ぶ: [Linuxサーバー構築案件パック](build-package/README.md)
 - 自動構築を学ぶ: [Ansible配備手順](deployment-ansible.md)
 - 監視設計を学ぶ: [構成図と設計判断](architecture.md)
