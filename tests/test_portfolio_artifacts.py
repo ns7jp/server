@@ -75,6 +75,28 @@ def test_build_package_contains_all_delivery_documents():
     assert required <= actual
 
 
+def test_beginner_guide_keeps_safe_learning_path_and_evidence_boundary():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    guide = (ROOT / "docs" / "beginner-learning-guide.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "初心者向け学習ガイド" in readme
+    for learning_step in ("見る", "動かす", "確認する", "壊して直す", "説明する"):
+        assert learning_step in readme
+    for concept in ("Docker Compose", "Ansible", "Prometheus", "Grafana"):
+        assert concept in guide
+    for safety_boundary in (
+        "NOT RUN",
+        "git status --short",
+        "docker compose down -v",
+        "terraform apply",
+    ):
+        assert safety_boundary in guide
+    for troubleshooting_step in ("状態", "ログ", "通信", "設定"):
+        assert troubleshooting_step in guide
+
+
 def test_test_specification_does_not_claim_unrun_results():
     text = (ROOT / "docs" / "build-package" / "06-test-specification.md").read_text(
         encoding="utf-8"
