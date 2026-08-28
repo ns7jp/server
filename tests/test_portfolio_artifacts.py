@@ -97,6 +97,56 @@ def test_beginner_guide_keeps_safe_learning_path_and_evidence_boundary():
         assert troubleshooting_step in guide
 
 
+def test_learning_path_and_prerequisite_check_are_actionable_and_safe():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    path = (ROOT / "docs" / "learning-path.md").read_text(encoding="utf-8")
+    script = ROOT / "scripts" / "learning" / "check-prerequisites.sh"
+
+    assert "docs/learning-path.md" in readme
+    assert "check-prerequisites.sh" in readme
+    for level in range(7):
+        assert f"Level {level}" in path
+    for field in ("目的", "前提", "期待結果", "次へ進む条件"):
+        assert field in path
+    for verdict in ("PASS", "FAIL", "BLOCKED", "NOT RUN"):
+        assert verdict in path
+    assert script.stat().st_mode & 0o111
+    result = subprocess.run(
+        ["bash", str(script), "--help"],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert "設定変更" in result.stdout
+    assert "終了コード" in result.stdout
+
+
+def test_portfolio_explains_decisions_lessons_and_real_environment_boundary():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    decisions = (ROOT / "docs" / "design-decisions.md").read_text(encoding="utf-8")
+    lessons = (ROOT / "docs" / "lessons-learned.md").read_text(encoding="utf-8")
+    real_plan = (
+        ROOT / "docs" / "real-environment-validation-plan.md"
+    ).read_text(encoding="utf-8")
+
+    for link in (
+        "docs/design-decisions.md",
+        "docs/lessons-learned.md",
+        "docs/real-environment-validation-plan.md",
+    ):
+        assert link in readme
+    assert decisions.count("## ADR-") >= 7
+    for decision_field in ("背景", "判断", "欠点", "見直し条件"):
+        assert decision_field in decisions
+    for lesson_field in ("当初の想定", "根本原因", "再発防止", "学び"):
+        assert lessons.count(lesson_field) >= 3
+    assert real_plan.count("NOT RUN") >= 8
+    for boundary in ("VPS", "after-reboot", "24時間", "72時間", "Slack", "destroy"):
+        assert boundary in real_plan
+
+
 def test_server_building_keyword_glossary_is_detailed_and_repo_specific():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     guide = (ROOT / "docs" / "beginner-learning-guide.md").read_text(

@@ -48,6 +48,8 @@ jobs:
           while IFS= read -r script; do
             bash -n "$script"
           done < <(git ls-files '*.sh')
+          git ls-files -z '*.sh' | xargs -0 shellcheck --severity=warning
+          bash scripts/learning/check-prerequisites.sh --help > /dev/null
           bash scripts/ops/daily-check.sh --help > /dev/null
           if bash scripts/ops/daily-check.sh --disk-threshold 0; then
             echo 'daily-check accepted an unsafe threshold' >&2

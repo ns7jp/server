@@ -33,14 +33,27 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 分からない用語は、意味・覚え方・実装例・確認コマンドをまとめた
 [未経験者向けサーバー構築キーワード集](docs/server-building-keywords.md)で確認できます。
 
+**最初に全機能を学ぶ必要はありません。** [一本道ラーニングパス](docs/learning-path.md)では、
+Level 0〜4を入門必修、障害対応をLevel 5、LVM / 3層 / L2-L3 / AWSを選択式のLevel 6に
+分けています。開始前は、設定を変更しない診断を実行してください。
+
+```bash
+./scripts/learning/check-prerequisites.sh
+```
+
 > 実機やAWSへいきなり適用しません。最初は破棄できるLinux検証環境を使い、
 > 実行していない項目は `NOT RUN` のまま記録します。
 
-## 採用ご担当者向け：最初に見る 3 点
+## 採用ご担当者向け：最初に見る 4 点
 
 1. **2分15秒デモ** — [保存済み実測証跡リプレイ](https://ns7jp.github.io/demo.html)。2026-08-18/19のscreen shotとD-1 logを再構成した閲覧用映像で、実操作の連続録画ではありません。[2026-08-22 E2E](docs/evidence/2026-08-22-full-stack-e2e.md)では実terminalの`demo.cast`もartifact化しました。
 2. **構成と構築工程** — [構成図](docs/architecture.md) / [Linux server構築案件pack](docs/build-package/README.md)。要件 → 設計 → パラメータ → 構築 → 試験 → 作業結果 → 引き渡しを 1 案件として追跡できます。
 3. **実測証跡** — [検証証跡台帳](docs/evidence/README.md) / [新規host一気通貫E2E](docs/e2e-validation.md)。未実行をPASSにしません。
+4. **考え方と改善** — [設計判断記録](docs/design-decisions.md) / [失敗から学んだ代表事例](docs/lessons-learned.md)。採用技術だけでなく、比較案、欠点、見直し条件、再発防止を説明します。
+
+本人管理のVPS / VM / AWSで未実測の項目は、[実測証跡計画](docs/real-environment-validation-plan.md)に
+停止条件、実行順、Definition of Doneを用意しています。環境と資格情報が提供されるまでは
+計画を実績へ読み替えず、`NOT RUN`を維持します。
 
 > **実測の現状（2026-08-22）**: PR #75のruntime変更最終commit
 > `7622a9da974f694ae75e0173135923701be9e5a5`に対する
@@ -118,24 +131,28 @@ flowchart LR
 
 ### まず読む文書
 
-| 文書 | 内容 |
-| --- | --- |
-| [Linux サーバー構築案件パック](docs/build-package/README.md) | 要件から設計、パラメータ、構築、試験、作業結果、引き渡しまでの標準成果物一式 |
-| [インフラ監視ラボ設計](docs/architecture.md) | 構成図、設計判断、監視条件 |
-| [セキュリティ設計](docs/security.md) | 認証、秘密管理、公開範囲、残存リスク |
-| [構築・配備手順](docs/deployment.md) | Docker Compose と native Linux 配備例 |
-| [Ansible 配備手順](docs/deployment-ansible.md) | Ubuntu host向け一括構築playbook、roles 構成、Vault、Molecule |
-| [新規host一気通貫E2E](docs/e2e-validation.md) | `site.yml`適用、冪等性、network、D-1、backup restoreの自動検証と証跡境界 |
-| [バックアップ・復旧設計](docs/backup-restore.md) | 永続データ、復元試験、復旧目標 |
-| [運用ランブック索引](docs/runbooks/README.md) | 共通実行前提、停止・遅延・disk・memory・監視停止時の切り分け |
-| [CPU 高負荷演習記録](docs/incidents/cpu-high-drill.md) | 模擬障害の再現、確認、復旧、再発防止 |
-| [演習一覧](docs/drills/README.md) | 実行できる構築演習 B-1〜B-4 と、復旧演習 D-1 / D-2 の整理 |
-| [Web / AP / DB 3 層ラボ](labs/three-tier/README.md) | 層別 health、層の分離、DB のバックアップ・復元試験 |
-| [L2 / L3 切り分けラボ](labs/routing/README.md) | 静的ルーティング、転送設定、802.1Q VLAN |
-| [LogQL クエリ集](docs/loki-queries.md) | ダッシュボードと運用で使う LogQL の例 |
-| [検証証跡台帳](docs/evidence/README.md) | コード実装と実環境での実測を区別する検証状況 |
-| [ローカル証跡採録ガイド](docs/evidence/local-evidence-quickstart.md) | Grafana / Loki / Alertmanager / D-1 演習を実測証跡に変える最短手順 |
-| [2〜3 分デモ収録ガイド](docs/demo-capture-guide.md) | デプロイ、故障注入、通知、復旧を短尺動画にする収録手順 |
+| 文書 | 対象 | 目安 | 内容 |
+| --- | --- | ---: | --- |
+| [一本道ラーニングパス](docs/learning-path.md) | 🟢 初心者 | まず15分 | 必修Level 0〜4と選択式Level 5〜6、各段階の完了条件 |
+| [初心者向け学習ガイド](docs/beginner-learning-guide.md) | 🟢 初心者 | 90分 | 最小構成を確認し、動かし、一次切り分けし、説明する |
+| [Linux サーバー構築案件パック](docs/build-package/README.md) | 🟡 中級 | 半日〜 | 要件から設計、パラメータ、構築、試験、作業結果、引き渡しまでの標準成果物一式 |
+| [インフラ監視ラボ設計](docs/architecture.md) | 🟡 中級 | 30分 | 構成図、設計判断、監視条件 |
+| [設計判断記録](docs/design-decisions.md) | 🟡 中級 | 20分 | 比較案、採用理由、欠点、見直し条件をADR形式で説明 |
+| [失敗から学んだ代表事例](docs/lessons-learned.md) | 🟢 初心者 | 15分 | 実行時欠陥3件の切り分け、修正、再発防止 |
+| [セキュリティ設計](docs/security.md) | 🟡 中級 | 30分 | 認証、秘密管理、公開範囲、残存リスク |
+| [構築・配備手順](docs/deployment.md) | 🟢 初心者 | 60分〜 | Docker Compose と native Linux 配備例 |
+| [Ansible 配備手順](docs/deployment-ansible.md) | 🟡 中級 | 半日〜 | Ubuntu host向け一括構築playbook、roles 構成、Vault、Molecule |
+| [新規host一気通貫E2E](docs/e2e-validation.md) | 🔴 発展 | 30分 | `site.yml`適用、冪等性、network、D-1、backup restoreの自動検証と証跡境界 |
+| [バックアップ・復旧設計](docs/backup-restore.md) | 🟡 中級 | 30分 | 永続データ、復元試験、復旧目標 |
+| [運用ランブック索引](docs/runbooks/README.md) | 🟡 中級 | 30分〜 | 停止・遅延・disk・memory・監視停止時の切り分け |
+| [CPU 高負荷演習記録](docs/incidents/cpu-high-drill.md) | 🟡 中級 | 15分 | 模擬障害の再現、確認、復旧、再発防止 |
+| [演習一覧](docs/drills/README.md) | 🟡 中級 | 15分 | 構築演習 B-1〜B-4 と復旧演習 D-1 / D-2 |
+| [Web / AP / DB 3 層ラボ](labs/three-tier/README.md) | 🔴 発展 | 半日 | 層別 health、層の分離、DB のバックアップ・復元試験 |
+| [L2 / L3 切り分けラボ](labs/routing/README.md) | 🔴 発展 | 半日 | 静的routing、転送設定、802.1Q VLAN |
+| [LogQL クエリ集](docs/loki-queries.md) | 🟡 中級 | 20分 | dashboardと運用で使うLogQLの例 |
+| [検証証跡台帳](docs/evidence/README.md) | 全員 | 20分 | コード実装と実環境での実測を区別する検証状況 |
+| [ローカル証跡採録ガイド](docs/evidence/local-evidence-quickstart.md) | 🟡 中級 | 60分〜 | Grafana / Loki / Alertmanager / D-1を実測証跡にする手順 |
+| [2〜3 分デモ収録ガイド](docs/demo-capture-guide.md) | 🟡 中級 | 30分 | 配備、故障注入、通知、復旧の短尺収録手順 |
 
 ### 発展的な設計・将来構想
 
