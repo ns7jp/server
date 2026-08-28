@@ -10,16 +10,10 @@
 
 ```mermaid
 flowchart LR
-    Client["`client
-    172.29.10.30`"]
-    Web["`web / nginx
-    172.29.10.10
-    172.29.20.10`"]
-    Ap["`ap / gunicorn + Flask
-    172.29.20.20
-    172.29.30.20`"]
-    Db["`db / PostgreSQL 16
-    172.29.30.30`"]
+    Client["client / 172.29.10.30"]
+    Web["web / nginx / 172.29.10.10 / 172.29.20.10"]
+    Ap["ap / gunicorn + Flask / 172.29.20.20 / 172.29.30.20"]
+    Db["db / PostgreSQL 16 / 172.29.30.30"]
 
     Client -->|"HTTP 80"| Web
     Web -->|"HTTP 8000"| Ap
