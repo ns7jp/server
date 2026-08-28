@@ -24,18 +24,15 @@ flowchart TB
         direction TB
         subgraph Public_a[Public Subnet AZ-1a]
             ALB
-            NAT["`NAT Gateway
-            単一 AZ・コスト優先`"]
+            NAT["NAT Gateway / 単一 AZ・コスト優先"]
         end
         subgraph Public_c[Public Subnet AZ-1c]
         end
         subgraph Private_a[Private Subnet AZ-1a]
-            EC2_a["`EC2 t3.small
-            app target + local lab stack`"]
+            EC2_a["EC2 t3.small / app target + local lab stack"]
         end
         subgraph Private_c[Private Subnet AZ-1c]
-            EC2_c["`EC2 t3.small
-            app target + local lab stack`"]
+            EC2_c["EC2 t3.small / app target + local lab stack"]
         end
 
         ALB --> EC2_a
@@ -47,24 +44,19 @@ flowchart TB
     NAT --> IGW[Internet Gateway]
     IGW --> Internet[Internet]
 
-    EC2_a -.AWS metrics.-> CW["`CloudWatch
-    external alarms`"]
+    EC2_a -.AWS metrics.-> CW["CloudWatch / external alarms"]
     EC2_c -.AWS metrics.-> CW
 
     CW --> SNS[SNS topic]
     SNS --> Email[アラート通知先メール]
 
-    EC2_a -.snapshot.-> Backup["`AWS Backup Vault
-    KMS 暗号化`"]
+    EC2_a -.snapshot.-> Backup["AWS Backup Vault / KMS 暗号化"]
     EC2_c -.snapshot.-> Backup
 
-    CT["`CloudTrail
-    全リージョン`"] --> S3CT[("`S3 bucket
-    CloudTrail logs`")]
+    CT["CloudTrail / 全リージョン"] --> S3CT[("S3 bucket / CloudTrail logs")]
     GD[GuardDuty]
 
-    Budgets["`AWS Budgets
-    環境別の警戒値`"] --> SNS
+    Budgets["AWS Budgets / 環境別の警戒値"] --> SNS
 ```
 
 ## 観測境界

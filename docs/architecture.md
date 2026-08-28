@@ -9,26 +9,20 @@
 ```mermaid
 flowchart LR
     User["運用担当者"] -->|"localhost 転送 / VPN + Basic 認証"| Nginx["Nginx reverse proxy"]
-    Nginx --> App["`Flask dashboard
-    Gunicorn / non-root`"]
+    Nginx --> App["Flask dashboard / Gunicorn / non-root"]
     App -->|"psutil: コンテナの状態"| Container["Application container"]
 
-    Prom["`Prometheus
-    35日保持`"] -->|"Bearer token /metrics"| App
+    Prom["Prometheus / 35日保持"] -->|"Bearer token /metrics"| App
     Prom -->|"scrape :9100"| Node["node-exporter"]
     Node -->|"read-only"| Host["Linux host"]
     Prom --> Grafana["Grafana dashboard"]
     Prom --> Alert["Alertmanager"]
     Alert -.->|"秘密値投入後に有効化"| Slack["Slack notification"]
 
-    Alloy["`Grafana Alloy
-    ログ収集`"] -->|"`/var/log
-    read-only`"| Host
-    Alloy -->|"GET/HEAD only"| DockerProxy["`Docker API proxy
-    private network`"]
+    Alloy["Grafana Alloy / ログ収集"] -->|"/var/log (read-only)"| Host
+    Alloy -->|"GET/HEAD only"| DockerProxy["Docker API proxy / private network"]
     DockerProxy -->|"Docker socket"| Host
-    Alloy --> Loki["`Loki
-    30日保持`"]
+    Alloy --> Loki["Loki / 30日保持"]
     Loki -->|"LogQL"| Grafana
 ```
 
@@ -88,15 +82,11 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    Probe["`blackbox-exporter
-    30 秒間隔`"] -->|"GET /healthz"| Nginx
+    Probe["blackbox-exporter / 30 秒間隔"] -->|"GET /healthz"| Nginx
     Nginx --> App["Flask /healthz"]
-    Prom["`Prometheus
-    recording rules`"] -->|"scrape probe_*"| Probe
-    Prom -->|"sli:* / slo:burn_rate:*"| Alert["`Alertmanager
-    fast/slow burn`"]
-    Prom --> Grafana["`Grafana
-    SLO ダッシュボード`"]
+    Prom["Prometheus / recording rules"] -->|"scrape probe_*"| Probe
+    Prom -->|"sli:* / slo:burn_rate:*"| Alert["Alertmanager / fast/slow burn"]
+    Prom --> Grafana["Grafana / SLO ダッシュボード"]
     Alert -.通知.-> Slack
 ```
 
