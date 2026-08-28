@@ -142,6 +142,7 @@ flowchart LR
 
 | 文書 | 内容 |
 | --- | --- |
+| [Windows サーバー構築案件パック](docs/build-package-windows/README.md) | 既存監視基盤へ Windows Server を監視対象ホストとして追加する設計・パラメータ・手順一式（Ansible 対応 role・central 側ネットワーク拡張・ログ集約経路は未実装） |
 | [AWS / Terraform 設計](docs/aws-architecture.md) | VPC / ALB / EC2 などの構成コード（apply 未実施） |
 | [AWS コスト計画](docs/cost-report.md) | 月額試算、Budgets |
 | [SLO / SLI / エラーバジェット設計](docs/slo.md) | サービス品質目標の決め方とアラート条件 |
