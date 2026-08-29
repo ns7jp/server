@@ -37,6 +37,8 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 Level 0〜4を入門必修、障害対応をLevel 5、LVM / 3層 / L2-L3 / AWSを選択式のLevel 6に
 分けています。開始前は、設定を変更しない診断を実行してください。
 
+要件定義書や非機能要件（NFR）など、実務の構築案件で使う文書一式（[Linux server構築案件pack](docs/build-package/README.md)）を読むときは、先に[案件パック 初心者ガイド](docs/build-package/beginner-guide.md)で全体の地図と用語を確認すると迷いにくくなります。
+
 ```bash
 ./scripts/learning/check-prerequisites.sh
 ```
@@ -135,6 +137,7 @@ flowchart LR
 | --- | --- | ---: | --- |
 | [一本道ラーニングパス](docs/learning-path.md) | 🟢 初心者 | まず15分 | 必修Level 0〜4と選択式Level 5〜6、各段階の完了条件 |
 | [初心者向け学習ガイド](docs/beginner-learning-guide.md) | 🟢 初心者 | 90分 | 最小構成を確認し、動かし、一次切り分けし、説明する |
+| [案件パック 初心者ガイド](docs/build-package/beginner-guide.md) | 🟢 初心者 | 20分 | 案件パックとは何か、12文書の役割、読む順とかかる時間の目安 |
 | [Linux サーバー構築案件パック](docs/build-package/README.md) | 🟡 中級 | 半日〜 | 要件から設計、パラメータ、構築、試験、作業結果、引き渡しまでの標準成果物一式 |
 | [インフラ監視ラボ設計](docs/architecture.md) | 🟡 中級 | 30分 | 構成図、設計判断、監視条件 |
 | [設計判断記録](docs/design-decisions.md) | 🟡 中級 | 20分 | 比較案、採用理由、欠点、見直し条件をADR形式で説明 |

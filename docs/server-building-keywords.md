@@ -1047,7 +1047,7 @@ AWS実環境での稼働実績ではありません。
 ## 次に読む文書
 
 - 全体の学習順: [初心者向け学習ガイド](beginner-learning-guide.md)
-- 要件から引き渡し: [Linuxサーバー構築案件パック](build-package/README.md)
+- 要件から引き渡し: [Linuxサーバー構築案件パック](build-package/README.md)（初めての場合は先に[案件パック 初心者ガイド](build-package/beginner-guide.md)）
 - 構成と通信: [インフラ監視ラボ設計](architecture.md)
 - 自動構築: [Ansible配備手順](deployment-ansible.md)
 - 障害対応: [運用ランブック](runbooks/README.md)
