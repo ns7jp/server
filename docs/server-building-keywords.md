@@ -1072,6 +1072,96 @@ AWS実環境での稼働実績ではありません。
 - **このリポジトリ**: 既定の180日をそのまま使う設計です（[基本設計書](build-package-ad/01-basic-design.md)参照）。
 - **確認**: `Get-ADObject`の`msDS-DeletedObjectLifetime`
 
+## 11. Zabbix監視基盤の基礎
+
+この節は`docs/build-package-zabbix/`（Zabbix監視基盤構築案件パック、案件ID`SM-ZBX-001`）を
+読むための用語です。既存のPrometheus/Grafanaスタック（`docs/build-package/`）とは別に、
+同じ監視対象ホスト`monitor-01`を独立した2本目の経路であるZabbixからも監視できるようにする
+設計・手順書上の例であり、実機での稼働実績ではありません。実測と未実測の境界は
+[案件パックREADME](build-package-zabbix/README.md)を参照してください。
+
+### Host（ホスト）
+
+- **一言**: Zabbixが監視する対象1台を表すオブジェクトの名前。
+- **意味**: OSのホスト名と紛らわしいですが、Zabbix内部の「監視対象の登録簿の1行」だと考えると
+  分かりやすいです。Itemはこの1行に紐づいて集められます。
+- **このリポジトリ**: `monitor-01`という1つのHostを作り、組み込みテンプレートをリンクする設計です。
+- **確認**: Frontendの`Data collection` → `Hosts`（設計は[要件定義書](build-package-zabbix/00-requirements.md)参照）
+
+### Template（テンプレート）
+
+- **一言**: 「このHostにはこのItem/Triggerの束を適用する」という設定のひな形。
+- **意味**: 監視項目を1つずつ手作りしなくても、テンプレートをリンクするだけで一式のItem/Triggerが
+  適用されます。カスタムテンプレートを自作するか、組み込みを使うかは設計判断の1つです。
+- **このリポジトリ**: 組み込みの「Linux by Zabbix agent active」をそのままリンクし、自作しません。
+- **確認**: Frontendの`Data collection` → `Templates`
+
+### Item（アイテム）
+
+- **一言**: 実際に集める1つの数値・データ項目。
+- **意味**: 「CPU使用率」のような組み込みItemのほか、UserParameterで独自に定義したItemも
+  同じ扱いで集計・グラフ化・Trigger判定の対象になります。
+- **このリポジトリ**: `service_monitor.healthz`というカスタムItemをUserParameterで追加しています。
+- **確認**: `zabbix_agent2 -t service_monitor.healthz`（対象ホスト上でItemの値を単体確認）
+
+### Trigger（トリガー）
+
+- **一言**: Itemの値が条件を満たしたときに「異常（Problem）」を宣言するルール。
+- **意味**: 「3分間healthzが1以外」のような条件式を書き、条件を満たすとProblem状態になり、
+  満たさなくなるとOKへ自動的に戻ります。障害の検知と復旧の両方を表現できます。
+- **このリポジトリ**: エージェント到達不能相当のTriggerと、`service_monitor.healthz`用のカスタムTriggerを使います。
+- **確認**: Frontendの`Monitoring` → `Problems`（設計は[詳細設計書](build-package-zabbix/02-detailed-design.md)参照）
+
+### Action / Media type
+
+- **一言**: Triggerが発火したときに「誰に・どうやって」知らせるかの設定。
+- **意味**: Media typeが通知の「経路」（Slack、メール等）、Actionが「どのTrigger条件のとき、
+  誰にどのMedia typeで送るか」という配線を担います。
+- **このリポジトリ**: 組み込みの`Slack (webhook)` media typeへ、Docker secretsで注入したwebhook URLを設定します。
+- **確認**: Frontendの`Alerts` → `Media types` / `Actions`（webhookと受信先を用意した場合のみ実配信を試験）
+
+### Severity（重要度）
+
+- **一言**: Triggerの深刻さを表すランク。
+- **意味**: `Not classified`から`Disaster`まで段階があり、通知経路や色分けの判断材料になります。
+  一律に最高ランクにすると本当に重大な障害が埋もれるため、段階を分けて設計します。
+- **このリポジトリ**: Disaster（Agent自体unreachable）/ High（healthz異常）/ Warning（閾値超過）の3段階です。
+- **確認**: Frontendの`Monitoring` → `Problems`のSeverity列
+
+### active check / passive check
+
+- **一言**: メトリクスを「エージェントから送る」か「サーバーが取りに行く」かの2方式。
+- **意味**: active checkはエージェントがサーバーへpushし、passive checkはサーバーがエージェントへ
+  取りに行きます（pull）。監視対象ホストが増えたときに、サーバー側から新しい経路を増やさずに
+  済むのはactive checkです。
+- **このリポジトリ**: active checkを主方式とし、passive checkは既定で未使用（将来拡張として設計のみ）です。
+- **確認**: `grep -E '^(Server|ServerActive)' /etc/zabbix/zabbix_agent2.conf`（active checkの送信先設定）
+
+### trapper（トラッパー）
+
+- **一言**: active checkのpushを受け取る、Zabbix Server側の受け口。
+- **意味**: `10051/tcp`で待ち受け、他ホストのエージェントからの着信を受ける唯一の監視系ポートです。
+  管理UIと違いloopback限定にはできず、送信元CIDR制限で守ります。
+- **このリポジトリ**: `zbx-01`の`10051/tcp`が`monitor-01`のIPのみ許可するUFWルールで保護されています。
+- **確認**: `ss -lntup | grep 10051`（zbx-01側）、`zabbix_get -s <対象IP> -k agent.ping`（passive check側の疎通確認に使う専用CLI）
+
+### Agent2
+
+- **一言**: 監視対象ホストへ導入する収集エージェントのソフトウェア本体。
+- **意味**: 旧来のZabbix Agentの後継で、プラグインによる拡張やTLS対応など機能が強化されています。
+- **このリポジトリ**: `monitor-01`へZabbix公式リポジトリからAgent2を導入する設計です。
+- **確認**: `zabbix_agent2 -V`、`systemctl status zabbix-agent2`
+
+### UserParameter（ユーザーパラメータ）
+
+- **一言**: 組み込みのItemだけでは取れない値を、設定ファイルに1行追加して独自に定義する仕組み。
+- **意味**: `UserParameter=<key>,<実行コマンド>`という1行で、任意のシェルコマンドの出力をItemの値に
+  できます。既存の安全設計（外部非公開のエンドポイント等）を緩めずに監視したいときに使えます。
+- **このリポジトリ**: `/healthz`が既存パックの設計でloopback限定のため、`monitor-01`自身の
+  Agent2からcurlさせるUserParameterとして`service_monitor.healthz`を定義しています。
+- **確認**: `zabbix_agent2 -t service_monitor.healthz`（設定ファイルの記述例は
+  [ネットワーク設計](build-package-zabbix/04-network-ip-plan.md)・[詳細設計書](build-package-zabbix/02-detailed-design.md)参照）
+
 ## 混同しやすい用語の比較
 
 | 用語A | 用語B | 違いを一言で |
