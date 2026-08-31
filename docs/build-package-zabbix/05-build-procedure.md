@@ -460,19 +460,22 @@ ls -la /var/backups/zabbix
 
    `deploy/secrets/*.txt`と`.env`はGit管理外の実値ファイルのため、`git checkout`の対象に含めません。
 
-2. **Frontend上の設定(Host / Template / Item / Trigger / Action)のロールバック**: UI操作の結果はGit管理外です。5節の作業直前に、`Data collection` → `Hosts` → 対象Hostを選択 → 「Export」でHost/Item/Trigger構成をエクスポートしておくと、そのXMLを`Import`から読み込むことで変更前の状態へ戻せます。エクスポートを取得していない場合は、5節の手順を逆順にたどって手動で戻します。
-
-3. **データ破損時**: `scripts/ops/zabbix-backup.sh`が採取した直近の正常なdumpから復元します。
+   このcheckoutは`zbx-01`上のリポジトリ複製とZabbix Serverスタックだけを戻します。原因が`deploy/zabbix/`(UserParameter定義)の変更である場合、`monitor-01`上の配置ファイル(4.3節で個別にコピーした`/etc/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf`)はこのcheckoutの対象外で、そのままでは変更後(ロールバック対象)の内容が動き続けます。この場合は`monitor-01`側も同じロールバック先SHAへ戻します。
 
    ```bash
-   docker compose -f compose.zabbix.yaml stop zabbix-server zabbix-web
-   LATEST_DUMP=$(ls -t /var/backups/zabbix/zabbix-*.dump | head -n1)
-   # .sha256ファイルはbasenameだけを記録しているため、そのディレクトリで検証する
-   ( cd -- "$(dirname -- "${LATEST_DUMP}")" && sha256sum -c "$(basename -- "${LATEST_DUMP}").sha256" )
-   docker compose -f compose.zabbix.yaml exec -T postgres \
-     pg_restore -U zabbix -d zabbix --clean --if-exists < "${LATEST_DUMP}"
-   docker compose -f compose.zabbix.yaml up -d
+   git clone https://github.com/ns7jp/server-monitor.git /tmp/server-monitor-zbx-rollback
+   git -C /tmp/server-monitor-zbx-rollback checkout <ロールバック先のcommit SHA>
+   scp /tmp/server-monitor-zbx-rollback/deploy/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf.example \
+     <ssh-user>@192.0.2.10:/tmp/service_monitor_healthz.conf
+   ssh <ssh-user>@192.0.2.10 'sudo install -m 0644 /tmp/service_monitor_healthz.conf /etc/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf && rm -f /tmp/service_monitor_healthz.conf && sudo systemctl restart zabbix-agent2 && sudo zabbix_agent2 -t service_monitor.healthz'
+   rm -rf /tmp/server-monitor-zbx-rollback
    ```
+
+   `service_monitor.healthz`の出力が期待どおり(4.3節・4.4節と同じ)に戻ったことを確認します。
+
+2. **Frontend上の設定(Host / Template / Item / Trigger / Action)のロールバック**: UI操作の結果はGit管理外です。5節の作業直前に、`Data collection` → `Hosts` → 対象Hostを選択 → 「Export」でHost/Item/Trigger構成をエクスポートしておくと、そのXMLを`Import`から読み込むことで変更前の状態へ戻せます。エクスポートを取得していない場合は、5節の手順を逆順にたどって手動で戻します。
+
+3. **データ破損時**: checksumはファイルの破損検知にしかならず、dumpが実際に復元できること・内容が妥当であることは証明しません。稼働中DBへ検証なしで直接`pg_restore --clean`を実行せず、[変更・ロールバック計画 7節](08-change-rollback-plan.md#7-データのロールバックpg_restoreによる復元手順)の手順に従って、別volume/別コンテナへ`scripts/ops/zabbix-backup.sh`が採取した直近の正常なdumpを復元し、checksum・件数(ZIT-08、判定基準は[試験仕様書](06-test-specification.md#構築結合試験))・Frontend上の内容を確認してから本番へ切り替えます。
 
 いずれの手段を使った場合も、ロールバック後は6節の構築後確認と、影響範囲に応じた試験(該当する`ZIT`/`ZST`)を再実行します。
 
