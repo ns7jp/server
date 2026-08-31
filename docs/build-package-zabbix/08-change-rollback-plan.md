@@ -79,9 +79,10 @@ docker compose -f compose.zabbix.yaml ps
 docker compose -f compose.zabbix.yaml logs --tail 100 zabbix-server zabbix-web
 ```
 
-`deploy/zabbix/`を変更した場合は、続けて管理端末から`monitor-01`側を更新します(前提条件のとおりSSH鍵アクセスがあるのは管理端末からの経路のみなので、`zbx-01`のシェルではなく管理端末から実行します)。
+`deploy/zabbix/`を変更した場合は、続けて管理端末から`monitor-01`側を更新します(前提条件のとおりSSH鍵アクセスがあるのは管理端末からの経路のみなので、`zbx-01`のシェルではなく管理端末から実行します)。`AFTER_SHA`は3節のシェルとは別セッションになるため、ここで改めて設定します。
 
 ```bash
+AFTER_SHA='replace-with-the-full-candidate-commit-sha'
 ssh <ssh-user>@192.0.2.10 '
   git clone https://github.com/ns7jp/server-monitor.git /tmp/server-monitor-zbx-change &&
   git -C /tmp/server-monitor-zbx-change checkout '"$AFTER_SHA"' &&
