@@ -74,7 +74,7 @@ Ubuntu 24.04 LTS以外のOSファミリーは本パックの対象外です。RH
 | Check方式 | active check(monitor-01のAgent2→zbx-01:10051へpush)を主方式とする。passive checkは既定未使用の任意拡張 | [02-detailed-design.md](02-detailed-design.md) |
 | Agent2 `Hostname`(monitor-01) | `monitor-01` | `/etc/zabbix/zabbix_agent2.conf`(monitor-01) |
 | Agent2 `ServerActive`(monitor-01) | `192.0.2.11:10051`(zbx-01のIP) | 同上 |
-| Agent2 `Server`(monitor-01) | 未設定(コメントアウトのまま。空の場合Agent2はpassive check自体を無効化し`10050/tcp`のlistenerを起動しない) | 同上 |
+| Agent2 `Server`(monitor-01) | 未設定(パッケージ既定は`Server=127.0.0.1`が有効な行として入っているため、コメントアウトして未設定にする。空の場合Agent2はpassive check自体を無効化し`10050/tcp`のlistenerを起動しない) | 同上 |
 | カスタムItem key | `service_monitor.healthz` | `deploy/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf.example` |
 | UserParameter実体 | `UserParameter=service_monitor.healthz,curl --silent --fail --max-time 3 http://127.0.0.1:8080/healthz >/dev/null && echo 1 || echo 0` | 同上 |
 | カスタムTrigger | `service_monitor.healthz`が1以外を3分間観測 → Problem(Severity: High) | Frontend設定 |
