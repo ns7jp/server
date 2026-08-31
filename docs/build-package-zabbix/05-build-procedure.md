@@ -324,7 +324,7 @@ sudo zabbix_agent2 -t service_monitor.healthz
 
 ### 5.4 Triggerの登録
 
-組み込みTrigger「Zabbix agent is not available」相当(Templateのリンクにより自動追加されます。テンプレート名の都合で表示名の末尾に"(active checks)"等が付く場合がありますが、Severity `Disaster`・機能は同じです)は個別の登録は不要です。カスタムTriggerのみ追加します。
+組み込みTrigger「Zabbix agent is not available」相当(Templateのリンクにより自動追加されます。テンプレート名の都合で表示名の末尾に"(active checks)"等が付く場合がありますが、Severity `Average`・機能は同じです)は個別の登録は不要です。カスタムTriggerのみ追加します。
 
 1. `monitor-01`の「Triggers」タブ → 右上の「Create trigger」をクリックします。
 2. `Name`に`server-monitor /healthz is failing on {HOST.NAME}`と入力します。
@@ -347,7 +347,7 @@ Zabbix 7.0の組み込みSlack統合は、Incoming Webhook URLではなく**Slac
 2. `Parameters`タブに表示される`bot_token`パラメータへ、2.4節で`deploy/secrets/zabbix_slack_bot_token.txt`に設定した値を貼り付けます。
 3. 画面下部の「Update」をクリックして保存します。
 4. `Users` → 通知を受け取るユーザー(検証では`Admin`でよい)を開き、「Media」タブ → 「Add」をクリックします。
-5. `Type`に`Slack`、`Send to`にSlackのchannel名を入力します。`When active`は`1-7,00:00-24:00`のまま、`Use if severity`は`Warning`・`High`・`Disaster`をチェックします(`Warning`を外すと、組み込みTemplateのCPU等の閾値超過通知が[基本設計書](01-basic-design.md)の設計に反して届かなくなります)。
+5. `Type`に`Slack`、`Send to`にSlackのchannel名を入力します。`When active`は`1-7,00:00-24:00`のまま、`Use if severity`は`Warning`・`Average`・`High`・`Disaster`をチェックします(`Warning`を外すと、組み込みTemplateのCPU等の閾値超過通知が[基本設計書](01-basic-design.md)の設計に反して届かなくなります。`Average`を外すと、組み込みTrigger「Zabbix agent is not available」相当がこのSeverityで発火するため、D-Z1演習(8節)でTriggerはPROBLEMになってもSlack通知が届きません)。
 6. 「Add」→ ユーザー編集画面の「Update」をクリックして保存します。
 
 bot tokenと受信先channelを用意していない環境では、5.5節の設定はプレースホルダのままで構いません。その場合、実配信の確認(ZIT-06のSlack到達部分)は`BLOCKED`として記録し、5.6節のTrigger発火確認までは必須のまま行います。

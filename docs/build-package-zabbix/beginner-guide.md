@@ -266,7 +266,7 @@ Zabbix を初めて触る人が、専門用語を専門用語のまま覚えよ�
 | Item（アイテム） | 一言で言うと、実際に集める1つの数値・データ項目。「CPU使用率」「`service_monitor.healthz`の値」のように1項目=1 Item |
 | Trigger（トリガー） | 一言で言うと、Itemの値が条件を満たしたときに「異常（Problem）」を宣言するルール。「healthzが3分間1以外」のような条件を書く |
 | Action / Media type | 一言で言うと、Triggerが発火したときに「誰に・どうやって」知らせるかの設定。本パックは組み込みSlack media type(Bot Token方式)を登録する |
-| Severity（重要度） | 一言で言うと、Triggerの深刻さのランク。本パックはDisaster（Agent自体unreachable）/High（healthz異常）/Warning（閾値超過）の3段階を使う |
+| Severity（重要度） | 一言で言うと、Triggerの深刻さのランク。本パックはAverage（Agent自体unreachable）/High（healthz異常）/Warning（閾値超過）の3段階を使う |
 | active check（アクティブチェック） | 一言で言うと、監視対象（`monitor-01`）側のAgent2が、自分からZabbix Server（`zbx-01`）へ値を**push**する方式。本パックの主方式 |
 | passive check（パッシブチェック） | 一言で言うと、Zabbix Server側から監視対象へ値を**取りに行く（pull）**方式。本パックは既定で未使用、将来拡張として設計のみ示す |
 | trapper（トラッパー） | 一言で言うと、active checkのpushを受け取るZabbix Serverの受け口（`10051/tcp`）。他ホストからの着信を受ける唯一の監視系ポートなので、Frontendとは異なりloopback限定にできない。送信元の制限はUFWではなく`DOCKER-USER`chainで行う（DockerがPublishしたportはUFWが見るhostの`INPUT`chainを経由しないため） |

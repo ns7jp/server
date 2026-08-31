@@ -78,7 +78,7 @@ Ubuntu 24.04 LTS以外のOSファミリーは本パックの対象外です。RH
 | カスタムItem key | `service_monitor.healthz` | `deploy/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf.example` |
 | UserParameter実体 | `UserParameter=service_monitor.healthz,curl --silent --fail --max-time 3 http://127.0.0.1:8080/healthz >/dev/null && echo 1 || echo 0` | 同上 |
 | カスタムTrigger | `service_monitor.healthz`が1以外を3分間観測 → Problem(Severity: High) | Frontend設定 |
-| 組み込みTrigger | 「Zabbix agent is not available」相当(Severity: Disaster、Templateに含まれる) | Template |
+| 組み込みTrigger | 「Zabbix agent is not available」相当(Severity: Average、Templateに含まれる) | Template |
 | 通知Media type | 組み込み"Slack"(Bot Token方式、`chat:write`スコープ)。bot tokenは`deploy/secrets/zabbix_slack_bot_token.txt`から手動登録 | Frontend設定 |
 | 障害演習ID | `D-Z1`(monitor-01のzabbix-agent2停止演習) | [02-detailed-design.md](02-detailed-design.md) |
 | Zabbix Frontend既定管理者 | `Admin` / `zabbix`(Zabbix既定値)。初回ログイン直後にパスワード変更必須(ZST-02) | Frontend設定 |

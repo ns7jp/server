@@ -64,7 +64,7 @@
 
 | 条件 | 一次対応 | エスカレーション先 / 期限 |
 | --- | --- | --- |
-| Zabbix agent 停止（Trigger PROBLEM、Severity: Disaster） | D-Z1手順に沿って検知・復旧を確認 | `NOT SET` |
+| Zabbix agent 停止（Trigger PROBLEM、Severity: Average） | D-Z1手順に沿って検知・復旧を確認 | `NOT SET` |
 | `service_monitor.healthz` 異常（Severity: High） | Frontend上のProblem詳細を確認し、`monitor-01`側で一次切り分け | `NOT SET` |
 | 認証回避、DBパスワード / Slack bot token漏えい | 外部公開を止め、秘密値を再発行 | `NOT SET` |
 | `zbx-01` host障害 | 復元判断（[08](08-change-rollback-plan.md)参照）、RPOの確認 | `NOT SET` |
