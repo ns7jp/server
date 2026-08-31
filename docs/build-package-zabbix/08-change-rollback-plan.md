@@ -180,7 +180,15 @@ DUMP_FILE='/var/backups/zabbix/zabbix-<UTC_TIMESTAMP>.dump'
 # 「No such file or directory」でFAILし、set -euoにより以降の復元処理が中断する)。
 ( cd -- "$(dirname -- "${DUMP_FILE}")" && sha256sum -c "$(basename -- "${DUMP_FILE}").sha256" )
 
-# 検証用の別volume/別コンテナへ復元する(稼働中のzabbix_db_dataは直接上書きしない)
+# 検証用の別volume/別コンテナへ復元する(稼働中のzabbix_db_dataは直接上書きしない)。
+# readiness timeoutやpg_restore失敗でset -eにより途中終了しても、container/volumeを
+# 残したままにしない(残ると同じcontainer名での再実行が"name already in use"で
+# 失敗し、障害対応中の再試行を妨げる)よう、trapで確実に後始末する。
+cleanup_restore_check() {
+  docker rm -f zabbix-restore-check >/dev/null 2>&1 || true
+  docker volume rm zabbix_db_data_restore_check >/dev/null 2>&1 || true
+}
+trap cleanup_restore_check EXIT
 docker volume create zabbix_db_data_restore_check
 docker run -d --name zabbix-restore-check \
   -e POSTGRES_DB=zabbix -e POSTGRES_USER=zabbix \
@@ -210,10 +218,6 @@ docker exec -i zabbix-restore-check pg_restore -U zabbix -d zabbix --clean --if-
 cat "${DUMP_FILE}.counts"
 docker exec zabbix-restore-check psql -U zabbix -d zabbix -Atc 'select count(*) from hosts;'
 docker exec zabbix-restore-check psql -U zabbix -d zabbix -Atc 'select count(*) from items;'
-
-# 検証用リソースの後始末(本番へ切り替えない場合)
-docker rm -f zabbix-restore-check
-docker volume rm zabbix_db_data_restore_check
 ```
 
 `<DUMP_FILE>.counts`は`pg_dump`と別接続で読んだ値のため、バックアップ実行中にhosts/itemsが変更されていた場合はdump内容とわずかに食い違うことがあります。判定基準は[試験仕様書のZIT-08](06-test-specification.md#構築結合試験)を正本とします: 件数が一致すれば`PASS`、わずかに異なる場合でも直近の意図した変更（Host/Item追加・削除）とFrontend上のHost / Template / Trigger / Actionの内容確認で差の理由が完全に説明でき、それを証跡へ記録できるなら`PASS`として本番へ切り替えます。理由が説明できない差がある場合は`FAIL`として扱い、本番への切り替えは行わず原因を調査します。切り替えは`docker compose -f compose.zabbix.yaml stop zabbix-server zabbix-web`の後、稼働中の`zabbix_db_data`に対して同じ`pg_restore --clean --if-exists`を実行し、`docker compose -f compose.zabbix.yaml up -d`で再開する手順です。
