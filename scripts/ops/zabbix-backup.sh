@@ -87,8 +87,14 @@ command -v docker >/dev/null 2>&1 || { echo "docker command not found" >&2; exit
 
 install -d -m 0750 -- "${TARGET_DIR}"
 
+# -f には PROJECT_DIR と結合した絶対パスを渡す。相対パスのままだと、呼び出し元の
+# カレントディレクトリを基準に解決されてしまい、--project-directory を指定していても
+# PROJECT_DIR 以外の場所から実行したときに compose file が見つからない。
+COMPOSE=(docker compose -f "${PROJECT_DIR}/${COMPOSE_FILE}" --project-directory "${PROJECT_DIR}")
+
 TIMESTAMP="$(date +%Y%m%dT%H%M%S)"
 DUMP_FILE="${TARGET_DIR}/zabbix-${TIMESTAMP}.dump"
+DUMP_BASENAME="$(basename -- "${DUMP_FILE}")"
 TMP_DUMP_FILE="${DUMP_FILE}.part"
 
 cleanup_partial() {
@@ -97,13 +103,9 @@ cleanup_partial() {
 trap cleanup_partial EXIT
 
 echo "==> dumping zabbix database to ${DUMP_FILE}"
-# -f には PROJECT_DIR と結合した絶対パスを渡す。相対パスのままだと、呼び出し元の
-# カレントディレクトリを基準に解決されてしまい、--project-directory を指定していても
-# PROJECT_DIR 以外の場所から実行したときに compose file が見つからない。
 # pg_dump の失敗を "if !" の条件として扱うことで、set -e による即時終了を避け、
 # 部分的に書き込まれた dump を最終ファイル名へ残さないようにする(mv より前で必ず弾く)。
-if ! docker compose -f "${PROJECT_DIR}/${COMPOSE_FILE}" --project-directory "${PROJECT_DIR}" \
-  exec -T postgres pg_dump -U zabbix --format=custom zabbix > "${TMP_DUMP_FILE}"; then
+if ! "${COMPOSE[@]}" exec -T postgres pg_dump -U zabbix --format=custom zabbix > "${TMP_DUMP_FILE}"; then
   echo "pg_dump failed, discarding partial dump: ${TMP_DUMP_FILE}" >&2
   exit 1
 fi
@@ -113,14 +115,39 @@ if [[ ! -s "${TMP_DUMP_FILE}" ]]; then
   exit 1
 fi
 
+# 08-change-rollback-plan.md の復元検証では、障害で既に壊れている可能性がある稼働中DBでは
+# なく、このバックアップ時点のhost数・item数と比較する。dumpと同時点の値をここで記録する。
+echo "==> recording host/item counts at backup time"
+if ! HOST_COUNT="$("${COMPOSE[@]}" exec -T postgres psql -U zabbix -d zabbix -Atc 'select count(*) from hosts;')"; then
+  echo "failed to record host count, discarding partial dump: ${TMP_DUMP_FILE}" >&2
+  exit 1
+fi
+if ! ITEM_COUNT="$("${COMPOSE[@]}" exec -T postgres psql -U zabbix -d zabbix -Atc 'select count(*) from items;')"; then
+  echo "failed to record item count, discarding partial dump: ${TMP_DUMP_FILE}" >&2
+  exit 1
+fi
+
 mv -- "${TMP_DUMP_FILE}" "${DUMP_FILE}"
 trap - EXIT
 
-( cd -- "${TARGET_DIR}" && sha256sum -- "$(basename -- "${DUMP_FILE}")" > "$(basename -- "${DUMP_FILE}").sha256" )
-echo "==> wrote $(basename -- "${DUMP_FILE}").sha256"
+# checksumまたはcountsの書き込みに失敗した場合、どちらか欠けたdumpを最終ファイル名の
+# まま残さない(復元検証が誤って「バックアップなし」と判断したり、誤った基準件数で
+# 比較したりしないようにする)。
+if ! ( cd -- "${TARGET_DIR}" && sha256sum -- "${DUMP_BASENAME}" > "${DUMP_BASENAME}.sha256" ); then
+  echo "checksum failed, removing dump without a valid checksum: ${DUMP_FILE}" >&2
+  rm -f -- "${DUMP_FILE}" "${DUMP_FILE}.sha256"
+  exit 1
+fi
+if ! printf 'hosts=%s\nitems=%s\n' "${HOST_COUNT}" "${ITEM_COUNT}" > "${DUMP_FILE}.counts"; then
+  echo "failed to write counts file, removing dump: ${DUMP_FILE}" >&2
+  rm -f -- "${DUMP_FILE}" "${DUMP_FILE}.sha256" "${DUMP_FILE}.counts"
+  exit 1
+fi
+echo "==> wrote ${DUMP_BASENAME}.sha256 and ${DUMP_BASENAME}.counts"
 
 echo "==> pruning dumps older than ${RETENTION_DAYS} day(s) in ${TARGET_DIR}"
 find "${TARGET_DIR}" -maxdepth 1 -type f -name 'zabbix-*.dump' -mtime "+${RETENTION_DAYS}" -print -delete
 find "${TARGET_DIR}" -maxdepth 1 -type f -name 'zabbix-*.dump.sha256' -mtime "+${RETENTION_DAYS}" -print -delete
+find "${TARGET_DIR}" -maxdepth 1 -type f -name 'zabbix-*.dump.counts' -mtime "+${RETENTION_DAYS}" -print -delete
 
 echo "==> backup complete: ${DUMP_FILE}"

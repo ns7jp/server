@@ -411,7 +411,7 @@ sudo systemctl status zabbix-backup.service --no-pager
 ls -la /var/backups/zabbix
 ```
 
-`/var/backups/zabbix/zabbix-<timestamp>.dump`と対応する`.sha256`が生成されていることを確認します(ZIT-08)。
+`/var/backups/zabbix/zabbix-<timestamp>.dump`と対応する`.sha256` / `.counts`が生成されていることを確認します(ZIT-08)。
 
 ## 8. D-Z1障害演習(ZIT-07、NFR-08)
 

@@ -43,7 +43,7 @@
 - [ ] `docker compose -f compose.zabbix.yaml config --quiet`が成功し、意図しないport / volume変更が無いことをdiffで確認した（ZUT-01相当）
 - [ ] Frontend設定（Host / Template / Trigger / Action）を変更する場合、変更前の設定をZabbix標準のexport機能（Data collection > Templates等のExport）でXMLとして保存した
 - [ ] 変更対象に対応する単体試験（`ZUT-01`〜`03`のうち該当するもの）が成功した
-- [ ] データ変更を伴う場合、直前の`pg_dump`（`zabbix-backup.sh`）の作成時刻と`.dump` / `.sha256`ファイルの存在を確認した
+- [ ] データ変更を伴う場合、直前の`pg_dump`（`zabbix-backup.sh`）の作成時刻と`.dump` / `.sha256` / `.counts`ファイルの存在を確認した
 - [ ] 変更前 commit を別 checkout から再配備できる
 - [ ] ロールバック判断者、判断期限、サービス停止許容時間が決まっている
 
@@ -62,7 +62,7 @@ ls -la /var/backups/zabbix | tail -5
 ## 4. 変更手順
 
 1. 変更開始時刻と、`docker compose -f compose.zabbix.yaml ps`によるZabbix Server / Web / Postgresの事前状態を記録します。
-2. データ変更を伴う場合は`scripts/ops/zabbix-backup.sh`を`zbx-01`で実行し、終了状態と生成された`.dump` / `.dump.sha256`のパスを記録します。
+2. データ変更を伴う場合は`scripts/ops/zabbix-backup.sh`を`zbx-01`で実行し、終了状態と生成された`.dump` / `.dump.sha256` / `.dump.counts`のパスを記録します。
 3. Frontend設定（Host / Template / Trigger / Action）を変更する場合は、変更前の設定をXML exportとして保存してから、Frontend上で変更を適用します。
 4. compose設定・Agent2設定（コード）を変更する場合は、変更後commitをcheckoutした`zbx-01`上で`docker compose -f compose.zabbix.yaml up -d`を再適用します。
 5. [試験仕様書](06-test-specification.md)の影響範囲（該当する`ZUT` / `ZIT` / `ZST` ID）を再実行します。
@@ -153,7 +153,7 @@ Frontend設定（Host / Template / Trigger / Action）は、上記のコード�
 
 - 破損した`zabbix_db_data` volumeを直ちに削除せず、調査用に識別・隔離します。
 - 復元元dumpの日時とファイル名（`zabbix-<UTC_TIMESTAMP>.dump`）、`sha256sum -c`によるcheck結果を記録します。
-- 別volume / 別コンテナへ復元し、host数・item数を比較してから切り替えます（ZIT-08と同じ検証）。
+- 別volume / 別コンテナへ復元し、`scripts/ops/zabbix-backup.sh`がdumpと同時に記録した`<DUMP_FILE>.counts`（バックアップ時点のhost数・item数）と比較してから切り替えます（ZIT-08と同じ検証）。稼働中DBは今回の障害で既に破損している可能性があるため比較対象にしません。
 - 秘密値（DBパスワード）はバックアップアーカイブではなく、`deploy/secrets/zabbix_db_password.txt`の受け渡し元（承認された秘密管理先）から復元します。
 - ZIT-08の実測証跡がない間は、DB障害からの復元を「検証済み」と記載しません。
 
@@ -190,20 +190,18 @@ if [[ "${READY}" -ne 1 ]]; then
 fi
 docker exec -i zabbix-restore-check pg_restore -U zabbix -d zabbix --clean --if-exists < "${DUMP_FILE}"
 
-# host数・item数を比較する(ZIT-08)
+# host数・item数を比較する(ZIT-08)。稼働中DBは今回の障害で既に破損している可能性がある
+# ため比較対象にせず、バックアップ時点の記録( "${DUMP_FILE}.counts" )と比較する。
+cat "${DUMP_FILE}.counts"
 docker exec zabbix-restore-check psql -U zabbix -d zabbix -Atc 'select count(*) from hosts;'
 docker exec zabbix-restore-check psql -U zabbix -d zabbix -Atc 'select count(*) from items;'
-docker compose -f compose.zabbix.yaml exec -T postgres \
-  psql -U zabbix -d zabbix -Atc 'select count(*) from hosts;'
-docker compose -f compose.zabbix.yaml exec -T postgres \
-  psql -U zabbix -d zabbix -Atc 'select count(*) from items;'
 
 # 検証用リソースの後始末(本番へ切り替えない場合)
 docker rm -f zabbix-restore-check
 docker volume rm zabbix_db_data_restore_check
 ```
 
-件数が一致し、Frontend上のHost / Template / Trigger / Actionの内容も想定どおりであることを確認できたら、本番へ切り替えます。切り替えは`docker compose -f compose.zabbix.yaml stop zabbix-server zabbix-web`の後、稼働中の`zabbix_db_data`に対して同じ`pg_restore --clean --if-exists`を実行し、`docker compose -f compose.zabbix.yaml up -d`で再開する手順です。
+件数が`<DUMP_FILE>.counts`（バックアップ時点の記録）と一致し、Frontend上のHost / Template / Trigger / Actionの内容も想定どおりであることを確認できたら、本番へ切り替えます。切り替えは`docker compose -f compose.zabbix.yaml stop zabbix-server zabbix-web`の後、稼働中の`zabbix_db_data`に対して同じ`pg_restore --clean --if-exists`を実行し、`docker compose -f compose.zabbix.yaml up -d`で再開する手順です。
 
 ## 8. 実施結果
 
