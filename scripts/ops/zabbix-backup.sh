@@ -96,11 +96,33 @@ TIMESTAMP="$(date +%Y%m%dT%H%M%S)"
 DUMP_FILE="${TARGET_DIR}/zabbix-${TIMESTAMP}.dump"
 DUMP_BASENAME="$(basename -- "${DUMP_FILE}")"
 TMP_DUMP_FILE="${DUMP_FILE}.part"
+SHA256_FILE="${TARGET_DIR}/${DUMP_BASENAME}.sha256"
+COUNTS_FILE="${TARGET_DIR}/${DUMP_BASENAME}.counts"
 
+# dumpが最終ファイル名(*.dump)として現れるのは末尾のmvだけであり、それより前に
+# 失敗したりSIGTERM等で打ち切られたりした場合は、このtrapが一時dumpと(部分的に
+# 書けていたかもしれない)sidecarをまとめて削除する。復元手順が探す"zabbix-*.dump"
+# は、checksumとcountsが揃っているものしか現れない。
 cleanup_partial() {
-  rm -f -- "${TMP_DUMP_FILE}"
+  rm -f -- "${TMP_DUMP_FILE}" "${SHA256_FILE}" "${COUNTS_FILE}"
 }
 trap cleanup_partial EXIT
+
+# host数・item数は、pg_dumpが取得するsnapshotとは別接続で読むため、この直後に
+# 実行するpg_dump自体との間にわずかな時間差がある。pg_dumpの開始直前に読むことで
+# ずれの窓を最小化しているが、実行中にhosts/itemsが変更されると記録される件数と
+# dump内容が食い違う可能性はゼロではない。この件数比較はDB復元が明らかに
+# 壊れていないかを確認する目安であり、完全な整合性の証明ではない
+# (08-change-rollback-plan.md 7節でもFrontend上の内容確認をあわせて求めている)。
+echo "==> recording host/item counts before dumping"
+if ! HOST_COUNT="$("${COMPOSE[@]}" exec -T postgres psql -U zabbix -d zabbix -Atc 'select count(*) from hosts;')"; then
+  echo "failed to record host count" >&2
+  exit 1
+fi
+if ! ITEM_COUNT="$("${COMPOSE[@]}" exec -T postgres psql -U zabbix -d zabbix -Atc 'select count(*) from items;')"; then
+  echo "failed to record item count" >&2
+  exit 1
+fi
 
 echo "==> dumping zabbix database to ${DUMP_FILE}"
 # pg_dump の失敗を "if !" の条件として扱うことで、set -e による即時終了を避け、
@@ -115,34 +137,19 @@ if [[ ! -s "${TMP_DUMP_FILE}" ]]; then
   exit 1
 fi
 
-# 08-change-rollback-plan.md の復元検証では、障害で既に壊れている可能性がある稼働中DBでは
-# なく、このバックアップ時点のhost数・item数と比較する。dumpと同時点の値をここで記録する。
-echo "==> recording host/item counts at backup time"
-if ! HOST_COUNT="$("${COMPOSE[@]}" exec -T postgres psql -U zabbix -d zabbix -Atc 'select count(*) from hosts;')"; then
-  echo "failed to record host count, discarding partial dump: ${TMP_DUMP_FILE}" >&2
+# checksum/countsはdumpの最終rename(mv)より前に、最終ファイル名で書き出す。mvが
+# 完了するまで、この最終ファイル名のdumpは復元手順のls -t検索に現れないため、
+# 両方のsidecarが揃う前にdumpだけが「見つかる」状態にはならない。
+if ! DUMP_HASH="$(sha256sum -- "${TMP_DUMP_FILE}" | awk '{print $1}')"; then
+  echo "checksum failed, discarding partial dump: ${TMP_DUMP_FILE}" >&2
   exit 1
 fi
-if ! ITEM_COUNT="$("${COMPOSE[@]}" exec -T postgres psql -U zabbix -d zabbix -Atc 'select count(*) from items;')"; then
-  echo "failed to record item count, discarding partial dump: ${TMP_DUMP_FILE}" >&2
-  exit 1
-fi
+printf '%s  %s\n' "${DUMP_HASH}" "${DUMP_BASENAME}" > "${SHA256_FILE}"
+printf 'hosts=%s\nitems=%s\n' "${HOST_COUNT}" "${ITEM_COUNT}" > "${COUNTS_FILE}"
 
 mv -- "${TMP_DUMP_FILE}" "${DUMP_FILE}"
 trap - EXIT
 
-# checksumまたはcountsの書き込みに失敗した場合、どちらか欠けたdumpを最終ファイル名の
-# まま残さない(復元検証が誤って「バックアップなし」と判断したり、誤った基準件数で
-# 比較したりしないようにする)。
-if ! ( cd -- "${TARGET_DIR}" && sha256sum -- "${DUMP_BASENAME}" > "${DUMP_BASENAME}.sha256" ); then
-  echo "checksum failed, removing dump without a valid checksum: ${DUMP_FILE}" >&2
-  rm -f -- "${DUMP_FILE}" "${DUMP_FILE}.sha256"
-  exit 1
-fi
-if ! printf 'hosts=%s\nitems=%s\n' "${HOST_COUNT}" "${ITEM_COUNT}" > "${DUMP_FILE}.counts"; then
-  echo "failed to write counts file, removing dump: ${DUMP_FILE}" >&2
-  rm -f -- "${DUMP_FILE}" "${DUMP_FILE}.sha256" "${DUMP_FILE}.counts"
-  exit 1
-fi
 echo "==> wrote ${DUMP_BASENAME}.sha256 and ${DUMP_BASENAME}.counts"
 
 echo "==> pruning dumps older than ${RETENTION_DAYS} day(s) in ${TARGET_DIR}"
