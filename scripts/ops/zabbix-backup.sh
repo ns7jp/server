@@ -103,12 +103,25 @@ fi
 # PROJECT_DIR 以外の場所から実行したときに compose file が見つからない。
 COMPOSE=(docker compose -f "${PROJECT_DIR}/${COMPOSE_FILE}" --project-directory "${PROJECT_DIR}")
 
-TIMESTAMP="$(date +%Y%m%dT%H%M%S)"
+# flockはtimerと手動実行の同時実行を防ぐが、直列化された2回の実行が同一秒に
+# またがることは防げない(1回目が高速に完了しロックを解放した直後、2回目が
+# 同じ秒のうちにロックを取得する場合)。秒単位のtimestampのままではその2回が
+# 同じDUMP_FILE/SHA256_FILE/COUNTS_FILEを指してしまうため、ナノ秒まで含めて
+# 衝突をなくす。
+TIMESTAMP="$(date +%Y%m%dT%H%M%S%N)"
 DUMP_FILE="${TARGET_DIR}/zabbix-${TIMESTAMP}.dump"
 DUMP_BASENAME="$(basename -- "${DUMP_FILE}")"
 TMP_DUMP_FILE="${DUMP_FILE}.part"
 SHA256_FILE="${TARGET_DIR}/${DUMP_BASENAME}.sha256"
 COUNTS_FILE="${TARGET_DIR}/${DUMP_BASENAME}.counts"
+
+# 念のため、この公開パスが既に使われていないかをtrap登録より前に確認する
+# (trap登録後だと、ここで exit した際に他run由来の既存ファイルを誤って
+# cleanup_partial で消してしまう)。
+if [[ -e "${DUMP_FILE}" || -e "${SHA256_FILE}" || -e "${COUNTS_FILE}" ]]; then
+  echo "refusing to overwrite existing backup files for timestamp ${TIMESTAMP}: ${DUMP_FILE}" >&2
+  exit 1
+fi
 
 # mv後・trap解除前のごく短い window でSIGTERM等が届いた場合もEXIT trapは発火する。
 # そこでDUMP_FILE(mv後の最終名)もまとめてcleanup対象に含めておく。trap解除より
