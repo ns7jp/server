@@ -25,7 +25,11 @@
 
 ## 3. 事前準備
 
-zbx-01 に `iproute2`、`iputils-ping`、`dnsutils`、`curl`、`tcpdump`、`ufw`、`iptables`、`netcat-openbsd` があることを確認します。monitor-01 は[Linux版の事前準備](../build-package/09-network-validation-procedure.md#3-事前準備)に加え、本パックの[構築手順書](05-build-procedure.md)で Zabbix Agent2 導入(`ServerActive=192.0.2.11:10051`)まで完了していることを前提とします。管理端末の値を実環境に合わせて設定します。
+zbx-01 に `iproute2`、`iputils-ping`、`dnsutils`、`curl`、`tcpdump`、`ufw`、`iptables`、`netcat-openbsd` が必要です。[構築手順書](05-build-procedure.md)が導入するのは`curl`・`ufw`・`iptables`(`iptables-persistent`経由)までなので、`dnsutils`(`dig`)・`tcpdump`・`netcat-openbsd`(`nc`)は本手順の実行前に別途導入します(`iproute2`・`iputils-ping`はUbuntu Serverの既定導入に含まれます)。monitor-01 は[Linux版の事前準備](../build-package/09-network-validation-procedure.md#3-事前準備)に加え、本パックの[構築手順書](05-build-procedure.md)で Zabbix Agent2 導入(`ServerActive=192.0.2.11:10051`)まで完了していることを前提とします。管理端末の値を実環境に合わせて設定します。
+
+```bash
+ssh zbx-01 'sudo apt-get update && sudo apt-get install -y dnsutils tcpdump netcat-openbsd'
+```
 
 ```bash
 ZBX_HOST=zbx-01
