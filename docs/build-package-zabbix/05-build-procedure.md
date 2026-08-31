@@ -332,10 +332,10 @@ sudo zabbix_agent2 -t service_monitor.healthz
 4. `Expression`に次の式を入力します。
 
    ```
-   min(/monitor-01/service_monitor.healthz,3m)<>1
+   max(/monitor-01/service_monitor.healthz,3m)<>1
    ```
 
-   直近3分間の`service_monitor.healthz`の最小値が`1`以外(=一度でも異常を観測)の場合にPROBLEMとする式です。
+   `service_monitor.healthz`は`0`/`1`の二値なので、直近3分間の最大値が`1`以外(=期間内のどのサンプルも正常値`1`を記録していない、つまり3分間ずっと異常)の場合にPROBLEMとする式です。`min(...)`を使うと1回でも異常サンプルがあった瞬間に最小値が`0`になり、単発の一時的な失敗でも即PROBLEMになってしまう(02-detailed-design.md・03-parameter-sheetが定義する「3分間観測」という継続失敗の意図と食い違う)ため、`max(...)`を使います。
 5. `OK event generation`は既定(`Expression`)のままにします。式が再び真でなくなった時点でOKに戻ります。
 6. 「Add」をクリックして保存します。
 
