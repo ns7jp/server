@@ -95,7 +95,7 @@
 | ANW-02 | route / gateway | `Get-NetRoute`, `Test-NetConnection -TraceRoute` | 想定gateway/interface/経路 | NOT RUN | — |
 | ANW-03 | DNS(通常レコード+SRVレコード) | `Resolve-DnsName`(Aレコード、`_ldap._tcp.dc._msdcs`等のSRVレコード) | 想定レコードと一致 | NOT RUN | — |
 | ANW-04 | ICMP | `Test-Connection` | 方針どおりの疎通または遮断 | NOT RUN | — |
-| ANW-05 | 待受port | `Get-NetTCPConnection -State Listen` | 53,88,135,389,445,464,636,3268,3269,5986,9182が設計どおり待受、3389は既定Disableで非待受 | NOT RUN | — |
+| ANW-05 | 待受port | `Get-NetTCPConnection -State Listen` | 53,88,135,389,445,464,3268,5986,9182が設計どおり待受、3389は既定Disableで非待受。636・3269(LDAPS/GC LDAPS)はAD CS未導入(対象外)のためフェーズ1では待受しないことを確認する(非待受がPASS) | NOT RUN | — |
 | ANW-06 | TCP/LDAP到達性 | `Test-NetConnection -Port 389/88/53/5986`等 | 内部ネットワークCIDR内は到達、windows_exporterは中央Prometheus host以外から拒否 | NOT RUN | — |
 | ANW-07 | packet capture | `pktmon`(ヘッダのみ) | request/responseの経路を説明可能、本文は非採録 | NOT RUN | — |
 | ANW-08 | Windows Defender Firewall | `Get-NetFirewallProfile`, `Get-NetFirewallRule` | プロファイル・AD DS自動生成ルールグループのスコープが設計と一致 | NOT RUN | — |

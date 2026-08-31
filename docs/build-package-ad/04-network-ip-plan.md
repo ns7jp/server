@@ -37,6 +37,8 @@ Windows Defender Firewallは、AD DS役割を`Install-ADDSForest`で有効化す
 
 自動生成ルールの既定プロファイルはDomain/Private/Publicで有効ですが、DCは昇格直後、ネットワークカテゴリがNLA(Network Location Awareness)によって正しく`Domain`と認識されるまで一時的に`Public`扱いになることがあります。[構築手順書](05-build-procedure.md)ではこの点を踏まえ、昇格直後にネットワークカテゴリを確認する手順を含めます。
 
+上表のLDAPS(636)・Global Catalog LDAPS(3269)は、Firewallの許可範囲としては`Install-ADDSForest`実行時に自動生成されます。ただしAD CS(証明書サービス)が本パックの対象外であるため、DCがこれらのポートで実際に待受を始めるために必要なサーバー認証証明書が配布されず、フェーズ1では636・3269は許可されていても待受しません。理由の詳細は[パラメータシート](03-parameter-sheet.md)「公開ポート」節を参照してください。
+
 ## 4. 実環境で確認する項目
 
 実行順、期待結果、採録方法は[ネットワーク実機検証手順](09-network-validation-procedure.md)を正本とします。

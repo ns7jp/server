@@ -12,7 +12,7 @@ Ansible role化された自動構築経路(`ansible/roles/common`相当のWindow
 
 - 対象: `ad-dc01`(新規フォレスト・新規ドメインの最初のドメインコントローラー)検証用VM 1台。本手順はまだドメインが存在しない状態から新規フォレストを作成する前提です。対象VMが既に何らかのドメインへ昇格済みでないことを、作業開始前に必ず確認してください(誤って既存ドメインに対して本手順を再実行しないための最初の確認であり、13節AIT-11の考え方につながります)
 - 対象VMの初回作業はWinRMがまだ有効化されていないため、ハイパーバイザーのVMコンソール(またはローカルコンソール)から直接ログオンして行います。WinRM HTTPS経由の管理は2節で有効化した後にのみ成立します
-- 対象IPアドレス(`192.0.2.50/24`)、管理用エイリアスFQDN(`ad-dc.corp.example.test`)、ドメインFQDN(`corp.example.test`)、NetBIOS名(`CORP`)、管理端末IP(例示: `192.0.2.40`)、内部ネットワークCIDR、作業時間帯を記録済みであること
+- 対象IPアドレス(`192.0.2.50/24`)、対象ホストの正式なコンピューターFQDN(`ad-dc01.corp.example.test`。ドメイン参加前の現時点ではまだDNSに登録されていませんが、2節のWinRM証明書はこの昇格後FQDNを先取りして発行します)、ドメインFQDN(`corp.example.test`)、NetBIOS名(`CORP`)、管理端末IP(例示: `192.0.2.40`)、内部ネットワークCIDR、作業時間帯を記録済みであること
 - DSRM(ディレクトリサービス復元モード)Administratorパスワードを、Git管理外の秘密値台帳で安全に生成・保管済みであること。実値はこのリポジトリのどの文書にも記載しません。パスワードの強度基準そのものの設計確認はAUT-02(このリポジトリの文書レビュー)で行い、値そのものは記載・確認しません
 - ロールバック条件(VM/ハイパーバイザーのスナップショット取得タイミングを含む)を[変更・ロールバック計画](08-change-rollback-plan.md)で確認済みであること。フォレスト作成(4節)はこのVMにとって後戻りが難しい変更であるため、**フォレスト作成の直前**にスナップショットを取得するタイミングを本節で必ず合意してください
 - 本パックはAnsible role化されていないため、Linux版のような対象commit SHA固定によるコード配備管理はありません。ただし、本パック文書側の版(このリポジトリの`git rev-parse HEAD`)は事後の突合のため記録しておきます
@@ -40,7 +40,7 @@ git rev-parse HEAD
 ```powershell
 # WinRM設定確認(現時点でのベースライン)
 # 対象ホストは2節でHTTPSリスナーを有効化するまで未構成のため、この時点での接続確認は失敗して正常です
-Test-WSMan -ComputerName "ad-dc.corp.example.test" -UseSSL -ErrorAction SilentlyContinue
+Test-WSMan -ComputerName "ad-dc01.corp.example.test" -UseSSL -ErrorAction SilentlyContinue
 ```
 
 上記`Test-WSMan`が失敗する(応答なし/拒否)ことを、2節・3節の作業前のベースラインとして記録します。2節でWinRM HTTPSリスナーを有効化し、3節でFirewallを管理元CIDR限定で許可した後に、あらためて同じコマンドで疎通を確認します。
@@ -81,27 +81,36 @@ Rename-LocalUser -Name "Administrator" -NewName "<環境ごとに決定する管
 # Windows Update設定の確認(既定: Microsoft Updateから直接、自動ダウンロード・手動再起動)
 Get-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' -ErrorAction SilentlyContinue
 
-# PowerShell 7.4系の追加導入(対象ホスト側)
-winget install --id Microsoft.PowerShell --source winget
+# PowerShell 7.4系の追加導入(対象ホスト側)。
+# Windows Server 2022はWinGet(App Installer)が既定で導入されていません(OS標準でWinGetが
+# 使えるのはWindows Server 2025以降)。そのため対象ホスト側は、管理端末側(1節)のようなwinget経由では
+# 導入できず、GitHub Releasesの公式MSIパッケージを使います。バージョンは実機決定時にGitHub Releasesで
+# 確認して固定してください(現時点でNOT SET)
+$PwshMsiVersion = "<NOT SET: 実機決定時にGitHub Releasesで確認するPowerShell 7.4系のバージョン番号>"
+$PwshMsiUrl = "https://github.com/PowerShell/PowerShell/releases/download/v$PwshMsiVersion/PowerShell-$PwshMsiVersion-win-x64.msi"
+Invoke-WebRequest -Uri $PwshMsiUrl -OutFile C:\temp\pwsh-installer.msi
+Start-Process msiexec.exe -ArgumentList "/i C:\temp\pwsh-installer.msi /qn /norestart ADD_EXPLORER_CONTEXT_MENU_OPENPOWERSHELL=1 ENABLE_PSREMOTING=1" -Wait
 pwsh -Command '$PSVersionTable.PSVersion'
 ```
 
-続けて、WinRM HTTPSリスナーを作成します。証明書のDNS名には管理用エイリアス`ad-dc.corp.example.test`を使います。**この名前は本節時点ではまだ存在しないドメイン`corp.example.test`の一部ではなく、WinRM証明書・管理用接続のためだけに割り当てた別名です。** 実際のドメインが存在しない段階でこのエイリアスを使っても、`ad-dc01`が`corp.example.test`ドメインへ参加したことには一切なりません。4節でフォレストを作成した後、`ad-dc01`自身の正式なAD上のFQDNは(ホスト名`ad-dc01` + ドメインsuffix`corp.example.test`により)`ad-dc01.corp.example.test`になります。文字列が似ているため、`ad-dc.corp.example.test`(管理用エイリアス、`01`が付かない)と`ad-dc01.corp.example.test`(昇格後の正式なコンピューターFQDN)を混同しないでください。
+続けて、WinRM HTTPSリスナーを作成します。証明書のDNS名には、4節のフォレスト作成後に`ad-dc01`が実際に名乗ることになる正式なコンピューターFQDN`ad-dc01.corp.example.test`を先取りして使います。この時点ではまだ`corp.example.test`ドメイン自体が存在せずDNSにも登録されていませんが、自己署名証明書の発行やWinRM接続そのものにはDNSでの事前登録は不要です(管理端末側は3節のFirewall許可後、対象IP`192.0.2.50`への直接接続、またはこのFQDNを管理端末のhostsファイルへ一時的に登録して接続します)。
+
+証明書を発行したら、`winrm quickconfig`による自動選択に任せず、この証明書の拇印(Thumbprint)を明示的に指定してHTTPSリスナーを作成します。`winrm quickconfig -transport:https`はコンピューター名に一致する証明書を内部的に検索する仕様のため、コンピューター名(`ad-dc01`)とは異なるFQDNで証明書を発行した場合に一致する証明書を見つけられず、リスナーが作成されないことがあります。拇印を明示すればこの曖昧さを避けられます。
 
 ```powershell
-# WinRM HTTPS用の自己署名証明書(DNS名は管理用エイリアス)
-$cert = New-SelfSignedCertificate -DnsName "ad-dc.corp.example.test" `
+# WinRM HTTPS用の自己署名証明書(DNS名は昇格後の正式なコンピューターFQDN)
+$cert = New-SelfSignedCertificate -DnsName "ad-dc01.corp.example.test" `
   -CertStoreLocation Cert:\LocalMachine\My -KeyExportPolicy Exportable `
   -NotAfter (Get-Date).AddYears(2)
 $cert.Thumbprint
 
-# WinRM HTTPSリスナーの作成
-winrm quickconfig -transport:https -force
-
-# 既存のHTTPリスナーが残っている場合は削除し、HTTPS専用にする
+# 既存のHTTP/HTTPSリスナーが残っている場合は削除してから作り直す
 Get-ChildItem WSMan:\localhost\Listener |
-  Where-Object { (Get-Item "$($_.PSPath)\Transport").Value -eq "HTTP" } |
   ForEach-Object { Remove-Item -Path $_.PSPath -Recurse -Force }
+
+# WinRM HTTPSリスナーを、上記証明書の拇印を明示して作成する(quickconfigの自動選択に任せない)
+New-Item -Path WSMan:\localhost\Listener -Transport HTTPS -Address * `
+  -CertificateThumbPrint $cert.Thumbprint -Force
 
 # Basic認証を無効化し、Negotiateのみを許可する(NFR-03、AST-01)
 Set-Item -Path WSMan:\localhost\Service\Auth\Basic -Value $false
@@ -156,14 +165,14 @@ New-NetFirewallRule -DisplayName "RDP-Temp-MgmtOnly" -Direction Inbound `
   -Profile Any -Enabled False
 ```
 
-ここまでで管理端末からのWinRM HTTPS疎通が成立するはずです。管理端末側で確認します。
+ここまでで管理端末からのWinRM HTTPS疎通が成立するはずです。管理端末側で確認します。`corp.example.test`のDNSゾーンはまだ存在しないため、`ad-dc01.corp.example.test`を名前解決させるには、管理端末の hosts ファイルへ`192.0.2.50 ad-dc01.corp.example.test`を一時的に追記してください(4節でAD統合DNSが稼働した後は、この hosts エントリを削除して通常のDNS解決に戻します)。
 
 ```powershell
 # 管理端末側
-Test-WSMan -ComputerName "ad-dc.corp.example.test" -UseSSL
+Test-WSMan -ComputerName "ad-dc01.corp.example.test" -UseSSL
 
 $cred = Get-Credential   # 2節で設定したローカルAdministrator相当の資格情報
-Enter-PSSession -ComputerName "ad-dc.corp.example.test" -UseSSL -Credential $cred
+Enter-PSSession -ComputerName "ad-dc01.corp.example.test" -UseSSL -Credential $cred
 ```
 
 `Test-WSMan`が成功し、管理元CIDR以外からは同じ接続が失敗すること(ANW-09相当)は、[ネットワーク実機検証手順](09-network-validation-procedure.md)で別途正式に確認します。本節での確認はあくまで作業継続のための疎通チェックです。
@@ -242,7 +251,7 @@ Get-NetFirewallRule -DisplayGroup "Active Directory Domain Services" |
 
 ```powershell
 # 管理端末側
-Test-WSMan -ComputerName "ad-dc.corp.example.test" -UseSSL
+Test-WSMan -ComputerName "ad-dc01.corp.example.test" -UseSSL
 ```
 
 ## 5. AD統合DNSの確認
@@ -406,18 +415,22 @@ Firewallルールで許可していても、この時点では中央Prometheus�
 ```powershell
 Install-WindowsFeature -Name Windows-Server-Backup
 
+# バックアップ格納先ボリュームは実機決定時に確定します(現時点でNOT SET)。
+# 以降のコマンドはすべて同じ変数を使い、スケジュール登録先と単発実行の確認先がずれないようにします
+$BackupTarget = "<NOT SET: バックアップ格納先ボリューム(ドライブ文字またはGUIDパス)。実機決定時に確定>"
+
 # 毎日03:30(Asia/Tokyo)のSystem Stateバックアップを登録
-wbadmin enable backup -addtarget:{バックアップ格納先ボリュームのGUIDパスまたはドライブ文字} -schedule:03:30 -systemstate -quiet
+wbadmin enable backup -addtarget:$BackupTarget -schedule:03:30 -systemstate -quiet
 ```
 
-登録が正しく機能することを、単発実行で確認します。
+登録が正しく機能することを、$BackupTargetに対する単発実行で確認します。
 
 ```powershell
-wbadmin start systemstatebackup -backuptarget:D: -quiet
+wbadmin start systemstatebackup -backuptarget:$BackupTarget -quiet
 wbadmin get versions
 ```
 
-`wbadmin get versions`にバックアップが記録されることを確認します。保持世代は14日([Linux版](../build-package/03-parameter-sheet.md)・[Windows版](../build-package-windows/03-parameter-sheet.md)と同じ値)です。
+`wbadmin get versions`にバックアップが記録されることを確認します。保持14日([Linux版](../build-package/03-parameter-sheet.md)・[Windows版](../build-package-windows/03-parameter-sheet.md)と同じ値)は本パックの目標値であり、`wbadmin enable backup`に世代数や日数を直接指定するパラメータはありません。Windows Server Backupの保持はバックアップ格納先ボリュームの空き容量に応じた自動ローテーションのため、`14日`という値を保証する仕組みそのものは存在しません。保持状況の実測確認は、`wbadmin get versions`の出力件数と最古/最新バックアップの日付範囲を日付付きevidenceへ記録して行い、値を推測で埋めません。
 
 ### 9.2 ADごみ箱の有効化
 
@@ -492,8 +505,10 @@ Get-Service NTDS, DNS, Netlogon, Kdc, W32Time, windows_exporter, WinRM |
 Get-NetFirewallRule | Where-Object Enabled -eq $true |
   Select-Object DisplayName, Direction, Action | Format-Table -AutoSize
 
+# 636(LDAPS)・3269(GC LDAPS)はAD CS未導入(対象外)のため一覧に含めません。
+# 待受しないことの確認は09-network-validation-procedure.mdのANW-05で別途行います
 Get-NetTCPConnection -State Listen |
-  Where-Object LocalPort -in 53, 88, 135, 389, 445, 464, 636, 3268, 3269, 5986, 9182 |
+  Where-Object LocalPort -in 53, 88, 135, 389, 445, 464, 3268, 5986, 9182 |
   Select-Object LocalAddress, LocalPort, State
 
 Get-NetFirewallProfile | Select-Object Name, DefaultInboundAction, Enabled
@@ -517,7 +532,7 @@ Get-ComputerInfo | Select-Object CsName, OsName, OsBuildNumber, WindowsProductNa
 管理端末側からも確認します。
 
 ```powershell
-Test-WSMan -ComputerName "ad-dc.corp.example.test" -UseSSL
+Test-WSMan -ComputerName "ad-dc01.corp.example.test" -UseSSL
 Resolve-DnsName -Name ad-dc01.corp.example.test -Server 192.0.2.50
 ```
 

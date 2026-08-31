@@ -137,15 +137,17 @@ Windows Defender FirewallでAD DS役割を導入すると、自動的にルー�
 | 389 | TCP/UDP | LDAP | ディレクトリ照会 | 内部ネットワークCIDR |
 | 445 | TCP | SMB(SYSVOL/NETLOGON) | GPO配布・複製 | 内部ネットワークCIDR |
 | 464 | TCP/UDP | Kerberosパスワード変更 | パスワード変更 | 内部ネットワークCIDR |
-| 636 | TCP | LDAPS | 暗号化ディレクトリ照会 | 内部ネットワークCIDR |
+| 636 | TCP | LDAPS | 暗号化ディレクトリ照会 | 内部ネットワークCIDR(許可範囲は設計済みだが、フェーズ1では待受しない。下記注記参照) |
 | 3268 | TCP | Global Catalog LDAP | フォレスト全体検索 | 内部ネットワークCIDR |
-| 3269 | TCP | Global Catalog LDAPS | 同上(暗号化) | 内部ネットワークCIDR |
+| 3269 | TCP | Global Catalog LDAPS | 同上(暗号化) | 内部ネットワークCIDR(636と同じ理由でフェーズ1では待受しない) |
 | 49152-65535 | TCP | 動的RPC(AD DS/FRS/DFSR) | 複製等 | 内部ネットワークCIDR |
 | 5986 | TCP | WinRM(HTTPS) | 構築・運用管理 | 管理元CIDR限定 |
 | 9182 | TCP | windows_exporter | host/ADメトリクス | 中央Prometheus hostのIPのみ許可(認証なし) |
 | 3389 | TCP | RDP | 障害時の代替アクセス | 既定Disable。一時許可時のみ管理元CIDR限定 |
 
 [Linux版](../build-package/03-parameter-sheet.md)・[Windows版](../build-package-windows/03-parameter-sheet.md)の管理系サービスは管理元CIDRのみへの限定を基本方針としていましたが、AD DS自体のポート(DNS/Kerberos/LDAP/SMB/RPC等)は将来のドメインメンバー全体から到達できる必要があるため、「内部ネットワークCIDR」という管理元CIDRより広い範囲を別途定義しています。この違いは[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)で詳しく扱います。
+
+**636(LDAPS)・3269(Global Catalog LDAPS)がフェーズ1で待受しない理由**: `Install-ADDSForest`によるフォレスト作成・DC昇格だけでは、LDAP over SSL/TLSは有効になりません。DCがLDAPS(636)・GC LDAPS(3269)で待ち受けるには、DCのFQDN(`ad-dc01.corp.example.test`)を対象としたサーバー認証(Server Authentication)用の証明書が、コンピューターのローカルコンピューター証明書ストアに配置されている必要があります(参考: [LDAP over SSLの有効化に関するMicrosoftの解説](https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/enable-ldap-over-ssl-3rd-certification-authority))。この証明書は通常AD CS(証明書サービス)の自動登録で配布しますが、[要件定義書](00-requirements.md)5節のとおりAD CSは本パックの対象外です。したがって389(LDAP)・3268(GC LDAP、いずれも非暗号化)は`Install-ADDSForest`直後から待受しますが、636・3269はAD CS導入(または手動でのサーバー認証証明書配布)まで待受しません。Firewallの許可設定自体はフェーズ1で行いますが、待受確認(ANW-05)の対象からは外し、AD CS導入後の発展課題として扱います。
 
 ## 実機記入欄
 

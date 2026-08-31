@@ -149,10 +149,13 @@ Invoke-Command -ComputerName $TargetFQDN -UseSSL -Credential $Cred -ScriptBlock 
     Get-NetTCPConnection -State Listen | Sort-Object LocalPort |
         Format-Table LocalAddress, LocalPort, OwningProcess
 
-    53, 88, 135, 389, 445, 464, 636, 3268, 3269, 5986, 9182 | ForEach-Object {
+    53, 88, 135, 389, 445, 464, 3268, 5986, 9182 | ForEach-Object {
         Get-NetTCPConnection -State Listen -LocalPort $_ -ErrorAction SilentlyContinue |
             Select-Object LocalAddress, LocalPort
     }
+
+    # 636(LDAPS)・3269(GC LDAPS)はAD CS未導入(対象外)のため待受しないことを確認する対象
+    Get-NetTCPConnection -State Listen -LocalPort 636, 3269 -ErrorAction SilentlyContinue
 
     Get-NetUDPEndpoint | Where-Object LocalPort -in 53, 88, 464 |
         Format-Table LocalAddress, LocalPort
@@ -164,8 +167,9 @@ Invoke-Command -ComputerName $TargetFQDN -UseSSL -Credential $Cred -ScriptBlock 
 
 確認点:
 
-- `53`(DNS)、`88`(Kerberos)、`135`(RPCエンドポイントマッパー)、`389`(LDAP)、`445`(SMB)、`464`(Kerberosパスワード変更)、`636`(LDAPS)、`3268`(Global Catalog LDAP)、`3269`(Global Catalog LDAPS)、`5986`(WinRM HTTPS)、`9182`(windows_exporter)がいずれも待受
+- `53`(DNS)、`88`(Kerberos)、`135`(RPCエンドポイントマッパー)、`389`(LDAP)、`445`(SMB)、`464`(Kerberosパスワード変更)、`3268`(Global Catalog LDAP)、`5986`(WinRM HTTPS)、`9182`(windows_exporter)がいずれも待受
 - `53`、`88`、`464`はTCPに加えUDPでも待受
+- `636`(LDAPS)・`3269`(Global Catalog LDAPS)は、AD CS(証明書サービス)が本パックの対象外でありDCにサーバー認証証明書が配布されないため、`Install-ADDSForest`直後は**待受しないことがPASS**です。Firewallの許可設定自体は[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)のとおり自動生成されますが、証明書が無い限りリスナー自体が起動しません。理由の詳細は[パラメータシート](03-parameter-sheet.md)「公開ポート」節を参照してください
 - `3389`(RDP)は既定Disableのため、`Get-NetTCPConnection`が何も返さない
 - 想定しない`0.0.0.0`の外部向けlistenerがない
 
