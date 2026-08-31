@@ -201,7 +201,7 @@ docker rm -f zabbix-restore-check
 docker volume rm zabbix_db_data_restore_check
 ```
 
-`<DUMP_FILE>.counts`は`pg_dump`と別接続で読んだ値のため、バックアップ実行中にhosts/itemsが変更されていた場合はdump内容とわずかに食い違うことがあります。この比較は復元が明らかに壊れていないかを確認する目安であり、完全な整合性の証明ではありません。件数が一致し、かつFrontend上のHost / Template / Trigger / Actionの内容も想定どおりであることを確認できたら、本番へ切り替えます。件数がわずかに異なる場合は、Frontend上の内容確認を優先し、直近の意図した変更（Host/Item追加・削除）で説明がつくかを確認してください。切り替えは`docker compose -f compose.zabbix.yaml stop zabbix-server zabbix-web`の後、稼働中の`zabbix_db_data`に対して同じ`pg_restore --clean --if-exists`を実行し、`docker compose -f compose.zabbix.yaml up -d`で再開する手順です。
+`<DUMP_FILE>.counts`は`pg_dump`と別接続で読んだ値のため、バックアップ実行中にhosts/itemsが変更されていた場合はdump内容とわずかに食い違うことがあります。判定基準は[試験仕様書のZIT-08](06-test-specification.md#構築結合試験)を正本とします: 件数が一致すれば`PASS`、わずかに異なる場合でも直近の意図した変更（Host/Item追加・削除）とFrontend上のHost / Template / Trigger / Actionの内容確認で差の理由が完全に説明でき、それを証跡へ記録できるなら`PASS`として本番へ切り替えます。理由が説明できない差がある場合は`FAIL`として扱い、本番への切り替えは行わず原因を調査します。切り替えは`docker compose -f compose.zabbix.yaml stop zabbix-server zabbix-web`の後、稼働中の`zabbix_db_data`に対して同じ`pg_restore --clean --if-exists`を実行し、`docker compose -f compose.zabbix.yaml up -d`で再開する手順です。
 
 ## 8. 実施結果
 

@@ -99,12 +99,13 @@ TMP_DUMP_FILE="${DUMP_FILE}.part"
 SHA256_FILE="${TARGET_DIR}/${DUMP_BASENAME}.sha256"
 COUNTS_FILE="${TARGET_DIR}/${DUMP_BASENAME}.counts"
 
-# dumpが最終ファイル名(*.dump)として現れるのは末尾のmvだけであり、それより前に
-# 失敗したりSIGTERM等で打ち切られたりした場合は、このtrapが一時dumpと(部分的に
-# 書けていたかもしれない)sidecarをまとめて削除する。復元手順が探す"zabbix-*.dump"
-# は、checksumとcountsが揃っているものしか現れない。
+# mv後・trap解除前のごく短い window でSIGTERM等が届いた場合もEXIT trapは発火する。
+# そこでDUMP_FILE(mv後の最終名)もまとめてcleanup対象に含めておく。trap解除より
+# 前にDUMP_FILEが存在し得るのはこのmv直後だけなので、成功パス(trap解除後)を
+# 誤って壊すことはない。これにより、checksum/countsが揃わないままDUMP_FILEだけが
+# 最終ファイル名で残ることはない。
 cleanup_partial() {
-  rm -f -- "${TMP_DUMP_FILE}" "${SHA256_FILE}" "${COUNTS_FILE}"
+  rm -f -- "${TMP_DUMP_FILE}" "${SHA256_FILE}" "${COUNTS_FILE}" "${DUMP_FILE}"
 }
 trap cleanup_partial EXIT
 
