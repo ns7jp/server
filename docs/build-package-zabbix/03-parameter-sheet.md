@@ -74,7 +74,7 @@ Ubuntu 24.04 LTS以外のOSファミリーは本パックの対象外です。RH
 | Check方式 | active check(monitor-01のAgent2→zbx-01:10051へpush)を主方式とする。passive checkは既定未使用の任意拡張 | [02-detailed-design.md](02-detailed-design.md) |
 | Agent2 `Hostname`(monitor-01) | `monitor-01` | `/etc/zabbix/zabbix_agent2.conf`(monitor-01) |
 | Agent2 `ServerActive`(monitor-01) | `192.0.2.11:10051`(zbx-01のIP) | 同上 |
-| Agent2 `StartAgents`(monitor-01) | `0`(passive check用listenerを完全に無効化。`10050/tcp`を一切listenしない) | 同上 |
+| Agent2 `Server`(monitor-01) | 未設定(コメントアウトのまま。passive checkの送信元許可リストを空にする) | 同上 |
 | カスタムItem key | `service_monitor.healthz` | `deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example` |
 | UserParameter実体 | `UserParameter=service_monitor.healthz,curl --silent --fail --max-time 3 http://127.0.0.1:8080/healthz >/dev/null && echo 1 || echo 0` | 同上 |
 | カスタムTrigger | `service_monitor.healthz`が1以外を3分間観測 → Problem(Severity: High) | Frontend設定 |
@@ -107,7 +107,7 @@ Ubuntu 24.04 LTS以外のOSファミリーは本パックの対象外です。RH
 | `${ZABBIX_WEB_PORT:-8081}/tcp` | Zabbix Frontend(Nginx同梱) | `127.0.0.1`のみ。運用者はSSH tunnel経由 | 既存パックと同じ「管理UIは外部公開しない」方針 |
 | 10051/tcp | Zabbix Server trapper(active check受信) | monitor-01のIPのみ許可(`DOCKER-USER` iptables chainでの送信元制限。UFWはDockerが公開したportに効かない)。loopback限定にはできない — 他ホストから着信する唯一の監視系ポート | monitor-01のAgent2がactive checkでzbx-01へpushするために必須 |
 | 5432/tcp | PostgreSQL | 外部非公開。Docker internal networkのみ | DBは他ホストから直接繋がせない |
-| 10050/tcp(monitor-01側) | Zabbix Agent2 listener(passive check用) | `StartAgents=0`によりlistener自体を無効化。portを一切listenしない | active checkを主方式とし、passive listenerは開かない設計(将来使う場合は`StartAgents`と`zbx-01`のIP限定を別途設計) |
+| 10050/tcp(monitor-01側) | Zabbix Agent2 listener(passive check用) | Agent2の仕様上listenし続ける(Agent1の`StartAgents=0`相当が無い)。`Server`未設定(protocol層拒否)と`monitor-01`の既存UFW(Docker非経由のため有効。`10050/tcp`のallowルールを追加しない)の2段構えでネットワーク到達を遮断 | active checkを主方式とし、passive checkは使わない設計(将来使う場合は`Server`と`zbx-01`のIP限定のUFW allowを別途設計) |
 
 Frontendとtrapperはbindの考え方が異なります。設計理由は[詳細設計書](02-detailed-design.md)と[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)を正本とします。
 

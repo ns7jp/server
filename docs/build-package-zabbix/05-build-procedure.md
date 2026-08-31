@@ -61,16 +61,7 @@ sudo ufw status verbose
 
 `${ZABBIX_WEB_PORT:-8081}/tcp`はcompose側で`127.0.0.1`にbindするため、UFWへ個別のallowルールは追加しません(bind address自体が唯一の防御線であるため)。5432/tcp(PostgreSQL)もDocker internal network限定のためUFWルールは不要です。
 
-**trapper(10051/tcp)の送信元制限はUFWでは設定しません。** DockerがPublishしたportはDockerが管理するiptablesの`DOCKER`/`FORWARD`chainを経由し、UFWが制御するhostの`INPUT`chainを経由しないため、`ufw allow`ルールは実際には効きません([`docs/security.md`](../security.md)、[ネットワーク設計・IPアドレス表](04-network-ip-plan.md#2-frontendとtrapperで設計思想が異なる理由本書の中心)参照)。代わりに、Docker自身が推奨する`DOCKER-USER`chainへ直接ルールを追加します。このchainはDockerデーモン起動時に自動作成されるため、Docker Engine導入(2.2節)より後にこの手順を実施してください。
-
-```bash
-sudo iptables -I DOCKER-USER -p tcp --dport 10051 -j DROP
-sudo iptables -I DOCKER-USER -p tcp --dport 10051 -s 192.0.2.10 -j ACCEPT
-sudo iptables -L DOCKER-USER -n --line-numbers
-sudo netfilter-persistent save
-```
-
-`-I`はchainの先頭へ挿入するため、**DROPを先に、ACCEPTを後に**実行します(後から挿入した方が先頭に来るため、最終的に「`monitor-01`からのACCEPT」が「それ以外のDROP」より先に評価される順序になります)。`iptables -L DOCKER-USER -n --line-numbers`の出力で、`monitor-01`のIP(`192.0.2.10`)へのACCEPTがDROPより上の行になっていることを確認してください。`netfilter-persistent save`を忘れると、ホスト再起動後にルールが消え、trapperが無制限公開の状態に戻ります(10 立ち上げと受け入れ試験の再起動後確認で検出します)。
+trapper(10051/tcp)の送信元制限は`DOCKER-USER`chainで行いますが、このchainはDockerデーモンが起動して初めて作成されるため、**Docker Engine導入(2.2節)より後の2.3節で設定します**(ここではまだ設定しません)。
 
 ### 2.2 Docker Engine / Docker Composeの導入
 
@@ -94,7 +85,20 @@ sudo usermod -aG docker "$(whoami)"
 # 一度ログアウト・再ログインしてgroup変更を反映させる(以降はsudoなしのdocker composeで統一する)
 ```
 
-### 2.3 リポジトリの取得と秘密値の準備
+### 2.3 DOCKER-USER chainでのtrapper送信元制限
+
+**trapper(10051/tcp)の送信元制限はUFWでは設定しません。** DockerがPublishしたportはDockerが管理するiptablesの`DOCKER`/`FORWARD`chainを経由し、UFWが制御するhostの`INPUT`chainを経由しないため、`ufw allow`ルールは実際には効きません([`docs/security.md`](../security.md)、[ネットワーク設計・IPアドレス表](04-network-ip-plan.md#2-frontendとtrapperで設計思想が異なる理由本書の中心)参照)。代わりに、Docker自身が推奨する`DOCKER-USER`chainへ直接ルールを追加します。このchainはDockerデーモン起動時に自動作成されるため、**2.2節でDocker Engineを導入し、デーモンが起動した後に**この手順を実施します(`sudo docker compose version`が成功していれば、デーモンは起動済みです)。
+
+```bash
+sudo iptables -I DOCKER-USER -p tcp --dport 10051 -j DROP
+sudo iptables -I DOCKER-USER -p tcp --dport 10051 -s 192.0.2.10 -j ACCEPT
+sudo iptables -L DOCKER-USER -n --line-numbers
+sudo netfilter-persistent save
+```
+
+`-I`はchainの先頭へ挿入するため、**DROPを先に、ACCEPTを後に**実行します(後から挿入した方が先頭に来るため、最終的に「`monitor-01`からのACCEPT」が「それ以外のDROP」より先に評価される順序になります)。`iptables -L DOCKER-USER -n --line-numbers`の出力で、`monitor-01`のIP(`192.0.2.10`)へのACCEPTがDROPより上の行になっていることを確認してください。`netfilter-persistent save`を忘れると、ホスト再起動後にルールが消え、trapperが無制限公開の状態に戻ります(10 立ち上げと受け入れ試験の再起動後確認で検出します)。
+
+### 2.4 リポジトリの取得と秘密値の準備
 
 ```bash
 sudo mkdir -p /opt/zabbix-lab
@@ -134,9 +138,9 @@ ZABBIX_WEB_PORT=8081
 ZABBIX_SERVER_BIND_ADDRESS=192.0.2.11
 ```
 
-既定の`127.0.0.1`のままではtrapperが`monitor-01`から到達不能になります。bindを緩めた分の防御は、2.1節で設定済みの`DOCKER-USER` iptables chainの送信元制限(`monitor-01`のIPのみ許可。UFWではない)が担う設計です([ネットワーク設計・IPアドレス表](04-network-ip-plan.md)を参照)。
+既定の`127.0.0.1`のままではtrapperが`monitor-01`から到達不能になります。bindを緩めた分の防御は、2.3節で設定済みの`DOCKER-USER` iptables chainの送信元制限(`monitor-01`のIPのみ許可。UFWではない)が担う設計です([ネットワーク設計・IPアドレス表](04-network-ip-plan.md)を参照)。
 
-### 2.4 初回構築(NFR-01、ZIT-01)
+### 2.5 初回構築(NFR-01、ZIT-01)
 
 ```bash
 docker compose -f compose.zabbix.yaml config --quiet
@@ -152,7 +156,7 @@ watch -n5 'docker compose -f compose.zabbix.yaml ps'
 
 `Ctrl+C`で`watch`を終了し、全サービスの`STATUS`が`Up ... (healthy)`であることを確認したら次へ進みます。
 
-### 2.5 冪等性確認(NFR-02、ZIT-02)
+### 2.6 冪等性確認(NFR-02、ZIT-02)
 
 ```bash
 docker compose -f compose.zabbix.yaml up -d
@@ -208,18 +212,22 @@ zabbix_agent2 -V
 sudo $EDITOR /etc/zabbix/zabbix_agent2.conf
 ```
 
-次の3行を確認・設定します(既定はコメントアウトまたは別値のため、行頭の`#`を外し、値を書き換えます)。
+次の2行を確認・設定します(既定はコメントアウトまたは別値のため、行頭の`#`を外し、値を書き換えます)。`Server`行は設定しません(コメントアウトのままにします)。
 
 ```
 Hostname=monitor-01
 ServerActive=192.0.2.11:10051
-StartAgents=0
 ```
 
-`ServerActive`が本パックの主方式であるactive checkのpush先です。`StartAgents=0`は、passive check用のlistenerプロセスを起動数0にして**完全に無効化**する設定です。Agent2は既定で`Server`の設定有無にかかわらず`0.0.0.0:10050`でlistenするため(`Server`は接続元の許可リストにすぎず、listenerの起動有無を制御しません)、active checkのみを使う本パックの設計では`StartAgents=0`が唯一の正しい無効化手段です。`Server`行は passive check を使わないため設定しません(コメントアウトのまま)。設定後、値を確認します。
+`ServerActive`が本パックの主方式であるactive checkのpush先です。**classic agent(Agent1)にあった`StartAgents=0`のようなpassive check無効化パラメータは、Agent2には存在しません**(Agent2は単一プロセスのアーキテクチャで、classic agentのような事前fork型の並行度制御を持たないため)。そのため`10050/tcp`のlistener自体は`ss -lntup`上で見え続けます。本パックでの無効化は2段階です。
+
+1. `Server`行を設定しない: passive checkの送信元許可リストが空になり、`zabbix_get`等での問い合わせはZabbixプロトコルレベルで拒否されます(TCP接続自体は成立しますが、値は返りません)。
+2. `monitor-01`は素のaptパッケージ導入であり(zbx-01のようなDocker Publishではない)、既存Linux版パックの UFW default deny incoming がそのまま適用されます。`10050/tcp`を許可するUFWルールは追加しないため、`zbx-01`を含むどのホストからも`monitor-01`の`10050/tcp`へネットワーク到達できません。zbx-01の trapper とは異なり、UFWがそのまま有効な防御層になります(Dockerを経由しないため)。
+
+設定後、値を確認します。
 
 ```bash
-grep -E '^(Hostname|ServerActive|StartAgents)=' /etc/zabbix/zabbix_agent2.conf
+grep -E '^(Hostname|ServerActive)=' /etc/zabbix/zabbix_agent2.conf
 ```
 
 ### 4.3 UserParameter(service_monitor.healthz)の配置
@@ -315,7 +323,7 @@ sudo zabbix_agent2 -t service_monitor.healthz
 ### 5.5 Media typeの確認とwebhook URLの設定(FR-04。webhookと受信先を用意した場合のみ)
 
 1. `Alerting` → `Media types`を開き、組み込みの`Slack (webhook)`をクリックして開きます。
-2. `Parameters`タブに表示される、webhook URLを保持するパラメータ(既定名`slack_url`)へ、2.3節で`deploy/secrets/zabbix_slack_webhook_url.txt`に設定した値を貼り付けます。
+2. `Parameters`タブに表示される、webhook URLを保持するパラメータ(既定名`slack_url`)へ、2.4節で`deploy/secrets/zabbix_slack_webhook_url.txt`に設定した値を貼り付けます。
 3. 画面下部の「Update」をクリックして保存します。
 4. `Users` → 通知を受け取るユーザー(検証では`Admin`でよい)を開き、「Media」タブ → 「Add」をクリックします。
 5. `Type`に`Slack (webhook)`、`Send to`にSlackのchannel名を入力します。`When active`は`1-7,00:00-24:00`のまま、`Use if severity`は`High`と`Disaster`のみチェックします。
@@ -351,7 +359,13 @@ ssh <ssh-user>@192.0.2.10 'systemctl status zabbix-agent2 --no-pager'
 ssh <ssh-user>@192.0.2.10 'ss -lntup | grep -E "10050|8080"'
 ```
 
-`zabbix-agent2`が`active`であることを確認します。`ss -lntup`の結果は、`8080/tcp`がserver-monitorアプリの既存設計どおり`127.0.0.1`限定で待受していること、`10050/tcp`は`zabbix_agent2.conf`の`StartAgents=0`によりlistener自体が無効化されているため**`grep`の結果に一切表示されない**ことを確認します(ZIT-03、ZST-01)。`10050/tcp`が何らかの形で表示される場合は、`StartAgents=0`の設定漏れです。
+`zabbix-agent2`が`active`であることを確認します。`ss -lntup`の結果は、`8080/tcp`がserver-monitorアプリの既存設計どおり`127.0.0.1`限定で待受していることを確認します。`10050/tcp`はAgent2の仕様上listenし続けます(Agent2にはpassive listenerを止める設定が無いため)。これは想定どおりであり、防御はport非公開ではなく、`Server`行を未設定のままにする(protocol層で拒否)ことと、`monitor-01`のUFW default deny incomingが`10050/tcp`を許可していないこと(ネットワーク層で拒否)の2段構えで行います(ZIT-03、ZST-01)。
+
+```bash
+ssh <ssh-user>@192.0.2.10 'sudo ufw status verbose | grep -c 10050 || true'
+```
+
+上記の出力が`0`であること(=`10050/tcp`を許可するUFWルールが無いこと)を確認します。`monitor-01`はDocker Publishではなく素のaptパッケージなので、この場合はUFWがそのまま有効な防御層になります(zbx-01のtrapperとは異なります)。
 
 Frontend側(ZIT-03、ZIT-05):
 
@@ -438,7 +452,8 @@ ls -la /var/backups/zabbix
    ```bash
    docker compose -f compose.zabbix.yaml stop zabbix-server zabbix-web
    LATEST_DUMP=$(ls -t /var/backups/zabbix/zabbix-*.dump | head -n1)
-   sha256sum -c "${LATEST_DUMP}.sha256"
+   # .sha256ファイルはbasenameだけを記録しているため、そのディレクトリで検証する
+   ( cd -- "$(dirname -- "${LATEST_DUMP}")" && sha256sum -c "$(basename -- "${LATEST_DUMP}").sha256" )
    docker compose -f compose.zabbix.yaml exec -T postgres \
      pg_restore -U zabbix -d zabbix --clean --if-exists < "${LATEST_DUMP}"
    docker compose -f compose.zabbix.yaml up -d

@@ -64,7 +64,7 @@ docker compose -f compose.zabbix.yaml up -d
 
 ### trapperの送信元を実際のIPに絞る(DOCKER-USER chain。UFWではない)
 
-[構築手順書](05-build-procedure.md)2.1節の既定は例示IP(`192.0.2.10`)です。実ホストでは`monitor-01`の実際のIPへ置き換えます。**この送信元制限はUFWではなく`DOCKER-USER` iptables chainで行います**(DockerがPublishしたportはUFWの`INPUT`chainを経由しないため。[04-network-ip-plan.md](04-network-ip-plan.md)参照)。
+[構築手順書](05-build-procedure.md)2.3節の既定は例示IP(`192.0.2.10`)です。実ホストでは`monitor-01`の実際のIPへ置き換えます。**この送信元制限はUFWではなく`DOCKER-USER` iptables chainで行います**(DockerがPublishしたportはUFWの`INPUT`chainを経由しないため。[04-network-ip-plan.md](04-network-ip-plan.md)参照)。Docker Engine導入(構築手順書2.2節)が完了してから実施してください(`DOCKER-USER`chainはDockerデーモン起動後に作成されます)。
 
 ```bash
 sudo iptables -I DOCKER-USER -p tcp --dport 10051 -j DROP
@@ -73,7 +73,7 @@ sudo iptables -L DOCKER-USER -n --line-numbers
 sudo netfilter-persistent save
 ```
 
-`-I`はchainの先頭へ挿入するため、DROPを先に、ACCEPTを後に実行します(順序は[構築手順書](05-build-procedure.md)2.1節を参照)。`netfilter-persistent save`を忘れると再起動後にルールが消えます。
+`-I`はchainの先頭へ挿入するため、DROPを先に、ACCEPTを後に実行します(順序は[構築手順書](05-build-procedure.md)2.3節を参照)。`netfilter-persistent save`を忘れると再起動後にルールが消えます。
 
 **絞る前にコンソールで入れることを確認しておきます。** Frontend(`${ZABBIX_WEB_PORT:-8081}/tcp`)はloopback bindが唯一の防御線のため追加のfirewallルールは不要ですが、trapperは`DOCKER-USER` chainの送信元制限が唯一の防御線です。この違いを混同しないでください([04-network-ip-plan.md](04-network-ip-plan.md)参照)。
 

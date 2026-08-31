@@ -128,7 +128,10 @@ Frontend設定（Host / Template / Trigger / Action）は、上記のコード�
 ```bash
 set -euo pipefail
 DUMP_FILE='/var/backups/zabbix/zabbix-<UTC_TIMESTAMP>.dump'
-sha256sum -c "${DUMP_FILE}.sha256"
+# scripts/ops/zabbix-backup.sh は .sha256 ファイルへ basename だけを記録するため、
+# sha256sum -c はそのファイルがあるディレクトリで実行する(別ディレクトリから実行すると
+# 「No such file or directory」でFAILし、set -euoにより以降の復元処理が中断する)。
+( cd -- "$(dirname -- "${DUMP_FILE}")" && sha256sum -c "$(basename -- "${DUMP_FILE}").sha256" )
 
 # 検証用の別volume/別コンテナへ復元する(稼働中のzabbix_db_dataは直接上書きしない)
 docker volume create zabbix_db_data_restore_check

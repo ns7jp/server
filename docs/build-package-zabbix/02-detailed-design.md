@@ -19,7 +19,7 @@
 
 1. **秘密値の準備(済・手動)**: `deploy/secrets/zabbix_db_password.txt.example`・`deploy/secrets/zabbix_slack_webhook_url.txt.example`を複製し、実値を設定します(Gitでは追跡しません、NFR-05)。
 2. **Compose起動(済・自動)**: zbx-01上で`docker compose -f compose.zabbix.yaml up -d`を実行します。`depends_on`と`healthcheck`により postgres → zabbix-server → zabbix-web の順で起動が待ち合わされ、非対話コマンド一発で完結します(NFR-01)。同一コマンドの2回目実行で不要な再作成が起きないことも確認します(NFR-02、ZIT-02)。
-3. **Zabbix Agent2導入(済・手動)**: monitor-01へZabbix公式リポジトリからAgent2パッケージを導入し、`/etc/zabbix/zabbix_agent2.conf`の`Hostname`・`ServerActive`を設定し、`StartAgents=0`でpassive check用listenerを無効化します(`Server`は passive check を使わないため設定しません)。`deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example`を`/etc/zabbix/zabbix_agent2.d/service_monitor_healthz.conf`へコピーし、`sudo systemctl restart zabbix-agent2`で読み込み直します。
+3. **Zabbix Agent2導入(済・手動)**: monitor-01へZabbix公式リポジトリからAgent2パッケージを導入し、`/etc/zabbix/zabbix_agent2.conf`の`Hostname`・`ServerActive`を設定します。`Server`は設定しません(passive checkの送信元許可リストを空のままにする)。Agent2にはclassic agentの`StartAgents=0`に相当するpassive listener無効化パラメータが無いため、`10050/tcp`のlistener自体はそのまま残りますが、`Server`未設定によるprotocol層の拒否と、`monitor-01`の既存UFW(素のaptパッケージのためDocker Publishを経由せず、UFWがそのまま有効)によるネットワーク層の拒否の2段構えで守ります。`deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example`を`/etc/zabbix/zabbix_agent2.d/service_monitor_healthz.conf`へコピーし、`sudo systemctl restart zabbix-agent2`で読み込み直します。
 4. **Frontend初期設定(済・手動)**: 初回アクセスのインストールウィザードでDB接続を確認したのち、Host group `SM-ZBX-001 Lab Hosts`の作成、Host `monitor-01`の登録、組み込みTemplate「Linux by Zabbix agent active」のリンク、カスタムTrigger・Actionの登録を行います。**Admin初期パスワードの変更を初回ログイン直後の必須手順**とします(ZST-02、詳細は後述)。
 5. **Slack Media type登録(済・手動)**: webhookと受信先を用意した場合のみ、組み込み"Slack (webhook)" media typeのwebhook URLパラメータへ`deploy/secrets/zabbix_slack_webhook_url.txt`の値を設定します(ZIT-06)。
 6. **バックアップ設定(済・手動)**: `deploy/systemd/zabbix-backup.service`・`.timer`を配置し、`systemctl enable --now zabbix-backup.timer`でzbx-01のsystemd timerへ登録します(詳細は後述「バックアップ・ロールバック」)。
@@ -36,7 +36,7 @@ zbx-01の公開serviceは`zabbix-internal`(内部通信用)に加え、公開対
 | Zabbix Frontend | `127.0.0.1:${ZABBIX_WEB_PORT:-8081}`のみ。運用者はSSH tunnel経由 | Zabbixログイン(`Admin`、初回ログイン直後にパスワード変更必須) |
 | Zabbix Server trapper | `10051/tcp`。monitor-01のIPのみ(`DOCKER-USER` iptables chainでの送信元制限。UFWはDockerが公開したportを経由しないため使えない、bind自体はゆるく設定) | 認証なし、送信元IP制限のみ(既存node-exporterと同じ思想) |
 | PostgreSQL | 外部非公開。`zabbix-internal`(Docker internal network)限定 | Docker secretsによるパスワード認証 |
-| Zabbix Agent2 passive listener(monitor-01側) | `StartAgents=0`によりlistener自体を無効化(既定では未使用) | 該当なし(listenerが存在しない) |
+| Zabbix Agent2 passive listener(monitor-01側) | Agent2の仕様上listenし続ける(Agent1の`StartAgents=0`相当の無効化パラメータが無い)。`Server`未設定によるprotocol層拒否と、`monitor-01`の既存UFW(Docker非経由のため有効)によるネットワーク層拒否の2段構え | 認証なし。到達自体をUFWで遮断(既定では未使用) |
 
 ## ログ・監視設計
 
