@@ -97,9 +97,12 @@ cleanup_partial() {
 trap cleanup_partial EXIT
 
 echo "==> dumping zabbix database to ${DUMP_FILE}"
+# -f には PROJECT_DIR と結合した絶対パスを渡す。相対パスのままだと、呼び出し元の
+# カレントディレクトリを基準に解決されてしまい、--project-directory を指定していても
+# PROJECT_DIR 以外の場所から実行したときに compose file が見つからない。
 # pg_dump の失敗を "if !" の条件として扱うことで、set -e による即時終了を避け、
 # 部分的に書き込まれた dump を最終ファイル名へ残さないようにする(mv より前で必ず弾く)。
-if ! docker compose -f "${COMPOSE_FILE}" --project-directory "${PROJECT_DIR}" \
+if ! docker compose -f "${PROJECT_DIR}/${COMPOSE_FILE}" --project-directory "${PROJECT_DIR}" \
   exec -T postgres pg_dump -U zabbix --format=custom zabbix > "${TMP_DUMP_FILE}"; then
   echo "pg_dump failed, discarding partial dump: ${TMP_DUMP_FILE}" >&2
   exit 1
