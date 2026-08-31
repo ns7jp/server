@@ -32,7 +32,7 @@ git clone https://github.com/ns7jp/server-monitor.git
 cd server-monitor
 git rev-parse HEAD
 cat compose.zabbix.yaml
-cat deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example
+cat deploy/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf.example
 ```
 
 上記の`git rev-parse HEAD`の出力(40桁commit SHA)を、2節で`zbx-01`上に`git checkout`する対象として記録します。
@@ -248,16 +248,18 @@ grep -E '^(Hostname|ServerActive)=' /etc/zabbix/zabbix_agent2.conf
 
 ### 4.3 UserParameter(service_monitor.healthz)の配置
 
-配備先の`deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example`は`monitor-01`上には存在しないため、一時的にリポジトリを取得してコピーします。`--depth 1`はdefault branchの最新tipを取得してしまい、1節・2.4節で固定したcommit SHAとずれる可能性があるため使わず、同じSHAを明示的に`checkout`します。
+配備先の`deploy/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf.example`は`monitor-01`上には存在しないため、一時的にリポジトリを取得してコピーします。`--depth 1`はdefault branchの最新tipを取得してしまい、1節・2.4節で固定したcommit SHAとずれる可能性があるため使わず、同じSHAを明示的に`checkout`します。
+
+配置先は`/etc/zabbix/zabbix_agent2.d/`直下ではなく`plugins.d`配下です。`zabbix_agent2.conf`の既定`Include`は`zabbix_agent2.d/plugins.d/*.conf`だけが有効で、`zabbix_agent2.d/*.conf`は既定で読み込まれないため、`plugins.d`以外へ置くとUserParameterが登録されません。
 
 ```bash
 git clone https://github.com/ns7jp/server-monitor.git /tmp/server-monitor-zbx
 git -C /tmp/server-monitor-zbx checkout <1節で確認したcommit SHA>
-sudo install -d -m 0755 /etc/zabbix/zabbix_agent2.d
+sudo install -d -m 0755 /etc/zabbix/zabbix_agent2.d/plugins.d
 sudo install -m 0644 \
-  /tmp/server-monitor-zbx/deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example \
-  /etc/zabbix/zabbix_agent2.d/service_monitor_healthz.conf
-cat /etc/zabbix/zabbix_agent2.d/service_monitor_healthz.conf
+  /tmp/server-monitor-zbx/deploy/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf.example \
+  /etc/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf
+cat /etc/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf
 rm -rf /tmp/server-monitor-zbx
 ```
 

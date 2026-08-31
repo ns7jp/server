@@ -7,8 +7,12 @@
 # docs/build-package-zabbix/02-detailed-design.md を参照。
 #
 # 配置手順（monitor-01、済(手動)）:
-#   1. このファイルを monitor-01 の /etc/zabbix/zabbix_agent2.d/service_monitor_healthz.conf
-#      へコピーする（このリポジトリの内容そのままでよい。値の書き換えは不要）。
+#   1. このファイルを monitor-01 の
+#      /etc/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf へコピーする
+#      （このリポジトリの内容そのままでよい。値の書き換えは不要）。
+#      zabbix_agent2.conf の既定Includeは "zabbix_agent2.d/plugins.d/*.conf" だけが
+#      有効になっており、zabbix_agent2.d直下（plugins.d以外）は既定では読み込まれない
+#      ため、必ずplugins.d配下へ置くこと。
 #   2. `sudo systemctl restart zabbix-agent2` で読み込み直す。
 #   3. zbx-01 側で `service_monitor.healthz` Itemのlast dataが更新されることを確認する
 #      （docs/build-package-zabbix/06-test-specification.md の ZIT-05）。

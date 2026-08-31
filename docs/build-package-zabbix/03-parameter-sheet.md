@@ -75,7 +75,7 @@ Ubuntu 24.04 LTS以外のOSファミリーは本パックの対象外です。RH
 | Agent2 `Hostname`(monitor-01) | `monitor-01` | `/etc/zabbix/zabbix_agent2.conf`(monitor-01) |
 | Agent2 `ServerActive`(monitor-01) | `192.0.2.11:10051`(zbx-01のIP) | 同上 |
 | Agent2 `Server`(monitor-01) | 未設定(コメントアウトのまま。空の場合Agent2はpassive check自体を無効化し`10050/tcp`のlistenerを起動しない) | 同上 |
-| カスタムItem key | `service_monitor.healthz` | `deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example` |
+| カスタムItem key | `service_monitor.healthz` | `deploy/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf.example` |
 | UserParameter実体 | `UserParameter=service_monitor.healthz,curl --silent --fail --max-time 3 http://127.0.0.1:8080/healthz >/dev/null && echo 1 || echo 0` | 同上 |
 | カスタムTrigger | `service_monitor.healthz`が1以外を3分間観測 → Problem(Severity: High) | Frontend設定 |
 | 組み込みTrigger | 「Zabbix agent is not available」相当(Severity: Disaster、Templateに含まれる) | Template |
@@ -96,7 +96,7 @@ Ubuntu 24.04 LTS以外のOSファミリーは本パックの対象外です。RH
 | backup script | `scripts/ops/zabbix-backup.sh` | `bash -n scripts/ops/zabbix-backup.sh` |
 | backup unit(systemd timer) | `zabbix-backup.service` / `zabbix-backup.timer`(`deploy/systemd/`が正本。[構築手順書 7節](05-build-procedure.md)で`/etc/systemd/system/`へ配置・enable) | `systemctl status zabbix-backup.service` / `systemctl list-timers zabbix-backup.timer` |
 | backup directory | `/var/backups/zabbix` | `findmnt` / directory owner・mode |
-| Agent2設定ファイル(monitor-01) | `/etc/zabbix/zabbix_agent2.conf`、`/etc/zabbix/zabbix_agent2.d/service_monitor_healthz.conf` | `zabbix_agent2 -t agent.ping` |
+| Agent2設定ファイル(monitor-01) | `/etc/zabbix/zabbix_agent2.conf`、`/etc/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf` | `zabbix_agent2 -t agent.ping` |
 | 主要ログ | Docker logs(`docker compose -f compose.zabbix.yaml logs`)、monitor-01側`journalctl -u zabbix-agent2` | 本書 / [トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md) |
 
 ## 公開ポート

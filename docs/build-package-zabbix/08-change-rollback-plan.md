@@ -130,6 +130,19 @@ docker compose -f compose.zabbix.yaml ps
 
 `.env`をコピーし忘れると、`ZABBIX_SERVER_BIND_ADDRESS`が既定値の`127.0.0.1`へ戻ってtrapperが`monitor-01`から到達不能になります(エラーにならず静かに壊れるため、ロールバック後の疎通確認が必須です)。`deploy/secrets/zabbix_db_password.txt`をコピーし忘れると、`docker compose up`はsecretファイル不在でそのまま失敗します。
 
+**バックアップtimerを忘れないこと**: `zabbix-backup.service`の`ExecStart`/`WorkingDirectory`は`/opt/zabbix-lab`を指したままです。ロールバックの原因が`scripts/ops/zabbix-backup.sh`自体やcompose構成にある場合、`/opt/zabbix-lab`を更新しない限りtimerの次回実行は変更後(ロールバック対象)のコードのまま動き続けます。ロールバック対象がバックアップ関連である場合は、unitをworktree側へ向け直します。
+
+```bash
+sudo systemctl stop zabbix-backup.timer
+sudo sed -e "s#/opt/zabbix-lab#${ROLLBACK_WORKTREE}#g" \
+  "$ROLLBACK_WORKTREE/deploy/systemd/zabbix-backup.service" \
+  | sudo tee /etc/systemd/system/zabbix-backup.service > /dev/null
+sudo systemctl daemon-reload
+sudo systemctl start zabbix-backup.timer
+```
+
+恒久対応としては、`/opt/zabbix-lab`自体を`$ROLLBACK_SHA`のcheckoutへ置き換えて(または通常の`git checkout`で戻して)worktreeを解消し、unitの参照先を`/opt/zabbix-lab`へ戻すことを推奨します。それまでの間、`$ROLLBACK_WORKTREE`が実質的な配備先になっていることをチームへ共有してください。
+
 Frontend設定（Host / Template / Trigger / Action）は、上記のコードロールバックでは戻りません。3節のGo / No-Go確認時点でexportしたXMLを、Frontendの「Import」機能から再取込みします。XMLを保存していなかった場合は、7節の`pg_restore`でDBごと戻します。Zabbixの設定はコードではなくDBに保存されるという前提が、Linux版のAnsible再配備と最も異なる点です。
 
 `docker compose ps`のhealthy状態と、Frontend上のHost / Template / Trigger / Actionが変更前の内容と一致することを確認します。ロールバック後も、認証、bind address、trapperの許可送信元、`monitor-01`からのitem last dataを再試験します。不要になった一時worktreeの削除は、証跡を保存し対象pathを確認した後に別作業として行います。
@@ -160,7 +173,21 @@ docker run -d --name zabbix-restore-check \
   -v zabbix_db_data_restore_check:/var/lib/postgresql/data \
   -v "$(pwd)/deploy/secrets/zabbix_db_password.txt:/run/secrets/zabbix_db_password:ro" \
   postgres:16-alpine
-until docker exec zabbix-restore-check pg_isready -U zabbix >/dev/null 2>&1; do sleep 1; done
+# 起動しない/secretが読めない等でpg_isreadyが永遠にFAILし続けないよう、上限(60秒)を設ける。
+READY=0
+for _ in $(seq 1 60); do
+  if docker exec zabbix-restore-check pg_isready -U zabbix >/dev/null 2>&1; then
+    READY=1
+    break
+  fi
+  sleep 1
+done
+if [[ "${READY}" -ne 1 ]]; then
+  echo "zabbix-restore-check did not become ready within 60s; container status/logs:" >&2
+  docker ps -a --filter name=zabbix-restore-check >&2
+  docker logs zabbix-restore-check >&2
+  exit 1
+fi
 docker exec -i zabbix-restore-check pg_restore -U zabbix -d zabbix --clean --if-exists < "${DUMP_FILE}"
 
 # host数・item数を比較する(ZIT-08)
