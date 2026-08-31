@@ -231,19 +231,26 @@ zabbix_agent2 -V
 sudo $EDITOR /etc/zabbix/zabbix_agent2.conf
 ```
 
-次の2行を確認・設定します(既定はコメントアウトまたは別値のため、行頭の`#`を外し、値を書き換えます)。`Server`行は設定しません(コメントアウトのままにします)。
+パッケージ既定の`/etc/zabbix/zabbix_agent2.conf`には`Server=127.0.0.1`がコメントアウトされずに有効な行として含まれています(「コメントアウトのまま」ではありません)。これを残すとpassive checkのlistenerが`10050/tcp`で起動し、本パックのactive-only設計に反するため、まず`Server`行をコメントアウトします。
+
+```bash
+sudo sed -i -E 's/^Server=/#Server=/' /etc/zabbix/zabbix_agent2.conf
+```
+
+続けて次の2行を確認・設定します(既定はコメントアウトまたは別値のため、行頭の`#`を外し、値を書き換えます)。
 
 ```
 Hostname=monitor-01
 ServerActive=192.0.2.11:10051
 ```
 
-`ServerActive`が本パックの主方式であるactive checkのpush先です。**classic agent(Agent1)にあった`StartAgents=0`のようなpassive check無効化パラメータは、Agent2には存在しません**が、Agent2は`Server`が空(未設定)の場合、passive check自体を無効化し`10050/tcp`のlistenerを起動しません(`Server`を設定して初めてlistenerが起動する設計です)。`Server`行を設定しないことが、本パックでの唯一かつ十分な無効化手段です。念のため、`monitor-01`は素のaptパッケージ導入であり(zbx-01のようなDocker Publishではない)既存Linux版パックのUFW default deny incomingがそのまま適用されるため、`10050/tcp`を許可するUFWルールを追加しない限り、万一listenerが起動していてもネットワーク到達できません(zbx-01のtrapperと異なりUFWが有効な防御層になります)。
+`ServerActive`が本パックの主方式であるactive checkのpush先です。**classic agent(Agent1)にあった`StartAgents=0`のようなpassive check無効化パラメータは、Agent2には存在しません**が、Agent2は`Server`が空(未設定)の場合、passive check自体を無効化し`10050/tcp`のlistenerを起動しません(`Server`を設定して初めてlistenerが起動する設計です)。`Server`行を有効にしないことが、本パックでの唯一かつ十分な無効化手段です。念のため、`monitor-01`は素のaptパッケージ導入であり(zbx-01のようなDocker Publishではない)既存Linux版パックのUFW default deny incomingがそのまま適用されるため、`10050/tcp`を許可するUFWルールを追加しない限り、万一listenerが起動していてもネットワーク到達できません(zbx-01のtrapperと異なりUFWが有効な防御層になります)。
 
-設定後、値を確認します。
+設定後、値を確認します。`Server`行が有効なまま残っていないことも、値の確認ではなくassertionとして検証します(既定値の`Server=127.0.0.1`が残っていても`grep`の出力を目視で見落とす恐れがあるため)。
 
 ```bash
 grep -E '^(Hostname|ServerActive)=' /etc/zabbix/zabbix_agent2.conf
+! grep -Eq '^Server=' /etc/zabbix/zabbix_agent2.conf || { echo "Server= is still active in zabbix_agent2.conf; comment it out" >&2; exit 1; }
 ```
 
 ### 4.3 UserParameter(service_monitor.healthz)の配置
