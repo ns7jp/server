@@ -36,12 +36,14 @@ jobs:
           cp deploy/secrets/metrics_token.txt.example deploy/secrets/metrics_token.txt
           cp deploy/secrets/grafana_admin_password.txt.example deploy/secrets/grafana_admin_password.txt
           cp deploy/secrets/slack_webhook_url.txt.example deploy/secrets/slack_webhook_url.txt
+          cp deploy/secrets/zabbix_db_password.txt.example deploy/secrets/zabbix_db_password.txt
           cp deploy/alertmanager/alertmanager.yml deploy/alertmanager/alertmanager.ansible.yml
           cp deploy/prometheus/prometheus.yml deploy/prometheus/prometheus.ansible.yml
           docker compose config --quiet
           docker compose -f compose.yaml -f compose.slack.yaml.example config --quiet
           docker compose -f compose.yaml -f compose.ansible.yaml config --quiet
           docker compose -f labs/network-troubleshooting/compose.yaml config --quiet
+          docker compose -f compose.zabbix.yaml config --quiet
 
       - name: Validate shell scripts and daily-check arguments
         run: |

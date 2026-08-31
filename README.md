@@ -166,6 +166,7 @@ flowchart LR
 | --- | --- |
 | [Windows サーバー構築案件パック](docs/build-package-windows/README.md) | 既存監視基盤へ Windows Server を監視対象ホストとして追加する設計・パラメータ・手順一式（Ansible 対応 role・central 側ネットワーク拡張・ログ集約経路は未実装） |
 | [AD (Active Directory) サーバー構築案件パック](docs/build-package-ad/README.md) | 新規フォレスト・単一ドメインコントローラーを構築する設計・パラメータ・手順一式（[初心者ガイド](docs/build-package-ad/beginner-guide.md)付き。中央監視統合はWindows版と同じ理由で未実装） |
+| [Zabbix 監視基盤構築案件パック](docs/build-package-zabbix/README.md) | 既存の Prometheus / Grafana スタックとは別に、新規ホストへ Zabbix 7.0 LTS（Server / Frontend / PostgreSQL）を構築し、既存の監視対象ホストを Zabbix Agent2 で追加監視する設計・パラメータ・手順一式（[初心者ガイド](docs/build-package-zabbix/beginner-guide.md)付き。`compose.zabbix.yaml` はCIで構文検証、Ansible role化・実ホストでの構築実績は未実装） |
 | [AWS / Terraform 設計](docs/aws-architecture.md) | VPC / ALB / EC2 などの構成コード（apply 未実施） |
 | [AWS コスト計画](docs/cost-report.md) | 月額試算、Budgets |
 | [SLO / SLI / エラーバジェット設計](docs/slo.md) | サービス品質目標の決め方とアラート条件 |

@@ -1,0 +1,17 @@
+# SM-ZBX-001 Zabbix監視基盤構築案件パック用の追加Item設定例。
+#
+# server-monitor アプリの /healthz は既存パック(docs/build-package/04-network-ip-plan.md)の
+# 設計により 127.0.0.1 限定で外部非公開になっている。zbx-01 の Zabbix Server はネットワーク
+# 越しに直接probeできないため、monitor-01自身のZabbix Agent2にUserParameterを追加し、
+# ホスト内部からcurlした結果をItemとして送る。設計の背景は
+# docs/build-package-zabbix/02-detailed-design.md を参照。
+#
+# 配置手順（monitor-01、済(手動)）:
+#   1. このファイルを monitor-01 の /etc/zabbix/zabbix_agent2.d/service_monitor_healthz.conf
+#      へコピーする（このリポジトリの内容そのままでよい。値の書き換えは不要）。
+#   2. `sudo systemctl restart zabbix-agent2` で読み込み直す。
+#   3. zbx-01 側で `service_monitor.healthz` Itemのlast dataが更新されることを確認する
+#      （docs/build-package-zabbix/06-test-specification.md の ZIT-05）。
+#
+# 返り値: 1 = /healthz が200を返した（正常）、0 = それ以外（異常 or 接続不可）。
+UserParameter=service_monitor.healthz,curl --silent --fail --max-time 3 http://127.0.0.1:8080/healthz >/dev/null && echo 1 || echo 0
