@@ -19,7 +19,7 @@
 - 管理端末から`zbx-01`・`monitor-01`の両方へ公開鍵SSHとsudoが利用可能
 - 対象IP(`zbx-01`: `192.0.2.11/24`、`monitor-01`: `192.0.2.10/24`、管理端末: `192.0.2.20/24`)、例示FQDN(`zbx.example.test`、`monitor.example.test`)、作業時間帯、ロールバック条件を記録済み
 - リポジトリの対象commit SHAを固定済み(`git rev-parse HEAD`)
-- 実値の秘密情報(DBパスワード、Slack webhook URL、Zabbix Adminの新パスワード)をIssue、PR、端末ログへ貼らない
+- 実値の秘密情報(DBパスワード、Slack bot token、Zabbix Adminの新パスワード)をIssue、PR、端末ログへ貼らない
 - [要件定義書](00-requirements.md)・[パラメータシート](03-parameter-sheet.md)・[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)・[変更・ロールバック計画](08-change-rollback-plan.md)の対象環境、Go / No-Go条件を確認済み
 - `monitor-01`は本パックのために作り直さない([Linux版パック](../build-package/README.md)の構築範囲のまま)ことを再確認済み。本書が触るのはZabbix Agent2の追加導入部分だけである
 
@@ -63,15 +63,20 @@ sudo ufw status verbose
 
 続けて、[パラメータシート](03-parameter-sheet.md)が宣言するSSHポリシー(root login禁止、password login禁止)を`sshd_config`へ実際に設定します。**先に現在のSSHセッションを切断せず、別ターミナルから鍵認証で新規接続できることを確認してから**次に進んでください(`PasswordAuthentication no`を反映した直後に鍵が使えないと締め出されます。10節のコンソールアクセスも参照)。
 
+Ubuntu cloud imageは`/etc/ssh/sshd_config.d/50-cloud-init.conf`に`PasswordAuthentication yes`を含むfragmentをすでに持っていることがあります。OpenSSHは同じキーワードについて**最初に読んだ値を採用する**ため(`man sshd_config`)、`Include`はファイル名の辞書順に評価されるファイル名`99-...`のような番号では`50-cloud-init.conf`より後に読まれてしまい、こちらの設定が無視されます。`50-cloud-init.conf`より前に評価される番号を使います。
+
 ```bash
 sudo install -d -m 0755 /etc/ssh/sshd_config.d
-printf 'PermitRootLogin no\nPasswordAuthentication no\n' | sudo tee /etc/ssh/sshd_config.d/99-zabbix-lab-hardening.conf
+printf 'PermitRootLogin no\nPasswordAuthentication no\n' | sudo tee /etc/ssh/sshd_config.d/00-zabbix-lab-hardening.conf
 sudo sshd -t
 sudo systemctl reload ssh
-ssh <ssh-user>@192.0.2.11 'sudo sshd -T | grep -Ei "^(permitrootlogin|passwordauthentication)"'
+sudo sshd -T | grep -Eix 'permitrootlogin no' \
+  || { echo 'PermitRootLogin no did not take effect (check for an earlier-sorting sshd_config.d fragment)' >&2; exit 1; }
+sudo sshd -T | grep -Eix 'passwordauthentication no' \
+  || { echo 'PasswordAuthentication no did not take effect (check for an earlier-sorting sshd_config.d fragment)' >&2; exit 1; }
 ```
 
-`sudo sshd -t`は設定ファイルの構文だけを検証し、意味的な誤り(存在しないユーザーの`Match`ブロック等)までは検出しません。反映後は**新しい別セッション**で鍵認証接続を確認してから、元のセッションを閉じます。
+`sudo sshd -t`は設定ファイルの構文だけを検証し、意味的な誤り(存在しないユーザーの`Match`ブロック等)までは検出しません。上記の`sshd -T`確認は、値を表示するだけでなく**実際に期待値と一致しなければ失敗して知らせる**ようにしています(表示するだけでは、他のfragmentに上書きされていても見落とします)。反映後は**新しい別セッション**で鍵認証接続を確認してから、元のセッションを閉じます。
 
 trapper(10051/tcp)の送信元制限は`DOCKER-USER`chainで行いますが、このchainはDockerデーモンが起動して初めて作成されるため、**Docker Engine導入(2.2節)より後の2.3節で設定します**(ここではまだ設定しません)。
 
@@ -128,14 +133,14 @@ cp deploy/secrets/zabbix_db_password.txt.example deploy/secrets/zabbix_db_passwo
 openssl rand -base64 24 > deploy/secrets/zabbix_db_password.txt
 chmod 644 deploy/secrets/zabbix_db_password.txt
 
-cp deploy/secrets/zabbix_slack_webhook_url.txt.example deploy/secrets/zabbix_slack_webhook_url.txt
-# webhookと受信先を用意した場合のみ、実際のIncoming Webhook URLへ書き換える(5.5節で使用)
-# 用意しない場合はプレースホルダ("https://hooks.slack.com/services/REPLACE/WITH/REAL_WEBHOOK")のまま残す
-$EDITOR deploy/secrets/zabbix_slack_webhook_url.txt
-chmod 644 deploy/secrets/zabbix_slack_webhook_url.txt
+cp deploy/secrets/zabbix_slack_bot_token.txt.example deploy/secrets/zabbix_slack_bot_token.txt
+# bot tokenと受信先channelを用意した場合のみ、実際のSlack Bot User OAuth Token(xoxb-...)へ書き換える(5.5節で使用)
+# 用意しない場合はプレースホルダ("xoxb-REPLACE-WITH-REAL-BOT-USER-OAUTH-TOKEN")のまま残す
+$EDITOR deploy/secrets/zabbix_slack_bot_token.txt
+chmod 644 deploy/secrets/zabbix_slack_bot_token.txt
 
 git status --short
-git check-ignore deploy/secrets/zabbix_db_password.txt deploy/secrets/zabbix_slack_webhook_url.txt
+git check-ignore deploy/secrets/zabbix_db_password.txt deploy/secrets/zabbix_slack_bot_token.txt
 ```
 
 `zabbix_db_password.txt`はDocker Composeの`secrets:`でzabbix-server/postgresコンテナへbind mountされます。bind mountはホスト側ファイルの所有者・パーミッションをそのまま引き継ぐため、`chmod 600`(ログインユーザーのみ読み取り可)のままではコンテナ内の非rootユーザーがファイルを読めず、`docker compose up`が失敗します。既存パック(`compose.yaml`)の`ansible/roles/app`と同じ`0644`(secretファイルは世界読み取り可)・`0700`(格納ディレクトリで一般ユーザーからのアクセスを絞る)の組み合わせを踏襲します。`git check-ignore`で両ファイルが出力されること(=Git管理外であること)を確認します。これがZST-03(`git ls-files deploy/secrets`に実値ファイルが含まれない)の前提です。
@@ -233,10 +238,7 @@ Hostname=monitor-01
 ServerActive=192.0.2.11:10051
 ```
 
-`ServerActive`が本パックの主方式であるactive checkのpush先です。**classic agent(Agent1)にあった`StartAgents=0`のようなpassive check無効化パラメータは、Agent2には存在しません**(Agent2は単一プロセスのアーキテクチャで、classic agentのような事前fork型の並行度制御を持たないため)。そのため`10050/tcp`のlistener自体は`ss -lntup`上で見え続けます。本パックでの無効化は2段階です。
-
-1. `Server`行を設定しない: passive checkの送信元許可リストが空になり、`zabbix_get`等での問い合わせはZabbixプロトコルレベルで拒否されます(TCP接続自体は成立しますが、値は返りません)。
-2. `monitor-01`は素のaptパッケージ導入であり(zbx-01のようなDocker Publishではない)、既存Linux版パックの UFW default deny incoming がそのまま適用されます。`10050/tcp`を許可するUFWルールは追加しないため、`zbx-01`を含むどのホストからも`monitor-01`の`10050/tcp`へネットワーク到達できません。zbx-01の trapper とは異なり、UFWがそのまま有効な防御層になります(Dockerを経由しないため)。
+`ServerActive`が本パックの主方式であるactive checkのpush先です。**classic agent(Agent1)にあった`StartAgents=0`のようなpassive check無効化パラメータは、Agent2には存在しません**が、Agent2は`Server`が空(未設定)の場合、passive check自体を無効化し`10050/tcp`のlistenerを起動しません(`Server`を設定して初めてlistenerが起動する設計です)。`Server`行を設定しないことが、本パックでの唯一かつ十分な無効化手段です。念のため、`monitor-01`は素のaptパッケージ導入であり(zbx-01のようなDocker Publishではない)既存Linux版パックのUFW default deny incomingがそのまま適用されるため、`10050/tcp`を許可するUFWルールを追加しない限り、万一listenerが起動していてもネットワーク到達できません(zbx-01のtrapperと異なりUFWが有効な防御層になります)。
 
 設定後、値を確認します。
 
@@ -335,16 +337,18 @@ sudo zabbix_agent2 -t service_monitor.healthz
 5. `OK event generation`は既定(`Expression`)のままにします。式が再び真でなくなった時点でOKに戻ります。
 6. 「Add」をクリックして保存します。
 
-### 5.5 Media typeの確認とwebhook URLの設定(FR-04。webhookと受信先を用意した場合のみ)
+### 5.5 Media typeの確認とbot tokenの設定(FR-04。bot tokenと受信先channelを用意した場合のみ)
 
-1. `Alerting` → `Media types`を開き、組み込みの`Slack (webhook)`をクリックして開きます。
-2. `Parameters`タブに表示される、webhook URLを保持するパラメータ(既定名`slack_url`)へ、2.4節で`deploy/secrets/zabbix_slack_webhook_url.txt`に設定した値を貼り付けます。
+Zabbix 7.0の組み込みSlack統合は、Incoming Webhook URLではなく**Slack Bot Token**でSlack Web APIを呼び出す方式です。事前にSlack側で`chat:write`スコープを持つAppを作成してBot User OAuth Token(`xoxb-`で始まる値)を発行し、通知先channelへそのbotを招待しておく必要があります(Slack側の作業のため本書の範囲外です)。
+
+1. `Alerting` → `Media types`を開き、組み込みの`Slack`をクリックして開きます。
+2. `Parameters`タブに表示される`bot_token`パラメータへ、2.4節で`deploy/secrets/zabbix_slack_bot_token.txt`に設定した値を貼り付けます。
 3. 画面下部の「Update」をクリックして保存します。
 4. `Users` → 通知を受け取るユーザー(検証では`Admin`でよい)を開き、「Media」タブ → 「Add」をクリックします。
-5. `Type`に`Slack (webhook)`、`Send to`にSlackのchannel名を入力します。`When active`は`1-7,00:00-24:00`のまま、`Use if severity`は`High`と`Disaster`のみチェックします。
+5. `Type`に`Slack`、`Send to`にSlackのchannel名を入力します。`When active`は`1-7,00:00-24:00`のまま、`Use if severity`は`Warning`・`High`・`Disaster`をチェックします(`Warning`を外すと、組み込みTemplateのCPU等の閾値超過通知が[基本設計書](01-basic-design.md)の設計に反して届かなくなります)。
 6. 「Add」→ ユーザー編集画面の「Update」をクリックして保存します。
 
-webhookと受信先を用意していない環境では、5.5節の設定はプレースホルダのままで構いません。その場合、実配信の確認(ZIT-06のSlack到達部分)は`BLOCKED`として記録し、5.6節のTrigger発火確認までは必須のまま行います。
+bot tokenと受信先channelを用意していない環境では、5.5節の設定はプレースホルダのままで構いません。その場合、実配信の確認(ZIT-06のSlack到達部分)は`BLOCKED`として記録し、5.6節のTrigger発火確認までは必須のまま行います。
 
 ### 5.6 Trigger action(通知)の登録
 
@@ -352,7 +356,7 @@ webhookと受信先を用意していない環境では、5.5節の設定はプ�
 2. `Name`に`SM-ZBX-001 monitor-01 notifications`と入力します。
 3. `Conditions`タブで「Add」をクリックし、`Host group` `equals` `SM-ZBX-001 Lab Hosts`を追加します。案件専用グループにスコープを絞る意図を明確にするためです。
 4. `Operations`タブへ切り替え、「Add」をクリックします。
-5. `Send to users`に5.5節でMediaを設定したユーザーを追加し、`Send only to`で`Slack (webhook)`を選択します。
+5. `Send to users`に5.5節でMediaを設定したユーザーを追加し、`Send only to`で`Slack`を選択します。
 6. 「Add」→ 画面下部の「Add」をクリックしてActionを保存します。
 
 ## 6. 構築後確認
@@ -374,13 +378,7 @@ ssh <ssh-user>@192.0.2.10 'systemctl status zabbix-agent2 --no-pager'
 ssh <ssh-user>@192.0.2.10 'ss -lntup | grep -E "10050|8080"'
 ```
 
-`zabbix-agent2`が`active`であることを確認します。`ss -lntup`の結果は、`8080/tcp`がserver-monitorアプリの既存設計どおり`127.0.0.1`限定で待受していることを確認します。`10050/tcp`はAgent2の仕様上listenし続けます(Agent2にはpassive listenerを止める設定が無いため)。これは想定どおりであり、防御はport非公開ではなく、`Server`行を未設定のままにする(protocol層で拒否)ことと、`monitor-01`のUFW default deny incomingが`10050/tcp`を許可していないこと(ネットワーク層で拒否)の2段構えで行います(ZIT-03、ZST-01)。
-
-```bash
-ssh <ssh-user>@192.0.2.10 'sudo ufw status verbose | grep -c 10050 || true'
-```
-
-上記の出力が`0`であること(=`10050/tcp`を許可するUFWルールが無いこと)を確認します。`monitor-01`はDocker Publishではなく素のaptパッケージなので、この場合はUFWがそのまま有効な防御層になります(zbx-01のtrapperとは異なります)。
+`zabbix-agent2`が`active`であることを確認します。`ss -lntup`の結果は、`8080/tcp`がserver-monitorアプリの既存設計どおり`127.0.0.1`限定で待受していること、`10050/tcp`は`grep`の結果に**一切表示されない**ことを確認します(ZIT-03、ZST-01)。`Server`行を設定していないAgent2はpassive check自体を無効化し、`10050/tcp`のlistenerを起動しないためです。`10050/tcp`が何らかの形で表示される場合は、`zabbix_agent2.conf`に`Server`行が誤って残っていないか確認してください。
 
 Frontend側(ZIT-03、ZIT-05):
 
@@ -442,7 +440,7 @@ ls -la /var/backups/zabbix
 
 5. Frontendの`Monitoring` → `Problems`で、該当ProblemがRESOLVED(OK)に変わった時刻を復旧時刻として記録します。
 
-6. RTO(検知時刻から復旧時刻までの所要時間)を算出し、検知時刻・復旧時刻・実行したコマンドと実出力を[トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md)の様式で日付付きevidenceへ保存します。webhookと受信先を用意している場合は、Slackへの通知到達もあわせて記録します。
+6. RTO(検知時刻から復旧時刻までの所要時間)を算出し、検知時刻・復旧時刻・実行したコマンドと実出力を[トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md)の様式で日付付きevidenceへ保存します。bot tokenと受信先channelを用意している場合は、Slackへの通知到達もあわせて記録します。
 
 ## 9. ロールバック
 
@@ -490,4 +488,4 @@ ls -la /var/backups/zabbix
 - 未解決事項をIssue化します
 - [作業結果・引き渡し報告書](11-work-result-report.md)を日付付きevidenceへ複製し、計画対実績、実行時間、対象commit SHA、設計差異、障害、残存リスクを記入します
 - 報告書の試験集計と個別結果票の件数が一致することを確認します
-- [引き渡しチェックリスト](07-handover-checklist.md)を確認し、`NOT RUN` / `BLOCKED`が残る場合は受領可にしません。特にZST-02(Admin初期パスワード変更の実施記録)と、ZIT-06(Slack実配信。webhookと受信先を用意した場合のみ必須)の扱いを区別して記録します
+- [引き渡しチェックリスト](07-handover-checklist.md)を確認し、`NOT RUN` / `BLOCKED`が残る場合は受領可にしません。特にZST-02(Admin初期パスワード変更の実施記録)と、ZIT-06(Slack実配信。bot tokenと受信先channelを用意した場合のみ必須)の扱いを区別して記録します

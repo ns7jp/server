@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | 管理端末 | `192.0.2.20/24` | SSH 22/tcp、Frontendへのtunnel(`127.0.0.1:${ZABBIX_WEB_PORT:-8081}`へのローカル転送) | production受入では上流FW / VPNまたはsource指定UFW ruleで管理元CIDR限定(base packと同方針)。既定はUFW `LIMIT`で全送信元 |
 | `zbx-01`(Ubuntu Server 24.04 LTS、新規) | `192.0.2.11/24`、`zbx.example.test` | SSH、trapper受信(10051/tcp)、更新、通知 | UFW default deny incoming。SSHは`LIMIT`。10051はDockerが公開するportのためUFWでは送信元を絞れず、`DOCKER-USER` iptables chainで`monitor-01`のIPのみ明示許可 |
-| `monitor-01`(既存、変更なし) | `192.0.2.10/24`([Linux版09文書](../build-package/09-network-validation-procedure.md)と同じ値)、`monitor.example.test` | Agent2からのtrapper送信(→`zbx-01`:10051)、UserParameter経由の`127.0.0.1:8080/healthz`アクセス | 既存Linux版パックのUFW設計のまま変更しない(`10050/tcp`のallowルールを追加しない)。Agent2はDocker非経由の素のaptパッケージのため、UFWがそのまま`10050`のネットワーク層防御を担う |
+| `monitor-01`(既存、変更なし) | `192.0.2.10/24`([Linux版09文書](../build-package/09-network-validation-procedure.md)と同じ値)、`monitor.example.test` | Agent2からのtrapper送信(→`zbx-01`:10051)、UserParameter経由の`127.0.0.1:8080/healthz`アクセス | 既存Linux版パックのUFW設計のまま変更しない。`Server`を未設定にすることでAgent2が`10050`のlistener自体を起動しないため、UFWの`10050/tcp`allowルールも追加しない |
 | Compose network(`zabbix-internal`、`internal: true`) | Docker管理 | postgres / zabbix-server / zabbix-web間の通信 | 外部egress不可。`internal: true`のnetworkだけに接続したserviceのpublished portはhostへ転送されない |
 | Compose network(`zabbix-host-access`、`driver: bridge`) | Docker管理 | zabbix-server・zabbix-webのpublished portをhostへ転送するためだけの経路 | postgresは参加させない。公開対象だけをこのbridgeにも接続する、既存`compose.yaml`の`host-access`パターンを踏襲 |
 | loopback(`zbx-01`) | `127.0.0.1/8` | Zabbix Frontend | SSH tunnel経由のみ |
@@ -33,7 +33,7 @@
 | `${ZABBIX_WEB_PORT:-8081}/tcp` | Zabbix Frontend(Nginx同梱、コンテナ内部は8080/tcp) | `127.0.0.1`のみ。運用者はSSH tunnel経由 | 既存パックと同じ「管理UIは外部公開しない」方針 |
 | 10051/tcp | Zabbix Server trapper(active check受信) | `monitor-01`のIPのみ許可(`DOCKER-USER` iptables chainで制限。UFWでは制御できない)。loopback限定にはできない — 他ホストから着信する唯一の監視系ポート | `monitor-01`のAgent2がactive checkで`zbx-01`へpushするために必須 |
 | 5432/tcp | PostgreSQL | 外部非公開。Docker internal network(`zabbix-internal`)のみ | DBは他ホストから直接繋がせない |
-| 10050/tcp(`monitor-01`側) | Zabbix Agent2 listener(passive check用) | Agent2の仕様上listenし続ける(Agent1の`StartAgents=0`相当のパラメータがAgent2には無い)。`Server`を未設定にしてprotocol層で拒否し、`monitor-01`の既存UFW(Docker非経由のため有効。`10050/tcp`のallowルールを追加しない)でネットワーク層でも拒否する | active checkを主方式とし、passive checkは使わない設計(将来使う場合のみ`Server`と、`zbx-01`のIP限定のUFW allowを別途設計) |
+| 10050/tcp(`monitor-01`側) | Zabbix Agent2 listener(passive check用) | `Server`を未設定にすることでAgent2がlistener自体を起動しない(Agent1の`StartAgents=0`に相当する専用パラメータはAgent2に無いが、`Server`が空ならlistenerが上がらない仕様)。念のため`monitor-01`の既存UFWも`10050/tcp`のallowルールを追加しない | active checkを主方式とし、passive checkは使わない設計(将来使う場合のみ`Server`と、`zbx-01`のIP限定のUFW allowを別途設計) |
 
 これはbase packの04文書にすでに書かれている「SSHはUFW `LIMIT`で全送信元に開けるが、管理元CIDR限定は別途source指定ルールで行う」という誠実な書き方と同じ考え方です。**bind addressだけで守れないもの(他ホストから着信する必要があるport)は、DockerがpublishしたportならDockerを経由する層(`DOCKER-USER` chain)の送信元制限で守り、bind addressだけで守れるもの(自ホスト内だけで完結する管理UI)はbind自体をloopbackに閉じる**、という2つの防御線を混同しないことが本書の要点です。UFWの`allow`ルールは、Dockerが公開したportに対しては防御線として機能しません。
 

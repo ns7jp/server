@@ -18,12 +18,12 @@
 > 「Linux版より試験項目が緩い」ことを意味せず、単に「この構築案件がまだ実施段階に
 > 入っていない」ことを示しています。
 >
-> ### ZIT-06はwebhook環境が無いとBLOCKEDが前提です
+> ### ZIT-06はbot token環境が無いとBLOCKEDが前提です
 >
 > `ZIT-06`(alert通知)は、[要件定義書](00-requirements.md)の対象外節にあるとおり、Slack
-> Incoming Webhookと受信先チャンネルを用意した場合にだけ実配信まで試験します。用意できない
+> Bot Token(`chat:write`)と受信先チャンネルを用意した場合にだけ実配信まで試験します。用意できない
 > 環境では、Trigger発火(PROBLEM遷移)まで確認できれば必須条件を満たし、実配信部分は
-> `BLOCKED`(理由: webhook未用意)として記録します。Trigger発火の確認そのものは省略できません。
+> `BLOCKED`(理由: bot token未用意)として記録します。Trigger発火の確認そのものは省略できません。
 > `BLOCKED` は失敗ではなく、前提条件と解除条件を記録した状態です。ただし本書は実行そのものを
 > していない空白の原本なので、結果欄はここでもなお `NOT RUN` のままにし、実際に実行して
 > `BLOCKED` か `PASS` かが確定した時点で日付付きの証跡へ理由とともに記入します。
@@ -81,7 +81,7 @@ evidence列が「—」のIDは、CIで継続的に検証されるため個別�
 | ZIT-03 | host active check | `monitor-01`のAgent2登録後、Zabbix上で`monitor-01`のitem(`agent.ping`等)のlast dataが直近interval以内に更新される | 更新される | NOT RUN | — |
 | ZIT-04 | Frontend認証 | 未ログインで管理画面へアクセス／ログイン後にアクセス | 未ログインはログイン画面へ、ログイン後は200 | NOT RUN | — |
 | ZIT-05 | healthz item | `service_monitor.healthz` itemの値を確認 | `1`(正常) | NOT RUN | — |
-| ZIT-06 | alert通知 | 閾値超過またはhealthz異常を模擬し、Trigger発火を確認(webhookと受信先を用意した場合はSlack配信まで) | TriggerがPROBLEMになり、用意した場合は数分以内にSlack通知 | NOT RUN | — |
+| ZIT-06 | alert通知 | 閾値超過またはhealthz異常を模擬し、Trigger発火を確認(bot tokenと受信先channelを用意した場合はSlack配信まで) | TriggerがPROBLEMになり、用意した場合は数分以内にSlack通知 | NOT RUN | — |
 | ZIT-07 | D-Z1 Agent停止演習 | `sudo systemctl stop zabbix-agent2`→検知→`sudo systemctl start zabbix-agent2`→復旧確認 | 検知(Trigger PROBLEM)・復旧(Trigger OK)・RTOを記録 | NOT RUN | — |
 | ZIT-08 | DB backup/restore | `scripts/ops/zabbix-backup.sh`のdumpを別DBへ`pg_restore`し、host/item件数を比較 | 件数一致 | NOT RUN | — |
 | ZIT-09 | 実ホストnetwork | [ネットワーク実機検証手順](09-network-validation-procedure.md)のZNW-01〜09を実行 | IP/DNS/route/listen/HTTP/packet/FWが設計どおり | NOT RUN | [結果票テンプレート](../evidence/templates/network-host-validation.md) |
@@ -102,7 +102,7 @@ ZST-02は「未実装」ではなく、初回ログイン直後に必ず踏む�
 ## 終了判定
 
 - 必須ID: `ZUT-01`〜`ZUT-03`、`ZIT-01`〜`ZIT-05`、`ZIT-07`〜`ZIT-09`、`ZST-01`〜`ZST-04`
-- `ZIT-06`(Slack実配信)はwebhookと受信先が無い環境では`BLOCKED`となり得ますが、Trigger発火(PROBLEM遷移)までの確認は必須です。`BLOCKED`とする場合は理由(webhook未用意)を証跡へ明記します。
+- `ZIT-06`(Slack実配信)はbot tokenと受信先channelが無い環境では`BLOCKED`となり得ますが、Trigger発火(PROBLEM遷移)までの確認は必須です。`BLOCKED`とする場合は理由(bot token未用意)を証跡へ明記します。
 - `FAIL`または`BLOCKED`(必須の解除条件を満たさないもの)が残る場合は構築完了としません。
 - 必須IDに`NOT RUN`が残る場合も構築完了としません。
 - 結果はこの原本を直接上書きせず、日付付きの証跡ファイル(例: `docs/evidence/YYYY-MM-DD-zabbix-build-validation.md`)へコピーして保存します。命名・記録ルールは[検証証跡台帳](../evidence/README.md)に合わせます。

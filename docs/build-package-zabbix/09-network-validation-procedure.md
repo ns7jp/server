@@ -114,7 +114,7 @@ ssh "$MONITOR_HOST" 'sudo ss -lntup'
 - zbx-01: Frontend (`$WEB_PORT`) は `127.0.0.1` にだけ bind
 - zbx-01: trapper (`10051`) は `0.0.0.0` を含め広く bind されている — これは設計どおりです。他ホストから着信する唯一の監視系portのため、送信元制限は bind ではなく ZNW-08 の `DOCKER-USER` iptables chain のルールで行います(UFWでは行えません)
 - zbx-01: `5432`(PostgreSQL) が host の listen 一覧に現れない（`zabbix-internal`、`internal: true` の Docker network内のみで完結するため）
-- monitor-01: Agent2 の passive check listener (`10050`) は Agent2 の仕様上 bind され続けます(Agent1 の `StartAgents=0` に相当する無効化パラメータが Agent2 に無いため)。これは想定どおりで、`Server` 未設定による protocol 層拒否と、monitor-01 の既存 UFW(`10050/tcp` の allow ルールを追加しない)によるネットワーク層拒否の 2 段構えで守ります。外部からの到達不可は ZNW-08 で別途確認します
+- monitor-01: Agent2 の passive check listener (`10050`) は `ss -lntup` に**表示されないことが正しい状態**です。Agent2 は `Server` が空(未設定)の場合、passive check 自体を無効化し listener を起動しません(Agent1 の `StartAgents=0` に相当する専用パラメータは無いものの、`Server` 未設定だけで listener 自体が上がらない仕様です)。`10050` が表示される場合は `zabbix_agent2.conf` に `Server` 行が誤って残っていないか確認します
 
 `ss` の process 情報には PID や user が含まれます。共有用 evidence では必要な行だけ残します。
 

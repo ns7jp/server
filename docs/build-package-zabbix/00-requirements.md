@@ -38,7 +38,7 @@ Windows監視対象追加パック（案件ID `SM-WIN-001`）が「既存中央�
 | FR-01 | 運用者がSSH tunnel経由でZabbix Frontendへアクセスし、監視対象ホストの状態を確認できること | ZIT-04 |
 | FR-02 | monitor-01のCPU/メモリ/ディスク等のホストメトリクスを、Zabbix Agent2のactive checkでzbx-01のZabbix Serverが収集できること | ZIT-03 |
 | FR-03 | monitor-01上のアプリ(`/healthz`)の死活を、Agent2側のUserParameterを介してZabbix Itemとして収集できること | ZIT-05 |
-| FR-04 | 閾値超過またはアプリ停止を検知した場合に、Zabbix Trigger/ActionからSlack webhookへ通知できること(webhookと受信先を用意した場合のみ試験) | ZIT-06 |
+| FR-04 | 閾値超過またはアプリ停止を検知した場合に、Zabbix Trigger/ActionからSlackへ通知できること(Slack bot tokenと受信先channelを用意した場合のみ試験) | ZIT-06 |
 | FR-05 | Zabbixの設定・履歴データ(PostgreSQL)を日次バックアップし、別ボリュームへ復元できること | ZIT-08 |
 | FR-06 | monitor-01のZabbix Agent2停止(D-Z1)を検知し、検知から復旧までの時間を記録できること | ZIT-07 |
 | FR-07 | 管理端末からzbx-01・monitor-01間の名前解決、経路、待受、HTTP、firewallを確認できること | ZIT-09、ZST-01、ZST-04 |
@@ -51,7 +51,7 @@ Windows監視対象追加パック（案件ID `SM-WIN-001`）が「既存中央�
 | NFR-02 | 冪等性 | `docker compose -f compose.zabbix.yaml up -d`を2回目実行しても不要な再作成が発生しないこと | ZIT-02 |
 | NFR-03 | セキュリティ | Zabbix FrontendはloopbackのみでSSH tunnel経由の利用を前提とし、外部へ直接公開しないこと | ZST-01 |
 | NFR-04 | セキュリティ | Zabbix既定管理者アカウント(Admin/zabbix)のパスワードを初回ログイン直後に変更すること | ZST-02 |
-| NFR-05 | 最小権限 | DBパスワード・Slack webhook URL等の秘密値をDocker secretsファイルで注入し、実値をGitで追跡しないこと | ZST-03 |
+| NFR-05 | 最小権限 | DBパスワード・Slack bot token等の秘密値をDocker secretsファイルで注入し、実値をGitで追跡しないこと | ZST-03 |
 | NFR-06 | ネットワーク | trapper port(10051/tcp)はmonitor-01のIPのみ許可し、それ以外の送信元は拒否すること | ZST-04 |
 | NFR-07 | 可観測性 | Agent停止・閾値超過・アプリ死活異常をSeverityに応じて通知に関連付け、一次切り分けできること | ZIT-06、ZIT-07 |
 | NFR-08 | 復旧性 | D-Z1演習で検知から復旧までのRTOを記録すること | ZIT-07 |
@@ -67,14 +67,14 @@ Windows監視対象追加パック（案件ID `SM-WIN-001`）が「既存中央�
 - 専用Ansible role（`ansible/roles/zabbix_agent`相当）によるzbx-01・monitor-01の自動プロビジョニングは対象外です。設計のみを示し、`apply`実行証跡がない限り本案件の構築実績には含めません。
 - 受動(passive) checkはZabbix Agent2の任意拡張として設計のみ示し、既定では未使用です。複数の監視対象ホストが増えた場合の残存リスク・ロードマップとして扱い、本案件の構築実績には含めません。
 - カスタムZabbixテンプレートの自作は対象外です。組み込みテンプレート「Linux by Zabbix agent active」をそのままリンクする設計とします。
-- Slack実通知は webhook と受信先を用意した場合だけ試験します。Trigger の PROBLEM 表示を実通知成功として扱いません。
+- Slack実通知は bot token と受信先channelを用意した場合だけ試験します。Trigger の PROBLEM 表示を実通知成功として扱いません。
 
 ## 6. 前提条件
 
 - zbx-01用の新規VMが用意され、Ubuntu Server 24.04 LTSがインストール済みであること。
 - 管理端末からzbx-01・monitor-01へ公開鍵SSHで接続でき、接続ユーザーがsudoを利用できること。
 - 対象IP、管理元CIDR、DNS名、作業時間帯、費用上限が作業前に確定していること。
-- `deploy/secrets/zabbix_db_password.txt`・`deploy/secrets/zabbix_slack_webhook_url.txt`の秘密値をGit管理外で受け渡せること。
+- `deploy/secrets/zabbix_db_password.txt`・`deploy/secrets/zabbix_slack_bot_token.txt`の秘密値をGit管理外で受け渡せること。
 - 対象commit SHAと、直前の正常なcommit SHAを変更記録へ残すこと。
 - Zabbix Frontend初期ログイン直後にAdminパスワードを変更できる運用担当者が立ち会うこと。
 

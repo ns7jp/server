@@ -39,7 +39,7 @@
 次のどれかを満たさなければ実適用を開始しません。
 
 - [ ] 対象ホスト（`zbx-01`）、変更対象区分（compose設定 / Agent2設定 / Frontend設定 / DBデータ）、変更前後の commit SHA を相互確認した
-- [ ] 秘密値（DBパスワード、Slack webhook URL）、公開 IP が diff や採録ログへ出ないことを確認した
+- [ ] 秘密値（DBパスワード、Slack bot token）、公開 IP が diff や採録ログへ出ないことを確認した
 - [ ] `docker compose -f compose.zabbix.yaml config --quiet`が成功し、意図しないport / volume変更が無いことをdiffで確認した（ZUT-01相当）
 - [ ] Frontend設定（Host / Template / Trigger / Action）を変更する場合、変更前の設定をZabbix標準のexport機能（Data collection > Templates等のExport）でXMLとして保存した
 - [ ] 変更対象に対応する単体試験（`ZUT-01`〜`03`のうち該当するもの）が成功した
@@ -100,7 +100,7 @@ set -euo pipefail
 ROLLBACK_SHA='replace-with-the-full-last-known-good-commit-sha'
 ACTIVE_ENV='/opt/zabbix-lab/.env'
 ACTIVE_DB_SECRET='/opt/zabbix-lab/deploy/secrets/zabbix_db_password.txt'
-ACTIVE_SLACK_SECRET='/opt/zabbix-lab/deploy/secrets/zabbix_slack_webhook_url.txt'
+ACTIVE_SLACK_SECRET='/opt/zabbix-lab/deploy/secrets/zabbix_slack_bot_token.txt'
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 ROLLBACK_WORKTREE="$(dirname "$REPO_ROOT")/zabbix-lab-rollback"
 [[ "$ROLLBACK_SHA" =~ ^[0-9a-f]{40}$ ]]
@@ -119,7 +119,7 @@ install -m 644 "$ACTIVE_ENV" "$ROLLBACK_WORKTREE/.env"
 install -d -m 700 "$ROLLBACK_WORKTREE/deploy/secrets"
 install -m 644 "$ACTIVE_DB_SECRET" "$ROLLBACK_WORKTREE/deploy/secrets/zabbix_db_password.txt"
 if [[ -f "$ACTIVE_SLACK_SECRET" ]]; then
-  install -m 644 "$ACTIVE_SLACK_SECRET" "$ROLLBACK_WORKTREE/deploy/secrets/zabbix_slack_webhook_url.txt"
+  install -m 644 "$ACTIVE_SLACK_SECRET" "$ROLLBACK_WORKTREE/deploy/secrets/zabbix_slack_bot_token.txt"
 fi
 
 cd "$ROLLBACK_WORKTREE"

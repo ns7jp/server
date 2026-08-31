@@ -97,9 +97,9 @@ flowchart LR
 
 - `zbx-01`で`docker compose -f compose.zabbix.yaml up -d`が成功し、全コンテナが`running`/`healthy`になる（NFR-01 / ZIT-01）
 - 2回目の適用が不要なコンテナ再作成なく完了する（NFR-02 / ZIT-02）
-- [試験仕様書](06-test-specification.md)の必須ID（`ZUT-01`〜`03`、`ZIT-01`〜`05`、`ZIT-07`〜`09`、`ZST-01`〜`04`）がすべて`PASS`。`ZIT-06`（Slack実配信）はwebhookと受信先を用意した場合のみPASS対象とし、Trigger発火までの確認は必須のまま残す
+- [試験仕様書](06-test-specification.md)の必須ID（`ZUT-01`〜`03`、`ZIT-01`〜`05`、`ZIT-07`〜`09`、`ZST-01`〜`04`）がすべて`PASS`。`ZIT-06`（Slack実配信）はbot tokenと受信先channelを用意した場合のみPASS対象とし、Trigger発火までの確認は必須のまま残す
 - Zabbix Frontendの既定管理者アカウント（`Admin`/`zabbix`）を初回ログイン直後に変更したことをZST-02で確認する
 - Zabbix Trigger発火、D-Z1（`monitor-01`のZabbix Agent2停止演習）の復旧、DBバックアップ/復元の証跡がcommit SHA付きで保存される
-- 未解決事項、秘密値（DBパスワード・Slack webhook URL）の受け渡し方法、ロールバック方法が引き渡し記録に残る
+- 未解決事項、秘密値（DBパスワード・Slack bot token）の受け渡し方法、ロールバック方法が引き渡し記録に残る
 - 管理端末→`zbx-01`、`monitor-01`→`zbx-01:10051`の両方向で名前解決、経路、待受、HTTP、firewallを確認し、実行出力を保存する
 - [作業結果・引き渡し報告書](11-work-result-report.md)の計画対実績、試験集計、差異、残存リスク、受領判定を記入する

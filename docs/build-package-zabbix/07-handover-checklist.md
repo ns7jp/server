@@ -9,7 +9,7 @@
 | 文書パック | 作成済み |
 | 新規構築 ZIT-01 / 冪等性 ZIT-02 | `NOT RUN`（対象host未指定） |
 | host active check ZIT-03 / Frontend認証 ZIT-04 / healthz item ZIT-05 | `NOT RUN` |
-| alert通知 ZIT-06（Trigger発火は必須。Slack実配信はwebhookと受信先を用意した場合のみ） | `NOT RUN` |
+| alert通知 ZIT-06（Trigger発火は必須。Slack実配信はbot tokenと受信先channelを用意した場合のみ） | `NOT RUN` |
 | D-Z1 Agent停止演習・RTO記録 ZIT-07 | `NOT RUN` |
 | DB backup/restore（`pg_restore`）ZIT-08 | `NOT RUN` |
 | zbx-01・monitor-01間 network ZIT-09（ZNW-01〜09） | `NOT RUN` |
@@ -19,7 +19,7 @@
 | 必須試験完了 | `NOT READY` |
 | 受領 | `NOT SET` |
 
-文書や`compose.zabbix.yaml`がCIで構文検証されていることは、未指定の引き渡し対象host（`zbx-01`）を受領可能と判定する材料にはしません。[試験仕様書](06-test-specification.md)を対象hostで実施した日付付き結果票を確認してから、この表を更新します。`ZIT-06`はwebhookと受信先が無い環境では実配信部分が`BLOCKED`となり得ますが、Trigger発火までの確認は必須のまま残ります。
+文書や`compose.zabbix.yaml`がCIで構文検証されていることは、未指定の引き渡し対象host（`zbx-01`）を受領可能と判定する材料にはしません。[試験仕様書](06-test-specification.md)を対象hostで実施した日付付き結果票を確認してから、この表を更新します。`ZIT-06`はbot tokenと受信先channelが無い環境では実配信部分が`BLOCKED`となり得ますが、Trigger発火までの確認は必須のまま残ります。
 
 ## 構成と状態
 
@@ -66,13 +66,13 @@
 | --- | --- | --- |
 | Zabbix agent 停止（Trigger PROBLEM、Severity: Disaster） | D-Z1手順に沿って検知・復旧を確認 | `NOT SET` |
 | `service_monitor.healthz` 異常（Severity: High） | Frontend上のProblem詳細を確認し、`monitor-01`側で一次切り分け | `NOT SET` |
-| 認証回避、DBパスワード / Slack webhook URL漏えい | 外部公開を止め、秘密値を再発行 | `NOT SET` |
+| 認証回避、DBパスワード / Slack bot token漏えい | 外部公開を止め、秘密値を再発行 | `NOT SET` |
 | `zbx-01` host障害 | 復元判断（[08](08-change-rollback-plan.md)参照）、RPOの確認 | `NOT SET` |
 | 復旧見込みが RTO 超過 | 状況、影響、次回報告時刻を共有 | `NOT SET` |
 
 ## セキュリティ
 
-- [ ] 秘密値（DBパスワード、Slack webhook URL）そのものではなく、安全な受け渡し・再発行方法を共有した
+- [ ] 秘密値（DBパスワード、Slack bot token）そのものではなく、安全な受け渡し・再発行方法を共有した
 - [ ] 不要な一時アカウント、テストデータ、UFW許可、`DOCKER-USER`chainの一時ルールを削除した
 - [ ] SSH（UFW）、trapper（`DOCKER-USER` iptables chain。UFWでは確認できない）、Frontend / trapperの公開portを確認し、trapper（`10051/tcp`）の許可送信元が`monitor-01`のIPのみに限定されていることを採録した（ZST-04）
 - [ ] Zabbix Frontend既定管理者（`Admin`/`zabbix`）のパスワードが変更済みであることを確認した（ZST-02）
@@ -84,7 +84,7 @@
 | --- | --- | --- |
 | 日次 | backup timer / failed unit / Zabbix Problem 一覧確認 | 運用ログ |
 | 週次 | disk増加、未処理Problem、Zabbixコンポーネントの更新状況 | 週次レビュー |
-| 月次 | D-Z1、通知試験（webhookと受信先を用意した場合） | drill記録 |
+| 月次 | D-Z1、通知試験（bot tokenと受信先channelを用意した場合） | drill記録 |
 | 四半期 | DB復元試験（`pg_restore`、ZIT-08）、Frontendアクセス棚卸し | 記録 |
 
 ## 受領記録
@@ -102,4 +102,4 @@
 | network 結果票 | `NOT SET` |
 | 変更 / rollback 記録 | `NOT SET` |
 | 作業結果報告書 | `NOT SET` |
-| 秘密値受け渡し完了（DBパスワード・Slack webhook URL。値は記載しない） | `NOT SET` |
+| 秘密値受け渡し完了（DBパスワード・Slack bot token。値は記載しない） | `NOT SET` |

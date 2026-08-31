@@ -16,7 +16,7 @@
 | 配備 | Docker Compose（`compose.zabbix.yaml`）による手動構築が中心。専用Ansible roleは未実装 |
 | 監視サーバー | Zabbix Server(`zabbix/zabbix-server-pgsql:alpine-7.0.29`)、Zabbix Frontend(`zabbix/zabbix-web-nginx-pgsql:alpine-7.0.29`)、PostgreSQL(`postgres:16-alpine`) |
 | 監視対象 | `monitor-01`（既存、変更なし）。Zabbix Agent2のactive checkと、UserParameterによるアプリ死活監視を追加設定 |
-| 通知 | Slack Incoming Webhookを使うカスタム Media type(Trigger/Action経由) |
+| 通知 | Slack Bot Token(`chat:write`)を使う組み込みSlack Media type(Trigger/Action経由) |
 | 運用 | PostgreSQLの日次バックアップ、ランブック、変更管理、Agent停止復旧演習(D-Z1) |
 
 対象外は、複数ホスト冗長化、24時間有人運用、SSO、実組織の個人情報、商用SLA、既存中央監視基盤(`SM-LAB-001`)本体の変更、専用Ansible roleによる自動プロビジョニングです。
@@ -43,7 +43,7 @@ flowchart LR
 
     Agent -->|"active check push\nServerActive=zbx-01:10051"| Server
     Server -.->|"passive check（既定は未使用、任意拡張）"| Agent
-    Server -->|"Trigger/Action"| Slack["Slack Incoming Webhook\n（用意した場合のみ）"]
+    Server -->|"Trigger/Action"| Slack["Slack Bot Token\n（用意した場合のみ）"]
 ```
 
 zbx-01上の2つの公開ポートは、bindの考え方が異なります。Frontendは`127.0.0.1`限定でSSH tunnel経由の利用のみを前提とし（既存パックと同じ「管理UIは外部公開しない」方針）、trapper(10051/tcp)はmonitor-01のAgent2がactive checkでpushしてくる唯一の監視系ポートのため、loopback限定にはできません。ゆるくbindしつつ、DockerがPublishしたportには効かないUFWではなく`DOCKER-USER` iptables chainで送信元（monitor-01のIPのみ）を絞る設計とし、[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)で両者の違いを明示します。
@@ -58,7 +58,7 @@ server-monitorアプリの`/healthz`は[Linux版ネットワーク設計](../bui
 | 冪等性 | 同一コマンドを2回目実行しても不要な再作成が発生しない | ZIT-02 |
 | セキュリティ | Zabbix FrontendはloopbackのみでSSH tunnel経由の利用を前提とする | ZST-01 |
 | セキュリティ | 既定管理者アカウント(Admin/zabbix)のパスワードを初回ログイン直後に変更する | ZST-02 |
-| 最小権限 | DBパスワード・Slack webhook URL等の秘密値をDocker secretsファイルで注入し、実値をGitで追跡しない | ZST-03 |
+| 最小権限 | DBパスワード・Slack bot token等の秘密値をDocker secretsファイルで注入し、実値をGitで追跡しない | ZST-03 |
 | ネットワーク | trapper port(10051/tcp)はmonitor-01のIPのみ許可する | ZST-04 |
 | 可観測性 | Agent停止・閾値超過・アプリ死活異常をSeverityに応じて通知に関連付け、一次切り分けできる | ZIT-06、ZIT-07 |
 | 復旧性 | D-Z1演習（`systemctl stop zabbix-agent2`→検知→`start`→復旧）でRTOを記録する | ZIT-07 |
@@ -75,4 +75,4 @@ server-monitorアプリの`/healthz`は[Linux版ネットワーク設計](../bui
 
 ## 6. 受け入れ条件
 
-[試験仕様書・結果票](06-test-specification.md)の必須試験（`ZUT-01`〜`ZUT-03`、`ZIT-01`〜`ZIT-05`、`ZIT-07`〜`ZIT-09`、`ZST-01`〜`ZST-04`）がすべて`PASS`し、実行日時、commit SHA、環境、主要ログ、発見した問題が証跡として保存され、[作業結果・引き渡し報告書](11-work-result-report.md)の差異・残存リスク・受領判定が記入されていることを受け入れ条件とします。`ZIT-06`（Slack実配信）はwebhookと受信先を用意した場合のみ試験し、未用意の環境では`BLOCKED`となり得ますが、Trigger発火までは必須です。
+[試験仕様書・結果票](06-test-specification.md)の必須試験（`ZUT-01`〜`ZUT-03`、`ZIT-01`〜`ZIT-05`、`ZIT-07`〜`ZIT-09`、`ZST-01`〜`ZST-04`）がすべて`PASS`し、実行日時、commit SHA、環境、主要ログ、発見した問題が証跡として保存され、[作業結果・引き渡し報告書](11-work-result-report.md)の差異・残存リスク・受領判定が記入されていることを受け入れ条件とします。`ZIT-06`（Slack実配信）はbot tokenと受信先channelを用意した場合のみ試験し、未用意の環境では`BLOCKED`となり得ますが、Trigger発火までは必須です。

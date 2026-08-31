@@ -17,13 +17,13 @@
 
 本パックは専用Ansible roleを持たず(「未実装」区分)、[構築手順書](05-build-procedure.md)のコマンド・UIクリック手順による「済(自動)」「済(手動)」が中心です。
 
-1. **秘密値の準備(済・手動)**: `deploy/secrets/zabbix_db_password.txt.example`・`deploy/secrets/zabbix_slack_webhook_url.txt.example`を複製し、実値を設定します(Gitでは追跡しません、NFR-05)。
+1. **秘密値の準備(済・手動)**: `deploy/secrets/zabbix_db_password.txt.example`・`deploy/secrets/zabbix_slack_bot_token.txt.example`を複製し、実値を設定します(Gitでは追跡しません、NFR-05)。
 2. **Compose起動(済・自動)**: zbx-01上で`docker compose -f compose.zabbix.yaml up -d`を実行します。`depends_on`と`healthcheck`により postgres → zabbix-server → zabbix-web の順で起動が待ち合わされ、非対話コマンド一発で完結します(NFR-01)。同一コマンドの2回目実行で不要な再作成が起きないことも確認します(NFR-02、ZIT-02)。
-3. **Zabbix Agent2導入(済・手動)**: monitor-01へZabbix公式リポジトリからAgent2パッケージを導入し、`/etc/zabbix/zabbix_agent2.conf`の`Hostname`・`ServerActive`を設定します。`Server`は設定しません(passive checkの送信元許可リストを空のままにする)。Agent2にはclassic agentの`StartAgents=0`に相当するpassive listener無効化パラメータが無いため、`10050/tcp`のlistener自体はそのまま残りますが、`Server`未設定によるprotocol層の拒否と、`monitor-01`の既存UFW(素のaptパッケージのためDocker Publishを経由せず、UFWがそのまま有効)によるネットワーク層の拒否の2段構えで守ります。`deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example`を`/etc/zabbix/zabbix_agent2.d/service_monitor_healthz.conf`へコピーし、`sudo systemctl restart zabbix-agent2`で読み込み直します。
+3. **Zabbix Agent2導入(済・手動)**: monitor-01へZabbix公式リポジトリからAgent2パッケージを導入し、`/etc/zabbix/zabbix_agent2.conf`の`Hostname`・`ServerActive`を設定します。`Server`は設定しません。Agent2にはclassic agentの`StartAgents=0`に相当する専用パラメータは無いものの、`Server`が空のときはpassive check自体を無効化して`10050/tcp`のlistenerを起動しない仕様のため、`Server`を設定しないことだけで無効化として十分です(念のため`monitor-01`の既存UFWも`10050/tcp`を許可しません)。`deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example`を`/etc/zabbix/zabbix_agent2.d/service_monitor_healthz.conf`へコピーし、`sudo systemctl restart zabbix-agent2`で読み込み直します。
 4. **Frontend初期設定(済・手動)**: 初回アクセスのインストールウィザードでDB接続を確認したのち、Host group `SM-ZBX-001 Lab Hosts`の作成、Host `monitor-01`の登録、組み込みTemplate「Linux by Zabbix agent active」のリンク、カスタムTrigger・Actionの登録を行います。**Admin初期パスワードの変更を初回ログイン直後の必須手順**とします(ZST-02、詳細は後述)。
-5. **Slack Media type登録(済・手動)**: webhookと受信先を用意した場合のみ、組み込み"Slack (webhook)" media typeのwebhook URLパラメータへ`deploy/secrets/zabbix_slack_webhook_url.txt`の値を設定します(ZIT-06)。
+5. **Slack Media type登録(済・手動)**: bot tokenと受信先channelを用意した場合のみ、組み込み"Slack" media typeの`bot_token`パラメータへ`deploy/secrets/zabbix_slack_bot_token.txt`の値を設定します(ZIT-06)。
 6. **バックアップ設定(済・手動)**: `deploy/systemd/zabbix-backup.service`・`.timer`を配置し、`systemctl enable --now zabbix-backup.timer`でzbx-01のsystemd timerへ登録します(詳細は後述「バックアップ・ロールバック」)。
-7. **動作確認**: ZUT-01〜03、ZIT-01〜05・ZIT-07〜09(ZIT-06はwebhookと受信先を用意した場合のみ必須)、ZST-01〜04を実施します。判定基準は[試験仕様書・結果票](06-test-specification.md)を正本とします。
+7. **動作確認**: ZUT-01〜03、ZIT-01〜05・ZIT-07〜09(ZIT-06はbot tokenと受信先channelを用意した場合のみ必須)、ZST-01〜04を実施します。判定基準は[試験仕様書・結果票](06-test-specification.md)を正本とします。
 
 上記1・3〜6の「済(手動)」は、既存の`site.yml`のような全自動構築(Ansible role)ではありません。`ansible/roles/zabbix_agent`のような専用roleはこの案件パックの範囲では「未実装」です。
 
@@ -36,7 +36,7 @@ zbx-01の公開serviceは`zabbix-internal`(内部通信用)に加え、公開対
 | Zabbix Frontend | `127.0.0.1:${ZABBIX_WEB_PORT:-8081}`のみ。運用者はSSH tunnel経由 | Zabbixログイン(`Admin`、初回ログイン直後にパスワード変更必須) |
 | Zabbix Server trapper | `10051/tcp`。monitor-01のIPのみ(`DOCKER-USER` iptables chainでの送信元制限。UFWはDockerが公開したportを経由しないため使えない、bind自体はゆるく設定) | 認証なし、送信元IP制限のみ(既存node-exporterと同じ思想) |
 | PostgreSQL | 外部非公開。`zabbix-internal`(Docker internal network)限定 | Docker secretsによるパスワード認証 |
-| Zabbix Agent2 passive listener(monitor-01側) | Agent2の仕様上listenし続ける(Agent1の`StartAgents=0`相当の無効化パラメータが無い)。`Server`未設定によるprotocol層拒否と、`monitor-01`の既存UFW(Docker非経由のため有効)によるネットワーク層拒否の2段構え | 認証なし。到達自体をUFWで遮断(既定では未使用) |
+| Zabbix Agent2 passive listener(monitor-01側) | `Server`未設定によりAgent2がlistener自体を起動しない(既定では未使用) | 該当なし(listenerが存在しない。念のため`monitor-01`の既存UFWも許可しない) |
 
 ## ログ・監視設計
 
@@ -44,7 +44,7 @@ zbx-01の公開serviceは`zabbix-internal`(内部通信用)に加え、公開対
 - Check方式は**active check**を主方式とします。monitor-01のAgent2が`ServerActive=192.0.2.11:10051`(zbx-01)へpushする方式で、受動(passive) checkはネットワークの向きが逆(zbx-01→monitor-01:10050)になるため、複数の監視対象ホストがNATやFW越しに増えても双方向のFWルールを増やさずに済む利点があります。passive checkは既定では使用せず、任意拡張(残存リスク/ロードマップ)として設計のみ示します。
 - **UserParameterによるhealthz監視の設計理由**: server-monitorアプリの`/healthz`は[Linux版ネットワーク設計](../build-package/04-network-ip-plan.md)により`127.0.0.1`限定で外部非公開です。そのためzbx-01のZabbix Serverはネットワーク越しに`/healthz`を直接probeできません。Zabbixの「web監視シナリオ」(ネットワーク経由でHTTPを叩く機能)を使うと、この非公開方針を崩して`/healthz`を外部到達可能にする必要が生じます。そこで、**monitor-01自身のAgent2に`service_monitor.healthz`というUserParameterを追加し、ホスト内部からcurlする**設計とすることで、既存の「管理UIを外部公開しない」方針を崩さずに死活監視を実現しています。実体は`deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example`に定義し、`/healthz`が200を返せば`1`(正常)、それ以外は`0`(異常)を返します。
 - Trigger例は、組み込みTrigger「Zabbix agent is not available」相当(Templateに含まれる、Severity: Disaster)、カスタムTrigger「`service_monitor.healthz`が1以外を3分間観測」(Severity: High)、テンプレート既定のCPU等閾値超過(Severity: Warning)です。
-- 通知はSlack Incoming Webhookを使うカスタム Media type(組み込み"Slack (webhook)"テンプレートmedia typeを使用)です。webhook URLは`deploy/secrets/zabbix_slack_webhook_url.txt`から取得し、Frontendの管理画面からパラメータとして手動登録します。実配信はwebhookと受信先を用意した場合だけ試験する、既存Alertmanagerと同じ誠実な書き方を踏襲します(ZIT-06)。
+- 通知はSlack Bot Token(`chat:write`スコープ)を使う組み込み"Slack" media typeです。Zabbix 7.0の組み込みSlack統合はIncoming Webhook URLではなく`bot_token`パラメータでSlack Web APIを呼び出す方式のため、Slack側でBot付きのAppを作成し、対象channelへbotを招待しておく必要があります。bot tokenは`deploy/secrets/zabbix_slack_bot_token.txt`から取得し、Frontendの管理画面からパラメータとして手動登録します。実配信はbot tokenと受信先channelを用意した場合だけ試験する、既存Alertmanagerと同じ誠実な書き方を踏襲します(ZIT-06)。
 - 障害演習は**D-Z1**(monitor-01のzabbix-agent2停止演習、既存の`D-1`と対になる名前)とします。手順は `sudo systemctl stop zabbix-agent2` → 検知(Trigger PROBLEM) → `sudo systemctl start zabbix-agent2` → 復旧(Trigger OK) → RTO記録です(ZIT-07)。
 - 一次切り分けは既存パックと同じ「メトリクス → 直近変更 → ログ → プロセス」の順で行います。記録様式は[トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md)を共用します。
 

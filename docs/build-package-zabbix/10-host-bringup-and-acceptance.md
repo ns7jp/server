@@ -6,7 +6,7 @@
 
 - 新規構築・冪等性(ZIT-01、ZIT-02)
 - host active check(ZIT-03)、Frontend認証(ZIT-04)、healthz item(ZIT-05)
-- alert通知のTrigger発火確認、webhookと受信先を用意した場合のSlack配信まで(ZIT-06)
+- alert通知のTrigger発火確認、bot tokenと受信先channelを用意した場合のSlack配信まで(ZIT-06)
 - D-Z1(`monitor-01`のZabbix Agent2停止演習)の検知・復旧・RTO記録(ZIT-07)
 - DB backup/restore(ZIT-08)
 - 管理端末→`zbx-01`、`monitor-01`→`zbx-01`:10051(trapper)の実ホストnetwork(ZIT-09、ZNW-01〜09)
@@ -41,7 +41,7 @@ OSは[パラメータシート](03-parameter-sheet.md)のとおり**Ubuntu Serve
 | `monitor-01`の所在(Linux版パックのどの実ホストか)と、`zbx-01`との接続経路 | |
 | 管理元IP / CIDR | |
 | SSH公開鍵 | |
-| DBパスワード・Slack webhook URLの受け渡し方法(秘密値台帳など) | |
+| DBパスワード・Slack bot tokenの受け渡し方法(秘密値台帳など) | |
 | Zabbix Frontend Admin新パスワードの受け渡し方法 | |
 | 再起動してよい時間帯 | |
 | 接続不能になったときの復旧手段(コンソール) | |
@@ -97,7 +97,7 @@ sudo netfilter-persistent save
 | `BLOCKED` | 前提不足で実行できず理由と解除条件がある |
 | `NOT RUN` | 未実行、成功実績として数えない |
 
-`ZIT-06`(alert通知)は、webhookと受信先チャンネルを用意した場合だけSlack配信まで確認します。用意できない環境では、Trigger発火(PROBLEM遷移)までの確認は必須のまま行い、実配信部分だけを`BLOCKED`(理由: webhook未用意)として記録します。
+`ZIT-06`(alert通知)は、bot tokenと受信先チャンネルを用意した場合だけSlack配信まで確認します。用意できない環境では、Trigger発火(PROBLEM遷移)までの確認は必須のまま行い、実配信部分だけを`BLOCKED`(理由: bot token未用意)として記録します。
 
 ## 4. D-Z1障害演習
 
@@ -118,7 +118,7 @@ date -u +%Y-%m-%dT%H:%M:%SZ   # 復旧操作の時刻
 # FrontendのMonitoring > ProblemsでRESOLVED(OK)に変わった時刻を復旧時刻として記録
 ```
 
-検知時刻から復旧時刻までをRTOとして算出し、実行コマンド・実出力とあわせて[トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md)の様式で日付付きevidenceへ保存します。webhookと受信先を用意している場合は、Slackへの通知到達もあわせて記録します(ZIT-07、NFR-08)。
+検知時刻から復旧時刻までをRTOとして算出し、実行コマンド・実出力とあわせて[トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md)の様式で日付付きevidenceへ保存します。bot tokenと受信先channelを用意している場合は、Slackへの通知到達もあわせて記録します(ZIT-07、NFR-08)。
 
 ## 5. 証跡の採録
 
@@ -126,7 +126,7 @@ date -u +%Y-%m-%dT%H:%M:%SZ   # 復旧操作の時刻
 
 - [ ] `FAIL`の項目について、原因を理解している(理解できないまま採録しない)
 - [ ] `BLOCKED`の項目について、前提条件と解除条件を本文に残している
-- [ ] host名 / IP / 秘密値(DBパスワード、Slack webhook URL、Zabbix Adminパスワード)が出ていない
+- [ ] host名 / IP / 秘密値(DBパスワード、Slack bot token、Zabbix Adminパスワード)が出ていない
 - [ ] [検証証跡台帳](../evidence/README.md)の該当行を`NOT RUN`から更新した
 - [ ] [作業結果・引き渡し報告書](11-work-result-report.md)を日付付きevidenceへ複製し、結果票の件数、差異、残存リスク、受領判定を記入した
 - [ ] [試験仕様書・結果票](06-test-specification.md)の**原本は`NOT RUN`のまま**(上書きしない)
@@ -135,7 +135,7 @@ date -u +%Y-%m-%dT%H:%M:%SZ   # 復旧操作の時刻
 
 | 項目 | 追加で必要なもの |
 | --- | --- |
-| Slack実配信(ZIT-06のうち配信部分) | Slack Incoming Webhook URLと受信先チャンネル |
+| Slack実配信(ZIT-06のうち配信部分) | Slack Bot User OAuth Token(`chat:write`)と受信先チャンネル |
 | passive check(任意拡張) | 複数の監視対象hostが増えた場合の設計判断。現状は設計のみで実装対象外 |
 | 専用Ansible role(`ansible/roles/zabbix_agent`相当) | 手動手順の自動化方針の決定と実装([要件定義書](00-requirements.md)「未実装」参照) |
 | RHEL系(AlmaLinux / Rocky)でのZabbix構築 | 対象外。行う場合はZabbix公式リポジトリのRHEL向けパッケージへの読み替えが必要 |

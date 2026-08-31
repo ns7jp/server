@@ -44,7 +44,7 @@
 | 時刻同期 | chrony(unit名`chrony`) | Ubuntu既定 |
 | firewall | UFW、default deny incoming | 本パックの[構築手順書](05-build-procedure.md)(専用role未実装のため手動設定) |
 | SSHブルートフォース対策 | `ufw limit 22/tcp` | 同上 |
-| SSH | root login禁止、password login禁止 | [構築手順書 2.1節](05-build-procedure.md)(`/etc/ssh/sshd_config.d/99-zabbix-lab-hardening.conf`、手動設定) |
+| SSH | root login禁止、password login禁止 | [構築手順書 2.1節](05-build-procedure.md)(`/etc/ssh/sshd_config.d/00-zabbix-lab-hardening.conf`。`50-cloud-init.conf`より先に読ませるための番号、手動設定) |
 | 自動更新 | unattended-upgrades | 同上 |
 
 Ubuntu 24.04 LTS以外のOSファミリーは本パックの対象外です。RHEL系で構築する場合は[Linux版パラメータシート](../build-package/03-parameter-sheet.md)のRHEL系列の値を参考にしつつ、Zabbix公式リポジトリのRHEL向けパッケージへ読み替えます。
@@ -74,12 +74,12 @@ Ubuntu 24.04 LTS以外のOSファミリーは本パックの対象外です。RH
 | Check方式 | active check(monitor-01のAgent2→zbx-01:10051へpush)を主方式とする。passive checkは既定未使用の任意拡張 | [02-detailed-design.md](02-detailed-design.md) |
 | Agent2 `Hostname`(monitor-01) | `monitor-01` | `/etc/zabbix/zabbix_agent2.conf`(monitor-01) |
 | Agent2 `ServerActive`(monitor-01) | `192.0.2.11:10051`(zbx-01のIP) | 同上 |
-| Agent2 `Server`(monitor-01) | 未設定(コメントアウトのまま。passive checkの送信元許可リストを空にする) | 同上 |
+| Agent2 `Server`(monitor-01) | 未設定(コメントアウトのまま。空の場合Agent2はpassive check自体を無効化し`10050/tcp`のlistenerを起動しない) | 同上 |
 | カスタムItem key | `service_monitor.healthz` | `deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example` |
 | UserParameter実体 | `UserParameter=service_monitor.healthz,curl --silent --fail --max-time 3 http://127.0.0.1:8080/healthz >/dev/null && echo 1 || echo 0` | 同上 |
 | カスタムTrigger | `service_monitor.healthz`が1以外を3分間観測 → Problem(Severity: High) | Frontend設定 |
 | 組み込みTrigger | 「Zabbix agent is not available」相当(Severity: Disaster、Templateに含まれる) | Template |
-| 通知Media type | Slack Incoming Webhook(組み込み"Slack (webhook)")。webhook URLは`deploy/secrets/zabbix_slack_webhook_url.txt`から手動登録 | Frontend設定 |
+| 通知Media type | 組み込み"Slack"(Bot Token方式、`chat:write`スコープ)。bot tokenは`deploy/secrets/zabbix_slack_bot_token.txt`から手動登録 | Frontend設定 |
 | 障害演習ID | `D-Z1`(monitor-01のzabbix-agent2停止演習) | [02-detailed-design.md](02-detailed-design.md) |
 | Zabbix Frontend既定管理者 | `Admin` / `zabbix`(Zabbix既定値)。初回ログイン直後にパスワード変更必須(ZST-02) | Frontend設定 |
 | backup schedule | 毎日03:45(Asia/Tokyo、host timezone)。既存server-monitorの03:30から時間をずらす | `scripts/ops/zabbix-backup.sh` |
@@ -107,7 +107,7 @@ Ubuntu 24.04 LTS以外のOSファミリーは本パックの対象外です。RH
 | `${ZABBIX_WEB_PORT:-8081}/tcp` | Zabbix Frontend(Nginx同梱) | `127.0.0.1`のみ。運用者はSSH tunnel経由 | 既存パックと同じ「管理UIは外部公開しない」方針 |
 | 10051/tcp | Zabbix Server trapper(active check受信) | monitor-01のIPのみ許可(`DOCKER-USER` iptables chainでの送信元制限。UFWはDockerが公開したportに効かない)。loopback限定にはできない — 他ホストから着信する唯一の監視系ポート | monitor-01のAgent2がactive checkでzbx-01へpushするために必須 |
 | 5432/tcp | PostgreSQL | 外部非公開。Docker internal networkのみ | DBは他ホストから直接繋がせない |
-| 10050/tcp(monitor-01側) | Zabbix Agent2 listener(passive check用) | Agent2の仕様上listenし続ける(Agent1の`StartAgents=0`相当が無い)。`Server`未設定(protocol層拒否)と`monitor-01`の既存UFW(Docker非経由のため有効。`10050/tcp`のallowルールを追加しない)の2段構えでネットワーク到達を遮断 | active checkを主方式とし、passive checkは使わない設計(将来使う場合は`Server`と`zbx-01`のIP限定のUFW allowを別途設計) |
+| 10050/tcp(monitor-01側) | Zabbix Agent2 listener(passive check用) | `Server`を未設定のままにすることでAgent2がlistener自体を起動しない(既定では未使用。念のため`monitor-01`の既存UFWも`10050/tcp`のallowルールを追加しない) | active checkを主方式とし、passive checkは使わない設計(将来使う場合は`Server`と`zbx-01`のIP限定のUFW allowを別途設計) |
 
 Frontendとtrapperはbindの考え方が異なります。設計理由は[詳細設計書](02-detailed-design.md)と[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)を正本とします。
 
