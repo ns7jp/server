@@ -172,4 +172,4 @@ docker volume rm zabbix_db_data_restore_check
 - [ ] 必須 smoke test と影響範囲の再試験（該当する `ZUT` / `ZIT` / `ZST`）が `PASS`
 - [ ] 変更前後の時刻、実出力、判断理由を evidence へ保存した
 - [ ] 残存リスク、暫定対応、恒久対応の Issue を記録した
-- [ ] 一時的な UFW 許可（trapper送信元の緩和など）、試験データ、保守モードを解除した
+- [ ] 一時的な UFW 許可、`DOCKER-USER` iptables chainの一時ルール（trapper送信元の緩和など）、試験データ、保守モードを解除した

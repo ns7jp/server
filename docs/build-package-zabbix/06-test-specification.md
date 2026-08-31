@@ -95,7 +95,7 @@ ZIT-09の詳しい手順・結果票様式は[ネットワーク実機検証手�
 | ZST-01 | bind address | `zbx-01`で`ss -lntup` | Frontendは`127.0.0.1`のみ | NOT RUN | — |
 | ZST-02 | 既定パスワード変更 | `Admin`/`zabbix`でログイン試行 | 失敗する(変更済みであることの確認) | NOT RUN | — |
 | ZST-03 | secret tracking | `git ls-files deploy/secrets` | `zabbix_db_password.txt`等の実値ファイルが含まれない | NOT RUN | — |
-| ZST-04 | firewall | `zbx-01`で`ufw status verbose` | 10051/tcpが`monitor-01`のIPのみ許可 | NOT RUN | — |
+| ZST-04 | firewall | `zbx-01`で`sudo iptables -L DOCKER-USER -n --line-numbers`(`ufw status verbose`はDockerが公開したportを経由しないため使えない) | 10051/tcpが`monitor-01`のIPのみ許可(ACCEPTがDROPより上の行) | NOT RUN | — |
 
 ZST-02は「未実装」ではなく、初回ログイン直後に必ず踏む「済(手動)」の必須手順です。既定パスワード(`Admin`/`zabbix`)のままログインできてしまう状態は、この試験では`FAIL`として扱います。
 

@@ -17,15 +17,15 @@
 
 ## 2. 安全条件
 
-- 読み取りコマンドを中心に実施し、UFW ルール、route、interface を本手順から変更しません。ZNW-09 で trapper の送信元制限を確認する際も、許可ルール自体は変更せず、許可されていない送信元（管理端末）からの接続試行によって確認します。
+- 読み取りコマンドを中心に実施し、UFW ルール、`DOCKER-USER` iptables chain のルール、route、interface を本手順から変更しません。ZNW-09 で trapper の送信元制限を確認する際も、許可ルール自体は変更せず、許可されていない送信元（管理端末）からの接続試行によって確認します。
 - `tcpdump` は packet header だけを最大 20 packet、15 秒で取得します。`-A` / `-X` は認証情報や Frontend の session cookie、本文を採録しうるため使用しません。
-- SSH を許可する UFW ルール、trapper (10051/tcp) を monitor-01 の IP だけへ許可する UFW ルールを削除・再読込しません。
+- SSH を許可する UFW ルール、trapper (10051/tcp) を monitor-01 の IP だけへ許可する `DOCKER-USER` iptables chain のルールを削除・再読込しません。
 - 管理端末 IP、zbx-01 / monitor-01 の公開 IP、MAC address は共有前にマスクします。
 - `curl` に Frontend の実パスワードや認証 cookie を直接書かず、`zabbix_sender` の試験 item には実際の監視値ではなく無害なダミー値だけを使います。ZST-02（既定パスワード変更試験）は本書の対象外です。
 
 ## 3. 事前準備
 
-zbx-01 に `iproute2`、`iputils-ping`、`dnsutils`、`curl`、`tcpdump`、`ufw`、`netcat-openbsd` があることを確認します。monitor-01 は[Linux版の事前準備](../build-package/09-network-validation-procedure.md#3-事前準備)に加え、本パックの[構築手順書](05-build-procedure.md)で Zabbix Agent2 導入(`ServerActive=192.0.2.11:10051`)まで完了していることを前提とします。管理端末の値を実環境に合わせて設定します。
+zbx-01 に `iproute2`、`iputils-ping`、`dnsutils`、`curl`、`tcpdump`、`ufw`、`iptables`、`netcat-openbsd` があることを確認します。monitor-01 は[Linux版の事前準備](../build-package/09-network-validation-procedure.md#3-事前準備)に加え、本パックの[構築手順書](05-build-procedure.md)で Zabbix Agent2 導入(`ServerActive=192.0.2.11:10051`)まで完了していることを前提とします。管理端末の値を実環境に合わせて設定します。
 
 ```bash
 ZBX_HOST=zbx-01
@@ -40,7 +40,7 @@ CAPTURE_INTERFACE=ens3   # zbx-01の外部NIC名に置き換える（monitor-01�
 
 date --iso-8601=seconds
 git rev-parse HEAD
-ssh "$ZBX_HOST" 'uname -a; command -v ip ping dig ss curl tcpdump ufw nc; docker compose -f compose.zabbix.yaml ps'
+ssh "$ZBX_HOST" 'uname -a; command -v ip ping dig ss curl tcpdump ufw iptables nc; docker compose -f compose.zabbix.yaml ps'
 ssh "$MONITOR_HOST" 'uname -a; command -v ip ping dig ss curl nc; systemctl is-active zabbix-agent2'
 ```
 
@@ -112,7 +112,7 @@ ssh "$MONITOR_HOST" 'sudo ss -lntup'
 確認点:
 
 - zbx-01: Frontend (`$WEB_PORT`) は `127.0.0.1` にだけ bind
-- zbx-01: trapper (`10051`) は `0.0.0.0` を含め広く bind されている — これは設計どおりです。他ホストから着信する唯一の監視系portのため、送信元制限は bind ではなく ZNW-08 の UFW source ruleで行います
+- zbx-01: trapper (`10051`) は `0.0.0.0` を含め広く bind されている — これは設計どおりです。他ホストから着信する唯一の監視系portのため、送信元制限は bind ではなく ZNW-08 の `DOCKER-USER` iptables chain のルールで行います(UFWでは行えません)
 - zbx-01: `5432`(PostgreSQL) が host の listen 一覧に現れない（`zabbix-internal`、`internal: true` の Docker network内のみで完結するため）
 - monitor-01: Agent2 の passive check listener (`10050`) は既定で未使用の設計です。bind されている場合も、外部からの到達は ZNW-08 で別途確認します
 
@@ -162,26 +162,30 @@ ssh -t "$ZBX_HOST" \
 ssh "$MONITOR_HOST" "nc -zv -w 3 $ZBX_IP $TRAPPER_PORT"
 ```
 
-SYN のみ見えて応答がなければ zbx-01 側の listener / UFW を、monitor-01 からの発信自体が zbx-01 に届かなければ上流 FW / security group / route を調べます。
+SYN のみ見えて応答がなければ zbx-01 側の listener / `DOCKER-USER` chain を、monitor-01 からの発信自体が zbx-01 に届かなければ上流 FW / security group / route を調べます。
 
-## 11. ZNW-08: UFW と kernel rule
+## 11. ZNW-08: UFW と DOCKER-USER chain
+
+UFW と `DOCKER-USER` iptables chain は守備範囲が異なるため、分けて確認します。**UFWはDockerが`ports:`で公開したportを経由しないため、trapper(10051/tcp)の送信元制限はUFWのコマンドでは確認できません**([`docs/security.md`](../security.md)、[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)参照)。
 
 ```bash
+# UFW: SSH(22/tcp)などDockerが公開していないportの既定deny incoming運用を確認
 ssh "$ZBX_HOST" 'sudo ufw status verbose'
-ssh "$ZBX_HOST" 'sudo ufw status numbered'
-ssh "$ZBX_HOST" 'sudo nft list ruleset || sudo iptables -S'
+
+# DOCKER-USER chain: trapper(10051/tcp)の送信元制限はここで確認する
+ssh "$ZBX_HOST" 'sudo iptables -L DOCKER-USER -n --line-numbers'
 ```
 
 確認点:
 
-- `Status: active`、default incoming が deny
-- `22/tcp` は repository既定でUFW `LIMIT`。production受入では管理元CIDR限定であること（[Linux版09](../build-package/09-network-validation-procedure.md)と同方針）
-- `10051/tcp` は **monitor-01 の IP（`$MONITOR_IP`）だけを送信元に許可**する rule があり、それ以外の送信元への allow が無い
-- `$WEB_PORT` の外部向け allow rule が無い（loopback bind自体で守られており、UFWでの追加開放は不要という設計）
-- `5432/tcp` の外部向け allow rule が無い
-- cloud VM の場合は security group / NACL と UFW の両方を別途採録
+- UFW: `Status: active`、default incoming が deny
+- UFW: `22/tcp` は repository既定でUFW `LIMIT`。production受入では管理元CIDR限定であること（[Linux版09](../build-package/09-network-validation-procedure.md)と同方針）
+- UFW: `$WEB_PORT`・`10051/tcp`・`5432/tcp`への外部向けallow ruleが無い(UFWはこれらのportの送信元制限を担わない設計のため、そもそもruleを追加していない)
+- `DOCKER-USER` chain: `10051/tcp`宛で、**monitor-01 の IP（`$MONITOR_IP`）へのACCEPT rule**が、**送信元を問わないDROP rule**より上の行にある(先に評価される)ことを確認
+- `DOCKER-USER` chain にmonitor-01のIP以外からのACCEPT ruleが無い
+- cloud VM の場合は security group / NACL も別途採録(こちらもUFWとは独立した防御層)
 
-Frontend が「bind addressだけで守る」設計であるのに対し、trapperは「ゆるくbindしUFWのsource CIDRで絞る」設計です。この違いを結果票の備考に明記し、両者を混同しないようにします。
+Frontend が「bind addressだけで守る」設計であるのに対し、trapperは「ゆるくbindし`DOCKER-USER`chainのiptables source制限で絞る」設計です。この違いを結果票の備考に明記し、両者を混同しないようにします。
 
 ## 12. ZNW-09: end-to-end(2方向)
 
@@ -221,8 +225,8 @@ ssh "$MONITOR_HOST" \
 | --- | --- | --- | --- |
 | FQDN を解決できない | DNS server / record 不整合 | `dig`、`getent` | DNS 応答なし、NXDOMAIN、双方の値の差異を分離 |
 | zbx-01 へ IP到達しない | route / gateway 不整合 | `ip route get`、`ping` | ICMP 方針を確認後、TCP へ進む |
-| Frontend に管理端末から直接繋がる（想定外） | bind address または UFW の誤設定 | `ss -lntup`、`ufw status verbose` | `$WEB_PORT` の bind、`compose.zabbix.yaml` の port mapping を確認 |
-| monitor-01 から trapper が connection refused | zbx-01 の UFW が monitor-01 の IP を許可していない、または `zabbix-server` コンテナ停止 | `ufw status numbered`、`ss -lntup`、`docker compose -f compose.zabbix.yaml ps` | UFW source rule かコンテナ状態かを分離 |
+| Frontend に管理端末から直接繋がる（想定外） | `ZABBIX_WEB_PORT`のbind address誤設定(`.env`が`0.0.0.0`等へ上書きされている)。UFWの設定はこの経路に無関係 | `ss -lntup`、`docker compose -f compose.zabbix.yaml config` | `$WEB_PORT` の bind、`compose.zabbix.yaml` の port mapping を確認 |
+| monitor-01 から trapper が connection refused | zbx-01 の `DOCKER-USER` chain が monitor-01 の IP を許可していない、または `zabbix-server` コンテナ停止 | `iptables -L DOCKER-USER -n --line-numbers`、`ss -lntup`、`docker compose -f compose.zabbix.yaml ps` | `DOCKER-USER` chain の rule かコンテナ状態かを分離(UFWは無関係) |
 | monitor-01 から trapper が timeout | 上流 FW / security group / route 不整合 | `tcpdump`、`ip route`、security group | packet 到着前後で担当境界を分離 |
 | trapper へ TCP接続はできるが `zabbix_sender` が `failed` を返す | Frontend で Host `monitor-01` が未登録、または Template 未リンク | Frontend の Host一覧、[構築手順書](05-build-procedure.md)のHost登録手順 | ネットワーク疎通(本書)と Host 登録(`ZIT-03`)を切り分け、後者は本書の対象外と明記 |
 | HTTP 502（Frontendの内部エラー） | web コンテナから DB / server コンテナへ到達不可 | `docker compose logs`、`zabbix-internal` network の状態 | コンテナ健全性、DB接続文字列、network membership を確認 |
@@ -235,6 +239,6 @@ ssh "$MONITOR_HOST" \
 - [ ] raw log と結果票の日時、commit SHA、環境（zbx-01・monitor-01双方）が一致する
 - [ ] packet capture、IP、MAC、hostname、account 情報を共有前にマスクした
 - [ ] 一時的な SSH tunnel、`nc` / `zabbix_sender` の接続確認プロセスが終了している
-- [ ] trapper の UFW source rule、Zabbix Server / Agent2 の設定を本手順から変更していないことを確認した
+- [ ] trapper の `DOCKER-USER` chain のルール、Zabbix Server / Agent2 の設定を本手順から変更していないことを確認した
 - [ ] ZNW-09の`zabbix_sender`結果で `failed` が出た場合、trapperのネットワーク疎通(本書)とHost登録(`ZIT-03`)の境界を結果票に明記した
 - [ ] 問題があれば一次記録と Issue を相互リンクした

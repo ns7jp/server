@@ -49,8 +49,10 @@ services:
     ports:
       # trapper port。他ホスト(monitor-01)のZabbix Agent2 active checkがここへ
       # 接続してくる唯一の監視系ポートなので、Frontendと違いloopback限定にはできない。
-      # 実ホストでは ZABBIX_SERVER_BIND_ADDRESS をzbx-01のinterface addressへ上書きし、
-      # UFWでmonitor-01のIPだけに送信元を絞る（docs/build-package-zabbix/04-network-ip-plan.md）。
+      # 実ホストでは ZABBIX_SERVER_BIND_ADDRESS をzbx-01のinterface addressへ上書きする。
+      # 送信元制限はUFWでは行えない（Dockerが公開したportはUFWが制御するhostのINPUT chainを
+      # 経由しないため）。DOCKER-USER iptables chainでmonitor-01のIPだけを許可する
+      # （docs/build-package-zabbix/04-network-ip-plan.md、docs/security.md参照）。
       - "${ZABBIX_SERVER_BIND_ADDRESS:-127.0.0.1}:10051:10051"
     volumes:
       - zabbix_server_data:/var/lib/zabbix
@@ -60,7 +62,10 @@ services:
     security_opt:
       - no-new-privileges:true
     healthcheck:
-      test: ["CMD-SHELL", "zabbix_server -R log_level_increase 2>&1 | grep -qv 'no active processes'"]
+      # zabbix_server の runtime control (-R) は log_level_increase のように状態を変更する
+      # コマンドしか無く、読み取り専用のping相当が無いため、healthcheckとしては使わない
+      # （ヘルスチェックのたびにログレベルが上がり続けてしまう）。プロセスの存在だけを見る。
+      test: ["CMD-SHELL", "pgrep -x zabbix_server >/dev/null"]
       interval: 30s
       timeout: 10s
       retries: 5

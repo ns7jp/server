@@ -46,7 +46,7 @@ flowchart LR
     Server -->|"Trigger/Action"| Slack["Slack Incoming Webhook\n（用意した場合のみ）"]
 ```
 
-zbx-01上の2つの公開ポートは、bindの考え方が異なります。Frontendは`127.0.0.1`限定でSSH tunnel経由の利用のみを前提とし（既存パックと同じ「管理UIは外部公開しない」方針）、trapper(10051/tcp)はmonitor-01のAgent2がactive checkでpushしてくる唯一の監視系ポートのため、loopback限定にはできません。ゆるくbindしつつUFWの送信元CIDR（monitor-01のIPのみ）で絞る設計とし、[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)で両者の違いを明示します。
+zbx-01上の2つの公開ポートは、bindの考え方が異なります。Frontendは`127.0.0.1`限定でSSH tunnel経由の利用のみを前提とし（既存パックと同じ「管理UIは外部公開しない」方針）、trapper(10051/tcp)はmonitor-01のAgent2がactive checkでpushしてくる唯一の監視系ポートのため、loopback限定にはできません。ゆるくbindしつつ、DockerがPublishしたportには効かないUFWではなく`DOCKER-USER` iptables chainで送信元（monitor-01のIPのみ）を絞る設計とし、[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)で両者の違いを明示します。
 
 server-monitorアプリの`/healthz`は[Linux版ネットワーク設計](../build-package/04-network-ip-plan.md)によりloopback限定で外部非公開のため、zbx-01のZabbix Serverはネットワーク越しに直接probeできません。そこでZabbixの「web監視シナリオ」は使わず、monitor-01自身のAgent2にUserParameter(`service_monitor.healthz`)を追加し、ホスト内部からcurlする設計とすることで、既存の「管理UIを外部公開しない」方針を崩さずに死活監視を実現します。
 

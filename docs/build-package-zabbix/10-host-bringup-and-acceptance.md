@@ -47,11 +47,11 @@ OSは[パラメータシート](03-parameter-sheet.md)のとおり**Ubuntu Serve
 | 接続不能になったときの復旧手段(コンソール) | |
 | 停止許容時間 | |
 
-**SSHだけに依存しないでください。** VPSのコンソール(シリアル / VNC)に入れることを、UFWでtrapperの送信元を絞る前に必ず確認します。
+**SSHだけに依存しないでください。** VPSのコンソール(シリアル / VNC)に入れることを、`DOCKER-USER` chainでtrapperの送信元を絞る前に必ず確認します。
 
 ## 2. 構築
 
-[構築手順書](05-build-procedure.md)の0〜9節をそのまま実行します。本パックは専用Ansible roleを持たないため([要件定義書](00-requirements.md)の実装区分参照)、`docker compose up -d`(済(自動))以外はすべて手順書のコマンド・UIクリックを1つずつ実行する「済(手動)」です。
+[構築手順書](05-build-procedure.md)の0〜10節をそのまま実行します。本パックは専用Ansible roleを持たないため([要件定義書](00-requirements.md)の実装区分参照)、`docker compose up -d`(済(自動))以外はすべて手順書のコマンド・UIクリックを1つずつ実行する「済(手動)」です。
 
 ```bash
 ssh <ssh-user>@192.0.2.11
@@ -62,16 +62,20 @@ docker compose -f compose.zabbix.yaml up -d
 # 2回目。Recreating / Recreatedが出ないことを確認する(ZIT-02)
 ```
 
-### trapperの送信元CIDRを実際の値に絞る
+### trapperの送信元を実際のIPに絞る(DOCKER-USER chain。UFWではない)
 
-[構築手順書](05-build-procedure.md)2.1節の既定は例示IP(`192.0.2.10`)です。実ホストでは`monitor-01`の実際のIPへ置き換えます。
+[構築手順書](05-build-procedure.md)2.1節の既定は例示IP(`192.0.2.10`)です。実ホストでは`monitor-01`の実際のIPへ置き換えます。**この送信元制限はUFWではなく`DOCKER-USER` iptables chainで行います**(DockerがPublishしたportはUFWの`INPUT`chainを経由しないため。[04-network-ip-plan.md](04-network-ip-plan.md)参照)。
 
 ```bash
-sudo ufw allow from <monitor-01の実IP> to any port 10051 proto tcp comment 'zabbix trapper from monitor-01'
-sudo ufw status verbose
+sudo iptables -I DOCKER-USER -p tcp --dport 10051 -j DROP
+sudo iptables -I DOCKER-USER -p tcp --dport 10051 -s <monitor-01の実IP> -j ACCEPT
+sudo iptables -L DOCKER-USER -n --line-numbers
+sudo netfilter-persistent save
 ```
 
-**絞る前にコンソールで入れることを確認しておきます。** Frontend(`${ZABBIX_WEB_PORT:-8081}/tcp`)はloopback bindが唯一の防御線のためUFWルールの追加はありませんが、trapperはUFWの送信元制限が唯一の防御線です。この違いを混同しないでください([04-network-ip-plan.md](04-network-ip-plan.md)参照)。
+`-I`はchainの先頭へ挿入するため、DROPを先に、ACCEPTを後に実行します(順序は[構築手順書](05-build-procedure.md)2.1節を参照)。`netfilter-persistent save`を忘れると再起動後にルールが消えます。
+
+**絞る前にコンソールで入れることを確認しておきます。** Frontend(`${ZABBIX_WEB_PORT:-8081}/tcp`)はloopback bindが唯一の防御線のため追加のfirewallルールは不要ですが、trapperは`DOCKER-USER` chainの送信元制限が唯一の防御線です。この違いを混同しないでください([04-network-ip-plan.md](04-network-ip-plan.md)参照)。
 
 ## 3. 受け入れ試験
 

@@ -48,10 +48,10 @@
 | 全体状態 | `docker compose -f compose.zabbix.yaml ps` |
 | compose構文確認 | `docker compose -f compose.zabbix.yaml config --quiet` |
 | bind address確認 | `ss -lntup` |
-| trapper firewall確認 | `ufw status verbose` |
+| trapper firewall確認 | `sudo iptables -L DOCKER-USER -n --line-numbers`（`ufw status verbose`はDockerが公開したportを経由しないため使えない） |
 | Zabbix Server/Web ログ | `docker compose -f compose.zabbix.yaml logs --tail 100 zabbix-server zabbix-web` |
 | DB backup実行 | [`scripts/ops/zabbix-backup.sh`](../../scripts/ops/zabbix-backup.sh) |
-| backup timer | `systemctl list-timers`（unit名は[構築手順書](05-build-procedure.md)の実機記入欄を参照） |
+| backup timer | `systemctl list-timers zabbix-backup.timer`（unit定義は[`deploy/systemd/`](../../deploy/systemd/)、配置手順は[構築手順書 7節](05-build-procedure.md)） |
 | 直近error log | `journalctl -p err --since today --no-pager` |
 | runbook一覧 / 共通前提 | [`docs/runbooks/README.md`](../runbooks/README.md) |
 | backup / restore一般ルール | [`docs/backup-restore.md`](../backup-restore.md) |
@@ -73,8 +73,8 @@
 ## セキュリティ
 
 - [ ] 秘密値（DBパスワード、Slack webhook URL）そのものではなく、安全な受け渡し・再発行方法を共有した
-- [ ] 不要な一時アカウント、テストデータ、UFW許可を削除した
-- [ ] SSH、sudo、UFW、Frontend / trapperの公開portを確認し、trapper（`10051/tcp`）の許可送信元が`monitor-01`のIPのみに限定されていることを採録した（ZST-04）
+- [ ] 不要な一時アカウント、テストデータ、UFW許可、`DOCKER-USER`chainの一時ルールを削除した
+- [ ] SSH（UFW）、trapper（`DOCKER-USER` iptables chain。UFWでは確認できない）、Frontend / trapperの公開portを確認し、trapper（`10051/tcp`）の許可送信元が`monitor-01`のIPのみに限定されていることを採録した（ZST-04）
 - [ ] Zabbix Frontend既定管理者（`Admin`/`zabbix`）のパスワードが変更済みであることを確認した（ZST-02）
 - [ ] 実ログとスクリーンショットから IP、account ID、秘密値をマスクした
 

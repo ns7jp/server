@@ -161,10 +161,11 @@ flowchart LR
 - **一言**: どの IP・ポートに、誰が、どこから接続できるかを決めた文書
 - **なぜ必要か**: 「公開してよい範囲」を先に決めておかないと、管理UIをうっかり
   インターネットへ公開してしまう事故につながるため
-- **読むポイント**: Frontend（loopback限定）とtrapper（送信元CIDR限定）で守り方の
-  設計思想が違う理由
+- **読むポイント**: Frontend（loopback限定）とtrapper（送信元制限）で守り方の
+  設計思想が違う理由。trapperの送信元制限がUFWではなく`DOCKER-USER`chainである理由
 - **実例**: Frontendは`127.0.0.1`限定でSSH tunnel経由、trapper(`10051/tcp`)だけは
-  `monitor-01`のIPを送信元に指定したUFWルールで許可
+  `monitor-01`のIPを送信元に指定した`DOCKER-USER` iptables chainのルールで許可
+  (DockerがPublishしたportはUFWの`INPUT`chainを経由しないため)
 
 ### 05 構築手順書
 
@@ -268,7 +269,7 @@ Zabbix を初めて触る人が、専門用語を専門用語のまま覚えよ�
 | Severity（重要度） | 一言で言うと、Triggerの深刻さのランク。本パックはDisaster（Agent自体unreachable）/High（healthz異常）/Warning（閾値超過）の3段階を使う |
 | active check（アクティブチェック） | 一言で言うと、監視対象（`monitor-01`）側のAgent2が、自分からZabbix Server（`zbx-01`）へ値を**push**する方式。本パックの主方式 |
 | passive check（パッシブチェック） | 一言で言うと、Zabbix Server側から監視対象へ値を**取りに行く（pull）**方式。本パックは既定で未使用、将来拡張として設計のみ示す |
-| trapper（トラッパー） | 一言で言うと、active checkのpushを受け取るZabbix Serverの受け口（`10051/tcp`）。他ホストからの着信を受ける唯一の監視系ポートなので、Frontendとは異なりloopback限定にできない |
+| trapper（トラッパー） | 一言で言うと、active checkのpushを受け取るZabbix Serverの受け口（`10051/tcp`）。他ホストからの着信を受ける唯一の監視系ポートなので、Frontendとは異なりloopback限定にできない。送信元の制限はUFWではなく`DOCKER-USER`chainで行う（DockerがPublishしたportはUFWが見るhostの`INPUT`chainを経由しないため） |
 | Agent2 | 一言で言うと、監視対象ホストにインストールする収集エージェントのソフトウェア本体。従来のZabbix Agentの後継 |
 | UserParameter（ユーザーパラメータ） | 一言で言うと、組み込みのItemだけでは取れない値を、Agent2の設定ファイルに1行追加して独自に定義する仕組み。本パックは`service_monitor.healthz`をこれで取る |
 | Frontend（フロントエンド） | 一言で言うと、ブラウザで操作するZabbixの管理画面（Web UI）。本パックは`zabbix-web`コンテナが提供する |

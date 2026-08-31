@@ -87,7 +87,7 @@ flowchart LR
 
 構築コードはリポジトリルートの`compose.zabbix.yaml`です。CI（`python-check.yml`）で`docker compose -f compose.zabbix.yaml config --quiet`により構文検証済み（ZUT-01）ですが、`zbx-01`実機への適用実績はまだなく、初回適用・冪等性の確認（ZIT-01/ZIT-02）は`NOT RUN`です。
 
-ポート設計はFrontendとtrapperで思想が異なります。Frontend（`${ZABBIX_WEB_PORT:-8081}/tcp`）はloopback限定でSSH tunnel経由の利用を前提とし、trapper（`10051/tcp`）だけは`monitor-01`からの着信を送信元CIDR制限（UFW）で受け入れます。詳細は[04-network-ip-plan.md](04-network-ip-plan.md)を参照してください。
+ポート設計はFrontendとtrapperで思想が異なります。Frontend（`${ZABBIX_WEB_PORT:-8081}/tcp`）はloopback限定でSSH tunnel経由の利用を前提とし、trapper（`10051/tcp`）だけは`monitor-01`からの着信を`DOCKER-USER` iptables chainでの送信元制限（DockerがPublishしたportにはUFWが効かないため）で受け入れます。詳細は[04-network-ip-plan.md](04-network-ip-plan.md)を参照してください。
 
 ネットワーク実機検証は、[Linux版パック](../build-package/README.md)と共用の[結果票テンプレート](../evidence/templates/network-host-validation.md)を使い、「管理端末→`zbx-01`」「`monitor-01`→`zbx-01:10051`（trapper）」の2方向を確認します。日付付きの結果票が保存されるまで`NOT RUN`です。
 

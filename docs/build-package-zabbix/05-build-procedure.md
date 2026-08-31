@@ -4,12 +4,12 @@
 
 本書は、[要件定義書](00-requirements.md)・[基本設計書](01-basic-design.md)・[詳細設計書](02-detailed-design.md)・[パラメータシート](03-parameter-sheet.md)・[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)を受けて、新規の監視サーバーホスト`zbx-01`(Ubuntu Server 24.04 LTS)へZabbix 7.0 LTS一式を構築し、既存の監視対象ホスト`monitor-01`(既存、[Linux版パック](../build-package/README.md)がすでに構築済み)へZabbix Agent2を追加導入する手順を示します。
 
-本パックは専用Ansible role(`ansible/roles/zabbix_agent`相当)を持たない「未実装」区分のため、0〜9節はすべて次のいずれかです。
+本パックは専用Ansible role(`ansible/roles/zabbix_agent`相当)を持たない「未実装」区分のため、0〜10節はすべて次のいずれかです。
 
 | 節 | 区分 | 内容 |
 | --- | --- | --- |
 | 2節 | 済(自動) | `docker compose -f compose.zabbix.yaml up -d`による非対話コマンド一発の構築 |
-| 1・2(前半)・4・5・7・8・9節 | 済(手動) | コマンド・UIクリック手順を1つずつ実行する作業 |
+| 1・2(前半)・3・4・5・7・8・9節 | 済(手動) | コマンド・UIクリック手順を1つずつ実行する作業 |
 
 「済(自動)」を、既存の`site.yml`のような全自動構築(Ansible role)と混同しないでください。`docker compose up -d`より前のDocker導入・UFW設定・秘密値準備、より後のFrontend UI操作は、すべて本書のコマンド・クリック手順を人手で実行する「済(手動)」です。
 
@@ -39,26 +39,38 @@ cat deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example
 
 ## 2. zbx-01でのDocker導入とcompose構築(NFR-01、NFR-02)
 
-### 2.1 OSパッケージとUFWの初期設定
+### 2.1 OSパッケージとUFW/DOCKER-USERの初期設定
 
 ```bash
 ssh <ssh-user>@192.0.2.11
 sudo apt-get update
-sudo apt-get install -y ca-certificates curl git gnupg ufw
+sudo apt-get install -y ca-certificates curl git gnupg ufw iptables-persistent
 ```
 
-UFWは、Docker導入より前に既定deny incomingとSSHのrate limit、trapper(10051/tcp)の送信元CIDR限定を設定しておきます([ネットワーク設計・IPアドレス表](04-network-ip-plan.md)を正本とします)。
+`iptables-persistent`のインストール中に現在のルールセットを保存するか聞かれた場合は、この時点ではまだtrapper用ルールを追加していないため、そのまま保存して構いません(後述のルール追加後にあらためて保存します)。
+
+UFWは、Docker導入より前に既定deny incomingとSSHのrate limitを設定しておきます([ネットワーク設計・IPアドレス表](04-network-ip-plan.md)を正本とします)。
 
 ```bash
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw limit 22/tcp
-sudo ufw allow from 192.0.2.10 to any port 10051 proto tcp comment 'zabbix trapper from monitor-01'
 sudo ufw enable
 sudo ufw status verbose
 ```
 
 `${ZABBIX_WEB_PORT:-8081}/tcp`はcompose側で`127.0.0.1`にbindするため、UFWへ個別のallowルールは追加しません(bind address自体が唯一の防御線であるため)。5432/tcp(PostgreSQL)もDocker internal network限定のためUFWルールは不要です。
+
+**trapper(10051/tcp)の送信元制限はUFWでは設定しません。** DockerがPublishしたportはDockerが管理するiptablesの`DOCKER`/`FORWARD`chainを経由し、UFWが制御するhostの`INPUT`chainを経由しないため、`ufw allow`ルールは実際には効きません([`docs/security.md`](../security.md)、[ネットワーク設計・IPアドレス表](04-network-ip-plan.md#2-frontendとtrapperで設計思想が異なる理由本書の中心)参照)。代わりに、Docker自身が推奨する`DOCKER-USER`chainへ直接ルールを追加します。このchainはDockerデーモン起動時に自動作成されるため、Docker Engine導入(2.2節)より後にこの手順を実施してください。
+
+```bash
+sudo iptables -I DOCKER-USER -p tcp --dport 10051 -j DROP
+sudo iptables -I DOCKER-USER -p tcp --dport 10051 -s 192.0.2.10 -j ACCEPT
+sudo iptables -L DOCKER-USER -n --line-numbers
+sudo netfilter-persistent save
+```
+
+`-I`はchainの先頭へ挿入するため、**DROPを先に、ACCEPTを後に**実行します(後から挿入した方が先頭に来るため、最終的に「`monitor-01`からのACCEPT」が「それ以外のDROP」より先に評価される順序になります)。`iptables -L DOCKER-USER -n --line-numbers`の出力で、`monitor-01`のIP(`192.0.2.10`)へのACCEPTがDROPより上の行になっていることを確認してください。`netfilter-persistent save`を忘れると、ホスト再起動後にルールが消え、trapperが無制限公開の状態に戻ります(10 立ち上げと受け入れ試験の再起動後確認で検出します)。
 
 ### 2.2 Docker Engine / Docker Composeの導入
 
@@ -122,7 +134,7 @@ ZABBIX_WEB_PORT=8081
 ZABBIX_SERVER_BIND_ADDRESS=192.0.2.11
 ```
 
-既定の`127.0.0.1`のままではtrapperが`monitor-01`から到達不能になります。bindを緩めた分の防御は、2.1節で設定済みのUFW送信元CIDR制限(`monitor-01`のIPのみ許可)が担う設計です([ネットワーク設計・IPアドレス表](04-network-ip-plan.md)を参照)。
+既定の`127.0.0.1`のままではtrapperが`monitor-01`から到達不能になります。bindを緩めた分の防御は、2.1節で設定済みの`DOCKER-USER` iptables chainの送信元制限(`monitor-01`のIPのみ許可。UFWではない)が担う設計です([ネットワーク設計・IPアドレス表](04-network-ip-plan.md)を参照)。
 
 ### 2.4 初回構築(NFR-01、ZIT-01)
 
@@ -200,14 +212,14 @@ sudo $EDITOR /etc/zabbix/zabbix_agent2.conf
 
 ```
 Hostname=monitor-01
-Server=192.0.2.11
 ServerActive=192.0.2.11:10051
+StartAgents=0
 ```
 
-`Server`は将来passive checkを使う場合の許可元(既定では実質未使用)、`ServerActive`が本パックの主方式であるactive checkのpush先です。設定後、値を確認します。
+`ServerActive`が本パックの主方式であるactive checkのpush先です。`StartAgents=0`は、passive check用のlistenerプロセスを起動数0にして**完全に無効化**する設定です。Agent2は既定で`Server`の設定有無にかかわらず`0.0.0.0:10050`でlistenするため(`Server`は接続元の許可リストにすぎず、listenerの起動有無を制御しません)、active checkのみを使う本パックの設計では`StartAgents=0`が唯一の正しい無効化手段です。`Server`行は passive check を使わないため設定しません(コメントアウトのまま)。設定後、値を確認します。
 
 ```bash
-grep -E '^(Hostname|Server|ServerActive)=' /etc/zabbix/zabbix_agent2.conf
+grep -E '^(Hostname|ServerActive|StartAgents)=' /etc/zabbix/zabbix_agent2.conf
 ```
 
 ### 4.3 UserParameter(service_monitor.healthz)の配置
@@ -327,10 +339,10 @@ webhookと受信先を用意していない環境では、5.5節の設定はプ�
 ```bash
 docker compose -f compose.zabbix.yaml ps
 ssh <ssh-user>@192.0.2.11 'ss -lntup'
-ssh <ssh-user>@192.0.2.11 'sudo ufw status verbose'
+ssh <ssh-user>@192.0.2.11 'sudo iptables -L DOCKER-USER -n --line-numbers'
 ```
 
-`ss -lntup`でFrontendが`127.0.0.1:8081`のみ、trapperが`0.0.0.0:10051`(または設定したinterface address)でlistenしていることを確認します。`ufw status verbose`で`10051/tcp`の許可送信元が`monitor-01`のIP(`192.0.2.10`)のみであることを確認します(ZST-01、ZST-04)。
+`ss -lntup`でFrontendが`127.0.0.1:8081`のみ、trapperが`0.0.0.0:10051`(または設定したinterface address)でlistenしていることを確認します。`10051/tcp`の送信元制限は`ufw status verbose`では確認できません(UFWはDockerが公開したportを経由しません)。`iptables -L DOCKER-USER -n --line-numbers`で、`monitor-01`のIP(`192.0.2.10`)へのACCEPTがDROPより上の行にあることを確認します(ZST-01、ZST-04)。
 
 `monitor-01`側:
 
@@ -339,7 +351,7 @@ ssh <ssh-user>@192.0.2.10 'systemctl status zabbix-agent2 --no-pager'
 ssh <ssh-user>@192.0.2.10 'ss -lntup | grep -E "10050|8080"'
 ```
 
-`zabbix-agent2`が`active`であることを確認します。`ss -lntup`の結果は、`8080/tcp`がserver-monitorアプリの既存設計どおり`127.0.0.1`限定で待受していること、`10050/tcp`(passive check用listener)は本パックの既定では未使用のため表示されないか、表示される場合も`127.0.0.1`または`zbx-01`のIP限定であることを確認します(ZIT-03、ZST-01)。`10050/tcp`が`0.0.0.0`のような広い範囲でlistenしている場合は、passive checkを有効化した設計変更漏れが無いか見直します。
+`zabbix-agent2`が`active`であることを確認します。`ss -lntup`の結果は、`8080/tcp`がserver-monitorアプリの既存設計どおり`127.0.0.1`限定で待受していること、`10050/tcp`は`zabbix_agent2.conf`の`StartAgents=0`によりlistener自体が無効化されているため**`grep`の結果に一切表示されない**ことを確認します(ZIT-03、ZST-01)。`10050/tcp`が何らかの形で表示される場合は、`StartAgents=0`の設定漏れです。
 
 Frontend側(ZIT-03、ZIT-05):
 
@@ -349,7 +361,30 @@ Frontend側(ZIT-03、ZIT-05):
 
 [試験仕様書・結果票](06-test-specification.md)の必須ID(`ZUT-01`〜`03`、`ZIT-01`〜`05`、`ZIT-07`〜`09`、`ZST-01`〜`04`)を実施し、スクリーンショットだけでなく再現コマンドと主要な実出力を保存します。実ホストのIP、route、DNS、待受、HTTP、UFWの確認は、本節の簡易確認とは別に[ネットワーク実機検証手順](09-network-validation-procedure.md)(`ZNW-01`〜`09`)に従って個別の結果票へ記録します。
 
-## 7. D-Z1障害演習(ZIT-07、NFR-08)
+## 7. バックアップ設定(NFR-05、ZIT-08)
+
+`scripts/ops/zabbix-backup.sh`自体は作成済みですが、実行するにはsystemd timerとしての登録が別途必要です。`/opt/zabbix-lab`へclone済みのリポジトリからunit fileを配置します。
+
+```bash
+sudo install -m 0644 /opt/zabbix-lab/deploy/systemd/zabbix-backup.service /etc/systemd/system/zabbix-backup.service
+sudo install -m 0644 /opt/zabbix-lab/deploy/systemd/zabbix-backup.timer /etc/systemd/system/zabbix-backup.timer
+sudo install -d -m 0750 /var/backups/zabbix
+sudo systemctl daemon-reload
+sudo systemctl enable --now zabbix-backup.timer
+systemctl list-timers zabbix-backup.timer
+```
+
+`zabbix-backup.timer`は毎日03:45(host timezone、既定`Asia/Tokyo`)に`zabbix-backup.service`を起動し、`scripts/ops/zabbix-backup.sh --project-dir /opt/zabbix-lab`を実行します。動作確認は初回の定時実行を待たず、手動で1回実行して確認します。
+
+```bash
+sudo systemctl start zabbix-backup.service
+sudo systemctl status zabbix-backup.service --no-pager
+ls -la /var/backups/zabbix
+```
+
+`/var/backups/zabbix/zabbix-<timestamp>.dump`と対応する`.sha256`が生成されていることを確認します(ZIT-08)。
+
+## 8. D-Z1障害演習(ZIT-07、NFR-08)
 
 1. 事前状態を確認します。
 
@@ -380,7 +415,7 @@ Frontend側(ZIT-03、ZIT-05):
 
 6. RTO(検知時刻から復旧時刻までの所要時間)を算出し、検知時刻・復旧時刻・実行したコマンドと実出力を[トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md)の様式で日付付きevidenceへ保存します。webhookと受信先を用意している場合は、Slackへの通知到達もあわせて記録します。
 
-## 8. ロールバック
+## 9. ロールバック
 
 構成コード(compose定義・秘密値ファイルの参照先・UserParameter配置)が原因の場合と、Frontend上の設定変更が原因の場合、データ破損の場合とで手順が異なります。優先順位と記録様式は[変更・ロールバック計画](08-change-rollback-plan.md)を正本とします。
 
@@ -411,7 +446,7 @@ Frontend側(ZIT-03、ZIT-05):
 
 いずれの手段を使った場合も、ロールバック後は6節の構築後確認と、影響範囲に応じた試験(該当する`ZIT`/`ZST`)を再実行します。
 
-## 9. 作業終了
+## 10. 作業終了
 
 - 結果票、実行ログ、Frontendの画面キャプチャを保存します
 - 一時ファイルを削除します
@@ -421,7 +456,7 @@ Frontend側(ZIT-03、ZIT-05):
   ssh <ssh-user>@192.0.2.10 'rm -f ~/zabbix-release_latest_7.0+ubuntu24.04_all.deb'
   ```
 
-- D-Z1演習は`systemctl stop`/`start`のみで一時的なfirewall許可を追加しないため、演習用の追加ルールの削除は不要です。演習以外で一時的にUFW許可やテストデータを追加した場合は削除します
+- D-Z1演習は`systemctl stop`/`start`のみで一時的なfirewall許可を追加しないため、演習用の追加ルールの削除は不要です。演習以外で一時的にUFW許可・`DOCKER-USER` chainのルールやテストデータを追加した場合は削除します
 - 未解決事項をIssue化します
 - [作業結果・引き渡し報告書](11-work-result-report.md)を日付付きevidenceへ複製し、計画対実績、実行時間、対象commit SHA、設計差異、障害、残存リスクを記入します
 - 報告書の試験集計と個別結果票の件数が一致することを確認します

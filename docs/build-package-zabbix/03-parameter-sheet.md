@@ -74,7 +74,7 @@ Ubuntu 24.04 LTS以外のOSファミリーは本パックの対象外です。RH
 | Check方式 | active check(monitor-01のAgent2→zbx-01:10051へpush)を主方式とする。passive checkは既定未使用の任意拡張 | [02-detailed-design.md](02-detailed-design.md) |
 | Agent2 `Hostname`(monitor-01) | `monitor-01` | `/etc/zabbix/zabbix_agent2.conf`(monitor-01) |
 | Agent2 `ServerActive`(monitor-01) | `192.0.2.11:10051`(zbx-01のIP) | 同上 |
-| Agent2 `Server`(monitor-01) | `192.0.2.11`(passive checkを将来使う場合の許可元。既定では実質未使用) | 同上 |
+| Agent2 `StartAgents`(monitor-01) | `0`(passive check用listenerを完全に無効化。`10050/tcp`を一切listenしない) | 同上 |
 | カスタムItem key | `service_monitor.healthz` | `deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example` |
 | UserParameter実体 | `UserParameter=service_monitor.healthz,curl --silent --fail --max-time 3 http://127.0.0.1:8080/healthz >/dev/null && echo 1 || echo 0` | 同上 |
 | カスタムTrigger | `service_monitor.healthz`が1以外を3分間観測 → Problem(Severity: High) | Frontend設定 |
@@ -94,7 +94,7 @@ Ubuntu 24.04 LTS以外のOSファミリーは本パックの対象外です。RH
 | 配備ルート(zbx-01) | 本リポジトリのcheckout先。実機での配置パスは`NOT SET`(実機決定時に「実機記入欄」へ記録) | `docker compose -f compose.zabbix.yaml ps` |
 | Compose files | `compose.zabbix.yaml`(既存の`compose.yaml`本体・`compose.ansible.yaml`とは独立) | `docker compose -f compose.zabbix.yaml config --quiet` |
 | backup script | `scripts/ops/zabbix-backup.sh` | `bash -n scripts/ops/zabbix-backup.sh` |
-| backup unit(systemd timer) | `NOT SET`(実機決定時にunit名を[構築手順書](05-build-procedure.md)へ記録) | `systemctl status` / `systemctl list-timers` |
+| backup unit(systemd timer) | `zabbix-backup.service` / `zabbix-backup.timer`(`deploy/systemd/`が正本。[構築手順書 7節](05-build-procedure.md)で`/etc/systemd/system/`へ配置・enable) | `systemctl status zabbix-backup.service` / `systemctl list-timers zabbix-backup.timer` |
 | backup directory | `/var/backups/zabbix` | `findmnt` / directory owner・mode |
 | Agent2設定ファイル(monitor-01) | `/etc/zabbix/zabbix_agent2.conf`、`/etc/zabbix/zabbix_agent2.d/service_monitor_healthz.conf` | `zabbix_agent2 -t agent.ping` |
 | 主要ログ | Docker logs(`docker compose -f compose.zabbix.yaml logs`)、monitor-01側`journalctl -u zabbix-agent2` | 本書 / [トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md) |
@@ -105,9 +105,9 @@ Ubuntu 24.04 LTS以外のOSファミリーは本パックの対象外です。RH
 | --- | --- | --- | --- |
 | 22/tcp | SSH | UFW `LIMIT`。production受入では管理元CIDR限定(既存パックと同方針) | 構築・運用 |
 | `${ZABBIX_WEB_PORT:-8081}/tcp` | Zabbix Frontend(Nginx同梱) | `127.0.0.1`のみ。運用者はSSH tunnel経由 | 既存パックと同じ「管理UIは外部公開しない」方針 |
-| 10051/tcp | Zabbix Server trapper(active check受信) | monitor-01のIPのみ許可(UFW source指定)。loopback限定にはできない — 他ホストから着信する唯一の監視系ポート | monitor-01のAgent2がactive checkでzbx-01へpushするために必須 |
+| 10051/tcp | Zabbix Server trapper(active check受信) | monitor-01のIPのみ許可(`DOCKER-USER` iptables chainでの送信元制限。UFWはDockerが公開したportに効かない)。loopback限定にはできない — 他ホストから着信する唯一の監視系ポート | monitor-01のAgent2がactive checkでzbx-01へpushするために必須 |
 | 5432/tcp | PostgreSQL | 外部非公開。Docker internal networkのみ | DBは他ホストから直接繋がせない |
-| 10050/tcp(monitor-01側) | Zabbix Agent2 listener(passive check用、既定は未使用) | 既定では未使用(active checkのみ運用)。将来passive checkを使う場合のみ、zbx-01のIP限定で許可 | active checkを主方式とし、pull型のpassiveは任意拡張として設計だけ示す |
+| 10050/tcp(monitor-01側) | Zabbix Agent2 listener(passive check用) | `StartAgents=0`によりlistener自体を無効化。portを一切listenしない | active checkを主方式とし、passive listenerは開かない設計(将来使う場合は`StartAgents`と`zbx-01`のIP限定を別途設計) |
 
 Frontendとtrapperはbindの考え方が異なります。設計理由は[詳細設計書](02-detailed-design.md)と[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)を正本とします。
 
