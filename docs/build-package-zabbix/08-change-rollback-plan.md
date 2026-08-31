@@ -158,6 +158,21 @@ sudo systemctl start zabbix-backup.timer
 
 恒久対応としては、`/opt/zabbix-lab`自体を`$ROLLBACK_SHA`のcheckoutへ置き換えて(または通常の`git checkout`で戻して)worktreeを解消し、unitの参照先を`/opt/zabbix-lab`へ戻すことを推奨します。それまでの間、`$ROLLBACK_WORKTREE`が実質的な配備先になっていることをチームへ共有してください。
 
+**Agent2設定を忘れないこと**: 原因が`deploy/zabbix/`(UserParameter定義)である場合、上記の`zbx-01`側のworktree切り替え・compose再適用だけでは戻りません。`monitor-01`側の配置ファイル(4.3節で個別にコピーしたもの)も同じロールバック先SHAへ戻します。前提条件のとおりSSH鍵アクセスがあるのは管理端末からの経路のみなので、`zbx-01`のシェルではなく管理端末から実行し、`ROLLBACK_SHA`はここで改めて設定します。
+
+```bash
+ROLLBACK_SHA='replace-with-the-full-last-known-good-commit-sha'
+ssh <ssh-user>@192.0.2.10 '
+  git clone https://github.com/ns7jp/server-monitor.git /tmp/server-monitor-zbx-rollback &&
+  git -C /tmp/server-monitor-zbx-rollback checkout '"$ROLLBACK_SHA"' &&
+  sudo install -m 0644 /tmp/server-monitor-zbx-rollback/deploy/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf.example \
+    /etc/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf &&
+  rm -rf /tmp/server-monitor-zbx-rollback &&
+  sudo systemctl restart zabbix-agent2 &&
+  sudo zabbix_agent2 -t service_monitor.healthz
+'
+```
+
 Frontend設定（Host / Template / Trigger / Action）は、上記のコードロールバックでは戻りません。3節のGo / No-Go確認時点でexportしたXMLを、Frontendの「Import」機能から再取込みします。XMLを保存していなかった場合は、7節の`pg_restore`でDBごと戻します。Zabbixの設定はコードではなくDBに保存されるという前提が、Linux版のAnsible再配備と最も異なる点です。
 
 `docker compose ps`のhealthy状態と、Frontend上のHost / Template / Trigger / Actionが変更前の内容と一致することを確認します。ロールバック後も、認証、bind address、trapperの許可送信元、`monitor-01`からのitem last dataを再試験します。不要になった一時worktreeの削除は、証跡を保存し対象pathを確認した後に別作業として行います。
