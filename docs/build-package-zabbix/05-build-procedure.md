@@ -460,15 +460,18 @@ ls -la /var/backups/zabbix
 
    `deploy/secrets/*.txt`と`.env`はGit管理外の実値ファイルのため、`git checkout`の対象に含めません。
 
-   このcheckoutは`zbx-01`上のリポジトリ複製とZabbix Serverスタックだけを戻します。原因が`deploy/zabbix/`(UserParameter定義)の変更である場合、`monitor-01`上の配置ファイル(4.3節で個別にコピーした`/etc/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf`)はこのcheckoutの対象外で、そのままでは変更後(ロールバック対象)の内容が動き続けます。この場合は`monitor-01`側も同じロールバック先SHAへ戻します。
+   このcheckoutは`zbx-01`上のリポジトリ複製とZabbix Serverスタックだけを戻します。原因が`deploy/zabbix/`(UserParameter定義)の変更である場合、`monitor-01`上の配置ファイル(4.3節で個別にコピーした`/etc/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf`)はこのcheckoutの対象外で、そのままでは変更後(ロールバック対象)の内容が動き続けます。この場合は`monitor-01`側も同じロールバック先SHAへ戻します。前提条件のとおりSSH鍵アクセスがあるのは管理端末からの経路のみなので、`zbx-01`のシェルではなく管理端末から、4.3節と同じ手順(`monitor-01`へssh後、そのシェル上で直接git clone)で実行します。
 
    ```bash
-   git clone https://github.com/ns7jp/server-monitor.git /tmp/server-monitor-zbx-rollback
-   git -C /tmp/server-monitor-zbx-rollback checkout <ロールバック先のcommit SHA>
-   scp /tmp/server-monitor-zbx-rollback/deploy/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf.example \
-     <ssh-user>@192.0.2.10:/tmp/service_monitor_healthz.conf
-   ssh <ssh-user>@192.0.2.10 'sudo install -m 0644 /tmp/service_monitor_healthz.conf /etc/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf && rm -f /tmp/service_monitor_healthz.conf && sudo systemctl restart zabbix-agent2 && sudo zabbix_agent2 -t service_monitor.healthz'
-   rm -rf /tmp/server-monitor-zbx-rollback
+   ssh <ssh-user>@192.0.2.10 '
+     git clone https://github.com/ns7jp/server-monitor.git /tmp/server-monitor-zbx-rollback &&
+     git -C /tmp/server-monitor-zbx-rollback checkout <ロールバック先のcommit SHA> &&
+     sudo install -m 0644 /tmp/server-monitor-zbx-rollback/deploy/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf.example \
+       /etc/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf &&
+     rm -rf /tmp/server-monitor-zbx-rollback &&
+     sudo systemctl restart zabbix-agent2 &&
+     sudo zabbix_agent2 -t service_monitor.healthz
+   '
    ```
 
    `service_monitor.healthz`の出力が期待どおり(4.3節・4.4節と同じ)に戻ったことを確認します。
