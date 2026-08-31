@@ -98,18 +98,37 @@ docker compose -f compose.zabbix.yaml logs --tail 100 zabbix-server zabbix-web
 ```bash
 set -euo pipefail
 ROLLBACK_SHA='replace-with-the-full-last-known-good-commit-sha'
+ACTIVE_ENV='/opt/zabbix-lab/.env'
+ACTIVE_DB_SECRET='/opt/zabbix-lab/deploy/secrets/zabbix_db_password.txt'
+ACTIVE_SLACK_SECRET='/opt/zabbix-lab/deploy/secrets/zabbix_slack_webhook_url.txt'
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 ROLLBACK_WORKTREE="$(dirname "$REPO_ROOT")/zabbix-lab-rollback"
 [[ "$ROLLBACK_SHA" =~ ^[0-9a-f]{40}$ ]]
 test "$(git -C "$REPO_ROOT" rev-parse --verify "${ROLLBACK_SHA}^{commit}")" = "$ROLLBACK_SHA"
 test ! -e "$ROLLBACK_WORKTREE"
 test ! -L "$ROLLBACK_WORKTREE"
+test -f "$ACTIVE_ENV"
+test -f "$ACTIVE_DB_SECRET"
 git -C "$REPO_ROOT" worktree add --detach "$ROLLBACK_WORKTREE" "$ROLLBACK_SHA"
+```
+
+`.env`と`deploy/secrets/*.txt`はGit管理外(gitignore対象)のため、`git worktree add`が作る新しいworktreeには含まれません。`compose.zabbix.yaml`が参照できるよう、稼働中の`/opt/zabbix-lab`から明示的にコピーします。
+
+```bash
+install -m 644 "$ACTIVE_ENV" "$ROLLBACK_WORKTREE/.env"
+install -d -m 700 "$ROLLBACK_WORKTREE/deploy/secrets"
+install -m 644 "$ACTIVE_DB_SECRET" "$ROLLBACK_WORKTREE/deploy/secrets/zabbix_db_password.txt"
+if [[ -f "$ACTIVE_SLACK_SECRET" ]]; then
+  install -m 644 "$ACTIVE_SLACK_SECRET" "$ROLLBACK_WORKTREE/deploy/secrets/zabbix_slack_webhook_url.txt"
+fi
+
 cd "$ROLLBACK_WORKTREE"
 docker compose -f compose.zabbix.yaml config --quiet
 docker compose -f compose.zabbix.yaml up -d --force-recreate
 docker compose -f compose.zabbix.yaml ps
 ```
+
+`.env`をコピーし忘れると、`ZABBIX_SERVER_BIND_ADDRESS`が既定値の`127.0.0.1`へ戻ってtrapperが`monitor-01`から到達不能になります(エラーにならず静かに壊れるため、ロールバック後の疎通確認が必須です)。`deploy/secrets/zabbix_db_password.txt`をコピーし忘れると、`docker compose up`はsecretファイル不在でそのまま失敗します。
 
 Frontend設定（Host / Template / Trigger / Action）は、上記のコードロールバックでは戻りません。3節のGo / No-Go確認時点でexportしたXMLを、Frontendの「Import」機能から再取込みします。XMLを保存していなかった場合は、7節の`pg_restore`でDBごと戻します。Zabbixの設定はコードではなくDBに保存されるという前提が、Linux版のAnsible再配備と最も異なる点です。
 

@@ -61,6 +61,18 @@ sudo ufw status verbose
 
 `${ZABBIX_WEB_PORT:-8081}/tcp`はcompose側で`127.0.0.1`にbindするため、UFWへ個別のallowルールは追加しません(bind address自体が唯一の防御線であるため)。5432/tcp(PostgreSQL)もDocker internal network限定のためUFWルールは不要です。
 
+続けて、[パラメータシート](03-parameter-sheet.md)が宣言するSSHポリシー(root login禁止、password login禁止)を`sshd_config`へ実際に設定します。**先に現在のSSHセッションを切断せず、別ターミナルから鍵認証で新規接続できることを確認してから**次に進んでください(`PasswordAuthentication no`を反映した直後に鍵が使えないと締め出されます。10節のコンソールアクセスも参照)。
+
+```bash
+sudo install -d -m 0755 /etc/ssh/sshd_config.d
+printf 'PermitRootLogin no\nPasswordAuthentication no\n' | sudo tee /etc/ssh/sshd_config.d/99-zabbix-lab-hardening.conf
+sudo sshd -t
+sudo systemctl reload ssh
+ssh <ssh-user>@192.0.2.11 'sudo sshd -T | grep -Ei "^(permitrootlogin|passwordauthentication)"'
+```
+
+`sudo sshd -t`は設定ファイルの構文だけを検証し、意味的な誤り(存在しないユーザーの`Match`ブロック等)までは検出しません。反映後は**新しい別セッション**で鍵認証接続を確認してから、元のセッションを閉じます。
+
 trapper(10051/tcp)の送信元制限は`DOCKER-USER`chainで行いますが、このchainはDockerデーモンが起動して初めて作成されるため、**Docker Engine導入(2.2節)より後の2.3節で設定します**(ここではまだ設定しません)。
 
 ### 2.2 Docker Engine / Docker Composeの導入

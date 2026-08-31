@@ -44,7 +44,7 @@
 | 時刻同期 | chrony(unit名`chrony`) | Ubuntu既定 |
 | firewall | UFW、default deny incoming | 本パックの[構築手順書](05-build-procedure.md)(専用role未実装のため手動設定) |
 | SSHブルートフォース対策 | `ufw limit 22/tcp` | 同上 |
-| SSH | root login禁止、password login禁止 | 同上(手動設定) |
+| SSH | root login禁止、password login禁止 | [構築手順書 2.1節](05-build-procedure.md)(`/etc/ssh/sshd_config.d/99-zabbix-lab-hardening.conf`、手動設定) |
 | 自動更新 | unattended-upgrades | 同上 |
 
 Ubuntu 24.04 LTS以外のOSファミリーは本パックの対象外です。RHEL系で構築する場合は[Linux版パラメータシート](../build-package/03-parameter-sheet.md)のRHEL系列の値を参考にしつつ、Zabbix公式リポジトリのRHEL向けパッケージへ読み替えます。
