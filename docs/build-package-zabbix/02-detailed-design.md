@@ -52,7 +52,7 @@ zbx-01の公開serviceは`zabbix-internal`(内部通信用)に加え、公開対
 
 - 対象はZabbix DB(PostgreSQL、`pg_dump`によるカスタムformat dump)です。`scripts/ops/zabbix-backup.sh`が`/var/backups/zabbix`へdumpを採取し、保持世代を超えた古いdumpを削除します。
 - `deploy/systemd/zabbix-backup.service`・`deploy/systemd/zabbix-backup.timer`をzbx-01の`/etc/systemd/system/`へ配置し、`systemctl enable --now zabbix-backup.timer`で登録します(手順は[構築手順書 7節](05-build-procedure.md)。スクリプト本体があるだけでは実行されず、この登録手順まで実施して初めて日次実行されます)。
-- zbx-01のsystemd timerから毎日**03:45**(Asia/Tokyo、host timezone)に実行する設計です。既存server-monitorのbackupが03:30のため、実行時刻をずらしています。保持世代は**14日**(既存server-monitorのbackupと同じ方針)です。
+- zbx-01のsystemd timerから毎日**03:45 Asia/Tokyo**に実行する設計です。`zabbix-backup.timer`の`OnCalendar`にタイムゾーンを明示しているため、host自体のtimezone設定(UTCのままの場合も含む)に依存せず03:45 JSTで実行されます。既存server-monitorのbackupが03:30のため、実行時刻をずらしています。保持世代は**14日**(既存server-monitorのbackupと同じ方針)です。
 - 復元は別ボリューム/別DBへ`pg_restore`し、host数・item数が一致することを確認します(ZIT-08)。
 - 構成変更のロールバックは、専用Ansible roleが無いため、Gitの直前commitへ戻したうえで`docker compose -f compose.zabbix.yaml up -d`を再適用する手順を基本とします。Go/No-Go条件、実施結果記録の様式は[変更・ロールバック計画](08-change-rollback-plan.md)に定義します。
 - D-Z1(Agent停止復旧演習)の実測、構成commitを戻すrollback rehearsal、DBバックアップ/復元(ZIT-08)は別試験として扱います。それぞれ日付付きのevidenceへ記録するまで、現時点ではいずれも`NOT RUN`です。

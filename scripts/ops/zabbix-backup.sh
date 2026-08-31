@@ -89,16 +89,29 @@ install -d -m 0750 -- "${TARGET_DIR}"
 
 TIMESTAMP="$(date +%Y%m%dT%H%M%S)"
 DUMP_FILE="${TARGET_DIR}/zabbix-${TIMESTAMP}.dump"
+TMP_DUMP_FILE="${DUMP_FILE}.part"
+
+cleanup_partial() {
+  rm -f -- "${TMP_DUMP_FILE}"
+}
+trap cleanup_partial EXIT
 
 echo "==> dumping zabbix database to ${DUMP_FILE}"
-docker compose -f "${COMPOSE_FILE}" --project-directory "${PROJECT_DIR}" \
-  exec -T postgres pg_dump -U zabbix --format=custom zabbix > "${DUMP_FILE}"
-
-if [[ ! -s "${DUMP_FILE}" ]]; then
-  echo "dump file is empty, refusing to keep it: ${DUMP_FILE}" >&2
-  rm -f -- "${DUMP_FILE}"
+# pg_dump の失敗を "if !" の条件として扱うことで、set -e による即時終了を避け、
+# 部分的に書き込まれた dump を最終ファイル名へ残さないようにする(mv より前で必ず弾く)。
+if ! docker compose -f "${COMPOSE_FILE}" --project-directory "${PROJECT_DIR}" \
+  exec -T postgres pg_dump -U zabbix --format=custom zabbix > "${TMP_DUMP_FILE}"; then
+  echo "pg_dump failed, discarding partial dump: ${TMP_DUMP_FILE}" >&2
   exit 1
 fi
+
+if [[ ! -s "${TMP_DUMP_FILE}" ]]; then
+  echo "dump file is empty, refusing to keep it: ${TMP_DUMP_FILE}" >&2
+  exit 1
+fi
+
+mv -- "${TMP_DUMP_FILE}" "${DUMP_FILE}"
+trap - EXIT
 
 ( cd -- "${TARGET_DIR}" && sha256sum -- "$(basename -- "${DUMP_FILE}")" > "$(basename -- "${DUMP_FILE}").sha256" )
 echo "==> wrote $(basename -- "${DUMP_FILE}").sha256"

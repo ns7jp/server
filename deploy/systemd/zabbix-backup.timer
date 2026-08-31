@@ -2,7 +2,9 @@
 Description=Daily SM-ZBX-001 Zabbix DB backup
 
 [Timer]
-OnCalendar=*-*-* 03:45:00
+# タイムゾーンを明示するため Asia/Tokyo を付与する(host timezoneがUTCのままでも
+# 03:45 JSTに実行される。systemd.time(7)がcalendar式末尾のTZ指定をサポートしている)。
+OnCalendar=*-*-* 03:45:00 Asia/Tokyo
 RandomizedDelaySec=600
 Persistent=true
 

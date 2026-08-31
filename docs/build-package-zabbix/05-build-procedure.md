@@ -110,21 +110,23 @@ git rev-parse HEAD
 ```
 
 ```bash
+chmod 700 deploy/secrets
+
 cp deploy/secrets/zabbix_db_password.txt.example deploy/secrets/zabbix_db_password.txt
 openssl rand -base64 24 > deploy/secrets/zabbix_db_password.txt
-chmod 600 deploy/secrets/zabbix_db_password.txt
+chmod 644 deploy/secrets/zabbix_db_password.txt
 
 cp deploy/secrets/zabbix_slack_webhook_url.txt.example deploy/secrets/zabbix_slack_webhook_url.txt
 # webhookと受信先を用意した場合のみ、実際のIncoming Webhook URLへ書き換える(5.5節で使用)
 # 用意しない場合はプレースホルダ("https://hooks.slack.com/services/REPLACE/WITH/REAL_WEBHOOK")のまま残す
 $EDITOR deploy/secrets/zabbix_slack_webhook_url.txt
-chmod 600 deploy/secrets/zabbix_slack_webhook_url.txt
+chmod 644 deploy/secrets/zabbix_slack_webhook_url.txt
 
 git status --short
 git check-ignore deploy/secrets/zabbix_db_password.txt deploy/secrets/zabbix_slack_webhook_url.txt
 ```
 
-`git check-ignore`で両ファイルが出力されること(=Git管理外であること)を確認します。これがZST-03(`git ls-files deploy/secrets`に実値ファイルが含まれない)の前提です。
+`zabbix_db_password.txt`はDocker Composeの`secrets:`でzabbix-server/postgresコンテナへbind mountされます。bind mountはホスト側ファイルの所有者・パーミッションをそのまま引き継ぐため、`chmod 600`(ログインユーザーのみ読み取り可)のままではコンテナ内の非rootユーザーがファイルを読めず、`docker compose up`が失敗します。既存パック(`compose.yaml`)の`ansible/roles/app`と同じ`0644`(secretファイルは世界読み取り可)・`0700`(格納ディレクトリで一般ユーザーからのアクセスを絞る)の組み合わせを踏襲します。`git check-ignore`で両ファイルが出力されること(=Git管理外であること)を確認します。これがZST-03(`git ls-files deploy/secrets`に実値ファイルが含まれない)の前提です。
 
 ```bash
 cp .env.example .env
@@ -232,10 +234,11 @@ grep -E '^(Hostname|ServerActive)=' /etc/zabbix/zabbix_agent2.conf
 
 ### 4.3 UserParameter(service_monitor.healthz)の配置
 
-配備先の`deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example`は`monitor-01`上には存在しないため、一時的にリポジトリを取得してコピーします。
+配備先の`deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example`は`monitor-01`上には存在しないため、一時的にリポジトリを取得してコピーします。`--depth 1`はdefault branchの最新tipを取得してしまい、1節・2.4節で固定したcommit SHAとずれる可能性があるため使わず、同じSHAを明示的に`checkout`します。
 
 ```bash
-git clone --depth 1 https://github.com/ns7jp/server-monitor.git /tmp/server-monitor-zbx
+git clone https://github.com/ns7jp/server-monitor.git /tmp/server-monitor-zbx
+git -C /tmp/server-monitor-zbx checkout <1節で確認したcommit SHA>
 sudo install -d -m 0755 /etc/zabbix/zabbix_agent2.d
 sudo install -m 0644 \
   /tmp/server-monitor-zbx/deploy/zabbix/zabbix_agent2.d/service_monitor_healthz.conf.example \
@@ -388,7 +391,7 @@ sudo systemctl enable --now zabbix-backup.timer
 systemctl list-timers zabbix-backup.timer
 ```
 
-`zabbix-backup.timer`は毎日03:45(host timezone、既定`Asia/Tokyo`)に`zabbix-backup.service`を起動し、`scripts/ops/zabbix-backup.sh --project-dir /opt/zabbix-lab`を実行します。動作確認は初回の定時実行を待たず、手動で1回実行して確認します。
+`zabbix-backup.timer`は毎日03:45 Asia/Tokyo(`OnCalendar`にタイムゾーンを明示しているため、zbx-01のhost timezoneがUTCのままでも03:45 JSTで実行されます)に`zabbix-backup.service`を起動し、`scripts/ops/zabbix-backup.sh --project-dir /opt/zabbix-lab`を実行します。動作確認は初回の定時実行を待たず、手動で1回実行して確認します。
 
 ```bash
 sudo systemctl start zabbix-backup.service
