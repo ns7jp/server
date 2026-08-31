@@ -186,7 +186,7 @@ docker run -d --name zabbix-restore-check \
   -e POSTGRES_DB=zabbix -e POSTGRES_USER=zabbix \
   -e POSTGRES_PASSWORD_FILE=/run/secrets/zabbix_db_password \
   -v zabbix_db_data_restore_check:/var/lib/postgresql/data \
-  -v "$(pwd)/deploy/secrets/zabbix_db_password.txt:/run/secrets/zabbix_db_password:ro" \
+  -v "/opt/zabbix-lab/deploy/secrets/zabbix_db_password.txt:/run/secrets/zabbix_db_password:ro" \
   postgres:16-alpine
 # 起動しない/secretが読めない等でpg_isreadyが永遠にFAILし続けないよう、上限(60秒)を設ける。
 READY=0
