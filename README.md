@@ -1,7 +1,7 @@
 # Server Monitor Infrastructure Lab
 
-[![Python check](https://github.com/ns7jp/server-monitor/actions/workflows/python-check.yml/badge.svg)](https://github.com/ns7jp/server-monitor/actions/workflows/python-check.yml)
-[![Full-stack Ansible E2E](https://github.com/ns7jp/server-monitor/actions/workflows/full-stack-e2e.yml/badge.svg)](https://github.com/ns7jp/server-monitor/actions/workflows/full-stack-e2e.yml)
+[![Python check](https://github.com/ns7jp/server/actions/workflows/python-check.yml/badge.svg)](https://github.com/ns7jp/server/actions/workflows/python-check.yml)
+[![Full-stack Ansible E2E](https://github.com/ns7jp/server/actions/workflows/full-stack-e2e.yml/badge.svg)](https://github.com/ns7jp/server/actions/workflows/full-stack-e2e.yml)
 ![Python](https://img.shields.io/badge/Python-3.9+-3776AB?logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-3-000000?logo=flask&logoColor=white)
 ![Prometheus](https://img.shields.io/badge/Prometheus-monitoring-E6522C?logo=prometheus&logoColor=white)
@@ -59,7 +59,7 @@ Level 0〜4を入門必修、障害対応をLevel 5、LVM / 3層 / L2-L3 / AWS�
 
 > **実測の現状（2026-08-22）**: PR #75のruntime変更最終commit
 > `7622a9da974f694ae75e0173135923701be9e5a5`に対する
-> [Full-stack E2E run 32572409469](https://github.com/ns7jp/server-monitor/actions/runs/32572409469)で、
+> [Full-stack E2E run 32572409469](https://github.com/ns7jp/server/actions/runs/32572409469)で、
 > **使い捨てUbuntu 24.04 hostへの`site.yml`一括適用、2回目`changed=0`、11 containersの稼働、
 > 認証、Prometheus target、Docker API proxyのGET成功・POST拒否・Loki log到達、
 > ローカルwebhook通知、loopback/UFW/SSH tunnel、D-1自動復旧（1秒）、
@@ -70,7 +70,7 @@ Level 0〜4を入門必修、障害対応をLevel 5、LVM / 3層 / L2-L3 / AWS�
 > raw logは期限付きActions artifactに保存しています。
 >
 > **実測の追加（2026-08-23）**: PR #77の
-> [Full-stack Ansible E2E run 32611251044](https://github.com/ns7jp/server-monitor/actions/runs/32611251044)で、
+> [Full-stack Ansible E2E run 32611251044](https://github.com/ns7jp/server/actions/runs/32611251044)で、
 > candidate `84e149254d463a8a27a4cabcd09efa4504d1b47e`をimmutableなGit SHAとして配備・検証し、
 > 前版`59aa88ed1c8ccb7ba188909f0e079b834e9126c7`へrollbackした後もrevision marker、
 > runtime manifest、app container再作成、stale file除去、loopback bind、Loki取り込みが一致してPASSしました。
@@ -352,8 +352,8 @@ Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可�
 対象は Linux 検証ホストです。`node-exporter` が Linux のホスト情報を読み取るため、Windows / macOS 上の Docker Desktop ではホスト監視結果が同一になりません。
 
 ```bash
-git clone https://github.com/ns7jp/server-monitor.git
-cd server-monitor
+git clone https://github.com/ns7jp/server.git
+cd server
 cp .env.example .env
 openssl rand -base64 32 > deploy/secrets/dashboard_password.txt
 openssl rand -base64 32 > deploy/secrets/metrics_token.txt
@@ -403,7 +403,7 @@ GitHub Actions では、API の認証・マスキング・metrics テストに�
 ## ディレクトリ構成
 
 ```text
-server-monitor/
+server/
 |-- app.py
 |-- Dockerfile
 |-- compose.yaml
@@ -526,7 +526,7 @@ AI 支援セッションの作業環境上で実行しており、独立した�
   [10 立ち上げと受け入れ試験](docs/build-package/10-host-bringup-and-acceptance.md)
   に用意しています。
 - AlmaLinux / Rocky 9 対応は role と Molecule scenario です。**Molecule `el9`
-  は 2026-08-25 に [実行証跡](https://github.com/ns7jp/server-monitor/actions/runs/32811100007)
+  は 2026-08-25 に [実行証跡](https://github.com/ns7jp/server/actions/runs/32811100007)
   を採録しました**（common / docker 両 role、コンテナ上での検証）。実機の
   AlmaLinux ホストへ `site.yml` を適用した証跡はまだありません。
 - **B-1 〜 B-4 は実行した証跡がありますが、実行環境は AI 支援セッションの
