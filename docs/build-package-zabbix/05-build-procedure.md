@@ -339,10 +339,10 @@ sudo zabbix_agent2 -t service_monitor.healthz
 4. `Expression`に次の式を入力します。
 
    ```
-   max(/monitor-01/service_monitor.healthz,3m)<>1
+   max(/monitor-01/service_monitor.healthz,3m)<>1 and count(/monitor-01/service_monitor.healthz,3m)>=3
    ```
 
-   `service_monitor.healthz`は`0`/`1`の二値なので、直近3分間の最大値が`1`以外(=期間内のどのサンプルも正常値`1`を記録していない、つまり3分間ずっと異常)の場合にPROBLEMとする式です。`min(...)`を使うと1回でも異常サンプルがあった瞬間に最小値が`0`になり、単発の一時的な失敗でも即PROBLEMになってしまう(02-detailed-design.md・03-parameter-sheetが定義する「3分間観測」という継続失敗の意図と食い違う)ため、`max(...)`を使います。
+   `service_monitor.healthz`は`0`/`1`の二値なので、直近3分間の最大値が`1`以外(=期間内のどのサンプルも正常値`1`を記録していない、つまり3分間ずっと異常)の場合にPROBLEMとする式です。`min(...)`を使うと1回でも異常サンプルがあった瞬間に最小値が`0`になり、単発の一時的な失敗でも即PROBLEMになってしまう(02-detailed-design.md・03-parameter-sheetが定義する「3分間観測」という継続失敗の意図と食い違う)ため、`max(...)`を使います。`count(...)>=3`は、Item作成直後やhistoryが途切れた直後で3分間のwindow内にまだ1〜2サンプルしか無い状態で`max(...)`だけが早期に真になる(=まだ3分間分の観測が揃っていないのに異常1回でPROBLEM化する)ことを防ぎます。`Update interval`(5.3節、`1m`)から3分間で3サンプル程度が期待できるため、`3`を閾値とします。
 5. `OK event generation`は既定(`Expression`)のままにします。式が再び真でなくなった時点でOKに戻ります。
 6. 「Add」をクリックして保存します。
 
