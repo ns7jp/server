@@ -40,7 +40,7 @@ CAPTURE_INTERFACE=ens3   # zbx-01の外部NIC名に置き換える（monitor-01�
 
 date --iso-8601=seconds
 git rev-parse HEAD
-ssh "$ZBX_HOST" 'uname -a; command -v ip ping dig ss curl tcpdump ufw iptables nc; docker compose -f compose.zabbix.yaml ps'
+ssh "$ZBX_HOST" 'uname -a; command -v ip ping dig ss curl tcpdump ufw iptables nc; cd /opt/zabbix-lab && docker compose -f compose.zabbix.yaml ps'
 ssh "$MONITOR_HOST" 'uname -a; command -v ip ping dig ss curl nc; systemctl is-active zabbix-agent2'
 ```
 

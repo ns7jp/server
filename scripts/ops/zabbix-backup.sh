@@ -87,6 +87,17 @@ command -v docker >/dev/null 2>&1 || { echo "docker command not found" >&2; exit
 
 install -d -m 0750 -- "${TARGET_DIR}"
 
+# timerと手動実行の重複、または手動実行の多重起動を防ぐ。同一秒に複数実行が
+# 重なると、以降のTIMESTAMPが衝突してdump/sidecarを互いに上書き・削除しうる
+# ため、flockで直列化する。既に実行中の場合は待たずに終了する(timerの次回
+# 実行に譲るか、手動で再実行する)。
+LOCK_FILE="${TARGET_DIR}/.zabbix-backup.lock"
+exec 9>"${LOCK_FILE}"
+if ! flock -n 9; then
+  echo "another zabbix-backup.sh run is already in progress, exiting: ${LOCK_FILE}" >&2
+  exit 1
+fi
+
 # -f には PROJECT_DIR と結合した絶対パスを渡す。相対パスのままだと、呼び出し元の
 # カレントディレクトリを基準に解決されてしまい、--project-directory を指定していても
 # PROJECT_DIR 以外の場所から実行したときに compose file が見つからない。
