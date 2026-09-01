@@ -324,6 +324,41 @@ def test_aws_provider_version_constraints_are_identical() -> None:
     assert len(set(constraints.values())) == 1, constraints
 
 
+def test_boto3_and_botocore_pins_are_the_same_version() -> None:
+    """boto3とbotocoreはversion番号を同期してreleaseされる。
+
+    Dependabotのpip ecosystemは既定でungroupedなため、片方だけをbumpする
+    PRが別々に生成されうる。そちらだけmergeすると、
+    `pip install -r ansible/controller-requirements.txt`が
+    botocoreの依存解決で失敗する（boto3は自身と同じversionのbotocoreを
+    要求する）。dependabot.ymlのboto3-botocore groupで1つのPRにまとめている
+    ことの前提となる不変条件を検査する。
+    """
+    content = text("ansible/controller-requirements.txt")
+    boto3_version = re.search(r"^boto3==(\S+)$", content, re.MULTILINE)
+    botocore_version = re.search(r"^botocore==(\S+)$", content, re.MULTILINE)
+    assert boto3_version and botocore_version, "boto3/botocore pins not found"
+    assert boto3_version.group(1) == botocore_version.group(1), (
+        boto3_version.group(1),
+        botocore_version.group(1),
+    )
+
+    import yaml
+
+    config = yaml.safe_load(
+        (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+    )
+    pip_updates = [u for u in config["updates"] if u["package-ecosystem"] == "pip"]
+    assert pip_updates, "pip ecosystem entry is missing"
+    grouped_patterns = {
+        pattern
+        for update in pip_updates
+        for group in update.get("groups", {}).values()
+        for pattern in group.get("patterns", [])
+    }
+    assert {"boto3", "botocore"} <= grouped_patterns
+
+
 def test_managed_node_can_use_the_ssm_file_transfer_bucket() -> None:
     """SSM 経由で Ansible を流すには、管理対象ノード側にも S3 権限が要る。
 
