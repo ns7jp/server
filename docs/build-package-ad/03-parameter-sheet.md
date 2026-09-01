@@ -99,7 +99,7 @@ OU構造は既定の`CN=Users`・`CN=Computers`コンテナをそのまま使わ
 | --- | --- | --- |
 | インストール方式 | GitHub Releasesの署名付きMSI。導入前に`Get-FileHash`と公開SHA256の一致を確認(AUT-01相当の構築前チェック) | [構築手順書](05-build-procedure.md) |
 | バージョン | `NOT SET`(実機決定時にGitHub Releasesの署名付きMSIとそのSHA256を記録して固定する。[Windows版パック](../build-package-windows/03-parameter-sheet.md)と同じ考え方) | 「実機記入欄」参照 |
-| 有効化collector | `--collectors.enabled=ad,dns,cpu,logical_disk,net,os,service,system`([Windows版パック](../build-package-windows/03-parameter-sheet.md)の`iis`の代わりに、AD DS向けの`ad`・`dns`を有効化する点が差分) | [構築手順書](05-build-procedure.md) |
+| 有効化collector | `--collectors.enabled=ad,dns,cpu,logical_disk,net,os,service,system`([Windows版パック](../build-package-windows/03-parameter-sheet.md)の`cs`・`iis`の代わりに、AD DS向けの`ad`・`dns`を有効化する点が差分) | [構築手順書](05-build-procedure.md) |
 | 実行アカウント | 既定`LocalSystem`(最小権限化は継続課題) | 「ユーザー・グループ・権限」節参照 |
 | listen | `0.0.0.0:9182`(Windows Defender Firewallで中央Prometheus hostのIPのみ許可、認証なし) | Windows Defender Firewallルール |
 

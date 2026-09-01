@@ -32,7 +32,7 @@ pwsh -Command '$PSVersionTable.PSVersion'
 
 ```bash
 # この案件パックの取得
-git clone https://github.com/ns7jp/server-monitor.git
+git clone https://github.com/ns7jp/server.git
 cd server-monitor
 git rev-parse HEAD
 ```
@@ -387,7 +387,7 @@ if ($actualHash -ne $expectedHash) {
 }
 
 # collectorはad, dns, cpu, logical_disk, net, os, service, systemを有効化
-# (Windows版パックのiisの代わりに、AD DS向けのad・dnsを有効化する点が差分)
+# (Windows版パックのcs・iisの代わりに、AD DS向けのad・dnsを有効化する点が差分)
 Start-Process msiexec.exe -ArgumentList `
   "/i `"$msiPath`" ENABLED_COLLECTORS=ad,dns,cpu,logical_disk,net,os,service,system /qn" -Wait
 

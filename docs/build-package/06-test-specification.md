@@ -99,7 +99,7 @@
 | ST-03 | secret tracking | `git ls-files deploy/secrets` | 実値なし | NOT RUN | — |
 | ST-04 | firewall | `ufw status verbose` | 許可通信だけ開放 | NOT RUN | — |
 | ST-05 | secret scan | CI security scan | high severity なし | NOT RUN | — |
-| ST-06 | storage 安全装置 | `storage-guard-test.sh`（negative test 7 ケース） | 意図した拒否がすべて成立 | NOT RUN | — |
+| ST-06 | storage 安全装置 | `storage-guard-test.sh`（negative test 6 ケース + 許可される正常系 1 ケース） | 意図した拒否がすべて成立し、正常系ケースは拒否されない | NOT RUN | — |
 
 ## 終了判定
 

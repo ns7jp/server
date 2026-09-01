@@ -64,7 +64,7 @@ ls -la /var/backups/zabbix | tail -5
 1. 変更開始時刻と、`docker compose -f compose.zabbix.yaml ps`によるZabbix Server / Web / Postgresの事前状態を記録します。
 2. データ変更を伴う場合は`scripts/ops/zabbix-backup.sh`を`zbx-01`で実行し、終了状態と生成された`.dump` / `.dump.sha256` / `.dump.counts`のパスを記録します。
 3. Frontend設定（Host / Template / Trigger / Action）を変更する場合は、変更前の設定をXML exportとして保存してから、Frontend上で変更を適用します。
-4. compose設定を変更する場合は、変更後commitをcheckoutした`zbx-01`上で`docker compose -f compose.zabbix.yaml up -d`を再適用します。Agent2設定(`deploy/zabbix/`のUserParameter定義)を変更する場合は、`monitor-01`側の配置ファイルも同じ変更後commitへ更新します(5節で個別にコピーしたものであり、`zbx-01`側のcheckoutやcompose再適用では反映されません)。
+4. compose設定を変更する場合は、変更後commitをcheckoutした`zbx-01`上で`docker compose -f compose.zabbix.yaml up -d`を再適用します。Agent2設定(`deploy/zabbix/`のUserParameter定義)を変更する場合は、`monitor-01`側の配置ファイルも同じ変更後commitへ更新します(4.3節で個別にコピーしたものであり、`zbx-01`側のcheckoutやcompose再適用では反映されません)。
 5. [試験仕様書](06-test-specification.md)の影響範囲（該当する`ZUT` / `ZIT` / `ZST` ID）を再実行します。
 6. Zabbix Frontend上のProblem一覧、`docker compose ps`のhealthy状態、`docker compose logs`に新規異常がないことを確認します。
 7. 監視時間を終えてから、継続またはロールバックを判定します。
@@ -84,7 +84,7 @@ docker compose -f compose.zabbix.yaml logs --tail 100 zabbix-server zabbix-web
 ```bash
 AFTER_SHA='replace-with-the-full-candidate-commit-sha'
 ssh <ssh-user>@192.0.2.10 '
-  git clone https://github.com/ns7jp/server-monitor.git /tmp/server-monitor-zbx-change &&
+  git clone https://github.com/ns7jp/server.git /tmp/server-monitor-zbx-change &&
   git -C /tmp/server-monitor-zbx-change checkout '"$AFTER_SHA"' &&
   sudo install -m 0644 /tmp/server-monitor-zbx-change/deploy/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf.example \
     /etc/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf &&
@@ -163,7 +163,7 @@ sudo systemctl start zabbix-backup.timer
 ```bash
 ROLLBACK_SHA='replace-with-the-full-last-known-good-commit-sha'
 ssh <ssh-user>@192.0.2.10 '
-  git clone https://github.com/ns7jp/server-monitor.git /tmp/server-monitor-zbx-rollback &&
+  git clone https://github.com/ns7jp/server.git /tmp/server-monitor-zbx-rollback &&
   git -C /tmp/server-monitor-zbx-rollback checkout '"$ROLLBACK_SHA"' &&
   sudo install -m 0644 /tmp/server-monitor-zbx-rollback/deploy/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf.example \
     /etc/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf &&
