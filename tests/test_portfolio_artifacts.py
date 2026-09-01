@@ -1366,3 +1366,69 @@ def test_evidence_index_still_claims_it13_and_st05_are_run():
     assert "未採録" not in b1_row, (
         "storage-guard-test.sh は実行済みなのに、索引がまだ未採録と書いている"
     )
+
+
+def _dockerfile_directory(path: Path) -> str:
+    relative = path.parent.relative_to(ROOT).as_posix()
+    return "/" if relative == "." else "/" + relative
+
+
+def test_dependabot_docker_directories_match_dockerfile_locations() -> None:
+    """Dependabot の docker 監視対象と、実際の Dockerfile の場所を一致させる。
+
+    Dockerfile は root と labs/three-tier/ap に分散している。terraform の
+    provider 制約と同じ理由で、`directory: /` だけを監視していると labs 側の
+    ベースイメージ更新が届かず、両者の python バージョンが分岐する
+    （PR #17 で実際に起きた）。網羅すべき集合を手で列挙した時点で、次に漏れる。
+    集合の一致を検査する。
+    """
+    import yaml
+
+    config = yaml.safe_load(
+        (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+    )
+    docker_updates = [
+        update for update in config["updates"]
+        if update["package-ecosystem"] == "docker"
+    ]
+    assert docker_updates, "docker ecosystem entry is missing"
+
+    watched = set()
+    for update in docker_updates:
+        for directory in update.get("directories", []):
+            watched.add(directory.rstrip("/") or "/")
+        if "directory" in update:
+            watched.add(update["directory"].rstrip("/") or "/")
+
+    declared = {
+        _dockerfile_directory(path)
+        for path in ROOT.rglob("Dockerfile")
+        if ".git" not in path.parts
+    }
+
+    assert declared, "no Dockerfile found"
+    assert declared == watched, (
+        "dependabot.yml directories and the directories containing a Dockerfile differ.\n"
+        f"  only in dependabot.yml: {sorted(watched - declared)}\n"
+        f"  only on disk:           {sorted(declared - watched)}"
+    )
+
+
+def test_docker_base_image_versions_are_identical() -> None:
+    """全 Dockerfile の python ベースイメージが揃っていること。
+
+    片方だけ更新されると、同じアプリのコンテナが異なる Python バージョンで
+    動くことになる（PR #17 で実際に起きた）。
+    """
+    versions = {}
+    for path in ROOT.rglob("Dockerfile"):
+        if ".git" in path.parts:
+            continue
+        match = re.search(
+            r"^FROM\s+python:(\S+)", path.read_text(encoding="utf-8"), re.MULTILINE
+        )
+        if match:
+            versions[path.relative_to(ROOT).as_posix()] = match.group(1)
+
+    assert versions, "no python-based Dockerfile found"
+    assert len(set(versions.values())) == 1, versions

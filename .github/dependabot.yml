@@ -18,12 +18,24 @@ updates:
     labels:
       - dependencies
 
+  # Dockerfile は root と labs/three-tier/ap に分散している。terraform の
+  # provider 制約と同じ理由で、`directory: /` だけを監視していると labs 側の
+  # ベースイメージ更新が届かず、両者の python バージョンが分岐する
+  # （PR #17 で実際に起きた）。`directories` で両方を登録し、1 つの PR に
+  # まとめる。監視対象と実際の Dockerfile の場所が一致することは
+  # tests/test_portfolio_artifacts.py で検査する。
   - package-ecosystem: docker
-    directory: /
+    directories:
+      - /
+      - /labs/three-tier/ap
     schedule:
       interval: weekly
     labels:
       - dependencies
+    groups:
+      docker-base-images:
+        patterns:
+          - "*"
 
   # Terraform の provider 制約は root / environments / modules の複数ファイルに
   # 分散して宣言されている。以前は environments/{dev,prod} だけを監視していた
