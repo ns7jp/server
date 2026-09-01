@@ -22,8 +22,9 @@ flowchart LR
 文書が「作成済み」であること、フェーズ1の手順を実機で実行して `PASS` したこと、特定の引き渡し対象ホスト(`monitor-win-01`)で受け入れが完了したことは別の状態です。最終判定は[作業結果・引き渡し報告書](11-work-result-report.md)と[引き渡しチェックリスト](07-handover-checklist.md)を使います。
 
 初めて「要件定義書」「非機能要件（NFR）」「Gate」といった言葉に触れる場合は、先に
-[Linux版の案件パック 初心者ガイド](../build-package/beginner-guide.md)で案件パック全体の
-地図と用語を確認してください。文書の番号構成（00〜11）と役割は Linux 版と共通です。
+[案件パック 初心者ガイド（Windows版）](beginner-guide.md)で案件パック全体の地図と、
+フェーズ1／フェーズ2・WinRM・IIS などの Windows 固有の言い回しを確認してください。
+文書の番号構成（00〜11）と役割は[Linux版](../build-package/beginner-guide.md)と共通です。
 
 ## Linux版との違い
 

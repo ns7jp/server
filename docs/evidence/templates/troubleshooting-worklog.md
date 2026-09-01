@@ -1,6 +1,6 @@
 # トラブルシュート一次記録 — YYYY-MM-DD / 事象名
 
-このテンプレートは、完成後に整えた説明ではなく、作業者が実際に考え、確認し、仮説を更新した過程を残すためのものです。`docs/evidence/YYYY-MM-DD-troubleshooting-<slug>.md` へコピーして使います。
+このテンプレートは、完成後に整えた説明ではなく、作業者が実際に考え、確認し、仮説を更新した過程を残すためのものです。`docs/evidence/YYYY-MM-DD-troubleshooting-<slug>.md` へコピーして使います。空欄から書き始めるのが難しい場合は、[記入例](troubleshooting-worklog-example.md)を先に読んでください。
 
 ## 記録ルール
 

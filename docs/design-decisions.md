@@ -3,6 +3,11 @@
 この文書は「何を実装したか」ではなく、比較した案、採用理由、欠点、見直し条件を示す。
 個人学習ラボの判断であり、あらゆる本番環境の正解を主張しない。
 
+> **ADRとは**: Architecture Decision Record の略。設計判断を「比較案・採用理由・欠点・
+> 見直し条件」の形で残す記録方法で、決定した内容だけでなく、なぜ他の案を選ばなかったかを
+> 残すことで後から見直す判断基準になる。用語の詳細は
+> [サーバー構築キーワード集](server-building-keywords.md#adrarchitecture-decision-record)を参照。
+
 ## ADR-001: 入門環境はKubernetesではなくDocker Composeにする
 
 - **背景**: 1台のLinux VMで通信、volume、監視を観察できることを優先する。
