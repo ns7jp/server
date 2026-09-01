@@ -11,12 +11,23 @@ updates:
         patterns:
           - "*"
 
+  # boto3とbotocoreはversion番号を同期してreleaseされる
+  # （例: boto3 1.43.83 <-> botocore 1.43.83）。ansible/controller-requirements.txt
+  # で両者を別々のPRとしてbumpすると、片方だけmergeした瞬間に
+  # `pip install`がbotocoreの依存解決で失敗しうる（PR #118〜121で実際に
+  # boto3単独・botocore単独のPRが別々に生成されるのを確認した）。
+  # 1つのPRにまとめる。整合性は tests/test_portfolio_artifacts.py で検査する。
   - package-ecosystem: pip
     directory: /
     schedule:
       interval: weekly
     labels:
       - dependencies
+    groups:
+      boto3-botocore:
+        patterns:
+          - "boto3"
+          - "botocore"
 
   # Dockerfile は root と labs/three-tier/ap に分散している。terraform の
   # provider 制約と同じ理由で、`directory: /` だけを監視していると labs 側の
