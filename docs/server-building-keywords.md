@@ -160,6 +160,39 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
 
 ## 2. Linux操作とファイル管理
 
+### Git
+
+- **一言**: ファイルの変更履歴を記録し、過去の状態に戻せるバージョン管理システム。
+- **意味**: 誰が、いつ、何を変更したかを記録し、複数人での並行作業や巻き戻しを可能にします。
+  このリポジトリ自体もGitで管理されています。
+- **このリポジトリ**: `.git/`ディレクトリに履歴が保存されています（通常は中身を直接見ません）。
+- **確認**: `git --version`、`git log --oneline -5`
+
+### リポジトリ（repository）
+
+- **一言**: プロジェクトのファイルと変更履歴をまとめて管理する保管場所。
+- **意味**: ローカル（自分のPC上）とリモート（GitHub等）の2種類があります。
+  `git clone`でリモートの複製をローカルに作り、`git pull`で最新化します。
+- **このリポジトリ**: `github.com/ns7jp/server`がリモートリポジトリ、
+  `git clone`した先がローカルリポジトリです。
+- **確認**: `git remote -v`
+
+### clone
+
+- **一言**: リモートリポジトリの内容を、履歴ごと手元に複製すること。
+- **意味**: このリポジトリを初めて使う場合、最初に一度だけ実行します。
+  2回目以降は複製し直さず`git pull`で最新化します。
+- **このリポジトリ**: `git clone https://github.com/ns7jp/server.git`
+- **確認**: `git status`（clone直後はcleanな状態のはず）
+
+### commit
+
+- **一言**: 変更を1つの区切りとして記録すること。
+- **意味**: commitごとに一意なID（SHA）が振られ、「どの時点のコードか」を正確に指せます。
+  このリポジトリ全体で「commit SHA」という言葉が繰り返し出てくるのはこのためです。
+- **このリポジトリ**: `git log --oneline`でcommitの履歴を確認できます。
+- **確認**: `git rev-parse HEAD`
+
 ### ファイルシステムとパス
 
 - **一言**: ファイルの保存規則と、その場所を示す住所。
@@ -453,6 +486,16 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
 - **このリポジトリ**: Flask、Nginx、Lokiなどに複数の制限を組み合わせます。
 - **確認**: `docker compose config`、`docker inspect <container>`
 
+### privileged
+
+- **一言**: コンテナにホストへの強い権限（ほぼrootと同等）を与えるオプション。
+- **意味**: non-root、read-only、no-new-privilegesとは逆方向で、コンテナの分離をほぼ
+  無効化します。ネットワーク名前空間の操作のように、通常のコンテナ権限では出来ない
+  操作が必要な場合にのみ使い、何をするか正確に分からないまま付けません。
+- **このリポジトリ**: `labs/routing`、`docs/drills`のネットワーク演習ラボが、
+  1台のコンテナだけをprivilegedにし、host側には何も残さない設計にしています。
+- **確認**: `docker inspect <container> --format '{{.HostConfig.Privileged}}'`
+
 ### Docker socket
 
 - **一言**: Docker daemonを操作する強い権限を持つ窓口。
@@ -542,6 +585,14 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
   依存する後続taskなど、fresh hostでは完全な予測にならない場合があります。
 - **このリポジトリ**: 配備手順は本適用前のcheck modeを必須の確認にします。
 - **確認**: `ansible-playbook ... --check --diff`
+
+### Molecule
+
+- **一言**: Ansibleのroleを実際に起動・冪等性確認・破棄まで行う自動テストツール。
+- **意味**: check modeは適用前の「予測」にとどまりますが、Moleculeはcontainer上で
+  実際にroleを適用し、2回目の冪等性確認、検証（verify）、破棄までを自動化します。
+- **このリポジトリ**: `molecule/`配下にシナリオがあり、CI（`ansible-check.yml`）で実行します。
+- **確認**: `molecule test`（対応するroleディレクトリで実行。破壊的操作を伴うため検証用コンテナでのみ実行します）
 
 ### 冪等性
 
@@ -828,6 +879,15 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
   症状、実施済み確認、変更、log、必要な判断を添えます。
 - **このリポジトリ**: 各runbookに復旧完了とescalation条件があります。
 - **確認**: runbookの終了条件を作業前に読みます。
+
+### ADR（Architecture Decision Record）
+
+- **一言**: 設計判断を「比較案・採用理由・欠点・見直し条件」の形で残す記録。
+- **意味**: 決定した内容だけでなく、なぜ他の案を選ばなかったかを残すことで、後から
+  見直す際の判断基準になります。「何を実装したか」ではなく「なぜそう決めたか」を記録します。
+- **このリポジトリ**: [`docs/design-decisions.md`](design-decisions.md)にADR-001〜が
+  まとめられています。
+- **確認**: [`docs/design-decisions.md`](design-decisions.md)のADR見出しを確認します。
 
 ### 要件、基本設計、詳細設計
 
@@ -1161,6 +1221,76 @@ AWS実環境での稼働実績ではありません。
   Agent2からcurlさせるUserParameterとして`service_monitor.healthz`を定義しています。
 - **確認**: `zabbix_agent2 -t service_monitor.healthz`（設定ファイルの記述例は
   [ネットワーク設計](build-package-zabbix/04-network-ip-plan.md)・[詳細設計書](build-package-zabbix/02-detailed-design.md)参照）
+
+## 12. Windows Server監視対象ホストの基礎
+
+この節は`docs/build-package-windows/`（Windowsサーバー構築案件パック、案件ID`SM-WIN-001`）を
+読むための用語です。このリポジトリではWindows Server自体をまだ実機構築していないため、
+以下は**設計・手順書上の例**であり、実機での稼働実績ではありません。実測と未実測の境界は
+[案件パックREADME](build-package-windows/README.md)を参照してください。より丁寧な解説と
+現場用語ブリッジは[案件パック初心者ガイド（Windows版）](build-package-windows/beginner-guide.md)に
+あります。
+
+### WinRM（Windows Remote Management）
+
+- **一言**: Linuxの SSH に相当する、Windows をリモートから操作するための仕組み。
+- **意味**: HTTP（5985）とHTTPS（5986）の2経路があり、本パックはHTTPS専用とし、
+  平文相当のBasic認証を無効化します。
+- **このリポジトリ**: `monitor-win-01`への管理経路として、証明書によるHTTPSリスナーを設計しています。
+- **確認**: `Test-WSMan -ComputerName <対象> -UseSSL`（対象ホスト上で実行する場合は`Test-WSMan`のみ）
+
+### IIS（Internet Information Services）
+
+- **一言**: Windows標準のWebサーバー機能。
+- **意味**: Linux版のNginx + Flaskアプリにおける「監視される側」の役割を、このパックでは
+  IISが担います。
+- **このリポジトリ**: 検証用サイトをIISで公開する設計です。
+- **確認**: `Get-Service W3SVC`、`Invoke-WebRequest http://localhost/`
+
+### windows_exporter
+
+- **一言**: WindowsホストのCPU・memory・disk等をPrometheus形式で公開する部品。
+- **意味**: Linux版のnode-exporterに相当するWindows版です。
+- **このリポジトリ**: `monitor-win-01`へ導入し、既定9182/tcpで公開する設計です
+  （中央Prometheusからのscrapeはフェーズ2、`monitoring`ネットワークの制約で`BLOCKED`）。
+- **確認**: `Invoke-WebRequest http://localhost:9182/metrics`
+
+### 系統A / 系統B
+
+- **一言**: このパックが扱う2つの運用パターン。
+- **意味**: 系統A（ワークグループ、本パックの既定）はローカルAdministratorと証明書認証、
+  系統B（ADドメイン参加）はドメインアカウントとKerberos認証を使います。Linux版の
+  Debian系／RHEL系の違いに近い位置づけです。
+- **このリポジトリ**: 基準・既定は系統Aで、系統Bは差分の記載にとどめています。
+- **確認**: [基本設計書](build-package-windows/01-basic-design.md)2.1節の比較表
+
+### 済（自動） / 済（手動） / 未実装
+
+- **一言**: この案件パックだけで使う実装状態の3区分。
+- **意味**: 済（自動）は既存のAnsible機能で今すぐ実行できるもの（`app_node_exporter_targets`
+  への1行追加のみ）、済（手動）はAnsible化されていないが本パックのPowerShell手順で今すぐ
+  実施できるもの、未実装は設計のみでコードが無いものです。Linux版の「済／未実装」の
+  2区分より1段階細かい区分です。
+- **このリポジトリ**: [要件定義書](build-package-windows/00-requirements.md)冒頭で定義しています。
+- **確認**: 各文書の該当欄がこの3区分のどれに当たるかを確認します。
+
+### RDP（リモートデスクトップ）
+
+- **一言**: 画面ごと遠隔操作するWindows標準のプロトコル。
+- **意味**: 本パックは既定Disableとし、必要時のみ管理元CIDR限定で一時有効化します
+  （WinRMが主な管理経路です）。
+- **このリポジトリ**: [ネットワーク設計](build-package-windows/04-network-ip-plan.md)で
+  RDP（3389/tcp）を必要時のみの経路として設計しています。
+- **確認**: `Get-NetFirewallRule -DisplayGroup "リモート デスクトップ"`（対象ホスト上）
+
+### Windows Defender Firewall
+
+- **一言**: Windows標準のFirewall。
+- **意味**: 本パックはDefault Inbound Blockとし、WinRM／IIS／windows_exporterの3経路だけを、
+  経路ごとに送信元を個別制限して許可します。LinuxのUFW/firewalldに相当します。
+- **このリポジトリ**: [パラメータシート](build-package-windows/03-parameter-sheet.md)に
+  許可ルールの設計値があります。
+- **確認**: `Get-NetFirewallProfile`、`Get-NetFirewallRule`
 
 ## 混同しやすい用語の比較
 

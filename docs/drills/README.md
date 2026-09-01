@@ -12,7 +12,7 @@
 
 | # | 演習 | 対象 | 所要 | 環境 | 実行 |
 | --- | --- | --- | --- | --- | --- |
-| B-1 | ディスク設計・LVM 拡張 | LVM、ファイルシステム、online 拡張、fstab | 10 分 | Linux + root（loop device） | [`scripts/labs/lvm-drill.sh`](../../scripts/labs/lvm-drill.sh) |
+| B-1 | ディスク設計・LVM 拡張 | LVM、ファイルシステム、online 拡張、fstab | 10 分 | Linux + root（loop device） | [`B-1-lvm.md`](B-1-lvm.md) / [`scripts/labs/lvm-drill.sh`](../../scripts/labs/lvm-drill.sh) |
 | B-2 | 3 層構成の障害切り分け | Web / AP / DB の層別 health、経路断との区別 | 10 分 | Docker | [`labs/three-tier/run-drill.sh`](../../labs/three-tier/run-drill.sh) |
 | B-3 | DB バックアップ・復元 | `pg_dump` / `pg_restore`、RTO / RPO 実測 | 10 分 | Docker | [`labs/three-tier/run-restore-drill.sh`](../../labs/three-tier/run-restore-drill.sh) |
 | B-4 | L2 / L3 切り分け | 静的ルート、`ip_forward`、802.1Q VLAN | 10 分 | Docker + NET_ADMIN | [`labs/routing/run-drill.sh`](../../labs/routing/run-drill.sh) |
@@ -24,6 +24,13 @@
 B-1 は `losetup` と device-mapper を使うため、通常の Linux kernel を持つ環境
 （物理 PC、VirtualBox / Hyper-V の VM）で実行する。device-mapper の無い
 コンテナ環境では、実行前の検査で理由を表示して停止する。
+
+物理PCで直接実行してもよいのは、実ディスクのパーティションには一切触れず、
+`/var/tmp`配下に作った**loopファイル**（仮想的なディスクイメージ）だけを対象に
+VG/LVを作るためです。VGとLV名は`vg_drill`/`lv_drill`のように演習専用の名前を
+使い、既存のVG名と衝突しないようにしています。とはいえ`sudo`でのLVM操作に
+不慣れな場合は、誤操作時の影響を小さくするため、使い捨てVMでの実行を推奨します。
+詳しい手順は[B-1-lvm.md](B-1-lvm.md)を参照してください。
 
 ### この 4 本の現在の状態
 
