@@ -41,3 +41,11 @@ app_node_exporter_targets: []
 # 外部の dead man's switch の URL。設定すると Watchdog をそこへ送る。
 # 空のままだと Watchdog は通知先を持たない receiver で止まる。
 app_watchdog_webhook_url: ""
+
+# 外部probe / 中央telemetry（docs/roadmap/external-probe-central-telemetry.md）
+# 向け。Amazon Managed Service for Prometheus (AMP) への remote_write
+# endpoint。terraform/modules/central-metrics の remote_write_url 出力を渡す。
+# 空のままだと remote_write は追加されず、既存のホスト内 Prometheus だけの
+# 構成を変えない。
+app_amp_remote_write_url: ""
+app_amp_remote_write_region: "ap-northeast-1"

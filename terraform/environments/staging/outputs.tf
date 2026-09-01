@@ -5,7 +5,7 @@ output "alb_dns_name" {
 
 output "alb_healthz_url" {
   description = "ALB health endpoint matching the configured listener."
-  value       = format("%s://%s/healthz", var.certificate_arn != "" ? "https" : "http", module.alb.alb_dns_name)
+  value       = local.alb_healthz_url
 }
 
 output "vpc_id" {
@@ -76,4 +76,14 @@ output "ssm_transfer_bucket_name" {
 output "ssm_transfer_controller_policy_arn" {
   description = "Least-privilege policy for the approved Ansible SSM controller role."
   value       = aws_iam_policy.ssm_transfer_controller.arn
+}
+
+output "amp_remote_write_url" {
+  description = "AMP remote_write endpoint. Null unless enable_central_observability = true."
+  value       = var.enable_central_observability ? module.central_metrics[0].remote_write_url : null
+}
+
+output "synthetics_canary_name" {
+  description = "External CloudWatch Synthetics canary name. Null unless enable_central_observability = true."
+  value       = var.enable_central_observability ? module.synthetics_probe[0].canary_name : null
 }
