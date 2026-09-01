@@ -79,6 +79,12 @@ variable "ssm_controller_role_name" {
   default     = ""
 }
 
+variable "enable_central_observability" {
+  description = "外部probe（CloudWatch Synthetics）とmetrics中央化（AMP）を有効化する。設計: docs/roadmap/external-probe-central-telemetry.md。追加コストが発生するため既定はfalse。"
+  type        = bool
+  default     = false
+}
+
 variable "allowed_ingress_cidrs" {
   description = "CIDRs allowed to reach the staging ALB."
   type        = list(string)

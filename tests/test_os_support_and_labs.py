@@ -1209,6 +1209,22 @@ def test_prometheus_config_is_templated_per_environment():
     assert "app_prometheus_monitor_label" in defaults
 
 
+def test_prometheus_remote_write_to_amp_is_opt_in():
+    """外部probe / 中央telemetry（docs/roadmap/external-probe-central-telemetry.md）。
+
+    remote_writeを既定で有効にすると、AMP workspaceを持たない既存環境
+    （dev/prod、Docker Compose lab）のPrometheusが起動時に無効なURLへ
+    書き込もうとして失敗する。空文字列を既定にして無条件opt-inにする。
+    """
+    template = read("ansible", "roles", "app", "templates", "prometheus.yml.j2")
+    defaults = read("ansible", "roles", "app", "defaults", "main.yml")
+
+    assert "{% if app_amp_remote_write_url %}" in template
+    assert "remote_write:" in template
+    assert "sigv4:" in template
+    assert 'app_amp_remote_write_url: ""' in defaults
+
+
 def test_prometheus_can_scrape_more_than_one_host():
     """実務の監視は「監視サーバー 1 台が N 台を scrape する」形。
 

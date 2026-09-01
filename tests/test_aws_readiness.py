@@ -125,12 +125,12 @@ def test_staging_root_and_restore_outputs_are_complete() -> None:
 
 def test_force_destroy_is_isolated_to_short_lived_staging() -> None:
     staging = text("terraform/environments/staging/main.tf")
-    assert len(re.findall(r"force_destroy\s*=\s*true", staging)) == 3
+    assert len(re.findall(r"force_destroy\s*=\s*true", staging)) == 4
     assert "protect_recovery_points = false" in staging
     assert re.search(r"enable_guardduty\s*=\s*false", staging)
     assert re.search(r"enable_cloudtrail\s*=\s*false", staging)
 
-    for module in ("alb", "backup"):
+    for module in ("alb", "backup", "synthetics-probe"):
         variables = text(f"terraform/modules/{module}/variables.tf")
         force_destroy = variables.split('variable "force_destroy"', 1)[1].split("}", 1)[0]
         assert "default     = false" in force_destroy
@@ -138,6 +138,7 @@ def test_force_destroy_is_isolated_to_short_lived_staging() -> None:
     assert "force_destroy = var.force_destroy" in text("terraform/modules/alb/main.tf")
     backup_main = text("terraform/modules/backup/main.tf")
     assert backup_main.count("force_destroy = var.force_destroy") == 2
+    assert "force_destroy = var.force_destroy" in text("terraform/modules/synthetics-probe/main.tf")
 
     monitoring_variables = text("terraform/modules/monitoring/variables.tf")
     assert 'variable "force_destroy"' not in monitoring_variables
@@ -362,3 +363,46 @@ def test_backup_vault_policy_cannot_lock_out_the_caller() -> None:
     assert "vault_policy_admin_arns" in backup
     assert "caller_role_arn" in backup
     assert 'data.aws_caller_identity.current.arn' in backup
+
+
+def test_central_observability_defaults_off_and_wires_remote_write_when_enabled() -> None:
+    """外部probe / AMPはコストを伴うため、明示的に有効化しない限り作られない。
+
+    有効化したときにEC2 instance roleへremote_write権限が届かないと、
+    Prometheusのsigv4 remote_writeがAccessDeniedで無言で失敗し続ける。
+    """
+    variables = text("terraform/environments/staging/variables.tf")
+    assert 'variable "enable_central_observability"' in variables
+    enable_block = variables.split('variable "enable_central_observability"', 1)[1].split("}", 1)[0]
+    assert "default     = false" in enable_block
+
+    main = text("terraform/environments/staging/main.tf")
+    assert main.count("count  = var.enable_central_observability ? 1 : 0") == 2
+    assert 'module "central_metrics"' in main
+    assert 'module "synthetics_probe"' in main
+    assert (
+        "additional_iam_policy_arns = var.enable_central_observability "
+        "? [module.central_metrics[0].remote_write_policy_arn] : []"
+    ) in main
+    assert "alarm_sns_topic_arn = module.monitoring.sns_topic_arn" in main
+
+    central_metrics_outputs = text("terraform/modules/central-metrics/outputs.tf")
+    assert 'output "remote_write_policy_arn"' in central_metrics_outputs
+    assert 'output "remote_write_url"' in central_metrics_outputs
+
+    compute_variables = text("terraform/modules/compute/variables.tf")
+    assert 'variable "additional_iam_policy_arns"' in compute_variables
+
+
+def test_synthetics_canary_name_respects_the_aws_length_limit() -> None:
+    """CloudWatch Syntheticsのcanary名は21文字を超えると apply 時に弾かれる。
+
+    局所的な文字列だけを見ると気づきにくいので、環境側で実際に渡す値と
+    モジュール側のvalidationを両方検査する。
+    """
+    variables = text("terraform/modules/synthetics-probe/variables.tf")
+    assert "length(var.canary_name) <= 21" in variables
+
+    main = text("terraform/environments/staging/main.tf")
+    canary_name = main.split('canary_name = "', 1)[1].split('"', 1)[0]
+    assert len(canary_name) <= 21

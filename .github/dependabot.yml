@@ -62,9 +62,11 @@ updates:
       - /terraform/environments/prod
       - /terraform/modules/alb
       - /terraform/modules/backup
+      - /terraform/modules/central-metrics
       - /terraform/modules/compute
       - /terraform/modules/monitoring
       - /terraform/modules/network
+      - /terraform/modules/synthetics-probe
     schedule:
       interval: weekly
     labels:

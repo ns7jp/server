@@ -70,3 +70,29 @@ flowchart LR
 - [ ] アプリログまたは Nginx ログをノード横断で検索できる
 - [ ] 1 回以上、意図的な停止で検知から復旧までの時刻を採録している
 - [ ] AWS 検証後に `terraform destroy` と費用を記録している
+
+## 実装状況（2026-09-01）
+
+外部 probe と metrics 中央化（表の 1〜2 行目）だけ、Terraform / Ansible の雛形を
+`terraform/environments/staging` に追加した。**`terraform apply` は未実施**で、
+このセクションの内容は設計から一歩進んだ「コード化された未検証の雛形」であり、
+上記 Definition of Done のいずれも満たしていない。
+
+| 領域 | 実装した雛形 | 未実施 |
+| --- | --- | --- |
+| 外部 probe | `terraform/modules/synthetics-probe`（CloudWatch Synthetics canary。`/healthz` を外部から30秒間隔でprobeし、失敗2分以内にSNS通知するCloudWatch Alarmを含む） | `terraform apply`、実際の通知到達確認 |
+| metrics 中央化 | `terraform/modules/central-metrics`（AMP workspace + EC2 instance role用remote_write policy）、`ansible/roles/app/templates/prometheus.yml.j2` の `remote_write` opt-in化 | `terraform apply`、sigv4認証込みのremote_write到達確認 |
+| logs 中央化 | 未着手（採用方針どおりCloudWatch Logsが第一候補） | 設計のまま |
+
+有効化は `terraform/environments/staging/variables.tf` の
+`enable_central_observability`（既定 `false`）を `true` にした場合のみ。
+既存の dev/prod や Docker Compose lab には一切影響しない。
+
+このセッションを実行したサンドボックス環境は `registry.terraform.io` への
+egressが組織ポリシーでブロックされており（Docker Hub / deadsnakes PPA と同種の
+制約）、`terraform init` でのprovider取得、`terraform validate`、`tfsec`、
+`checkov` を実行できなかった。`terraform fmt` とモジュール単体のHCL構文、
+Jinja2テンプレートのレンダリング（`remote_write`有効/無効の両方でYAMLとして
+parse可能なことを含む）は確認済みだが、実際のAWS provider schemaに対する
+検証はこのリポジトリのCI（`.github/workflows/terraform-check.yml`）が担う。
+マージ後、最初のCI結果を確認するまでは `NOT RUN` として扱うこと。

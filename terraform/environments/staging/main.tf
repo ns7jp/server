@@ -157,7 +157,17 @@ module "compute" {
   ssm_file_transfer_bucket = aws_s3_bucket.ssm_transfer.bucket
   # D-2の障害注入中に定時startが競合しないよう、短命stagingは手動で停止・破棄する。
   schedule_stop_enabled = false
-  tags                  = merge(local.common_tags, { AlbHealthCheckSourceCidr = var.vpc_cidr })
+  # central_metrics.remote_write_policy_arn はcount経由の参照だが、
+  # enable_central_observabilityがfalseの分岐では評価されないため
+  # module.central_metrics[0]がまだ存在しなくてもindex out of rangeにならない。
+  additional_iam_policy_arns = var.enable_central_observability ? [module.central_metrics[0].remote_write_policy_arn] : []
+  tags                       = merge(local.common_tags, { AlbHealthCheckSourceCidr = var.vpc_cidr })
+}
+
+# 外部probe / metrics中央化（docs/roadmap/external-probe-central-telemetry.md）が
+# 前提とするALB healthz URL。output側と重複させないためlocalへ切り出す。
+locals {
+  alb_healthz_url = format("%s://%s/healthz", var.certificate_arn != "" ? "https" : "http", module.alb.alb_dns_name)
 }
 
 resource "aws_lb_target_group_attachment" "this" {
@@ -194,4 +204,32 @@ module "backup" {
   force_destroy           = true
   protect_recovery_points = false
   tags                    = local.common_tags
+}
+
+# ----------------------------------------------------------------------------
+# 外部probe / 中央telemetry（docs/roadmap/external-probe-central-telemetry.md）
+#
+# 既定は無効。単一ホストラボの範囲を超えてAMP / Synthetics costが発生するため、
+# 明示的にenable_central_observability=trueにした場合のみ作る。
+# ----------------------------------------------------------------------------
+module "central_metrics" {
+  count  = var.enable_central_observability ? 1 : 0
+  source = "../../modules/central-metrics"
+
+  name = var.name_prefix
+  tags = local.common_tags
+}
+
+module "synthetics_probe" {
+  count  = var.enable_central_observability ? 1 : 0
+  source = "../../modules/synthetics-probe"
+
+  name        = var.name_prefix
+  canary_name = "stg-healthz"
+  target_url  = local.alb_healthz_url
+
+  alarm_sns_topic_arn = module.monitoring.sns_topic_arn
+  # 短命stagingのため、他のバケットと同じくdestroyで確実に片付ける。
+  force_destroy = true
+  tags          = local.common_tags
 }
