@@ -28,7 +28,7 @@
 対象commit SHAの固定と、構成コード(`compose.zabbix.yaml`、`deploy/zabbix/`、`deploy/secrets/*.example`)のレビューに使います。実際の配備は2節で`zbx-01`上に同じcommitを取得して行うため、秘密値を管理端末から`zbx-01`へ転送する必要はありません。
 
 ```bash
-git clone https://github.com/ns7jp/server-monitor.git
+git clone https://github.com/ns7jp/server.git
 cd server-monitor
 git rev-parse HEAD
 cat compose.zabbix.yaml
@@ -120,7 +120,7 @@ sudo netfilter-persistent save
 ```bash
 sudo mkdir -p /opt/zabbix-lab
 sudo chown "$(whoami)":"$(whoami)" /opt/zabbix-lab
-git clone https://github.com/ns7jp/server-monitor.git /opt/zabbix-lab
+git clone https://github.com/ns7jp/server.git /opt/zabbix-lab
 cd /opt/zabbix-lab
 git checkout <1節で確認したcommit SHA>
 git rev-parse HEAD
@@ -260,7 +260,7 @@ grep -E '^(Hostname|ServerActive)=' /etc/zabbix/zabbix_agent2.conf
 配置先は`/etc/zabbix/zabbix_agent2.d/`直下ではなく`plugins.d`配下です。`zabbix_agent2.conf`の既定`Include`は`zabbix_agent2.d/plugins.d/*.conf`だけが有効で、`zabbix_agent2.d/*.conf`は既定で読み込まれないため、`plugins.d`以外へ置くとUserParameterが登録されません。
 
 ```bash
-git clone https://github.com/ns7jp/server-monitor.git /tmp/server-monitor-zbx
+git clone https://github.com/ns7jp/server.git /tmp/server-monitor-zbx
 git -C /tmp/server-monitor-zbx checkout <1節で確認したcommit SHA>
 sudo install -d -m 0755 /etc/zabbix/zabbix_agent2.d/plugins.d
 sudo install -m 0644 \
@@ -471,7 +471,7 @@ ls -la /var/backups/zabbix
 
    ```bash
    ssh <ssh-user>@192.0.2.10 '
-     git clone https://github.com/ns7jp/server-monitor.git /tmp/server-monitor-zbx-rollback &&
+     git clone https://github.com/ns7jp/server.git /tmp/server-monitor-zbx-rollback &&
      git -C /tmp/server-monitor-zbx-rollback checkout <ロールバック先のcommit SHA> &&
      sudo install -m 0644 /tmp/server-monitor-zbx-rollback/deploy/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf.example \
        /etc/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf &&

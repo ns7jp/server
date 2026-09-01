@@ -43,7 +43,7 @@ OSは[基本設計書](01-basic-design.md)のとおり **Windows Server 2022 Sta
 | 停止許容時間 | |
 | RDPを一時的に有効化する運用可否と、その場合の解除担当 | |
 
-**WinRM(HTTPS)だけに依存しないでください。** [ポート表](00-requirements.md)のとおりRDPは既定Disableのため、WinRM接続に失敗すると通常の経路でログインできなくなります。ハイパーバイザーのコンソール(Hyper-VのVMConnect、クラウドのシリアルコンソール、VMwareのリモートコンソール等)に入れることを、Firewallを締める前に必ず確認してください。
+**WinRM(HTTPS)だけに依存しないでください。** [ポート表](03-parameter-sheet.md)のとおりRDPは既定Disableのため、WinRM接続に失敗すると通常の経路でログインできなくなります。ハイパーバイザーのコンソール(Hyper-VのVMConnect、クラウドのシリアルコンソール、VMwareのリモートコンソール等)に入れることを、Firewallを締める前に必ず確認してください。
 
 ## 2. 構築
 
@@ -73,7 +73,7 @@ Get-Service windows_exporter, W3SVC, WinRM | Select-Object Name, Status, StartTy
 
 ### 管理元CIDRでWinRM/IISを絞る
 
-[ポート表](00-requirements.md)のとおり、WinRM(5986/tcp)は管理元CIDR限定、windows_exporter(9182/tcp)は中央Prometheus hostのIPのみ許可します。1節で書き出した管理元CIDRを使い、[構築手順書](05-build-procedure.md)3節のFirewallルール作成コマンドの `RemoteAddress` を実際の値に置き換えます。**絞る前に、ハイパーバイザーのコンソールで入れることを確認しておいてください。**
+[ポート表](03-parameter-sheet.md)のとおり、WinRM(5986/tcp)は管理元CIDR限定、windows_exporter(9182/tcp)は中央Prometheus hostのIPのみ許可します。1節で書き出した管理元CIDRを使い、[構築手順書](05-build-procedure.md)3節のFirewallルール作成コマンドの `RemoteAddress` を実際の値に置き換えます。**絞る前に、ハイパーバイザーのコンソールで入れることを確認しておいてください。**
 
 ### 中央監視への統合(フェーズ2、現時点はBLOCKED)
 
