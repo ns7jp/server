@@ -1,0 +1,11 @@
+[Unit]
+Description=SM-ZBX-001 Zabbix DB backup (pg_dump via compose.zabbix.yaml)
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/zabbix-lab
+ExecStart=/opt/zabbix-lab/scripts/ops/zabbix-backup.sh --project-dir /opt/zabbix-lab
+User=root
+Group=root

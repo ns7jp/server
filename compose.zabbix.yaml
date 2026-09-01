@@ -1,0 +1,121 @@
+name: zabbix-lab
+
+# SM-ZBX-001 Zabbix監視基盤構築案件パック（docs/build-package-zabbix/）の構築コード。
+# zbx-01 (新規Zabbixサーバーホスト) 上で `docker compose -f compose.zabbix.yaml up -d` を
+# 実行する想定。既存の compose.yaml (server-monitor 本体スタック) とは独立しており、
+# 同一ホストで同時に動かす必要はない。詳細設計は
+# docs/build-package-zabbix/02-detailed-design.md を正本とする。
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: zabbix
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD_FILE: /run/secrets/zabbix_db_password
+    secrets:
+      - zabbix_db_password
+    volumes:
+      - zabbix_db_data:/var/lib/postgresql/data
+    networks:
+      - zabbix-internal
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zabbix -d zabbix"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  zabbix-server:
+    image: zabbix/zabbix-server-pgsql:alpine-7.0.29
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_SERVER_HOST: postgres
+      POSTGRES_DB: zabbix
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD_FILE: /run/secrets/zabbix_db_password
+      ZBX_ENABLE_SNMP_TRAPS: "false"
+    secrets:
+      - zabbix_db_password
+    ports:
+      # trapper port。他ホスト(monitor-01)のZabbix Agent2 active checkがここへ
+      # 接続してくる唯一の監視系ポートなので、Frontendと違いloopback限定にはできない。
+      # 実ホストでは ZABBIX_SERVER_BIND_ADDRESS をzbx-01のinterface addressへ上書きする。
+      # 送信元制限はUFWでは行えない（Dockerが公開したportはUFWが制御するhostのINPUT chainを
+      # 経由しないため）。DOCKER-USER iptables chainでmonitor-01のIPだけを許可する
+      # （docs/build-package-zabbix/04-network-ip-plan.md、docs/security.md参照）。
+      - "${ZABBIX_SERVER_BIND_ADDRESS:-127.0.0.1}:10051:10051"
+    volumes:
+      - zabbix_server_data:/var/lib/zabbix
+    networks:
+      - zabbix-internal
+      - zabbix-host-access
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      # zabbix_server の runtime control (-R) は log_level_increase のように状態を変更する
+      # コマンドしか無く、読み取り専用のping相当が無いため、healthcheckとしては使わない
+      # （ヘルスチェックのたびにログレベルが上がり続けてしまう）。プロセスの存在だけを見る。
+      test: ["CMD-SHELL", "pgrep -x zabbix_server >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-pgsql:alpine-7.0.29
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      zabbix-server:
+        condition: service_started
+    environment:
+      DB_SERVER_HOST: postgres
+      POSTGRES_DB: zabbix
+      POSTGRES_USER: zabbix
+      POSTGRES_PASSWORD_FILE: /run/secrets/zabbix_db_password
+      ZBX_SERVER_HOST: zabbix-server
+      ZBX_SERVER_NAME: "SM-ZBX-001 zbx-01"
+      PHP_TZ: Asia/Tokyo
+    secrets:
+      - zabbix_db_password
+    ports:
+      # 管理UI。既存パック群と同じ「管理UIはloopbackのみ、運用者はSSH tunnel経由」方針。
+      - "127.0.0.1:${ZABBIX_WEB_PORT:-8081}:8080"
+    networks:
+      - zabbix-internal
+      - zabbix-host-access
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--max-time", "5", "http://127.0.0.1:8080/index.php"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+secrets:
+  zabbix_db_password:
+    file: ./deploy/secrets/zabbix_db_password.txt
+
+networks:
+  # zabbix-server / zabbix-web の published port だけを host へ転送するための bridge。
+  # postgres はこの network に参加させず、DB を host / 他コンテナから直接到達させない。
+  zabbix-host-access:
+    driver: bridge
+  zabbix-internal:
+    internal: true
+
+volumes:
+  zabbix_db_data:
+  zabbix_server_data:
