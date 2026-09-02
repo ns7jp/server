@@ -21,7 +21,7 @@
 | 作業実績日時 | 2026-09-01 11:39(OSインストール完了) 〜 2026-09-02 11:19(フェーズ1完了チェックポイント取得) |
 | 対象ホストのビルド番号(`Get-ComputerInfo` の `OsBuildNumber`) | `20348`(Windows Server 2022 Standard 評価版、Desktop Experience) |
 | 変更前の状態識別子(スナップショット名) | `before-forest-creation`(2026-09-01 13:57、Hyper-Vチェックポイント) |
-| 変更後の状態識別子(スナップショット名) | `phase1-complete`(2026-09-02 11:19) |
+| 変更後の状態識別子(スナップショット名) | `phase1-hardened`(2026-09-02 16:39。Phase 1 完了 + GPO によるLDAP署名必須化 + 復元演習 + 管理者改名 + 定期バックアップ登録まで含む)。取得時点で `phase1-complete`(11:19)を統合し、チェックポイントは1世代のみ |
 | windows_exporter バージョン / SHA256 | `0.31.8` / `0aadce6afb20182b678bfca9e8f2e8464ef48c469b28b4cf02e99d82158f5d40`(amd64.msi) |
 | 中央inventory適用commit SHA(フェーズ2有効化時) | `NOT SET`(フェーズ2は`BLOCKED`のため未適用) |
 | 作業結果 | フェーズ1 `PASS`(必須31 ID すべてPASS)。フェーズ2 `BLOCKED` |
@@ -119,7 +119,7 @@
 | System Stateバックアップ / ADごみ箱復元試験(フェーズ1) | PASS | System Stateからの**復元**も2026-09-02午後に実演し PASS([復元演習](2026-09-02-ad-restore-drill.md)、復元15分29秒、復旧全体約40分)。演習中に DC の強制停止(LAB-11)と GPO によるレジストリ上書き(LAB-12)を発見・解消 |
 | host/ADメトリクスscrape(フェーズ2、AIT-09) | BLOCKED | 中央Prometheus hostの用意と`compose.yaml`のnetwork変更 |
 | Windows対応Ansible roleの追加 | NOT READY | 変更なし |
-| 2台目DC追加によるレプリケーション実測 | NOT RUN | `phase1-complete`から分岐して実施可能 |
+| 2台目DC追加によるレプリケーション実測 | NOT RUN | `phase1-hardened`から分岐して実施可能(2台目のVMが別途必要) |
 | monitor-win-01のドメイン参加検証 | NOT RUN | 同上 |
 | windows_exporterサービスアカウントの最小権限化 | NOT READY | `LocalSystem`で導入 |
 | 定期バックアップのスケジュール登録 | 登録済み(2026-09-02 夕) | `wbadmin enable backup -addtarget:D: -schedule:03:30 -systemstate -quiet` → 「スケジュールしたバックアップが有効になりました」。タスク`Microsoft-Windows-WindowsBackup`=`Ready`、`Get-WBPolicy`: 03:30 / `Backup`(D:) / SystemState=True。**初回の自動実行(09-03 03:30)は未確認** → `wbadmin get versions`に09-03の版が増えることを確認するまで`NOT RUN` |
@@ -133,7 +133,7 @@
 
 | 成果物 | 対象版 / 保存先 | 受領確認 |
 | --- | --- | --- |
-| 対象ホストの状態識別子 | Hyper-Vチェックポイント`phase1-complete`(2026-09-02 11:19)、`OsBuildNumber 20348` | 受領(本人) |
+| 対象ホストの状態識別子 | Hyper-Vチェックポイント`phase1-hardened`(2026-09-02 16:39)、`OsBuildNumber 20348`。差分チェーンは1世代(`.vhdx` 2 + `.avhdx` 2) | 受領(本人) |
 | 設計・パラメータ | `docs/build-package-ad/`(#128 / #129 修正後) | 受領(本人) |
 | 中央inventory変更(フェーズ2有効化時) | `NOT SET`(未適用) | — |
 | 試験結果・実行ログ | [2026-09-01 build validation](2026-09-01-ad-build-validation.md) | 受領(本人) |
