@@ -1,6 +1,12 @@
 # Windows サーバー構築案件パック
 
-このディレクトリは、`docs/build-package/`にあるLinuxサーバー構築案件パックの構成・文体・厳格さを踏襲し、既存の監視基盤(案件ID `SM-LAB-001`、正本は[../build-package/README.md](../build-package/README.md))にWindows Serverを新しい監視対象ホストとして追加登録する構築案件の成果物を工程順にまとめたものです。監視スタック(Prometheus / Grafana / Loki / Alertmanager)をWindows上にもう1式作るのではなく、既存の中央監視基盤を拡張します。本文書にある「設計値」と、実機で取得した「実績値」は分けて管理します。
+**一言でいうと**: すでにある Linux の監視基盤に、Windows Server 1 台を監視される側として追加登録する案件の書類一式です。
+
+このディレクトリは、Windows Serverを新しい監視対象ホストとして追加登録する構築案件の成果物を、工程順にまとめたものです。追加先は既存の監視基盤(案件ID `SM-LAB-001`、正本は[../build-package/README.md](../build-package/README.md))です。監視スタック(Prometheus / Grafana / Loki / Alertmanager)をWindows上にもう1式作るのではなく、既存の中央監視基盤を拡張します。
+
+案件は「何を作るか決める → 設計する → 作る → 試験する → 報告して渡す」の順に進みます。工程ごとに書類が分かれるため、文書は00から11までの12個あります。番号順に読めば、そのまま案件の流れをたどれます。
+
+構成・文体・厳格さは`docs/build-package/`にあるLinuxサーバー構築案件パックを踏襲します。本文書にある「設計値」と、実機で取得した「実績値」は分けて管理します。
 
 | 案件 ID | 対象 | 現在の引き渡し判定 |
 | --- | --- | --- |
@@ -19,9 +25,16 @@ flowchart LR
     W --> H["引き渡し判定 07"]
 ```
 
-文書が「作成済み」であること、フェーズ1の手順を実機で実行して `PASS` したこと、特定の引き渡し対象ホスト(`monitor-win-01`)で受け入れが完了したことは別の状態です。最終判定は[作業結果・引き渡し報告書](11-work-result-report.md)と[引き渡しチェックリスト](07-handover-checklist.md)を使います。
+次の3つは、それぞれ別の状態です。ひとまとめにしないでください。
 
-初めて「要件定義書」「非機能要件（NFR）」「Gate」といった言葉に触れる場合は、先に
+- 文書が「作成済み」であること
+- フェーズ1の手順を実機で実行して `PASS` したこと
+- 特定の引き渡し対象ホスト(`monitor-win-01`)で受け入れが完了したこと
+
+最終判定は[作業結果・引き渡し報告書](11-work-result-report.md)と[引き渡しチェックリスト](07-handover-checklist.md)を使います。
+
+初めて「要件定義書」「非機能要件（NFR。速さ・止まりにくさ・安全性など、機能以外の要求）」
+「Gate（次の工程へ進んでよいかを判断する関門）」といった言葉に触れる場合は、先に
 [案件パック 初心者ガイド（Windows版）](beginner-guide.md)で案件パック全体の地図と、
 フェーズ1／フェーズ2・WinRM・IIS などの Windows 固有の言い回しを確認してください。
 文書の番号構成（00〜11）と役割は[Linux版](../build-package/beginner-guide.md)と共通です。
@@ -36,14 +49,14 @@ flowchart LR
 
 ## 最短レビュー順
 
-1. [要件定義書](00-requirements.md) — 案件範囲、要件 ID(FR-01〜FR-07, NFR-01〜NFR-12)、受け入れ条件
-2. [基本設計書](01-basic-design.md) — 対象構成、フェーズ1/フェーズ2の区分、非機能設計
-3. [パラメータシート](03-parameter-sheet.md) — OS・WinRM・Firewall・windows_exporter・バックアップの設定値
-4. [構築手順書](05-build-procedure.md) — Windows Server 1台を手動PowerShellで構築する手順(フェーズ1)
-5. [試験仕様書・結果票](06-test-specification.md) — WUT/WIT/WST/WNW の合否基準と実測結果の記入先
-6. [ネットワーク実機検証手順](09-network-validation-procedure.md) — IP/route/DNS/ICMP/待受/HTTP/packet/Firewall の確認
-7. [作業結果・引き渡し報告書](11-work-result-report.md) — 計画対実績、試験集計、差異、残存リスク、完了判定
-8. [検証証跡台帳](../evidence/README.md) — 実測済み・未実測の境界
+1. [要件定義書](00-requirements.md) — 何を作り、何を作らないか。どうなれば合格かを決める(受け入れ条件。要件 ID は FR-01〜FR-07, NFR-01〜NFR-12)
+2. [基本設計書](01-basic-design.md) — 全体の構成、フェーズ1とフェーズ2の分け方、非機能(NFR)の設計方針
+3. [パラメータシート](03-parameter-sheet.md) — 実際に入力する設定値の一覧(OS・WinRM・Firewall・windows_exporter・バックアップ)
+4. [構築手順書](05-build-procedure.md) — Windows Server 1台を手作業のPowerShell操作で組み立てる手順(フェーズ1)
+5. [試験仕様書・結果票](06-test-specification.md) — 何を確かめれば合格かと、実測結果を書き込む用紙(WUT/WIT/WST/WNW)
+6. [ネットワーク実機検証手順](09-network-validation-procedure.md) — 実機で通信できるかの確認(IP/route/DNS/ICMP/待受/HTTP/packet/Firewall)
+7. [作業結果・引き渡し報告書](11-work-result-report.md) — 計画対実績（予定と実際の比較）、試験の集計、差異、残存リスク（残ったままの危険）、完了判定
+8. [検証証跡台帳](../evidence/README.md) — 実測済み・未実測の境界(どこまで実機で確かめ、どこからが未確認か)
 
 ## 成果物一覧
 

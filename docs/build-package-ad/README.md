@@ -1,6 +1,12 @@
 # ADサーバー構築案件パック
 
-このディレクトリは、`docs/build-package`(Linuxサーバー構築案件パック)の構成・文体・厳格さを踏襲しつつ、新規のActive Directoryフォレスト・ドメイン(`corp.example.test`)を構築し、最初のドメインコントローラーを運用担当者へ引き渡す案件の成果物を工程順にまとめたものです。既存の監視基盤である[Linux版パック](../build-package/README.md)(案件ID`SM-LAB-001`)、およびその監視対象ホストを追加する[Windows版パック](../build-package-windows/README.md)(案件ID`SM-WIN-001`)とは独立した、新規の構築案件です。本文書にある「設計値」と、実機で取得した「実績値」は分けて管理します。
+**一言でいうと**: 新しいActive Directoryのドメイン(`corp.example.test`)をWindows Server 1台に作り、運用担当者へ引き渡すまでの書類一式です。
+
+このディレクトリは、新規のActive Directoryフォレスト・ドメイン(`corp.example.test`)を構築し、最初のドメインコントローラー(利用者や機器の情報をまとめて管理するサーバー)を運用担当者へ引き渡す案件の成果物を、工程順にまとめたものです。既存の監視基盤である[Linux版パック](../build-package/README.md)(案件ID`SM-LAB-001`)、およびその監視対象ホストを追加する[Windows版パック](../build-package-windows/README.md)(案件ID`SM-WIN-001`)とは独立した、新規の構築案件です。
+
+案件は「何を作るか決める → 設計する → 作る → 試験する → 報告して渡す」の順に進みます。工程ごとに書類が分かれるため、文書は00から11までの12個あります。番号順に読めば、そのまま案件の流れをたどれます。
+
+構成・文体・厳格さは`docs/build-package`(Linuxサーバー構築案件パック)を踏襲します。本文書にある「設計値」と、実機で取得した「実績値」は分けて管理します。
 
 | 案件 ID | 対象 | 現在の引き渡し判定 |
 | --- | --- | --- |
@@ -19,24 +25,31 @@ flowchart LR
     W --> H["引き渡し判定 07"]
 ```
 
-文書が「作成済み」であること、フェーズ1の手順を実機で実行して`PASS`したこと、特定の引き渡し対象ホスト(`ad-dc01`)で受け入れが完了したことは別の状態です。最終判定は[作業結果・引き渡し報告書](11-work-result-report.md)と[引き渡しチェックリスト](07-handover-checklist.md)を使います。
+次の3つは、それぞれ別の状態です。ひとまとめにしないでください。
+
+- 文書が「作成済み」であること
+- フェーズ1の手順を実機で実行して`PASS`したこと
+- 特定の引き渡し対象ホスト(`ad-dc01`)で受け入れが完了したこと
+
+最終判定は[作業結果・引き渡し報告書](11-work-result-report.md)と[引き渡しチェックリスト](07-handover-checklist.md)を使います。
 
 ### 初めての方はまずこちら
 
-`NFR`、`AIT-xx`、案件IDのような言葉が初見の場合は、12文書を読み始める前に
+`NFR`(非機能要件。速さ・止まりにくさ・安全性など、機能以外の要求)、`AIT-xx`(試験項目の番号)、
+案件IDのような言葉が初見の場合は、12文書を読み始める前に
 [案件パック 初心者ガイド](beginner-guide.md)で、案件パックとは何か、各文書の役割、
 読む順とかかる時間の目安を確認してください。
 
 ## 最短レビュー順
 
-1. [要件定義書](00-requirements.md) — 案件範囲、要件ID、受け入れ条件
-2. [基本設計書](01-basic-design.md) — 対象構成、フェーズ1/フェーズ2の区分、非機能設計
-3. [パラメータシート](03-parameter-sheet.md) — OS・ドメイン・ネットワーク・windows_exporterの設定値
-4. [構築手順書](05-build-procedure.md) — `ad-dc01`を手動PowerShellで構築する手順(フェーズ1)
-5. [試験仕様書・結果票](06-test-specification.md) — AUT/AIT/AST/ANWの合否基準と実測結果の記入先
-6. [ネットワーク実機検証手順](09-network-validation-procedure.md) — IP/route/DNS/待受/LDAP・Kerberos到達性/packet/Firewallの確認
-7. [作業結果・引き渡し報告書](11-work-result-report.md) — 計画対実績、試験集計、差異、残存リスク、完了判定
-8. [検証証跡台帳](../evidence/README.md) — 実測済み・未実測の境界
+1. [要件定義書](00-requirements.md) — 何を作り、何を作らないか。どうなれば合格かを決める（要件 ID と受け入れ条件を定義）
+2. [基本設計書](01-basic-design.md) — 全体の構成、フェーズ1とフェーズ2の分け方、非機能(NFR)の設計方針
+3. [パラメータシート](03-parameter-sheet.md) — 実際に入力する設定値の一覧(OS・ドメイン・ネットワーク・windows_exporter)
+4. [構築手順書](05-build-procedure.md) — `ad-dc01`を手作業のPowerShell操作で組み立てる手順(フェーズ1)
+5. [試験仕様書・結果票](06-test-specification.md) — 何を確かめれば合格かと、実測結果を書き込む用紙(AUT/AIT/AST/ANW)
+6. [ネットワーク実機検証手順](09-network-validation-procedure.md) — 実機で通信できるかの確認(IP/route/DNS/待受/LDAP・Kerberos到達性/packet/Firewall)
+7. [作業結果・引き渡し報告書](11-work-result-report.md) — 計画対実績（予定と実際の比較）、試験の集計、差異、残存リスク（残ったままの危険）、完了判定
+8. [検証証跡台帳](../evidence/README.md) — 実測済み・未実測の境界(どこまで実機で確かめ、どこからが未確認か)
 
 ## 成果物一覧
 

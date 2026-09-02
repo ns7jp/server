@@ -8,6 +8,12 @@
 ![Grafana](https://img.shields.io/badge/Grafana-dashboard-F46800?logo=grafana&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
 
+このリポジトリは、**サーバーの健康状態をいつも見張り、壊れたら気づいて直せる仕組み**を、
+一から組み立てた記録です。
+サーバーの状態を数字で集め、グラフで見て、おかしくなったら知らせる。壊れたら手順どおりに戻す。
+この一連を、誰でも同じ手順でやり直せる形にしました。
+実際に動かして確かめたことと、まだ確かめていないことは、はっきり分けて書いています。
+
 **Ubuntu serverをAnsibleで構築し、Prometheus / Grafana / Lokiで監視して、障害注入・自動復旧・backup restoreまで再実行可能にしたインフラ構築lab**です。
 
 Python / Flask で作成したサーバー状態表示アプリを、認証、コンテナ配備、監視収集、アラート、運用手順まで含むポートフォリオへ拡張しています。
@@ -16,8 +22,9 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 
 ## 未経験から始める方へ
 
-最初から全ファイルを理解する必要はありません。まずは次の5語だけを押さえ、
-小さく動かしてから設計書へ進みます。
+**一言でいうと**: 最初から全部を理解しなくて大丈夫です。5つの言葉を覚え、小さく動かすところから始めます。
+
+まずは次の5語だけを押さえてください。残りは動かしながら覚えられます。
 
 | 用語 | このリポジトリでの役割 | 一言で覚える |
 | --- | --- | --- |
@@ -28,16 +35,15 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 | Grafana | 集めた数値をグラフで見せる | 可視化係 |
 
 学習は **見る → 動かす → 確認する → 壊して直す → 説明する** の順です。
-コマンドの意味、完了条件、初心者がつまずきやすい点、ミニ問題をまとめた
-[初心者向け学習ガイド](docs/beginner-learning-guide.md)から始めてください。
-分からない用語は、意味・覚え方・実装例・確認コマンドをまとめた
-[未経験者向けサーバー構築キーワード集](docs/server-building-keywords.md)で確認できます。
+読むより先に手を動かすほうが、記憶に残るからです。
 
-**最初に全機能を学ぶ必要はありません。** [一本道ラーニングパス](docs/learning-path.md)では、
-構築・障害対応までのLevel 0〜5を入門必修、LVM / 3層 / L2-L3 / AWSを選択式のLevel 6に
-分けています。開始前は、設定を変更しない診断を実行してください。
+進む順路は次のとおりです。上から順にたどれば迷いません。
 
-要件定義書や非機能要件（NFR）など、実務の構築案件で使う文書一式（[Linux server構築案件pack](docs/build-package/README.md)）を読むときは、先に[案件パック 初心者ガイド](docs/build-package/beginner-guide.md)で全体の地図と用語を確認すると迷いにくくなります。
+1. **準備の確認（短時間）** — 下のコマンドを実行します。設定を変更しない診断だけを行い、足りないものを教えてくれます。
+2. **[初心者向け学習ガイド](docs/beginner-learning-guide.md)（90分）** — コマンドの意味、完了条件、つまずきやすい点、ミニ問題がまとまっています。
+3. **[一本道ラーニングパス](docs/learning-path.md)（まず15分）** — 構築から障害対応までのLevel 0〜5が入門必修です。LVM / 3層 / L2-L3 / AWSは選択式のLevel 6に分けています。**最初に全機能を学ぶ必要はありません。**
+4. **[未経験者向けサーバー構築キーワード集](docs/server-building-keywords.md)（都度）** — 分からない用語が出たら引きます。意味・覚え方・実装例・確認コマンドが載っています。
+5. **[案件パック 初心者ガイド](docs/build-package/beginner-guide.md)（20分）** — 実務の構築案件で使う文書一式（[Linux server構築案件pack](docs/build-package/README.md)）を読む前に、全体の地図と用語をここで確認します。要件定義書や非機能要件（NFR。速さ・止まりにくさ・安全性など、機能以外の要求）が含まれます。
 
 ```bash
 ./scripts/learning/check-prerequisites.sh
@@ -46,45 +52,54 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 > 実機やAWSへいきなり適用しません。最初は破棄できるLinux検証環境を使い、
 > 実行していない項目は `NOT RUN` のまま記録します。
 
+### 3分で説明するなら
+
+- **目的**: サーバーの異常に早く気づき、決めた手順で元の状態へ戻せるようにする。
+- **構成**: Linux上でDocker Composeがアプリと監視を起動し、Ansibleが設定をそろえる。数値はPrometheus、画面はGrafana、ログはLokiが受け持つ。
+- **工夫**: 公開先をループバック（127.0.0.1。そのPCの中からだけ届く宛先）に限定し、認証と秘密値の扱いを既定で安全側に寄せた。
+- **確認**: 使い捨てのLinux環境へ一括構築し、2回目の実行で差分が出ないこと、止めても自動で復旧することをCIで検査している。
+- **未実施**: 長期間稼働させたホスト、AWSへの実適用、Slack実配信、D-2（ホスト障害からの復元）などは未実測で、`NOT RUN`のままにしている。
+
+話し方の練習と想定質問への答え方は、[初心者向け学習ガイド](docs/beginner-learning-guide.md)にあります。
+
 ## 採用ご担当者向け：最初に見る 4 点
 
 1. **2分15秒デモ** — [保存済み実測証跡リプレイ](https://ns7jp.github.io/demo.html)。2026-08-18/19のscreen shotとD-1 logを再構成した閲覧用映像で、実操作の連続録画ではありません。[2026-08-22 E2E](docs/evidence/2026-08-22-full-stack-e2e.md)では実terminalの`demo.cast`もartifact化しました。
+   - 平たく言うと: 動いている様子を、まず映像で見る。
 2. **構成と構築工程** — [構成図](docs/architecture.md) / [Linux server構築案件pack](docs/build-package/README.md)。要件 → 設計 → パラメータ → 構築 → 試験 → 作業結果 → 引き渡しを 1 案件として追跡できます。
+   - 平たく言うと: 何をどの順で作ったのかを、文書でたどる。
 3. **実測証跡** — [検証証跡台帳](docs/evidence/README.md) / [新規host一気通貫E2E](docs/e2e-validation.md)。未実行をPASSにしません。
+   - 平たく言うと: 実際に動かして確かめた記録と、その範囲。
 4. **考え方と改善** — [設計判断記録](docs/design-decisions.md) / [失敗から学んだ代表事例](docs/lessons-learned.md)。採用技術だけでなく、比較案、欠点、見直し条件、再発防止を説明します。
+   - 平たく言うと: なぜその方法を選び、失敗から何を直したか。
 
 本人管理のVPS / VM / AWSで未実測の項目は、[実測証跡計画](docs/real-environment-validation-plan.md)に
-停止条件、実行順、Definition of Doneを用意しています。環境と資格情報が提供されるまでは
-計画を実績へ読み替えず、`NOT RUN`を維持します。
+停止条件、実行順、Definition of Done（完了の定義。何をもって終わりとするかの取り決め）を用意しています。
+環境と資格情報が提供されるまでは、計画を実績へ読み替えず`NOT RUN`を維持します。
 
-> **実測の現状（2026-08-22）**: PR #75のruntime変更最終commit
-> `7622a9da974f694ae75e0173135923701be9e5a5`に対する
-> [Full-stack E2E run 32572409469](https://github.com/ns7jp/server/actions/runs/32572409469)で、
-> **使い捨てUbuntu 24.04 hostへの`site.yml`一括適用、2回目`changed=0`、11 containersの稼働、
-> 認証、Prometheus target、Docker API proxyのGET成功・POST拒否・Loki log到達、
-> ローカルwebhook通知、loopback/UFW/SSH tunnel、D-1自動復旧（1秒）、
-> 3 volumesのchecksum付きbackup / 別volume restoreを23/23 ID PASS**として採録しました。
-> 同じcommitに対するAnsible check、Security scan、Backup verify、Python checkも成功しています。
-> 判定表・環境・測定値・artifact digestは
-> [日付付き証跡](docs/evidence/2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証)に固定し、
-> raw logは期限付きActions artifactに保存しています。
+> **実測できたこと**
 >
-> **実測の追加（2026-08-23）**: PR #77の
-> [Full-stack Ansible E2E run 32611251044](https://github.com/ns7jp/server/actions/runs/32611251044)で、
-> candidate `84e149254d463a8a27a4cabcd09efa4504d1b47e`をimmutableなGit SHAとして配備・検証し、
-> 前版`59aa88ed1c8ccb7ba188909f0e079b834e9126c7`へrollbackした後もrevision marker、
-> runtime manifest、app container再作成、stale file除去、loopback bind、Loki取り込みが一致してPASSしました。
-> これはPR branch上の使い捨てrunnerでの実測で、main統合や永続hostでの変更実績ではありません。
-> [日付付きrollback証跡](docs/evidence/2026-08-23-change-CI-GIT-ROLLBACK.md)に実測値と境界を固定しています。
+> - **実測の現状（2026-08-22 / PR #75）**: runtime変更最終commit `7622a9da974f694ae75e0173135923701be9e5a5`に対する[Full-stack E2E run 32572409469](https://github.com/ns7jp/server/actions/runs/32572409469)で、
+>   **使い捨てUbuntu 24.04 hostへの`site.yml`一括適用、2回目`changed=0`、11 containersの稼働、認証、Prometheus target、Docker API proxyのGET成功・POST拒否・Loki log到達、ローカルwebhook通知、loopback/UFW/SSH tunnel、D-1自動復旧（1秒）、3 volumesのchecksum付きbackup / 別volume restoreを23/23 ID PASS**として採録しました。
+>   同じcommitに対するAnsible check、Security scan、Backup verify、Python checkも成功しています。
+>   判定表・環境・測定値・artifact digestは[日付付き証跡](docs/evidence/2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証)に固定し、raw logは期限付きActions artifactに保存しています。
+> - **実測の追加（2026-08-23 / PR #77）**: [Full-stack Ansible E2E run 32611251044](https://github.com/ns7jp/server/actions/runs/32611251044)で、candidate `84e149254d463a8a27a4cabcd09efa4504d1b47e`をimmutableなGit SHAとして配備・検証しました。
+>   前版`59aa88ed1c8ccb7ba188909f0e079b834e9126c7`へrollbackした後も、revision marker、runtime manifest、app container再作成、stale file除去、loopback bind、Loki取り込みが一致してPASSしました。
+>   実測値と境界は[日付付きrollback証跡](docs/evidence/2026-08-23-change-CI-GIT-ROLLBACK.md)に固定しています。
 >
-> 2026-08-18/19のWSL2実測、D-1 RTO 13秒、二セグメント障害ラボ、
-> [21項目中11項目PASSの結果票](docs/evidence/2026-08-19-build-validation.md)は当時の履歴として保持します。
-> 2026-08-22のE2EはSlack実配信、AWS `apply / destroy`、D-2、構成commit / 設定rollback rehearsal、
-> 長期稼働host、実管理端末・組織DNS・
-> cloud firewallを対象にしていません。実行ログが無い項目は実績として扱いません。
-> 詳細な境界は[検証証跡台帳](docs/evidence/README.md)を参照してください。
+> **当時の履歴として保持**
+>
+> - 2026-08-18/19のWSL2実測、D-1 RTO 13秒、二セグメント障害ラボ、[21項目中11項目PASSの結果票](docs/evidence/2026-08-19-build-validation.md)は当時の履歴として保持します。
+>
+> **まだ実測できていないこと**
+>
+> - 2026-08-23の結果は、PR branch上の使い捨てrunnerでの実測です。main統合や永続hostでの変更実績ではありません。
+> - 2026-08-22のE2Eは、次を対象にしていません。Slack実配信、AWS `apply / destroy`、D-2、構成commit / 設定rollback rehearsal、長期稼働host、実管理端末・組織DNS・cloud firewall。
+> - 実行ログが無い項目は実績として扱いません。詳細な境界は[検証証跡台帳](docs/evidence/README.md)を参照してください。
 
 ## 実装したこと
+
+**一言でいうと**: 作ったものの一覧です。監視画面、認証、コンテナ配備、構成の自動化、障害対応の手順までが入っています。
 
 | 分野 | 実装・成果物 |
 | --- | --- |
@@ -103,12 +118,14 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 | L2 / L3 | [ルーティングラボ](labs/routing/README.md)。静的ルート、`ip_forward`、802.1Q VLAN の切り分け |
 | クラウド配備 | Terraform で AWS 上に同等構成をコード化（[詳細](docs/aws-architecture.md)。apply 未実施） |
 | SLO 運用 | `/healthz` の定期チェックと、しきい値を超えたときのアラート通知（[詳細](docs/slo.md)） |
-| 復旧演習 | D-1 はローカル実測RTO 13秒（[2026-08-19](docs/drills/logs/2026-08-19-D-1.md)）とE2E実測RTO 1秒（[2026-08-22](docs/evidence/2026-08-22-full-stack-e2e.md)）。D-2 はランブック・テンプレートのみで未実測 |
+| 復旧演習 | D-1 はローカル実測RTO（復旧目標時間。壊れてから直るまでの目標）13秒（[2026-08-19](docs/drills/logs/2026-08-19-D-1.md)）とE2E実測RTO 1秒（[2026-08-22](docs/evidence/2026-08-22-full-stack-e2e.md)）。D-2 はランブック・テンプレートのみで未実測 |
 | 変更管理 | PR ごとに目的・影響範囲・ロールバック手順を書いて残す運用（[詳細](docs/change-management.md)） |
 | 品質確認 | pytest、構成検証、ansible-lint、Molecule 構文検証、任意実行の完全 Molecule、Terraform 検証、Trivy / pip-audit、Dependabot |
 | 一気通貫 E2E | disposable Ubuntuへ`site.yml`を2回適用し、runtime/network/通知/障害/restoreを[2026-08-22に全項目PASS](docs/evidence/2026-08-22-full-stack-e2e.md)。raw logと判定表をartifact化 |
 
 ## 構成
+
+**一言でいうと**: 誰が何を担当しているかの全体図です。人はNginx越しに画面を見て、Prometheusが数値を、Alloy と Loki がログを集めます。
 
 ```mermaid
 flowchart LR
@@ -131,6 +148,8 @@ flowchart LR
 
 ## ドキュメント
 
+**一言でいうと**: 読む順に並べた文書の一覧です。難易度（🟢 初心者 / 🟡 中級 / 🔴 発展）と所要時間の目安を付けています。
+
 ### まず読む文書
 
 | 文書 | 対象 | 目安 | 内容 |
@@ -145,7 +164,7 @@ flowchart LR
 | [セキュリティ設計](docs/security.md) | 🟡 中級 | 30分 | 認証、秘密管理、公開範囲、残存リスク |
 | [構築・配備手順](docs/deployment.md) | 🟢 初心者 | 60分〜 | Docker Compose と native Linux 配備例 |
 | [Ansible 配備手順](docs/deployment-ansible.md) | 🟡 中級 | 半日〜 | Ubuntu host向け一括構築playbook、roles 構成、Vault、Molecule |
-| [新規host一気通貫E2E](docs/e2e-validation.md) | 🔴 発展 | 30分 | `site.yml`適用、冪等性、network、D-1、backup restoreの自動検証と証跡境界 |
+| [新規host一気通貫E2E](docs/e2e-validation.md) | 🔴 発展 | 30分 | `site.yml`適用、冪等性（べきとうせい。何度実行しても同じ状態に落ち着く性質）、network、D-1、backup restoreの自動検証と証跡境界 |
 | [バックアップ・復旧設計](docs/backup-restore.md) | 🟡 中級 | 30分 | 永続データ、復元試験、復旧目標 |
 | [運用ランブック索引](docs/runbooks/README.md) | 🟡 中級 | 30分〜 | 停止・遅延・disk・memory・監視停止時の切り分け |
 | [CPU 高負荷演習記録](docs/incidents/cpu-high-drill.md) | 🟡 中級 | 15分 | 模擬障害の再現、確認、復旧、再発防止 |
@@ -180,6 +199,8 @@ flowchart LR
 
 ## ダッシュボード機能
 
+**一言でいうと**: 画面に何が出るかの一覧です。CPU、メモリ、ディスク、ネットワーク、実行中のプロセスを1画面で見られます。
+
 ![Server Monitor Dashboard（Linux(WSL2) 上での実行画面、2026-08-18）](docs/screenshot.png)
 
 > **この画像について**: 上の画面は **Linux(WSL2) 上で実際に起動して撮影したもの**（[実測証跡](docs/evidence/2026-08-18-local-observability.md)）。
@@ -197,7 +218,10 @@ flowchart LR
 
 ## 構成管理（Ansible）
 
-新規ホストの構築と運用変更は `ansible/` 配下の playbook と roles に統一している。配備手順書（[docs/deployment.md](docs/deployment.md)）は **Ansible 版（[docs/deployment-ansible.md](docs/deployment-ansible.md)）へ移行済み** で、リファレンス扱い。
+**一言でいうと**: サーバーの設定を手作業ではなくコードで行う仕組みです。同じ手順を何度でも同じ結果で再現できます。
+
+新規ホストの構築と運用変更は `ansible/` 配下の playbook と roles に統一している。
+配備手順書（[docs/deployment.md](docs/deployment.md)）は **Ansible 版（[docs/deployment-ansible.md](docs/deployment-ansible.md)）へ移行済み** で、リファレンス扱い。
 
 | ロール | 役割 |
 | --- | --- |
@@ -233,9 +257,11 @@ CI では `ansible-lint` と Molecule scenario の構文検証を常時実行す
 
 ## クラウド配備（AWS / Terraform）
 
-`terraform/` 配下に AWS 上の同等構成を IaC として用意した。VPC からアラート通知まで
-5 モジュール（`network` / `compute` / `alb` / `monitoring` / `backup`）に責務を分離し、
-環境別（`dev` / `prod`）の `terraform/environments/<env>/` を呼び出すパターン。
+**一言でいうと**: 同じ構成をAWS上にも作れるよう、コードで書いてあります。ただしAWSへ実際に適用した実績はありません。
+
+`terraform/` 配下に AWS 上の同等構成を IaC（Infrastructure as Code。基盤の設定をコードで書き、同じ環境を再現する考え方）として用意した。
+VPC からアラート通知までを 5 モジュール（`network` / `compute` / `alb` / `monitoring` / `backup`）に分けた。
+環境別（`dev` / `prod`）の `terraform/environments/<env>/` がそれらを呼び出すパターンである。
 
 ```bash
 cd terraform/environments/dev
@@ -250,16 +276,19 @@ terraform apply
 コードに含めている。CI では `terraform fmt / validate` に加えて静的スキャンを毎回実行する。
 個々の設定内容は [docs/aws-architecture.md](docs/aws-architecture.md) を参照。
 
-このコードが AWS で稼働した実績や実費を意味するものではない。ALB 配下の各 EC2 に
-同居するローカル監視データは中央の正本とせず、本番相当では外部 probe と中央保存を
-追加する。詳細は [docs/aws-architecture.md](docs/aws-architecture.md)、
+このコードが AWS で稼働した実績や実費を意味するものではない。
+ALB 配下の各 EC2 に同居するローカル監視データは、中央の正本としない。
+本番相当では外部 probe と中央保存を追加する。詳細は [docs/aws-architecture.md](docs/aws-architecture.md)、
 [docs/cost-report.md](docs/cost-report.md)、[docs/evidence/README.md](docs/evidence/README.md) を参照。
 
 ## SLO / エラーバジェット
 
-`server-monitor` のサービス品質の目標値を数値で定義し、計測query、recording rule、
-dashboard、burn-rate alertを実装している。ラボ内の blackbox-exporter は Nginx 経由で
-`/healthz` を 30 秒間隔でprobeし、Prometheusが30日窓の成功率を計算できる。
+**一言でいうと**: 「どのくらい止まらなければ合格か」を数字で決め、危なくなったら知らせる仕組みです。
+
+`server-monitor` のサービス品質の目標値を数値で定義した。
+計測query、recording rule、dashboard、burn-rate alertを実装している。
+ラボ内の blackbox-exporter は Nginx 経由で `/healthz` を 30 秒間隔でprobeする。
+これによりPrometheusが30日窓の成功率を計算できる。
 起動時点のprobeとE2Eは実測済みだが、同一hostを30日連続稼働させた達成率の証跡は未採録である。
 
 | 項目 | 目標 | 期間 |
@@ -277,11 +306,13 @@ Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可�
 
 ## 復旧演習
 
-「バックアップではなく、リストアが運用できることが価値」のため、演習を月次・四半期で
-回し、実時間 RTO / RPO を実測する設計である。D-1 はローカルでRTO 13秒
-（[2026-08-19](docs/drills/logs/2026-08-19-D-1.md)）、ephemeral E2EでRTO 1秒
-（[2026-08-22](docs/evidence/2026-08-22-full-stack-e2e.md)）を実測した。D-2は実行ログがないため、
-演習手順と自動化コードが整備済みという範囲で提示する。
+**一言でいうと**: 壊れたときに本当に戻せるかを、日を決めて試す練習です。
+
+「バックアップではなく、リストアが運用できることが価値」と考えている。
+そのため演習を月次・四半期で回し、実時間の RTO / RPO（復旧目標時点。どこまで戻せるかの目標）を実測する設計である。
+D-1 はローカルでRTO 13秒（[2026-08-19](docs/drills/logs/2026-08-19-D-1.md)）、
+使い捨て環境のE2E（ephemeral runner）でRTO 1秒（[2026-08-22](docs/evidence/2026-08-22-full-stack-e2e.md)）を実測した。
+D-2は実行ログがないため、演習手順と自動化コードが整備済みという範囲で提示する。
 
 | 演習 | 頻度 | 想定時間 | 環境 | 自動化 |
 | --- | --- | --- | --- | --- |
@@ -304,6 +335,8 @@ Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可�
 
 ## 変更管理
 
+**一言でいうと**: 「いつ・何を・なぜ変えて、どう戻すか」を必ず書き残す運用です。
+
 運用変更は PR と Issue に、目的、影響範囲、検証、ロールバック、証跡リンクを残す。
 個人ラボでも「いつ、何を、なぜ変え、どう戻せるか」を追えるよう、
 [PR テンプレート](.github/pull_request_template.md) と
@@ -316,6 +349,8 @@ Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可�
 
 ## ログ集約
 
+**一言でいうと**: サーバーとコンテナが書き出す記録（ログ）を1か所に集め、グラフと同じ画面から検索できるようにします。
+
 `Loki + Grafana Alloy` でメトリクスと同じ Grafana 画面からログを参照する。Promtail は
 2026 年 3 月 2 日に EOL となったため、収集エージェントは Alloy に移行した。
 
@@ -326,7 +361,9 @@ Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可�
 | Loki | ログの保存とクエリ。リテンション 30 日、ファイルシステムストレージ | `127.0.0.1:3100`（API のみ、ブラウザ用 UI はない） |
 | Grafana | Loki データソースとして登録。Server Monitor ダッシュボードに Logs パネルを内蔵 | `127.0.0.1:3000` |
 
-ラベル設計は **「集計に使う固定値だけラベル化、それ以外は本文に残す」** とし、カーディナリティの爆発を避ける。クエリ例は [LogQL クエリ集](docs/loki-queries.md) に整理した。
+ラベル設計は **「集計に使う固定値だけラベル化、それ以外は本文に残す」** としている。
+ラベルの種類が増えすぎると（カーディナリティの爆発）、検索も保存も重くなるからである。
+クエリ例は [LogQL クエリ集](docs/loki-queries.md) に整理した。
 
 - Docker socketを直接マウントするのは専用proxyだけで、Alloyはprivate network越しに
   `CONTAINERS=1` / `NETWORKS=1` / `POST=0`のAPIを利用する。socketの`:ro`だけでは
@@ -337,6 +374,8 @@ Grafana `Server Monitor SLO` ダッシュボード (`uid=slo-overview`) で可�
 - ログ量が増えた場合は `deploy/loki/loki-config.yml` の `limits_config.retention_period` と `compactor` で調整する。
 
 ## セキュアな初期値
+
+**一言でいうと**: 何も設定していない状態が、いちばん安全な状態になるようにしてあります。
 
 | エンドポイント | 認証 | 内容 |
 | --- | --- | --- |
@@ -430,8 +469,10 @@ server/
 
 ## 対応 OS
 
-同じ role を 2 系統の OS ファミリーへ適用できる。国内の商用環境は RHEL 系が
-多い一方、手元のラボは Ubuntu で組んでいたため、差分を role 側に閉じ込めた。
+**一言でいうと**: Ubuntu系とRHEL系（AlmaLinux / Rocky）の両方に、同じ role で対応できます。
+
+国内の商用環境は RHEL 系が多い一方、手元のラボは Ubuntu で組んでいた。
+そのため、OS ごとの差分を role 側に閉じ込めた。
 
 | 項目 | Ubuntu 22.04 / 24.04 | AlmaLinux / Rocky 9 |
 | --- | --- | --- |
@@ -457,6 +498,8 @@ molecule test -s el9       # AlmaLinux / Rocky
 ```
 
 ## 手を動かす演習（B シリーズ）
+
+**一言でいうと**: 監視の外側にある「構築の基礎」を、自分の手で動かして確かめる練習問題です。
 
 監視基盤の外側にある「構築の基礎」を実測するためのラボ。
 すべてスクリプトが**実行結果から証跡を自動生成**する
@@ -508,8 +551,8 @@ sudo ./scripts/labs/storage-guard-test.sh
 機密情報のマスク、技術選定の最終判断、面接での説明は本人が担当する。
 
 **証跡の実行環境については、次の区別を守る。** B-1〜B-4（2026-08-24）は
-AI 支援セッションの作業環境上で実行しており、独立した物理／VPS ホストでも
-本人の手元 WSL2 でもない。各証跡ファイルの「実施環境」欄に採録時の `uname` を
+AI 支援セッションの作業環境上で実行している。独立した物理／VPS ホストではなく、
+本人の手元 WSL2 でもない。各証跡ファイルの「実施環境」欄には、採録時の `uname` を
 そのまま残している。2026-08-18 / 19 の WSL2 上の実測は、証跡に実行者を明記している。
 
 仮説を外した経緯を含む一次記録は、プロフィール側の
@@ -518,6 +561,8 @@ AI 支援セッションの作業環境上で実行しており、独立した�
 [欠陥台帳](docs/evidence/defects-found.md)に 1 件ずつ記録している。
 
 ## 現在の制約と次の拡張
+
+**一言でいうと**: いまできていないことと、その理由を正直に並べています。
 
 - 単一ホストの検証構成であり、監視基盤の冗長化は対象外です。
 - **恒久的に稼働しているホストがまだありません。** 再起動後の永続性、24 / 72 時間
@@ -538,7 +583,9 @@ AI 支援セッションの作業環境上で実行しており、独立した�
   を有効にしている環境でのみ実行でき、証跡を採った環境では未検証（`SKIP-ENV`）
   です。
 - AWS Terraform は構成コードを実装済みですが、AWS上のapply / destroy、費用、復元試験の実測証跡はまだありません。
-- `site.yml`一括構築・冪等性、runner内network/UFW/待受、backup restoreは[2026-08-22の自動E2E](docs/evidence/2026-08-22-full-stack-e2e.md)でPASSです。GitHub runner imageにはDocker等が事前導入されていたため、最小OSからの導入証跡とはしません。実管理端末・組織DNS・cloud firewallを含むproduction相当のnetwork証跡とも区別します。
+- `site.yml`一括構築・冪等性、runner内network/UFW/待受、backup restoreは[2026-08-22の自動E2E](docs/evidence/2026-08-22-full-stack-e2e.md)でPASSです。
+  ただしGitHub runner imageにはDocker等が事前導入されていました。そのため、最小OSからの導入証跡とはしません。
+  実管理端末・組織DNS・cloud firewallを含むproduction相当のnetwork証跡とも区別します。
 - Slack 通知は Webhook 秘密値をコミットしないため、`compose.slack.yaml.example` を重ねて利用環境で有効化する方式です。
 - 次の拡張候補は、外部 probe、中央 telemetry、SSO / VPN 連携、リモートストレージへの長期 metrics 保存です。
 
