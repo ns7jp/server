@@ -48,7 +48,7 @@ flowchart LR
 3. [パラメータシート](03-parameter-sheet.md) — 実際に入力する設定値の一覧（OS・SSH・FW・Docker・監視）
 4. [構築手順書](05-build-procedure.md) — Ubuntu 1 台を Ansible で組み立てる手順
 5. [試験仕様書・結果票](06-test-specification.md) — 何を確かめれば合格かと、実測結果を書き込む用紙
-6. [ネットワーク実機検証手順](09-network-validation-procedure.md) — 実機で通信できるかの確認（ping / DNS / route / listen / HTTP / packet / FW）
+6. [ネットワーク実機検証手順](09-network-validation-procedure.md) — 実機で通信できるかの確認（通信が届くか、名前が引けるか、経路は正しいか、待ち受けているか。ping / DNS / route / listen / HTTP / packet / FW）
 7. [作業結果・引き渡し報告書](11-work-result-report.md) — 計画対実績（予定と実際の比較）、試験の集計、差異、残存リスク（残ったままの危険）、完了判定
 8. [検証証跡台帳](../evidence/README.md) — 実測済み・未実測の境界（どこまで実機で確かめ、どこからが未確認か）
 
@@ -73,6 +73,8 @@ flowchart LR
 
 ## 工程ゲート
 
+表中の `NOT SET` は、値や承認がまだ決まっていないことを表します。
+
 | Gate | 完了条件 | 現在の状態 |
 | --- | --- | --- |
 | G0 要件確定 | 要件 ID、対象、対象外、受け入れ条件が合意済み | 文書作成済み。実案件での承認は `NOT SET` |
@@ -82,13 +84,14 @@ flowchart LR
 | G4 作業完了 | 作業結果報告書に実績、障害、差異、残存リスクを記録 | 原本のみ。実案件報告は `NOT SET` |
 | G5 引き渡し | 受領者、日時、秘密値受け渡し、未解決事項を記録 | `NOT READY` |
 
-この作業ツリーで実行できた Windows 静的・単体検証と、実行できなかった Linux runtime の境界は [2026-08-27 の日付付き証跡](../evidence/2026-08-27-local-static-validation.md)に記録しています。
+この作業ツリー（手元で編集中のファイル一式）で実行できた Windows 静的・単体検証と、実行できなかった Linux runtime の境界は [2026-08-27 の日付付き証跡](../evidence/2026-08-27-local-static-validation.md)に記録しています。
 
 ## 検証環境
 
 基準環境は Ubuntu Server 24.04 LTS の単一ホストです。構成コードは Ubuntu 22.04 LTS にも対応しますが、両バージョンでの実測を意味しません。AWS 構成は別の発展構成であり、実際の `apply / destroy` が記録されるまでは設計・コード実装済みとして扱います。
 
-二セグメントDockerラボとephemeral runner E2Eの実測はありますが、独立した引き渡し対象VM・
+二セグメントDockerラボ（Docker上の2つのネットワークにまたがる通信障害を再現し、切り分けを
+練習する演習環境）とephemeral runner E2Eの実測はありますが、独立した引き渡し対象VM・
 管理端末・組織DNSを確認した証拠ではありません。その対象host側は日付付きの
 [ネットワーク結果票](../evidence/templates/network-host-validation.md)が保存されるまで`NOT RUN`とします。
 

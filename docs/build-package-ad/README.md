@@ -2,6 +2,8 @@
 
 **一言でいうと**: 新しいActive Directoryのドメイン(`corp.example.test`)をWindows Server 1台に作り、運用担当者へ引き渡すまでの書類一式です。
 
+初めての方は、先に[案件パック 初心者ガイド](beginner-guide.md)を読むと全体像がつかめます。
+
 このディレクトリは、新規のActive Directoryフォレスト・ドメイン(`corp.example.test`)を構築し、最初のドメインコントローラー(利用者や機器の情報をまとめて管理するサーバー)を運用担当者へ引き渡す案件の成果物を、工程順にまとめたものです。既存の監視基盤である[Linux版パック](../build-package/README.md)(案件ID`SM-LAB-001`)、およびその監視対象ホストを追加する[Windows版パック](../build-package-windows/README.md)(案件ID`SM-WIN-001`)とは独立した、新規の構築案件です。
 
 案件は「何を作るか決める → 設計する → 作る → 試験する → 報告して渡す」の順に進みます。工程ごとに書類が分かれるため、文書は00から11までの12個あります。番号順に読めば、そのまま案件の流れをたどれます。
@@ -47,7 +49,7 @@ flowchart LR
 3. [パラメータシート](03-parameter-sheet.md) — 実際に入力する設定値の一覧(OS・ドメイン・ネットワーク・windows_exporter)
 4. [構築手順書](05-build-procedure.md) — `ad-dc01`を手作業のPowerShell操作で組み立てる手順(フェーズ1)
 5. [試験仕様書・結果票](06-test-specification.md) — 何を確かめれば合格かと、実測結果を書き込む用紙(AUT/AIT/AST/ANW)
-6. [ネットワーク実機検証手順](09-network-validation-procedure.md) — 実機で通信できるかの確認(IP/route/DNS/待受/LDAP・Kerberos到達性/packet/Firewall)
+6. [ネットワーク実機検証手順](09-network-validation-procedure.md) — 実機で通信できるかの確認(通信が届くか、名前が引けるか、経路は正しいか、待ち受けているか。IP/route/DNS/待受/LDAP・Kerberos到達性/packet/Firewall)
 7. [作業結果・引き渡し報告書](11-work-result-report.md) — 計画対実績（予定と実際の比較）、試験の集計、差異、残存リスク（残ったままの危険）、完了判定
 8. [検証証跡台帳](../evidence/README.md) — 実測済み・未実測の境界(どこまで実機で確かめ、どこからが未確認か)
 
@@ -71,6 +73,8 @@ flowchart LR
 | 一次切り分け記録 | [トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md) | テンプレート作成済み(Linux/Windows版と共用) |
 
 ## 工程ゲート
+
+表中の`NOT SET`は、値や承認がまだ決まっていないことを表します。
 
 | Gate | 完了条件 | 現在の状態 |
 | --- | --- | --- |
