@@ -242,6 +242,15 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
 - **このリポジトリ**: AnsibleのOS別varsとtasksでAPT/DNF差分を吸収します。
 - **確認**: `apt-cache policy docker-ce`または`dnf info docker-ce`
 
+### venv（Python仮想環境）
+
+- **一言**: プロジェクト専用のPython環境を`.venv`ディレクトリに作る仕組み。
+- **意味**: OS共通のPythonへ直接libraryを入れると、別のプロジェクトと版が衝突します。
+  `python3 -m venv .venv`で専用環境を作り、`source .venv/bin/activate`で切り替えてから
+  installすると、影響がそのディレクトリ内に収まります。作業後は`deactivate`で戻します。
+- **このリポジトリ**: 学習ガイドの「小さく確認する」手順で`.venv`を作り、`requirements-dev.txt`をinstallします。
+- **確認**: `python3 -m venv --help`、`echo "$VIRTUAL_ENV"`
+
 ### systemdとunit
 
 - **一言**: Linuxの起動後にサービスを管理する仕組みと、その設定単位。
@@ -897,6 +906,25 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
 - **このリポジトリ**: `docs/build-package/00`から`02`へ工程順に整理しています。
 - **確認**: 要件IDが設計とtest IDへつながっているか確認します。
 
+### NFR（非機能要件）
+
+- **一言**: 機能そのものではなく、速さ、止まりにくさ、安全性などの品質面の要求。
+- **意味**: 「監視画面が見られる」は機能要件、「管理UIをloopbackだけにbindする」
+  「2回目の適用で差分が出ない」はNFRです。曖昧になりやすいため、ID、判定方法、
+  対応するtest IDを対にして初めて合否を判定できます。
+- **このリポジトリ**: `docs/build-package/00-requirements.md`にNFR-01（再現性）からの表があり、
+  各NFRが受け入れ試験IDへつながります。
+- **確認**: `grep -n "NFR-" docs/build-package/00-requirements.md`
+
+### Gate（工程ゲート）
+
+- **一言**: 次の工程へ進んでよいかを判定する、案件の区切りG0〜G5。
+- **意味**: G0要件確定、G1設計確定、G2構築完了、G3試験完了、G4作業完了、G5引き渡しの順に、
+  前の条件を満たさないまま先へ進まないための関門です。表の右端は現在の状態で、
+  文書が揃っただけの段階と、実測で通過した段階を区別します。
+- **このリポジトリ**: 各案件パックのREADMEに「工程ゲート」表があり、冒頭の表の「引き渡し判定」列と対応します。
+- **確認**: `grep -n "工程ゲート" docs/build-package/README.md`
+
 ### parameter sheet
 
 - **一言**: host名、IP、port、versionなどの設定値を一覧化した表。
@@ -904,6 +932,15 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
   秘密値そのものは記載せず、保管場所や受け渡し方法を書きます。
 - **このリポジトリ**: `03-parameter-sheet.md`にOS、SSH、監視設定を整理します。
 - **確認**: 実設定とparameter sheetの差分を受け入れ試験で確認します。
+
+### 正本と原本
+
+- **一言**: 正本はその値の正しい出どころ、原本は記入前の元の様式。
+- **意味**: 同じ値が複数の文書へ写ると、どれが正しいか分からなくなります。設計値の正本は
+  構成codeとparameter sheet、実行結果の正本は日付付きevidenceと決めておきます。
+  試験仕様書のような様式は原本を空のまま保ち、結果は複製した日付付きファイルへ記入します。
+- **このリポジトリ**: `docs/build-package/03-parameter-sheet.md`が設計値の索引、`docs/evidence/`が結果の正本です。
+- **確認**: `grep -n "正本" docs/build-package/00-requirements.md`
 
 ### test specificationとacceptance criteria
 
@@ -945,6 +982,24 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
 - **このリポジトリ**: 初心者導線の回帰testとstorage安全gateのnegative testがあります。
 - **確認**: `pytest -q`と、対象test名・期待する失敗条件を確認します。
 
+### 前提診断
+
+- **一言**: 演習を始める前に、必要な道具が揃っているかだけを読み取り専用で調べること。
+- **意味**: 足りないものに気づかないまま構築へ進むと、原因の切り分けが難しくなります。
+  前提診断は設定変更、package install、sudo、container起動を行わず、Linux、Git、Python、
+  OpenSSL、Docker、Compose、Ansible、空き容量、memory、portの状態だけを表示します。
+- **このリポジトリ**: `scripts/learning/check-prerequisites.sh`が学習の最初の1手です。
+- **確認**: `./scripts/learning/check-prerequisites.sh --help`
+
+### compileallとpytest
+
+- **一言**: compileallは構文だけの検査、pytestは実際に動かす自動test。
+- **意味**: `python -m compileall app.py tests`はPythonの文法error（typoやindent崩れ）を
+  実行前に見つけます。文法が通ることと期待どおり動くことは別なので、続けて`pytest`で
+  振る舞いを確認します。見るのは終了コードとtest件数です。
+- **このリポジトリ**: `tests/`にAPI認証、masking、metricsなどのtestがあります。
+- **確認**: `python -m compileall --help`、`pytest -q --collect-only`
+
 ### PASS、FAIL、BLOCKED、NOT RUN
 
 - **一言**: 成功、失敗、前提不足、未実行を区別する結果状態。
@@ -952,6 +1007,25 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
   完了不能、NOT RUNは実行していない状態です。推測をPASSにしません。
 - **このリポジトリ**: test結果票と証跡台帳で同じ状態を使います。
 - **確認**: 各PASSに日時、環境、command、出力、SHAがあるか確認します。
+
+### WARNとNEXT
+
+- **一言**: WARNは合格ではない注意、NEXTは次に何をすればよいかの指示行。
+- **意味**: 前提診断はPASS、WARN、FAILの3種類を表示します。FAILは必須条件の不足なので
+  先へ進まず、その項目のNEXTに従います。WARNは今の段階では必須でない不足（例: Ansibleは
+  Level 4で必要）で、影響を理解したうえで続行できます。解消前の結果は`BLOCKED`と記録します。
+- **このリポジトリ**: `scripts/learning/check-prerequisites.sh`が`[PASS]`、`[WARN]`、`[FAIL]`と
+  `NEXT:`行を出し、末尾に`Summary: FAIL=n WARN=n`を表示します。
+- **確認**: `grep -n "NEXT" scripts/learning/check-prerequisites.sh`
+
+### NOT SETとNOT READY
+
+- **一言**: NOT SETは値や承認がまだ決まっていない、NOT READYは条件を満たさず先へ進めない。
+- **意味**: PASS、FAIL、BLOCKED、NOT RUNがtest結果の状態であるのに対し、この2語は案件側の
+  状態です。実案件の承認者や日時が未定なら`NOT SET`、必須testが未実施で引き渡せない工程
+  ゲートは`NOT READY`と書き、「未定」を「完了」に見せません。
+- **このリポジトリ**: 各案件パックREADMEの工程ゲート表と、冒頭の引き渡し判定欄で使います。
+- **確認**: `grep -n "NOT SET\|NOT READY" docs/build-package/README.md`
 
 ### evidenceとartifact
 

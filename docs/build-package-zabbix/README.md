@@ -1,10 +1,20 @@
 # Zabbix監視基盤構築案件パック
 
-このディレクトリは、`server-monitor`の既存監視基盤（案件ID`SM-LAB-001`、正本は[Linux版構築案件パック](../build-package/README.md)。Prometheus + Grafana + Loki + Alertmanager）を**変更せず**、同じ監視対象ホスト`monitor-01`を、新規のZabbixサーバーホスト`zbx-01`上に構築する**Zabbix 7.0 LTS**で、既存スタックとは独立した2本目の監視経路として監視できるようにする案件（案件ID`SM-ZBX-001`）の成果物を工程順にまとめたものです。「Prometheus/Grafanaスタック一本で監視設計ができる」ことに加えて、日本のインフラ求人で頻出する**Zabbixでも同種の監視基盤を要件定義から引き渡しまで設計・構築できる**ことを示すのが、このパックをポートフォリオへ追加した狙いです。本文書にある「設計値」と、実機で取得した「実績値」は分けて管理します。
+**一言でいうと**: 既存の監視はそのままに、新しいサーバー`zbx-01`へZabbixを構築し、2本目の監視経路を用意する案件の書類一式です。
+
+初めての方は、先に[案件パック 初心者ガイド](beginner-guide.md)を読むと全体像がつかめます。
+
+このディレクトリは、案件ID`SM-ZBX-001`の成果物を工程順にまとめたものです。新規のZabbixサーバーホスト`zbx-01`上に**Zabbix 7.0 LTS**を構築し、既存監視基盤と同じ監視対象ホスト`monitor-01`を、既存スタックとは独立した2本目の監視経路として監視できるようにします。`server-monitor`の既存監視基盤（案件ID`SM-LAB-001`、正本は[Linux版構築案件パック](../build-package/README.md)。Prometheus + Grafana + Loki + Alertmanager）は**変更しません**。
+
+案件は「何を作るか決める → 設計する → 作る → 試験する → 報告して渡す」の順に進みます。工程ごとに書類が分かれるため、文書は00から11までの12個あります。番号は作られた順で、読む順とは一致しません。初めて読むときは、下の「最短レビュー順」に従ってください。
+
+「Prometheus/Grafanaスタック一本で監視設計ができる」ことに加えて、日本のインフラ求人で頻出する**Zabbixでも同種の監視基盤を要件定義から引き渡しまで設計・構築できる**ことを示すのが、このパックをポートフォリオへ追加した狙いです。本文書にある「設計値」と、実機で取得した「実績値」は分けて管理します。
 
 | 案件 ID | 対象 | 現在の引き渡し判定 |
 | --- | --- | --- |
 | `SM-ZBX-001` | Ubuntu Server 24.04 LTS の検証用 VM 1 台（新規・論理ホスト名 `zbx-01`）へ Zabbix 7.0 LTS（Server / Frontend / PostgreSQL）を構築し、既存監視対象ホスト `monitor-01`（[Linux版パック](../build-package/03-parameter-sheet.md)と同一）を Zabbix Agent2 の active check で追加監視 | **`NOT READY`** — 引き渡し対象ホストが未指定で、必須試験（`ZUT`/`ZIT`/`ZST`）が `NOT RUN` |
+
+表中の `NOT READY` は、必須の試験が終わっておらず、引き渡せる状態ではないことを表します。
 
 ```mermaid
 flowchart LR
@@ -16,11 +26,18 @@ flowchart LR
     W --> H["引き渡し判定 07"]
 ```
 
-文書が「作成済み」であること、`compose.zabbix.yaml`がCIで構文検証されていること、特定の引き渡し対象ホスト（`zbx-01`）で受け入れが完了したことは別の状態です。最終判定は[作業結果・引き渡し報告書](11-work-result-report.md)と[引き渡しチェックリスト](07-handover-checklist.md)を使います。
+次の3つは、それぞれ別の状態です。ひとまとめにしないでください。
+
+- 文書が「作成済み」であること
+- `compose.zabbix.yaml`がCIで構文検証されていること
+- 特定の引き渡し対象ホスト（`zbx-01`）で受け入れが完了したこと
+
+最終判定は[作業結果・引き渡し報告書](11-work-result-report.md)と[引き渡しチェックリスト](07-handover-checklist.md)を使います。
 
 ### 初めての方はまずこちら
 
-`NFR`、`Gate`、`Trigger`、`ZIT-xx`のような言葉が初見の場合は、12文書を読み始める前に
+`NFR`（非機能要件。速さ・止まりにくさ・安全性など、機能以外の要求）、`Gate`（次の工程へ
+進んでよいかを判断する関門）、`Trigger`、`ZIT-xx`のような言葉が初見の場合は、12文書を読み始める前に
 [案件パック 初心者ガイド](beginner-guide.md)で、案件パックとは何か、各文書の役割、
 読む順とかかる時間の目安を確認してください。
 
@@ -42,14 +59,14 @@ flowchart LR
 
 ## 最短レビュー順
 
-1. [要件定義書](00-requirements.md) — 案件範囲、要件 ID、受け入れ条件
-2. [基本設計書](01-basic-design.md) — 対象構成と非機能設計
-3. [パラメータシート](03-parameter-sheet.md) — OS・ネットワーク・Docker・Zabbix監視設計の設定値
-4. [構築手順書](05-build-procedure.md) — `zbx-01`をDocker Composeと手動手順で構築する手順
-5. [試験仕様書・結果票](06-test-specification.md) — `ZUT`/`ZIT`/`ZST`の合否基準と実測結果の記入先
-6. [ネットワーク実機検証手順](09-network-validation-procedure.md) — `zbx-01`・`monitor-01`間の名前解決/route/listen/HTTP/packet/firewallの確認
-7. [作業結果・引き渡し報告書](11-work-result-report.md) — 計画対実績、試験集計、差異、残存リスク、完了判定
-8. [検証証跡台帳](../evidence/README.md) — 実測済み・未実測の境界
+1. [要件定義書](00-requirements.md) — 何を作り、何を作らないか。どうなれば合格かを決める（要件 ID と受け入れ条件を定義）
+2. [基本設計書](01-basic-design.md) — 全体の構成と、非機能（NFR）の設計方針
+3. [パラメータシート](03-parameter-sheet.md) — 実際に入力する設定値の一覧（OS・ネットワーク・Docker・Zabbix監視設計）
+4. [構築手順書](05-build-procedure.md) — `zbx-01`をDocker Composeと手作業で組み立てる手順
+5. [試験仕様書・結果票](06-test-specification.md) — 何を確かめれば合格かと、実測結果を書き込む用紙（`ZUT`/`ZIT`/`ZST`）
+6. [ネットワーク実機検証手順](09-network-validation-procedure.md) — `zbx-01`と`monitor-01`の間で通信できるかの確認（名前が引けるか、経路は正しいか、待ち受けているか。名前解決/route/listen/HTTP/packet/firewall）
+7. [作業結果・引き渡し報告書](11-work-result-report.md) — 計画対実績（予定と実際の比較）、試験の集計、差異、残存リスク（残ったままの危険）、完了判定
+8. [検証証跡台帳](../evidence/README.md) — 実測済み・未実測の境界（どこまで実機で確かめ、どこからが未確認か）
 
 ## 成果物一覧
 
@@ -71,6 +88,8 @@ flowchart LR
 | 一次切り分け記録 | [トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md) | テンプレート作成済み（既存3パックと共用） |
 
 ## 工程ゲート
+
+表中の `NOT SET` は、値や承認がまだ決まっていないことを表します。
 
 | Gate | 完了条件 | 現在の状態 |
 | --- | --- | --- |
