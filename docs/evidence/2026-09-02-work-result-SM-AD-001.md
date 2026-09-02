@@ -101,6 +101,11 @@
 | LAB-08 | 09/02 午前 | `pktmon start --etw -p 128`で`.etl`が生成されない | `--etw`は存在せず、`start`の`-p`は`--provider` | `pktmon start -h`で構文確認、`--capture --pkt-size 128`へ | PASS(ANW-07) | #128 |
 | LAB-09 | 09/02 午前 | `Get-NetFirewallProfile`が`NotConfigured` | 永続ストアの値。実効値は`-PolicyStore ActiveStore` | ActiveStoreで`Block`を確認 | PASS(ANW-08) | #128 |
 | LAB-10 | 09/02 午前 | AUT-01で`05`のブロック#41に構文エラー | `-version:<プレースホルダー>`の`<>`が文字列外 | 変数の文字列リテラルへ | PASS(AUT-01) | #129 |
+| LAB-11 | 09/02 12:23 | System Stateバックアップ中にHyper-VがVMを一時停止→強制停止 | 5世代の差分チェーン上でVSS+数GB書き込み→ホストI/O停止(ホストログ12636/18524/18528) | チェーンを1世代に統合、自動チェックポイント無効化 | PASS(再バックアップ完走) | [復元演習](2026-09-02-ad-restore-drill.md) |
+| LAB-12 | 09/02 13:2x | `LDAPServerIntegrity`が1に戻っていた | Default Domain Controllers Policyが「なし」を定義しレジストリ編集を上書き | GPMCで「署名必須」へ。`gpupdate`後`secedit`で`=4,2`、再起動後2886なし | PASS(AST-04再確認) | 同上 |
+| LAB-13 | 09/02 15:37 | `bcdedit /deletevalue {current} safeboot`が失敗しDSRMで再起動 | PowerShellが`{current}`をスクリプトブロックと解釈 | `'{current}'`と引用符で囲む | PASS | 同上 |
+| LAB-14 | 09/02 15:1x | DSRM起動後に「仮想マシン接続」が応答なし | 拡張セッションがセーフモードで成立しない | 基本セッションへ切替 | PASS | 同上 |
+| LAB-15 | 09/02 12:22 | WinRM経由の`wbadmin`が56%で切断 | LAB-11のVM停止(および長時間・大量出力をWinRMで流していた) | コンソール実行+出力をファイルへ | PASS | 同上 |
 
 切り分けはいずれも「仮説→実出力で反証→原因確定」の順で行い、推測でPASSにしたものはありません。詳細は各証跡の備考欄にあります。
 
@@ -111,7 +116,7 @@
 | 対象ホストの新規構築・受け入れ(フェーズ1) | PASS(ラボ) | 永続host・組織環境での再実施は`NOT RUN` |
 | 実管理端末 / 内部ネットワーク / Firewall検証(フェーズ1) | PASS(ラボ) | 実ドメインメンバーからの認証・GPO適用は`NOT RUN`(ANW-09の境界) |
 | サービス停止復旧演習・RTO記録(フェーズ1) | PASS(RTO 0.906秒) | — |
-| System Stateバックアップ / ADごみ箱復元試験(フェーズ1) | PASS | System Stateからの**復元**(DSRM起動→`wbadmin start systemstaterecovery`)は`NOT RUN`。ごみ箱復元のみ実施 |
+| System Stateバックアップ / ADごみ箱復元試験(フェーズ1) | PASS | System Stateからの**復元**も2026-09-02午後に実演し PASS([復元演習](2026-09-02-ad-restore-drill.md)、復元15分29秒、復旧全体約40分)。演習中に DC の強制停止(LAB-11)と GPO によるレジストリ上書き(LAB-12)を発見・解消 |
 | host/ADメトリクスscrape(フェーズ2、AIT-09) | BLOCKED | 中央Prometheus hostの用意と`compose.yaml`のnetwork変更 |
 | Windows対応Ansible roleの追加 | NOT READY | 変更なし |
 | 2台目DC追加によるレプリケーション実測 | NOT RUN | `phase1-complete`から分岐して実施可能 |

@@ -333,20 +333,38 @@ Remove-ADUser -Identity "test-weak-pw" -Confirm:$false -ErrorAction SilentlyCont
 
 2023年3月のMicrosoft強制適用ガイダンス(ADV190023)相当の設定を適用します。
 
-```powershell
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\NTDS\Parameters" -Name "LDAPServerIntegrity" -Value 2
-Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\NTDS\Parameters" -Name "LdapEnforceChannelBinding" -Value 2
-Restart-Service NTDS -Force
-```
+> ⚠️ **レジストリの直接編集では設定が維持されません**。`LDAPServerIntegrity`は「ドメイン コントローラー: LDAP サーバー署名必須」というセキュリティオプションであり、`Install-ADDSForest`が作る**Default Domain Controllers Policy がこの項目を「なし(1)」と明示的に定義**しています。`Set-ItemProperty`で`2`にしても、グループポリシーの更新(既定5分ごと)や再起動のたびに`1`へ上書きされます。本パック初版はレジストリ編集を手順としていましたが、2026-09-02の実機検証で、設定翌日に`1`へ戻っていることを発見しました(`Get-GPOReport`でGPO側の定義を確認)。設定はGPO側で行います。なお`Set-GPRegistryValue`は「管理用テンプレート」用のcmdletで、セキュリティオプションには使えません。
 
-`Restart-Service NTDS`は単一のドメインコントローラー上でディレクトリサービスを一時的に停止させます。作業時間帯を[要件定義書](00-requirements.md)の合意どおりに確保したうえで実施してください。設定後、レジストリ値が反映されていることを確認します。
+GUI(グループ ポリシーの管理)で設定します。対象ホストのコンソールで:
+
+1. `gpmc.msc`を起動
+2. `フォレスト: corp.example.test` → `ドメイン` → `corp.example.test` → `Domain Controllers` → **Default Domain Controllers Policy** を右クリック → 編集
+3. `コンピューターの構成` → `ポリシー` → `Windows の設定` → `セキュリティの設定` → `ローカル ポリシー` → `セキュリティ オプション`
+4. **「ドメイン コントローラー: LDAP サーバー署名必須」** → `署名必須`
+5. **「ドメイン コントローラー: LDAP サーバー チャネル バインディング トークンの要件」** → `常に`(この項目が無いテンプレートの場合は、下記のレジストリ設定を併用)
 
 ```powershell
+# GPOを即時適用し、実効値を確認する
+gpupdate /force /target:computer
+
+# レジストリ(GPO適用後の値)と、実効セキュリティポリシーの両方で 2 を確認する
 Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\NTDS\Parameters" `
   -Name LDAPServerIntegrity, LdapEnforceChannelBinding
+secedit /export /cfg C:\temp\sec.inf /areas SECURITYPOLICY | Out-Null
+Select-String -Path C:\temp\sec.inf -Pattern 'LDAPServerIntegrity|LdapEnforceChannelBinding'
 ```
 
-いずれも`2`(必須)になっていることを確認します。
+`secedit`の出力が`...\LDAPServerIntegrity=4,2`と`...\LdapEnforceChannelBinding=4,2`であることを確認します(`4,1`ならGPO側がまだ「なし」です)。反映にはNTDSの再起動または対象ホストの再起動が必要です。
+
+```powershell
+Restart-Computer -Force
+```
+
+`Restart-Service NTDS -Force`でも反映できますが、依存サービス(DNS等)の再起動待ちでcmdletが数分応答しないことがあります(サービス自体は正常に再起動しています)。単一DCではディレクトリサービスが一時停止するため、作業時間帯を[要件定義書](00-requirements.md)の合意どおりに確保したうえで実施してください。再起動後、`Directory Service`ログに警告`2886`(署名必須でない旨)が**出ていない**ことで反映を確認します。
+
+```powershell
+Get-WinEvent -LogName 'Directory Service' -MaxEvents 20 | Where-Object Id -in 2886, 2887 | Select-Object TimeCreated, Id
+```
 
 ### 7.2 SMBv1の無効化(AST-05)
 
@@ -625,26 +643,45 @@ Restore-GPO -Name "Default Domain Policy" -Path "C:\Backup\gpo-<yyyyMMdd>" -Doma
 
 3. **データ破損時: Windows Server Backupからの復元。** ドメインコントローラー上でSystem Stateを復元するには、対象ホストをDSRM(ディレクトリサービス復元モード)で起動する必要があります。`ad-dc01`はこのフォレストの唯一のドメインコントローラーであり複製元となる他のDCが存在しないため、非権威復元・権威復元の区別が実質的な意味を持ちません(この区別は複数DC環境で、他のDCからのレプリケーションによって復元内容が上書きされることを防ぎたい場合に意味を持ちます)。
 
+2026-09-02の実機演習(バックアップ→目印OUの作成→DSRM復元→目印が消えたことの確認)で、この手順が動くことと所要時間を確認しています([復元演習の証跡](../evidence/2026-09-02-ad-restore-drill.md))。同じ演習で見つけた注意点を各手順に添えます。
+
+**復元前の準備(ハイパーバイザー側)**: Hyper-Vのチェックポイントが何世代も連なっていると、ゲスト内のVSSと大量書き込みが重なったときにホスト側のディスクI/Oが停止し、Hyper-VがVMを保護のため一時停止・強制停止することがあります(実機で発生)。バックアップ・復元の**直前に新しいチェックポイントを取らない**、チェーンを1〜2世代に統合しておく、`Set-VM -AutomaticCheckpointsEnabled $false`で自動チェックポイントを止めておく、の3点を守ります。
+
 ```powershell
-# DSRMで起動
+# DSRMで起動。復旧時間(RTO)計測の起点として時刻を控える
+Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 bcdedit /set safeboot dsrepair
-Restart-Computer
+Restart-Computer -Force
 ```
 
-DSRM Administrator(2節で改名したローカルAdministrator相当、4節で設定したDSRMパスワード)でログオンし、復元を実行します。
+DSRMのログオン画面ではドメインアカウントは使えません。「その他のユーザー」を選び、ユーザー名 **`.\Administrator`**(ローカル。2節で改名した場合はその名前)、パスワードは4節で設定したDSRMパスワードでログオンします。画面の四隅に「セーフ モード」と表示されます。Hyper-Vの「仮想マシン接続」を**拡張セッション**で開いているとDSRMでは接続待ちのまま固まるため、ホスト側で`Set-VMHost -EnableEnhancedSessionMode $false`とするか、ビューアの「表示」→「拡張セッション」を外して基本セッションで接続します。基本セッションでは貼り付けが使えないので、ビューアの「クリップボード」→「クリップボードのテキストを入力」で1行ずつ送るか、手入力します。
 
 ```powershell
 wbadmin get versions -backupTarget:D:
-# 上の出力の「バージョン ID」(例: 09/01/2026-09:21)を指定する。<> をそのまま残すと構文エラーになる
-$restoreVersion = "<NOT SET: 復元対象のバージョンID>"
+# 上の出力の「バージョン識別子」(例: 09/02/2026-05:16。UTC基準)を指定する。<> をそのまま残すと構文エラーになる
+$restoreVersion = "<NOT SET: 復元対象のバージョン識別子>"
 wbadmin start systemstaterecovery -version:$restoreVersion -backupTarget:D: -quiet
 ```
 
-復元完了後、通常起動へ戻します。
+`-quiet`でも進捗は表示されます。実機(System State約8GB)では**約15分**でした。「システム状態の回復が正常に完了しました」「再起動が必要です」が出たら、通常起動へ戻します。
 
 ```powershell
-bcdedit /deletevalue safeboot
-Restart-Computer
+# {current} は PowerShell ではスクリプトブロックと解釈されるため、必ず引用符で囲む
+bcdedit /deletevalue '{current}' safeboot
+bcdedit /enum '{current}' | Select-String safeboot     # 何も出なければ解除済み
+Restart-Computer -Force
+```
+
+> ⚠️ `safeboot`の解除を忘れる(または`{current}`の引用符漏れで失敗する)と、次回もDSRMで起動します。DSRMではドメインアカウントで認証できないため、管理端末からのWinRMは`AccessDenied`になり、コンソールのプロンプトは`C:\Users\Administrator.<ホスト名>`(ローカルアカウントのプロファイル)になります。実機演習ではこの解除漏れで約18分を失いました。
+
+復元後、通常起動でドメインアカウントによるログオンができたら、次を確認して復旧完了時刻を記録します。
+
+```powershell
+Get-Service NTDS, DNS, Netlogon, Kdc, W32Time | Select-Object Name, Status
+bcdedit /enum '{current}' | Select-String safeboot     # 何も出ないこと
+netdom query fsmo
+Get-WinEvent -LogName 'Microsoft-Windows-Backup' -MaxEvents 6 | Select-Object TimeCreated, Id   # 241/242 = 回復完了
+dcdiag /q   # DSRM起動時のNTDS依存サービス起動失敗(System ログ)が残るのは正常
 ```
 
 いずれの手段を使った場合も、ロールバック後は11節の構築後確認と、影響範囲に応じた試験を再実行します。Go / No-Go条件、実施結果の記録様式は[変更・ロールバック計画](08-change-rollback-plan.md)を正本とします。

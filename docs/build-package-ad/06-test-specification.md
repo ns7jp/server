@@ -71,6 +71,7 @@
 | AIT-09 | host/ADメトリクスscrape(フェーズ2) | 中央PrometheusのTargets画面を確認 | `up{job="linux-node", host="ad-dc01"}=1`。ただし`compose.yaml`の`monitoring` networkが`internal:true`のため現状BLOCKED | NOT RUN | — |
 | AIT-10 | 実ホストnetwork | ANW-01からANW-09を実行 | 設計どおり | NOT RUN | — |
 | AIT-11 | 再実行安全性 | 既に昇格済みの`ad-dc01`に対して`Install-ADDSForest`相当を誤って再実行する | 既存ドメインを破壊せず、明確なエラーで安全に失敗する | NOT RUN | — |
+| AIT-12(任意) | System State復元演習 | バックアップ取得→目印オブジェクト作成→DSRM起動→`wbadmin start systemstaterecovery`→通常起動 | 目印が消え、バックアップ時点のOU/FSMO/サービスが正常。復元処理と復旧全体の所要時間(RTO)を記録 | NOT RUN | — |
 
 ## セキュリティ試験
 
@@ -79,7 +80,7 @@
 | AST-01 | WinRM listener確認 | `winrm enumerate winrm/config/listener` | HTTPSのみ、Basic無効 | NOT RUN | — |
 | AST-02 | RDP状態確認 | `Get-NetFirewallRule -DisplayGroup "リモート デスクトップ"` | 既定Disable | NOT RUN | — |
 | AST-03 | パスワードポリシー確認 | `Get-ADDefaultDomainPasswordPolicy` | 設計値(最小長14、複雑性有効、最長90日、履歴24世代、ロックアウト10回/観察10分/ロックアウト10分)と一致 | NOT RUN | — |
-| AST-04 | LDAP署名/チャネルバインディング確認 | `HKLM:\SYSTEM\CurrentControlSet\Services\NTDS\Parameters`の`LDAPServerIntegrity`と`LdapEnforceChannelBinding`を確認 | いずれも2(必須)に設定されている | NOT RUN | — |
+| AST-04 | LDAP署名/チャネルバインディング確認 | `gpupdate /force`の**後に**`secedit /export`の実効ポリシーとレジストリ`LDAPServerIntegrity`/`LdapEnforceChannelBinding`を確認。再起動後に`Directory Service`ログの警告2886が無いこと | 実効ポリシーが`=4,2`、レジストリも2。Default Domain Controllers Policyが「なし」を定義しているとレジストリ編集は上書きされるため、設定直後の値だけでPASSにしない | NOT RUN | — |
 | AST-05 | SMBv1無効確認 | `Get-WindowsOptionalFeature -Online -FeatureName SMB1Protocol` | State: Disabled | NOT RUN | — |
 | AST-06 | 監査ポリシー確認 | `auditpol /get /subcategory:"ディレクトリ サービスの変更"` | 成功と失敗の両方が監査対象 | NOT RUN | — |
 | AST-07 | 特権グループメンバー最小化確認 | `Get-ADGroupMember "Domain Admins"` | 想定外のメンバーがいない | NOT RUN | — |
