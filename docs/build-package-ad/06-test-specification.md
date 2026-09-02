@@ -7,7 +7,7 @@
 > **下の表がすべて `NOT RUN` なのは、まだ何も試していないからではありません。**
 > [Linux版試験仕様書・結果票](../build-package/06-test-specification.md)・[Windows版試験仕様書・結果票](../build-package-windows/06-test-specification.md)と同じく、これは対象ホストが決まっていない段階の**空白の原本**です。`ad-dc01`に相当する検証用ホストを用意するたびに複製して記入し、原本自体は後から上書きしません。
 >
-> Linux版には既に実測済みの証跡([検証証跡台帳](../evidence/README.md)参照)へのリンクがありますが、本書(AD版)には**現時点で1件もありません**。本パックはまだ設計・手順書の整備段階であり、`ad-dc01`に相当する実ホストの構築そのものが行われていないためです。したがってAUT / AIT / AST / ANWのいずれのIDについても、結果欄は`NOT RUN`が唯一の正しい値です。これは「Linux版・Windows版より試験項目が緩い」ことを意味せず、単に「この構築案件がまだ実施段階に入っていない」ことを示しています。
+> 本書の表は原本のため`NOT RUN`のままですが、フェーズ1の必須31 IDは2026-09-01〜02に手元のHyper-V VM(`ad-dc01`、Windows Server 2022 評価版)で実施済みです。結果はAUT / AIT / ASTが[2026-09-01 AD build validation](../evidence/2026-09-01-ad-build-validation.md)、ANW-01〜09が[2026-09-01 network validation](../evidence/2026-09-01-network-host-validation-ad.md)にあります。AIT-09(フェーズ2)のみ`BLOCKED`です。この証跡はホストPC 1台とVM 1台の閉域ラボで採録したもので、組織DNS・実ドメインメンバー・中央Prometheusからのscrapeは含みません。
 >
 > ### フェーズ2のIDはBLOCKEDが前提です
 >

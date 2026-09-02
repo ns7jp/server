@@ -635,7 +635,9 @@ DSRM Administrator(2節で改名したローカルAdministrator相当、4節で�
 
 ```powershell
 wbadmin get versions -backupTarget:D:
-wbadmin start systemstaterecovery -version:<復元対象のバージョンタイムスタンプ> -backupTarget:D: -quiet
+# 上の出力の「バージョン ID」(例: 09/01/2026-09:21)を指定する。<> をそのまま残すと構文エラーになる
+$restoreVersion = "<NOT SET: 復元対象のバージョンID>"
+wbadmin start systemstaterecovery -version:$restoreVersion -backupTarget:D: -quiet
 ```
 
 復元完了後、通常起動へ戻します。
