@@ -122,7 +122,8 @@
 | 2台目DC追加によるレプリケーション実測 | NOT RUN | `phase1-complete`から分岐して実施可能 |
 | monitor-win-01のドメイン参加検証 | NOT RUN | 同上 |
 | windows_exporterサービスアカウントの最小権限化 | NOT READY | `LocalSystem`で導入 |
-| 定期バックアップのスケジュール登録 | NOT RUN | 手順書の`wbadmin enable backup`(毎日03:30)は未登録。手動取得1回のみ |
+| 定期バックアップのスケジュール登録 | 登録済み(2026-09-02 夕) | `wbadmin enable backup -addtarget:D: -schedule:03:30 -systemstate -quiet` → 「スケジュールしたバックアップが有効になりました」。タスク`Microsoft-Windows-WindowsBackup`=`Ready`、`Get-WBPolicy`: 03:30 / `Backup`(D:) / SystemState=True。**初回の自動実行(09-03 03:30)は未確認** → `wbadmin get versions`に09-03の版が増えることを確認するまで`NOT RUN` |
+| 組み込み管理者(RID 500)の改名 | 実施済み(2026-09-02 夕) | 昇格後のためドメイン側で`Set-ADUser -SamAccountName` + `Rename-ADObject`。新名称で`whoami`成功、`SID.EndsWith('-500')=True`。新名称は秘密値台帳。DSRM用の名前は`Administrator`のまま(昇格後は変更不可) |
 | PowerShell 7.4系の追加導入 | NOT RUN | 任意 |
 | LDAPSの正式化(AD CS / 組織CA証明書) | NOT RUN | 現状はWinRM用自己署名証明書による偶発的な待受 |
 | ログ集約(フェーズ2) | BLOCKED | 変更なし |
@@ -141,7 +142,7 @@
 | backup / restore手順 | [パラメータシート](../build-package-ad/03-parameter-sheet.md)「バックアップ設計」、[構築手順書](../build-package-ad/05-build-procedure.md)復元節 | 受領(本人)。復元の実演は未実施 |
 | 変更 / rollback記録 | 本報告書2節のチェックポイント系譜。`Restore-VMSnapshot -VMName ad-dc01 -Name <name>`で復元 | 受領(本人) |
 | DSRMパスワードの受け渡し・再発行方法 | 本人のローカル秘密値メモ。再発行は`ntdsutil "set dsrm password"` | 受領(本人) |
-| その他の秘密値 | ローカルAdministrator名は既定のまま(手順書の改名は未実施。残存リスクとして記録)。WinRM証明書の秘密鍵はVM内ストアのみ | 受領(本人) |
+| その他の秘密値 | 組み込み管理者(RID 500)は2026-09-02に改名済み。新名称は本人のローカル秘密値メモのみ(このリポジトリには記載しない)。DSRM用アカウント名は`Administrator`のまま。WinRM証明書の秘密鍵はVM内ストアのみ | 受領(本人) |
 
 ## 9. 完了・受領判定
 

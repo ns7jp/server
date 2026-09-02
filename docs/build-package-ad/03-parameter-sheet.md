@@ -56,7 +56,7 @@
 
 | 項目 | 設定値 | 理由 | 正本 |
 | --- | --- | --- | --- |
-| ローカルAdministrator名 | 既定名(`Administrator`)から変更して運用。実際の名称は`NOT SET`(実機決定時に秘密値台帳へ記録) | 既定名のまま残すと自動化された総当たり攻撃の的になりやすいため | `Rename-LocalUser` |
+| ローカルAdministrator名 | 既定名(`Administrator`)から変更して運用。実際の名称は秘密値台帳で管理(このリポジトリには記載しない)。ラボでは昇格後にドメインAdministrator(RID 500)を改名(2026-09-02)。DSRM用アカウント名は`Administrator`のまま | 既定名のまま残すと自動化された総当たり攻撃の的になりやすいため | 昇格前: `Rename-LocalUser`、昇格後: `Set-ADUser` + `Rename-ADObject` |
 | ドメイン管理者アカウント | `Administrator`(フォレスト作成時に自動作成される既定のドメイン管理者)。日常運用には別途委任された権限を持つアカウントを使い、`Domain Admins`常用は避ける | Tier0(NFR-08)の考え方 | `Get-ADUser` |
 | `Domain Admins`グループのメンバー | フォレスト作成直後は`Administrator`のみ。以後もメンバーを最小限に保つ | 特権グループの肥大化を防ぐため | `Get-ADGroupMember "Domain Admins"` |
 | windows_exporterサービス実行アカウント | 既定`LocalSystem` | MSIインストーラーの既定のまま。最小権限化はAST-07相当の継続課題として記録 | `Get-CimInstance Win32_Service`の`StartName` |
@@ -171,3 +171,5 @@ Windows Defender FirewallでAD DS役割を導入すると、自動的にルー�
 | System Stateバックアップの所要時間 | 24分45秒(約8GB、D:へ) | 2026-09-02 | [復元演習](../evidence/2026-09-02-ad-restore-drill.md) |
 | System State復元の所要時間(RTO) | 復元処理15分29秒。DSRM再起動指示〜全サービス正常まで約40分(`safeboot`解除漏れのやり直し約18分を含む) | 2026-09-02 | 同上 |
 | LDAP署名/チャネルバインディングの設定方法 | Default Domain Controllers Policy(GPO)で設定。レジストリ直接編集はGPOに上書きされることを実機で確認 | 2026-09-02 | 同上 |
+| 組み込み管理者(RID 500)の改名 | 実施済み(名称は秘密値台帳)。`SID.EndsWith('-500')=True`を確認 | 2026-09-02 | [作業結果報告](../evidence/2026-09-02-work-result-SM-AD-001.md) 8節 |
+| 定期バックアップのスケジュール | `wbadmin enable backup -addtarget:D: -schedule:03:30 -systemstate`を登録。タスク`Microsoft-Windows-WindowsBackup`が`Ready`、`Get-WBPolicy`で03:30/D:/SystemState=True。**初回の自動実行(2026-09-03 03:30)の結果は未確認** | 2026-09-02 | 同上 7節 |

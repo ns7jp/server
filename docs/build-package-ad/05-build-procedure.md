@@ -78,6 +78,17 @@ Get-TimeZone
 # 秘密値台帳で一元管理してください
 Rename-LocalUser -Name "Administrator" -NewName "<環境ごとに決定する管理者アカウント名>"
 
+# この改名は昇格前(ワークグループ段階)に行います。昇格時にローカルAdministratorはそのまま
+# ドメインのAdministrator(RID 500)になるため、改名も引き継がれます。昇格後に行う場合は
+# ローカルSAMは通常モードでは使えないので、ドメイン側で次のように改名します(2026-09-02実機)。
+# DSRM用アカウントの名前は昇格後は変更できず「Administrator」のままです。
+#   $u = Get-ADUser -Identity Administrator
+#   Set-ADUser -Identity $u -SamAccountName "<新しい名前>" -DisplayName "<新しい名前>"
+#   Rename-ADObject -Identity $u.DistinguishedName -NewName "<新しい名前>"
+#   (Get-ADUser -Identity "<新しい名前>").SID.Value.EndsWith('-500')   # True なら組み込み管理者のまま
+# 改名した瞬間から旧名では認証できないため、WinRMセッションの終了時に AccessDenied が出ますが、
+# コマンド自体は完了しています。以後の $Cred は新しい名前で作り直します。
+
 # Windows Update設定の確認(既定: Microsoft Updateから直接、自動ダウンロード・手動再起動)
 Get-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' -ErrorAction SilentlyContinue
 
