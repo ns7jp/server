@@ -4,7 +4,7 @@
 
 | 案件 ID | 対象 | 現在の引き渡し判定 |
 | --- | --- | --- |
-| `SM-AD-001` | Windows Server 2022 Standard(Desktop Experience基準)の検証用VM 1台(論理ホスト名`ad-dc01`)への、新規フォレスト・新規ドメインの最初のドメインコントローラー構築 | **`NOT READY`** — 引き渡し対象ホストが未指定で、フェーズ1必須試験(31 ID)が`NOT RUN`。フェーズ2(`AIT-09`)は未実装3点の解消待ちで`BLOCKED` |
+| `SM-AD-001` | Windows Server 2022 Standard(Desktop Experience基準)の検証用VM 1台(論理ホスト名`ad-dc01`)への、新規フォレスト・新規ドメインの最初のドメインコントローラー構築 | **フェーズ1 `PASS`(ラボ範囲)** — 2026-09-01〜02に手元Hyper-VのVM 1台で必須31 IDをすべて`PASS`([報告書](../evidence/2026-09-02-work-result-SM-AD-001.md))。組織環境・永続hostでの引き渡しは`NOT RUN`。フェーズ2(`AIT-09`)は未実装3点の解消待ちで`BLOCKED` |
 
 ```mermaid
 flowchart LR
@@ -47,14 +47,14 @@ flowchart LR
 | 詳細設計 | [02-detailed-design.md](02-detailed-design.md) | 作成済み |
 | パラメータ設計 | [03-parameter-sheet.md](03-parameter-sheet.md) | 作成済み |
 | ネットワーク設計 | [04-network-ip-plan.md](04-network-ip-plan.md) | 作成済み |
-| 構築(フェーズ1) | [05-build-procedure.md](05-build-procedure.md) | 手順作成済み・実機結果は証跡台帳で管理 |
-| 試験 | [06-test-specification.md](06-test-specification.md) | 仕様作成済み・未実施欄は`NOT RUN` |
-| 引き渡し | [07-handover-checklist.md](07-handover-checklist.md) | 作成済み |
-| 変更・ロールバック | [08-change-rollback-plan.md](08-change-rollback-plan.md) | 計画・記録様式作成済み(スナップショット復元を最優先手段とする設計)。実施結果は`NOT RUN` |
-| ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | 手順作成済み。実施結果は`NOT RUN` |
-| 立ち上げ・受け入れ | [10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md) | 環境選択肢(クラウド/評価版ISOによるVM/社内ボリュームライセンス)と最短手順を作成済み |
-| 作業結果報告 | [11-work-result-report.md](11-work-result-report.md) | 原本作成済み。対象ホストごとの実績は日付付きevidenceへ複製して記録 |
-| ネットワーク結果票(AD) | [実機検証テンプレート](../evidence/templates/network-host-validation-ad.md) | テンプレート作成済み |
+| 構築(フェーズ1) | [05-build-procedure.md](05-build-procedure.md) | 2026-09-01〜02にHyper-V VMで通しで実施。実機で見つけた誤り6件を修正済み |
+| 試験 | [06-test-specification.md](06-test-specification.md) | 原本は`NOT RUN`のまま。実績は[構築・試験結果票](../evidence/2026-09-01-ad-build-validation.md)(AUT/AIT/AST 22/22 PASS、AIT-09 BLOCKED) |
+| 引き渡し | [07-handover-checklist.md](07-handover-checklist.md) | 作成済み。ラボ範囲の項目のみ確認 |
+| 変更・ロールバック | [08-change-rollback-plan.md](08-change-rollback-plan.md) | Hyper-Vチェックポイント4世代を取得(`before-forest-creation`→`phase1-complete`)。復元の実演は`NOT RUN` |
+| ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | [結果票](../evidence/2026-09-01-network-host-validation-ad.md) ANW-01〜09 9/9 PASS |
+| 立ち上げ・受け入れ | [10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md) | 評価版ISO + Hyper-V(Windows 11 Pro)の選択肢で実施 |
+| 作業結果報告 | [11-work-result-report.md](11-work-result-report.md) | [2026-09-02 記入済み版](../evidence/2026-09-02-work-result-SM-AD-001.md)あり |
+| ネットワーク結果票(AD) | [実機検証テンプレート](../evidence/templates/network-host-validation-ad.md) | テンプレート作成済み。記入例は上記結果票 |
 | 一次切り分け記録 | [トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md) | テンプレート作成済み(Linux/Windows版と共用) |
 
 ## 工程ゲート
@@ -63,18 +63,18 @@ flowchart LR
 | --- | --- | --- |
 | G0 要件確定 | 要件ID、対象、対象外、受け入れ条件が合意済み | 文書作成済み。実案件での承認は`NOT SET` |
 | G1 設計確定 | 基本・詳細・パラメータ・ネットワーク設計のレビュー完了 | 文書作成済み。実案件での承認は`NOT SET` |
-| G2(フェーズ1)構築完了 | 初回昇格(`AIT-01`)が成功し、FSMO(`AIT-05`)・DNS(`AIT-03`)が設計どおり確認できること | 手順作成済み。引き渡し対象ホストは`NOT RUN` |
+| G2(フェーズ1)構築完了 | 初回昇格(`AIT-01`)が成功し、FSMO(`AIT-05`)・DNS(`AIT-03`)が設計どおり確認できること | `PASS`(2026-09-01、ラボVM) |
 | G2(フェーズ2)統合完了 | `app_node_exporter_targets`への`ad-dc01`追加、`monitoring` networkのegress拡張、Windows向けログ集約経路の導入が完了 | 設計のみ。3点とも未実装で着手時期は`NOT SET` |
-| G3(フェーズ1)試験完了 | フェーズ1必須31 IDがすべて`PASS` | `NOT READY` |
+| G3(フェーズ1)試験完了 | フェーズ1必須31 IDがすべて`PASS` | `PASS`(31/31、2026-09-02) |
 | G3(フェーズ2)試験完了 | `AIT-09`が`PASS` | `BLOCKED`(G2フェーズ2の解消が前提) |
-| G4 作業完了 | 作業結果報告書に実績、障害、差異、残存リスクを記録 | 原本のみ。実案件報告は`NOT SET` |
-| G5 引き渡し | 受領者、日時、秘密値受け渡し、未解決事項を記録 | `NOT READY` |
+| G4 作業完了 | 作業結果報告書に実績、障害、差異、残存リスクを記録 | `PASS`([2026-09-02 報告書](../evidence/2026-09-02-work-result-SM-AD-001.md)) |
+| G5 引き渡し | 受領者、日時、秘密値受け渡し、未解決事項を記録 | ラボ範囲で完了(引き渡し元/先とも本人)。組織環境への引き渡しは`NOT RUN` |
 
 ## 検証環境
 
 基準環境はWindows Server 2022 Standard(Desktop Experience基準)の検証用VM 1台(論理ホスト名`ad-dc01`)です。Windows Server 2022 Server Coreへの対応は検討課題であり、基準VMはDesktop Experienceであるため、両エディションでの実測を意味しません。最小構成の目安は2 vCPU / メモリ4GB / ディスク60GBです([Windows版パック](../build-package-windows/README.md)と同じ最小要件)。Windows Serverはライセンス費用が発生するため、[Linux版パック](../build-package/README.md)で使える無償のVirtualBox VMのような代替が使えません。立ち上げ環境の選択肢(クラウドWindows Serverインスタンス/評価版ISOによるHyper-V・VMware上のVM/社内ボリュームライセンス)は[10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md)にまとめます。
 
-独立した引き渡し対象VM・管理端末を用いた実測はまだありません。日付付きの[ネットワーク結果票(AD)](../evidence/templates/network-host-validation-ad.md)が保存されるまで`NOT RUN`とします。
+2026-09-01〜02に、Windows 11 Pro上のHyper-V(内部スイッチ)にWindows Server 2022 評価版のVM 1台を立て、ホストPCを管理端末としてフェーズ1を実施しました([ネットワーク結果票](../evidence/2026-09-01-network-host-validation-ad.md)、[構築・試験結果票](../evidence/2026-09-01-ad-build-validation.md))。ホストPCとVMが同一物理機であるため、独立した管理端末・組織DNS・実ドメインメンバーからの検証は含みません。
 
 ## 完了の定義
 

@@ -16,7 +16,7 @@ Linux版([`08-change-rollback-plan.md`](../build-package/08-change-rollback-plan
 
 この原本の実施欄は初期状態では `NOT RUN` です。実作業では `docs/evidence/YYYY-MM-DD-change-<ID>.md` へコピーし、実際の値と出力を記録します。命名・記録ルールは[検証証跡台帳](../evidence/README.md)に合わせます。
 
-`ad-dc01`に相当する実ホストの構築そのものがまだ行われていないため、本書に対応する日付付きevidenceは現時点で1件もありません。以下の空欄は次の変更で再利用する原本であり、実ホストでの変更・ロールバックは現在も`NOT RUN`です。
+本書に対応する記入済みの記録は[2026-09-02 作業結果・引き渡し報告](../evidence/2026-09-02-work-result-SM-AD-001.md)の2節(Hyper-Vチェックポイントの系譜: `before-forest-creation` → `phase1-complete`)にあります。チェックポイントからの復元(ロールバックの実演)と、System Stateからの復元は`NOT RUN`です。以下の空欄は次の変更で再利用する原本です。
 
 ## 2. 変更票
 
