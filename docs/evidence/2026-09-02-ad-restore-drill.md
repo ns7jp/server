@@ -11,7 +11,7 @@
 | 判定 | **PASS**(バックアップ後に作った目印 OU が復元で消え、バックアップ時点の OU・FSMO・サービスは無傷) |
 | バックアップ(System State 約8GB → D:) | 24分45秒 |
 | 復元処理(`wbadmin start systemstaterecovery`) | **15分29秒**(Backup ログ 213/240 → 241/242: 15:19:58 → 15:35:27) |
-| 復旧全体(DSRM 再起動の指示 → 通常起動で全サービス `Running`) | **約40分**(15:1x 頃 → 15:55:52 起動、15:57 頃確認)。うち約18分は `safeboot` 解除漏れによる DSRM 再起動のやり直し |
+| 復旧全体(DSRM 再起動の指示 → 通常起動で全サービス `Running`) | **約40分**(T0 = 15:17 → 15:55:52 起動 → 15:57 確認完了)。うち約18分は `safeboot` 解除漏れによる DSRM 再起動のやり直し。やり直しが無ければ約22分 |
 | 途中で起きたインシデント | 1回目のバックアップ中に Hyper-V が VM を一時停止 → 強制停止(下記 LAB-11) |
 | 派生して見つかった欠陥 | GPO が `LDAPServerIntegrity` を「なし」に上書きしていた(LAB-12) |
 
@@ -31,9 +31,9 @@
 | 13:5x | VM 再起動。起動後、警告 2886 なし、`LDAPServerIntegrity = 2` を確認 |
 | 14:16〜14:40 | VM コンソールで `wbadmin start systemstatebackup`(出力はファイルへ)。**24分45秒で完了**。バージョン識別子 `09/02/2026-05:16`(UTC 表記) |
 | 14:4x | 目印 OU `RestoreDrill-Marker` を作成(`whenCreated` がバックアップ後) |
-| 15:1x | `bcdedit /set safeboot dsrepair` → 再起動(**T0**) |
-| 15:1x | 「仮想マシン接続」が応答なし → 拡張セッションを無効化して基本セッションで接続(LAB-14)。`.\Administrator` + DSRM パスワードでログオン |
-| 15:17 | `wbadmin start systemstaterecovery -version:09/02/2026-05:16 -backupTarget:D: -quiet` を手入力で実行(基本セッションは貼り付け不可) |
+| **15:17** | `bcdedit /set safeboot dsrepair` → 再起動(**T0**、作業者の記録) |
+| 15:18 頃 | 「仮想マシン接続」が応答なし → 拡張セッションを無効化して基本セッションで接続(LAB-14)。`.\Administrator` + DSRM パスワードでログオン |
+| 15:19 | `wbadmin start systemstaterecovery -version:09/02/2026-05:16 -backupTarget:D: -quiet` を手入力で実行(基本セッションは貼り付け不可) |
 | 15:19:58 | [Backup ログ 213/240] 回復開始 |
 | 15:35:27 | [Backup ログ 241/242] 回復完了。15:37 に画面で完了を確認 |
 | 15:37 | `bcdedit /deletevalue {current} safeboot` を実行したが PowerShell が `{current}` をスクリプトブロックと解釈して失敗(LAB-13)。気づかずに再起動 |
