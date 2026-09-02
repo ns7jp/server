@@ -13,8 +13,10 @@
 サーバーの状態を数字で集め、グラフで見て、おかしくなったら知らせる。壊れたら手順どおりに戻す。
 この一連を、誰でも同じ手順でやり直せる形にしました。
 実際に動かして確かめたことと、まだ確かめていないことは、はっきり分けて書いています。
+入っているものは大きく3種類です。
+監視アプリと監視基盤そのもの（Flask / Docker Compose / Prometheus / Grafana / Loki / Ansible / Terraform）、未経験者向けの学習教材、実務形式の構築案件文書一式（4パック）です。
 
-**Ubuntu serverをAnsibleで構築し、Prometheus / Grafana / Lokiで監視して、障害注入・自動復旧・backup restoreまで再実行可能にしたインフラ構築lab**です。
+**Ubuntu serverをAnsibleで構築し、Prometheus / Grafana / Lokiで監視して、障害注入（わざと止めて、気づけるか・戻せるかを試すこと）・自動復旧・backup restoreまで再実行可能にしたインフラ構築lab**です。
 
 Python / Flask で作成したサーバー状態表示アプリを、認証、コンテナ配備、監視収集、アラート、運用手順まで含むポートフォリオへ拡張しています。
 
@@ -39,9 +41,17 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 
 進む順路は次のとおりです。上から順にたどれば迷いません。
 
+0. **検証環境とコードの用意（ここが最初）** — 破棄できるLinux（壊しても困らない使い捨てのVMなど）を1台用意し、下のコマンドでこのリポジトリを手元に取得します。
+
+   ```bash
+   git clone https://github.com/ns7jp/server.git
+   cd server
+   ```
+
+   検証環境の作り方は[一本道ラーニングパス](docs/learning-path.md)の「Level 0 の前に」の節に手順があります。
 1. **準備の確認（短時間）** — 下のコマンドを実行します。設定を変更しない診断だけを行い、足りないものを教えてくれます。
-2. **[初心者向け学習ガイド](docs/beginner-learning-guide.md)（90分）** — コマンドの意味、完了条件、つまずきやすい点、ミニ問題がまとまっています。
-3. **[一本道ラーニングパス](docs/learning-path.md)（まず15分）** — 構築から障害対応までのLevel 0〜5が入門必修です。LVM / 3層 / L2-L3 / AWSは選択式のLevel 6に分けています。**最初に全機能を学ぶ必要はありません。**
+2. **[一本道ラーニングパス](docs/learning-path.md)（まず15分）** — 構築から障害対応までのLevel 0〜5が入門必修です。LVM（ディスク管理）/ 3層（Web/AP/DBの3層構成）/ L2-L3（ネットワークの切り分け）/ AWSは選択式のLevel 6に分けています。**最初に全機能を学ぶ必要はありません。** 「まず15分」は読んで全体像をつかむ目安で、実際に手を動かすと数日かかります。
+3. **[初心者向け学習ガイド](docs/beginner-learning-guide.md)（90分）** — コマンドの意味、完了条件、つまずきやすい点、ミニ問題がまとまっています。
 4. **[未経験者向けサーバー構築キーワード集](docs/server-building-keywords.md)（都度）** — 分からない用語が出たら引きます。意味・覚え方・実装例・確認コマンドが載っています。
 5. **[案件パック 初心者ガイド](docs/build-package/beginner-guide.md)（20分）** — 実務の構築案件で使う文書一式（[Linux server構築案件pack](docs/build-package/README.md)）を読む前に、全体の地図と用語をここで確認します。要件定義書や非機能要件（NFR。速さ・止まりにくさ・安全性など、機能以外の要求）が含まれます。
 
@@ -66,6 +76,7 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 
 1. **2分15秒デモ** — [保存済み実測証跡リプレイ](https://ns7jp.github.io/demo.html)。2026-08-18/19のscreen shotとD-1 logを再構成した閲覧用映像で、実操作の連続録画ではありません。[2026-08-22 E2E](docs/evidence/2026-08-22-full-stack-e2e.md)では実terminalの`demo.cast`もartifact化しました。
    - 平たく言うと: 動いている様子を、まず映像で見る。
+   - 言葉の意味: 証跡（いつ・どの環境で・何を実行して・どうなったかの記録）、D-1（プロセスが落ちたときの復旧演習の番号。下の「復旧演習」の表にあります）、E2E（端から端まで通しで行う試験）。
 2. **構成と構築工程** — [構成図](docs/architecture.md) / [Linux server構築案件pack](docs/build-package/README.md)。要件 → 設計 → パラメータ → 構築 → 試験 → 作業結果 → 引き渡しを 1 案件として追跡できます。
    - 平たく言うと: 何をどの順で作ったのかを、文書でたどる。
 3. **実測証跡** — [検証証跡台帳](docs/evidence/README.md) / [新規host一気通貫E2E](docs/e2e-validation.md)。未実行をPASSにしません。
@@ -80,7 +91,7 @@ Python / Flask で作成したサーバー状態表示アプリを、認証、�
 > **実測できたこと**
 >
 > - **実測の現状（2026-08-22 / PR #75）**: runtime変更最終commit `7622a9da974f694ae75e0173135923701be9e5a5`に対する[Full-stack E2E run 32572409469](https://github.com/ns7jp/server/actions/runs/32572409469)で、
->   **使い捨てUbuntu 24.04 hostへの`site.yml`一括適用、2回目`changed=0`、11 containersの稼働、認証、Prometheus target、Docker API proxyのGET成功・POST拒否・Loki log到達、ローカルwebhook通知、loopback/UFW/SSH tunnel、D-1自動復旧（1秒）、3 volumesのchecksum付きbackup / 別volume restoreを23/23 ID PASS**として採録しました。
+>   **使い捨てUbuntu 24.04 hostへの`site.yml`一括適用、2回目`changed=0`、11 containersの稼働、認証、Prometheus target、Docker API proxyのGET成功・POST拒否・Loki log到達、ローカルwebhook通知、loopback/UFW（Ubuntu の firewall 設定ツール）/SSH tunnel、D-1自動復旧（1秒）、3 volumesのchecksum付きbackup / 別volume restoreを23/23 ID PASS**として採録しました。
 >   同じcommitに対するAnsible check、Security scan、Backup verify、Python checkも成功しています。
 >   判定表・環境・測定値・artifact digestは[日付付き証跡](docs/evidence/2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証)に固定し、raw logは期限付きActions artifactに保存しています。
 > - **実測の追加（2026-08-23 / PR #77）**: [Full-stack Ansible E2E run 32611251044](https://github.com/ns7jp/server/actions/runs/32611251044)で、candidate `84e149254d463a8a27a4cabcd09efa4504d1b47e`をimmutableなGit SHAとして配備・検証しました。
@@ -151,6 +162,8 @@ flowchart LR
 **一言でいうと**: 読む順に並べた文書の一覧です。難易度（🟢 初心者 / 🟡 中級 / 🔴 発展）と所要時間の目安を付けています。
 
 ### まず読む文書
+
+初心者が最初に開くのは[一本道ラーニングパス](docs/learning-path.md)、[初心者向け学習ガイド](docs/beginner-learning-guide.md)、[案件パック 初心者ガイド](docs/build-package/beginner-guide.md)の3本です。残りは必要になったときに引きます。
 
 | 文書 | 対象 | 目安 | 内容 |
 | --- | --- | ---: | --- |
@@ -278,7 +291,7 @@ terraform apply
 
 このコードが AWS で稼働した実績や実費を意味するものではない。
 ALB 配下の各 EC2 に同居するローカル監視データは、中央の正本としない。
-本番相当では外部 probe と中央保存を追加する。詳細は [docs/aws-architecture.md](docs/aws-architecture.md)、
+本番相当では外部 probe（外から定期的に叩いて応答を確かめること）と中央保存を追加する。詳細は [docs/aws-architecture.md](docs/aws-architecture.md)、
 [docs/cost-report.md](docs/cost-report.md)、[docs/evidence/README.md](docs/evidence/README.md) を参照。
 
 ## SLO / エラーバジェット
@@ -428,7 +441,7 @@ export MONITOR_NODE_NAME='local-test-node'
 python app.py
 ```
 
-loopback での短時間の UI 開発に限り、`MONITOR_AUTH_DISABLED=true` で UI 認証を無効にできます。`0.0.0.0` で待ち受ける環境では使用しません。
+loopback での短時間の UI 開発に限り、`MONITOR_AUTH_DISABLED=true` で UI 認証を無効にできます。`0.0.0.0`（そのマシンの全てのネットワーク宛先で待ち受ける指定。`127.0.0.1` の対義）で待ち受ける環境では使用しません。
 
 ## テスト
 
