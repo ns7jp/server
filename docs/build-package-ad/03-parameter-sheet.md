@@ -71,7 +71,7 @@ OU構造は既定の`CN=Users`・`CN=Computers`コンテナをそのまま使わ
 | `OU=_Tier0-Admins,DC=corp,DC=example,DC=test` | ドメイン管理者等、最高権限アカウント専用。既定の`CN=Users`から分離し、専用GPOを適用できるようにする |
 | `OU=Servers,DC=corp,DC=example,DC=test` | 将来のドメイン参加サーバー用(本パックではオブジェクトなし) |
 | `OU=Workstations,DC=corp,DC=example,DC=test` | 将来のドメイン参加クライアント用(本パックではオブジェクトなし) |
-| `OU=Employees,OU=Users,DC=corp,DC=example,DC=test` | 一般ユーザーアカウント用 |
+| `OU=Employees,DC=corp,DC=example,DC=test` | 一般ユーザーアカウント用。初版は`OU=Users`配下としていたが、ドメイン直下の既定`CN=Users`コンテナと相対識別名が衝突して作成できないため(2026-09-01実機確認)、ドメイン直下へ変更 |
 | `OU=Groups,DC=corp,DC=example,DC=test` | セキュリティグループ・配布グループ用 |
 | `OU=ServiceAccounts,DC=corp,DC=example,DC=test` | サービスアカウント用(gMSA等の発展課題を含む) |
 
@@ -137,9 +137,9 @@ Windows Defender FirewallでAD DS役割を導入すると、自動的にルー�
 | 389 | TCP/UDP | LDAP | ディレクトリ照会 | 内部ネットワークCIDR |
 | 445 | TCP | SMB(SYSVOL/NETLOGON) | GPO配布・複製 | 内部ネットワークCIDR |
 | 464 | TCP/UDP | Kerberosパスワード変更 | パスワード変更 | 内部ネットワークCIDR |
-| 636 | TCP | LDAPS | 暗号化ディレクトリ照会 | 内部ネットワークCIDR(許可範囲は設計済みだが、フェーズ1では待受しない。下記注記参照) |
+| 636 | TCP | LDAPS | 暗号化ディレクトリ照会 | 内部ネットワークCIDR(待受の有無は証明書ストア次第。下記注記参照) |
 | 3268 | TCP | Global Catalog LDAP | フォレスト全体検索 | 内部ネットワークCIDR |
-| 3269 | TCP | Global Catalog LDAPS | 同上(暗号化) | 内部ネットワークCIDR(636と同じ理由でフェーズ1では待受しない) |
+| 3269 | TCP | Global Catalog LDAPS | 同上(暗号化) | 内部ネットワークCIDR(636と同じ条件で待受の有無が決まる) |
 | 49152-65535 | TCP | 動的RPC(AD DS/FRS/DFSR) | 複製等 | 内部ネットワークCIDR |
 | 5986 | TCP | WinRM(HTTPS) | 構築・運用管理 | 管理元CIDR限定 |
 | 9182 | TCP | windows_exporter | host/ADメトリクス | 中央Prometheus hostのIPのみ許可(認証なし) |
@@ -147,7 +147,11 @@ Windows Defender FirewallでAD DS役割を導入すると、自動的にルー�
 
 [Linux版](../build-package/03-parameter-sheet.md)・[Windows版](../build-package-windows/03-parameter-sheet.md)の管理系サービスは管理元CIDRのみへの限定を基本方針としていましたが、AD DS自体のポート(DNS/Kerberos/LDAP/SMB/RPC等)は将来のドメインメンバー全体から到達できる必要があるため、「内部ネットワークCIDR」という管理元CIDRより広い範囲を別途定義しています。この違いは[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)で詳しく扱います。
 
-**636(LDAPS)・3269(Global Catalog LDAPS)がフェーズ1で待受しない理由**: `Install-ADDSForest`によるフォレスト作成・DC昇格だけでは、LDAP over SSL/TLSは有効になりません。DCがLDAPS(636)・GC LDAPS(3269)で待ち受けるには、DCのFQDN(`ad-dc01.corp.example.test`)を対象としたサーバー認証(Server Authentication)用の証明書が、コンピューターのローカルコンピューター証明書ストアに配置されている必要があります(参考: [LDAP over SSLの有効化に関するMicrosoftの解説](https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/enable-ldap-over-ssl-3rd-certification-authority))。この証明書は通常AD CS(証明書サービス)の自動登録で配布しますが、[要件定義書](00-requirements.md)5節のとおりAD CSは本パックの対象外です。したがって389(LDAP)・3268(GC LDAP、いずれも非暗号化)は`Install-ADDSForest`直後から待受しますが、636・3269はAD CS導入(または手動でのサーバー認証証明書配布)まで待受しません。Firewallの許可設定自体はフェーズ1で行いますが、待受確認(ANW-05)の対象からは外し、AD CS導入後の発展課題として扱います。
+**636(LDAPS)・3269(Global Catalog LDAPS)の待受は証明書ストアの状態で決まる**: `Install-ADDSForest`によるフォレスト作成・DC昇格だけでは、LDAP over SSL/TLSは有効になりません。DCがLDAPS(636)・GC LDAPS(3269)で待ち受けるには、DCのFQDN(`ad-dc01.corp.example.test`)を対象としたサーバー認証(Server Authentication)用の証明書が、コンピューターのローカルコンピューター証明書ストア(`Cert:\LocalMachine\My`)に配置されている必要があります(参考: [LDAP over SSLの有効化に関するMicrosoftの解説](https://learn.microsoft.com/en-us/troubleshoot/windows-server/active-directory/enable-ldap-over-ssl-3rd-certification-authority))。この証明書は通常AD CS(証明書サービス)の自動登録で配布しますが、[要件定義書](00-requirements.md)5節のとおりAD CSは本パックの対象外です。
+
+ただし**NTDSは発行元を問わず、条件を満たす証明書があれば自動的にLDAPSへ使います**。本パックでは[構築手順書](05-build-procedure.md)3節でWinRM HTTPS用に`New-SelfSignedCertificate -DnsName ad-dc01.corp.example.test`で作る自己署名証明書が「SubjectがDCのFQDN・サーバー認証EKUあり・`LocalMachine\My`に配置」の条件をすべて満たすため、AD CS未導入でも636・3269は待受します。本パック初版は「AD CS未導入なので待受しない」と記載していましたが、2026-09-01の実機検証で待受が確認され、証明書を特定して原因を確定しました。389(LDAP)・3268(GC LDAP、いずれも非暗号化)は証明書の有無に関係なく`Install-ADDSForest`直後から待受します。
+
+この自己署名証明書によるLDAPSは、クライアント側が発行元を信頼していないため実用上のLDAPS接続には使えず、あくまで「待受している」状態にとどまります。組織のCAが発行する証明書への置き換えは、AD CS導入と合わせて発展課題として扱います。待受確認(ANW-05)では、待受の有無そのものではなく「証明書ストアの状態と待受が整合し、説明できること」を判定条件とします。
 
 ## 実機記入欄
 
@@ -155,12 +159,12 @@ Windows Defender FirewallでAD DS役割を導入すると、自動的にルー�
 
 | 項目 | 実測値 | 記録日 | 証跡 |
 | --- | --- | --- | --- |
-| OSビルド番号(`winver` / `Get-ComputerInfo`の`OsBuildNumber`) | `NOT RUN` | — | — |
-| フォレスト / ドメイン機能レベル(`Get-ADForest` / `Get-ADDomain`) | `NOT RUN` | — | — |
-| CPU / memory / disk | `NOT RUN` | — | — |
-| ディスク構成(`Get-Volume` / `Get-Disk`) | `NOT RUN` | — | — |
-| Windows Defender Firewallの許可範囲(`Get-NetFirewallRule`) | `NOT RUN` | — | — |
-| FSMO役割保持者(`netdom query fsmo`) | `NOT RUN` | — | — |
-| windows_exporter version / SHA256 | `NOT RUN` | — | — |
-| PowerShell version(`$PSVersionTable`) | `NOT RUN` | — | — |
-| 適用手順書バージョン / commit SHA | `NOT RUN` | — | — |
+| OSビルド番号(`winver` / `Get-ComputerInfo`の`OsBuildNumber`) | `20348`(Windows Server 2022 Standard 評価版、Hyper-V Gen2 VM) | 2026-09-02 | [2026-09-01 network validation](../evidence/2026-09-01-network-host-validation-ad.md) |
+| フォレスト / ドメイン機能レベル(`Get-ADForest` / `Get-ADDomain`) | `Windows2016Forest` / `Windows2016Domain` | 2026-09-02 | 同上 |
+| CPU / memory / disk | `NOT RUN`(ラボVMの割り当て値は記録対象外) | — | — |
+| ディスク構成(`Get-Volume` / `Get-Disk`) | C: 30GB(OS)、D: 20GB(`Backup`、System State用に追加。設計の60GB単一構成とは異なる) | 2026-09-01 | 同上 |
+| Windows Defender Firewallの許可範囲(`Get-NetFirewallRule`) | AD DS関連5グループ=`192.0.2.0/24`、`WinRM-HTTPS-MgmtOnly`=`192.0.2.40`、RDP=Disable、windows_exporter許可ルールなし | 2026-09-02 | 同上(ANW-08) |
+| FSMO役割保持者(`netdom query fsmo`) | 5役割すべて`ad-dc01.corp.example.test` | 2026-09-01 | 同上(AIT-05) |
+| windows_exporter version / SHA256 | `0.31.8` / `0aadce6afb20182b678bfca9e8f2e8464ef48c469b28b4cf02e99d82158f5d40`(amd64.msi、公式`sha256sums.txt`と一致)。実行アカウント`LocalSystem`。中央Prometheus host未決定のためFirewall許可ルールは未作成 | 2026-09-02 | 同上(ANW-05) |
+| PowerShell version(`$PSVersionTable`) | `5.1.20348.558`(対象host、組込)。7.4系の追加導入は未実施 | 2026-09-02 | 同上 |
+| 適用手順書バージョン / commit SHA | 実機検証時点の手順書は初版(`6c2d1cecf21e57e296d5790e77c6ebb5d820f628`)。本記入欄と同じPRで手順書側の誤りを修正済み | 2026-09-02 | 同上「差異・問題」 |

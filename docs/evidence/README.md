@@ -81,6 +81,7 @@ main `5480662`、common / docker role の el9 scenario ともに成功）。
 | ephemeral VM の network / UFW | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：`NW-01〜09` / `IT-12` / `ST-01,04` PASS |
 | 監視サーバー1台がN台をscrapeする実演 | ✅ [2026-08-25](https://github.com/ns7jp/server/actions/runs/32816412328)：`full-stack-e2e` の ephemeral VM 上で、2台目の node_exporter を実行時に internal network へ attach し、Prometheus が名前解決だけで `up=1` に切り替わることを `run-full-stack.sh` 内 ID `IT-13` として実測（main `774d71c`） |
 | 独立した管理端末・対象hostでの network / UFW | ❌ **NOT RUN**（[手順](../build-package/09-network-validation-procedure.md)と[結果票テンプレート](templates/network-host-validation.md)のみ） |
+| AD DC（`ad-dc01`）の実機ネットワーク検証 ANW-01〜09 | ✅ [2026-09-01〜02](2026-09-01-network-host-validation-ad.md)：手元Hyper-V上のWindows Server 2022評価版VMと、ホストPCを管理端末として **9/9 PASS**。手順書の誤り4件（OU名衝突、pktmon構文、Firewallグループ名のロケール依存、`DefaultInboundAction`の表示）を実機で発見し同じPRで修正。LDAPS(636/3269)が設計と異なり待受した原因も特定。組織DNS・実ドメインメンバー・中央Prometheusからのscrapeは**NOT RUN** |
 | AlmaLinux / Rocky 9 の Molecule `el9` シナリオ | ✅ [2026-08-25](https://github.com/ns7jp/server/actions/runs/32811100007)：common / docker 両 role の el9 scenario が成功。コンテナ上の検証で、実機ホストへの適用ではない |
 | AlmaLinux / Rocky 9 実機への `site.yml` 適用 | ❌ **NOT RUN**（role は el9 コンテナで検証済み） |
 | B-1 ディスク設計・LVM 拡張演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-1.md)：**5 PASS / 0 FAIL**。初回適用・冪等性・ENOSPC 再現・PV 追加による online 拡張（220M→457M、mount 維持）を実測。安全装置テスト（`storage-guard-test.sh`、7 ケース）は[2026-08-25](https://github.com/ns7jp/server/actions/runs/32816412328)、`full-stack-e2e` の ephemeral VM（device-mapper あり）で `run-full-stack.sh` 内 ID `ST-06` として実行し PASS。証跡本体（`storage-guard-test.log` / `*-B-1-guard.md`）は当該 run の artifact に含まれる |
@@ -235,6 +236,7 @@ repository内で完結する構成commit / 設定rollback rehearsalは採録済�
 | 永続host再起動・24h / 72h確認 | `docs/evidence/YYYY-MM-DD-host-reboot-72h.md` |
 | 二セグメント通信障害 | `docs/evidence/YYYY-MM-DD-network-drill.md` |
 | Linux 実ホスト network / UFW | `docs/evidence/YYYY-MM-DD-network-host-validation.md` |
+| AD DC 実ホスト network / Firewall | `docs/evidence/YYYY-MM-DD-network-host-validation-ad.md` |
 | 構成commit / 設定rollback rehearsal | `docs/evidence/YYYY-MM-DD-change-<ID>.md` |
 | 仮説検証を含む一次切り分け | `docs/evidence/YYYY-MM-DD-troubleshooting-<slug>.md` |
 | スクリーンショット | `docs/evidence/screenshots/<kind>_<commit>_<yyyymmdd>.png` |
@@ -249,6 +251,7 @@ repository内で完結する構成commit / 設定rollback rehearsalは採録済�
 | AWS 短時間検証 | [templates/aws-validation.md](templates/aws-validation.md) |
 | Molecule フル実行 | [templates/molecule.md](templates/molecule.md) |
 | Linux 実ホスト network / UFW | [templates/network-host-validation.md](templates/network-host-validation.md) |
+| AD DC 実ホスト network / Firewall | [templates/network-host-validation-ad.md](templates/network-host-validation-ad.md)（[記入済み例: 2026-09-01](2026-09-01-network-host-validation-ad.md)） |
 | 仮説 → コマンド → 結果 → 学び | [templates/troubleshooting-worklog.md](templates/troubleshooting-worklog.md)（[記入例](templates/troubleshooting-worklog-example.md)あり） |
 | 作業結果・引き渡し報告 | [../build-package/11-work-result-report.md](../build-package/11-work-result-report.md) |
 | D-1 プロセスダウン | [../drills/logs/TEMPLATE-D-1-process-down.md](../drills/logs/TEMPLATE-D-1-process-down.md) |

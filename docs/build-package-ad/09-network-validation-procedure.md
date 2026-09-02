@@ -130,6 +130,8 @@ nltest /dsgetdc:$DomainFqdn /KDC
 
 SRVレコードが見つからない場合は、AIT-02(必須サービス確認)のNetlogonサービスの状態と、動的更新設定(`ipconfig /registerdns`による再登録)を切り分けます。
 
+`nltest /dsgetdc`には`-Server`のような問い合わせ先指定がなく、実行した端末自身のDNSクライアント設定で解決します。管理端末がワークグループのままで、DNSサーバーが`ad-dc01`を向いていない場合は`ERROR_NO_SUCH_DOMAIN`(1355)で失敗しますが、これはDC側の欠陥ではありません。その場合は`Resolve-DnsName -Server <対象IP>`でSRVレコードを直接確認し、`nltest`は`ad-dc01`上のセッション内で実行して、両方の結果と理由を結果票に残します(2026-09-01の実機検証で発生)。
+
 ## 7. ANW-04: ICMP 疎通
 
 ```powershell
@@ -154,8 +156,12 @@ Invoke-Command -ComputerName $TargetFQDN -UseSSL -Credential $Cred -ScriptBlock 
             Select-Object LocalAddress, LocalPort
     }
 
-    # 636(LDAPS)・3269(GC LDAPS)はAD CS未導入(対象外)のため待受しないことを確認する対象
-    Get-NetTCPConnection -State Listen -LocalPort 636, 3269 -ErrorAction SilentlyContinue
+    # 636(LDAPS)・3269(GC LDAPS)の待受有無と、待受している場合はその証明書の由来を確認する
+    Get-NetTCPConnection -State Listen -LocalPort 636, 3269 -ErrorAction SilentlyContinue |
+        Select-Object LocalAddress, LocalPort
+    Get-ChildItem Cert:\LocalMachine\My |
+        Select-Object Subject, Thumbprint, NotAfter,
+            @{n='EKU'; e={ ($_.EnhancedKeyUsageList | Select-Object -ExpandProperty FriendlyName) -join ', ' }}
 
     Get-NetUDPEndpoint | Where-Object LocalPort -in 53, 88, 464 |
         Format-Table LocalAddress, LocalPort
@@ -169,7 +175,7 @@ Invoke-Command -ComputerName $TargetFQDN -UseSSL -Credential $Cred -ScriptBlock 
 
 - `53`(DNS)、`88`(Kerberos)、`135`(RPCエンドポイントマッパー)、`389`(LDAP)、`445`(SMB)、`464`(Kerberosパスワード変更)、`3268`(Global Catalog LDAP)、`5986`(WinRM HTTPS)、`9182`(windows_exporter)がいずれも待受
 - `53`、`88`、`464`はTCPに加えUDPでも待受
-- `636`(LDAPS)・`3269`(Global Catalog LDAPS)は、AD CS(証明書サービス)が本パックの対象外でありDCにサーバー認証証明書が配布されないため、`Install-ADDSForest`直後は**待受しないことがPASS**です。Firewallの許可設定自体は[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)のとおり自動生成されますが、証明書が無い限りリスナー自体が起動しません。理由の詳細は[パラメータシート](03-parameter-sheet.md)「公開ポート」節を参照してください
+- `636`(LDAPS)・`3269`(Global Catalog LDAPS)は、待受の有無そのものではなく**「待受の有無が証明書ストアの状態と整合し、説明できること」がPASS条件**です。NTDSは`Local Machine\My`にDCのFQDNをSubjectに持つサーバー認証EKU付き証明書があれば、発行元がAD CSでなくても自動的にLDAPSへ使います。本パックでは[構築手順書](05-build-procedure.md)3節でWinRM HTTPS用に作る自己署名証明書がこの条件を満たすため、AD CS未導入でも636・3269は待受します(2026-09-01の実機検証で確認)。待受している場合は上記`Get-ChildItem Cert:\LocalMachine\My`でその証明書を特定し、Subject・EKU・有効期限を結果票へ記録します。待受していない場合は、該当する証明書が無いことを同じ出力で示します。理由の詳細は[パラメータシート](03-parameter-sheet.md)「公開ポート」節を参照してください
 - `3389`(RDP)は既定Disableのため、`Get-NetTCPConnection`が何も返さない
 - 想定しない`0.0.0.0`の外部向けlistenerがない
 
@@ -207,14 +213,19 @@ LDAP simple bind等の資格情報を含む通信を採取対象にしないた�
 
 ```powershell
 Invoke-Command -ComputerName $TargetFQDN -UseSSL -Credential $Cred -ScriptBlock {
+    pktmon filter remove
+    pktmon stop
     pktmon filter add -p 53
-    pktmon start --etw -p 128 --file-name C:\Windows\Temp\anw07.etl
+    pktmon start --capture --pkt-size 128 --file-name C:\Windows\Temp\anw07.etl
     Start-Sleep -Seconds 15
     pktmon stop
     pktmon format C:\Windows\Temp\anw07.etl -o C:\Windows\Temp\anw07.txt
     pktmon filter remove
+    Get-Item C:\Windows\Temp\anw07.etl, C:\Windows\Temp\anw07.txt | Select-Object Name, Length
 }
 ```
+
+> ⚠️ **`pktmon start`の構文に注意**: パケットキャプチャは`--capture`で開始し、1frameあたりの採取byte数は`--pkt-size <bytes>`で指定します(Windows Server 2022 build 20348で確認)。`pktmon start`における`-p`は`--provider`(ETWプロバイダー名)の短縮形であり、`-p 128`と書くと「プロバイダー'128'が見つからない」旨のエラーになります。一方`pktmon filter add -p 53`の`-p`は`--port`で、こちらは正しい用法です。サブコマンドごとに同じ短縮形の意味が変わるため、`pktmon start -h`で実機の構文を確認してから実行してください。本パック初版は`--etw -p 128`という誤った構文を記載しており、2026-09-02の実機検証で`.etl`が生成されないことから発見しました。`pktmon`の状態メッセージはOS言語で出力されるため、PowerShellリモーティング経由では文字化けすることがあります。成功判定は表示文言ではなく`.etl`ファイルの存在とサイズで行います。
 
 端末B(上記15秒の間に実行):
 
@@ -230,32 +241,43 @@ Copy-Item -FromSession $Session -Path C:\Windows\Temp\anw07.txt -Destination .
 Remove-PSSession $Session
 ```
 
-`-p 128`は1frameあたりの採取byte数を128 byteに制限し、header中心の情報のみを残すための指定です。LDAP(389)やKerberos(88)のtraceが必要な場合は`pktmon filter add -p 389`等へ変更できますが、LDAP simple bind等の資格情報を含みうる通信そのものは、本手順の安全条件(2節)に基づき採取しません。query/responseのみ見えて応答がなければDNSサービス(`Get-Service DNS`)を、`ad-dc01`にpacket自体が届かなければ上流firewall/route を調べます。
+`--pkt-size 128`は1frameあたりの採取byte数を128 byteに制限し、header中心の情報のみを残すための指定です。LDAP(389)やKerberos(88)のtraceが必要な場合は`pktmon filter add -p 389`等へ変更できますが、LDAP simple bind等の資格情報を含みうる通信そのものは、本手順の安全条件(2節)に基づき採取しません。query/responseのみ見えて応答がなければDNSサービス(`Get-Service DNS`)を、`ad-dc01`にpacket自体が届かなければ上流firewall/route を調べます。
 
 ## 11. ANW-08: Windows Defender Firewall
 
-AD DS導入時に自動生成されたルールグループ(Active Directory Domain Services、DNS Service、Kerberos Key Distribution Center、File Replication、Windows Remote Management)のスコープが、内部ネットワークCIDR・管理元CIDRの設計と一致することを確認します。
+AD DS導入時に自動生成されたルールグループ(Active Directory Domain Services、DNS Service、Kerberos Key Distribution Center、File Replication。表示名はOS言語に依存し、日本語版の名前は[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)3節の表を参照)と、本パックが作成した`WinRM-HTTPS-MgmtOnly`ルールのスコープが、内部ネットワークCIDR・管理元CIDRの設計と一致することを確認します。
 
 ```powershell
 Invoke-Command -ComputerName $TargetFQDN -UseSSL -Credential $Cred -ScriptBlock {
-    Get-NetFirewallProfile | Format-Table Name, Enabled, DefaultInboundAction, DefaultOutboundAction
+    # -PolicyStore ActiveStore で「実効値」を見る。付けないと永続ストアの値が表示され、
+    # 未設定のOSでは NotConfigured と出る(実効動作はBlock)
+    Get-NetFirewallProfile -PolicyStore ActiveStore |
+        Format-Table Name, Enabled, DefaultInboundAction, DefaultOutboundAction
 
-    $Groups = 'Active Directory Domain Services', 'DNS Service', 'Kerberos Key Distribution Center', 'File Replication', 'Windows Remote Management'
+    # ルールグループ名はOSの表示言語に依存する。日本語版の例。英語版では
+    # 'DNS Service', 'Kerberos Key Distribution Center', 'File Replication'
+    $Groups = 'Active Directory Domain Services', 'DNS サービス', 'Kerberos キー配布センター', 'DFS レプリケーション', 'ファイル レプリケーション'
     foreach ($Group in $Groups) {
-        Get-NetFirewallRule -DisplayGroup $Group -Enabled True |
+        Get-NetFirewallRule -DisplayGroup $Group -Enabled True -Direction Inbound -ErrorAction Stop |
             Get-NetFirewallAddressFilter |
-            Select-Object -Property @{n = 'DisplayGroup'; e = { $Group } }, RemoteAddress
+            Select-Object -Property @{n = 'DisplayGroup'; e = { $Group } }, RemoteAddress -Unique
     }
 
-    Get-NetFirewallRule -DisplayGroup 'リモート デスクトップ'
+    # WinRM は構築手順書3節で作成した専用ルール
+    Get-NetFirewallRule -DisplayName 'WinRM-HTTPS-MgmtOnly' | Get-NetFirewallAddressFilter | Select-Object RemoteAddress
+
+    Get-NetFirewallRule -DisplayGroup 'リモート デスクトップ' | Format-Table DisplayName, Enabled, Direction
+
+    # windows_exporter の許可ルール(中央Prometheus host未決定の環境では存在しない = 既定Blockで拒否)
+    Get-NetFirewallRule -DisplayName '*Exporter*' -ErrorAction SilentlyContinue | Format-Table DisplayName, Enabled
 }
 ```
 
 確認点:
 
-- `DefaultInboundAction`が`Block`
-- `Active Directory Domain Services`、`DNS Service`、`Kerberos Key Distribution Center`、`File Replication`の各グループのスコープ(`RemoteAddress`)が内部ネットワークCIDRと一致
-- `Windows Remote Management`グループのスコープが管理元CIDRと一致
+- `DefaultInboundAction`が`Block`(`-PolicyStore ActiveStore`の実効値。永続ストアの`NotConfigured`は「OS既定=Block」を意味し、これ自体はFAILではない)
+- `Active Directory Domain Services`、`DNS Service`、`Kerberos Key Distribution Center`、`File Replication`(日本語版は`DNS サービス`、`Kerberos キー配布センター`、`ファイル レプリケーション`/`DFS レプリケーション`)の各グループのスコープ(`RemoteAddress`)が内部ネットワークCIDRと一致
+- `WinRM-HTTPS-MgmtOnly`ルールのスコープが管理元CIDRと一致(既定の`Windows リモート管理`グループはHTTP 5985用で、本パックでは使わない)
 - `3389/tcp`(RDP)の許可ルールが既定でDisable(`Enabled: False`)
 - windows_exporterの許可ルールのスコープが中央Prometheus hostのIPのみ(それ以外は拒否。ANW-06(3)の結果と一致)
 - 想定しない許可ルールがない
