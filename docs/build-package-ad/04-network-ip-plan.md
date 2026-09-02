@@ -27,17 +27,19 @@
 
 Windows Defender Firewallは、AD DS役割を`Install-ADDSForest`で有効化すると、次のルールグループを自動的に作成します。手動で個々のポートルールを1つずつ作る必要はなく、作業の中心は「自動生成されたルールグループのスコープ(許可送信元)を、内部ネットワークCIDRへ正しく絞ること」です。
 
-| ルールグループ | 主なポート |
+| ルールグループ(英語版 / 日本語版の表示名) | 主なポート |
 | --- | --- |
-| Active Directory Domain Services | LDAP(389)、LDAPS(636)、Global Catalog(3268/3269)、RPC(135、動的RPC) |
-| DNS Service | DNS(53) |
-| Kerberos Key Distribution Center | Kerberos(88)、Kerberosパスワード変更(464) |
-| File Replication | SMB(445)、RPC |
-| Windows Remote Management | WinRM(HTTPS 5986)。本パックでは既定のHTTPリスナーを無効化しHTTPS専用にする |
+| Active Directory Domain Services / 同じ | LDAP(389)、LDAPS(636)、Global Catalog(3268/3269)、RPC(135、動的RPC) |
+| DNS Service / DNS サービス | DNS(53) |
+| Kerberos Key Distribution Center / Kerberos キー配布センター | Kerberos(88)、Kerberosパスワード変更(464) |
+| File Replication / ファイル レプリケーション、DFS レプリケーション | SMB(445)、RPC |
+| (本パック独自)`WinRM-HTTPS-MgmtOnly` | WinRM(HTTPS 5986)。既定の`Windows Remote Management`/`Windows リモート管理`グループはHTTP 5985用で使わず、[構築手順書](05-build-procedure.md)3節で専用ルールを作る |
+
+ルールグループの`DisplayGroup`はOSの表示言語で決まり、`Get-NetFirewallRule -DisplayGroup`に他言語の名前を渡すと`ObjectNotFound`になります。手順書・検証手順はこの表を前提に、実機で`Get-NetFirewallRule | Select-Object -ExpandProperty DisplayGroup -Unique`を実行して名前を確認してから進めます(2026-09-01の日本語版実機で確認)。
 
 自動生成ルールの既定プロファイルはDomain/Private/Publicで有効ですが、DCは昇格直後、ネットワークカテゴリがNLA(Network Location Awareness)によって正しく`Domain`と認識されるまで一時的に`Public`扱いになることがあります。[構築手順書](05-build-procedure.md)ではこの点を踏まえ、昇格直後にネットワークカテゴリを確認する手順を含めます。
 
-上表のLDAPS(636)・Global Catalog LDAPS(3269)は、Firewallの許可範囲としては`Install-ADDSForest`実行時に自動生成されます。ただしAD CS(証明書サービス)が本パックの対象外であるため、DCがこれらのポートで実際に待受を始めるために必要なサーバー認証証明書が配布されず、フェーズ1では636・3269は許可されていても待受しません。理由の詳細は[パラメータシート](03-parameter-sheet.md)「公開ポート」節を参照してください。
+上表のLDAPS(636)・Global Catalog LDAPS(3269)は、Firewallの許可範囲としては`Install-ADDSForest`実行時に自動生成されます。実際に待受するかどうかは、`Cert:\LocalMachine\My`にDCのFQDNをSubjectに持つサーバー認証用証明書があるかで決まります。AD CS(証明書サービス)は本パックの対象外ですが、[構築手順書](05-build-procedure.md)3節でWinRM HTTPS用に作る自己署名証明書がこの条件を満たすため、実機では636・3269も待受しました(2026-09-01確認)。理由の詳細は[パラメータシート](03-parameter-sheet.md)「公開ポート」節を参照してください。
 
 ## 4. 実環境で確認する項目
 

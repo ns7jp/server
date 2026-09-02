@@ -180,7 +180,7 @@ REM DSRM Administratorアカウントでログオンし、非権威復元(wbadmi
 ntdsutil
 activate instance ntds
 authoritative restore
-restore subtree "OU=Employees,OU=Users,DC=corp,DC=example,DC=test"
+restore subtree "OU=Employees,DC=corp,DC=example,DC=test"
 quit
 quit
 ```

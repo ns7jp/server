@@ -58,7 +58,7 @@
 | パスワードポリシー確認 | `Get-ADDefaultDomainPasswordPolicy` |
 | 特権グループメンバー確認 | `Get-ADGroupMember "Domain Admins"` |
 | windows_exporter smoke test | `Invoke-WebRequest -Uri http://localhost:9182/metrics -UseBasicParsing \| Select-Object StatusCode` |
-| Firewallプロファイル状態 | `Get-NetFirewallProfile \| Select-Object Name, Enabled, DefaultInboundAction` |
+| Firewallプロファイル状態 | `Get-NetFirewallProfile -PolicyStore ActiveStore \| Select-Object Name, Enabled, DefaultInboundAction`(`ActiveStore`で実効値を見る。省略すると未設定OSでは`NotConfigured`と表示される) |
 | Firewall許可ルール確認 | `Get-NetFirewallRule \| Where-Object Enabled -eq 'True' \| Select-Object DisplayName, Direction, Action` |
 | WinRM listener確認 | `winrm enumerate winrm/config/listener` |
 | 直近エラーログ（System） | `Get-WinEvent -LogName System -MaxEvents 20 \| Where-Object LevelDisplayName -eq 'Error'` |

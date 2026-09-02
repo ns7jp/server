@@ -29,10 +29,10 @@
 | ANW-02 | route / gateway | `Get-NetRoute`, `Test-NetConnection -TraceRoute` | 想定gateway/interface/経路 | NOT RUN | — |
 | ANW-03 | DNS(通常レコード+SRVレコード) | `Resolve-DnsName`(Aレコード、`_ldap._tcp.dc._msdcs`等のSRVレコード) | 想定レコードと一致 | NOT RUN | — |
 | ANW-04 | ICMP | `Test-Connection` | 方針どおりの疎通または遮断 | NOT RUN | — |
-| ANW-05 | 待受port | `Get-NetTCPConnection -State Listen` | 53,88,135,389,445,464,3268,5986,9182が設計どおり待受、3389は既定Disableで非待受。636・3269はAD CS未導入(対象外)のため非待受がPASS | NOT RUN | — |
+| ANW-05 | 待受port | `Get-NetTCPConnection -State Listen`、`Get-ChildItem Cert:\LocalMachine\My` | 53,88,135,389,445,464,3268,5986,9182が設計どおり待受、3389は既定Disableで非待受。636・3269は待受の有無が証明書ストアと整合し説明できればPASS | NOT RUN | — |
 | ANW-06 | TCP/LDAP到達性 | `Test-NetConnection -Port 389/88/53/5986`等 | 内部ネットワークCIDR内は到達、windows_exporterは中央Prometheus host以外から拒否 | NOT RUN | — |
 | ANW-07 | packet capture | `pktmon`(ヘッダのみ) | request/responseの経路を説明可能、本文は非採録 | NOT RUN | — |
-| ANW-08 | Windows Defender Firewall | `Get-NetFirewallProfile`, `Get-NetFirewallRule` | プロファイル・AD DS自動生成ルールグループのスコープが設計と一致 | NOT RUN | — |
+| ANW-08 | Windows Defender Firewall | `Get-NetFirewallProfile -PolicyStore ActiveStore`, `Get-NetFirewallRule` | 実効DefaultInboundActionがBlock、AD DS自動生成ルールグループ(表示名はOS言語依存)のスコープが設計と一致 | NOT RUN | — |
 | ANW-09 | end-to-end | 管理元CIDR外からのWinRM接続試行 | 管理元CIDR以外からの接続が拒否される。内部ネットワークCIDRは実際に参加するホストが無いため、範囲設計の妥当性確認にとどまる旨を明記 | NOT RUN | — |
 
 結果は `PASS / FAIL / BLOCKED / NOT RUN` のいずれかです。ICMP を意図的に遮断する環境では、設計と一致し TCP/LDAP が確認できれば ANW-04 を `PASS` と判定した根拠を備考へ記載します。

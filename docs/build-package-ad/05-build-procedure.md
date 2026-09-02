@@ -142,8 +142,9 @@ Import-Certificate -FilePath .\ad-dc01-winrm.cer -CertStoreLocation Cert:\LocalM
 # Firewallプロファイルの確認
 Get-NetConnectionProfile
 
-# Default Inbound Block(既定)の確認
-Get-NetFirewallProfile | Select-Object Name, DefaultInboundAction, DefaultOutboundAction, Enabled
+# Default Inbound Block(既定)の確認。-PolicyStore ActiveStore を付けて「実効値」を見ること。
+# 付けないと永続ストアの値が表示され、未設定のOSでは NotConfigured と出る(実効動作はBlock)
+Get-NetFirewallProfile -PolicyStore ActiveStore | Select-Object Name, DefaultInboundAction, DefaultOutboundAction, Enabled
 
 # WinRM(HTTPS)を管理元CIDR限定で許可
 New-NetFirewallRule -DisplayName "WinRM-HTTPS-MgmtOnly" -Direction Inbound `
@@ -231,16 +232,24 @@ Get-NetConnectionProfile
 
 最後に、AD-Domain-Services機能の導入によって自動生成されたFirewallルールグループのスコープ(許可送信元)を、内部ネットワークCIDRへ絞り込みます(AST-08)。既定では、これらのルールは送信元アドレスを限定せず作成されるため、手動で絞り込む作業が必要です。
 
+> ⚠️ **ルールグループ名(`DisplayGroup`)はOSの表示言語に依存します**。日本語版Windows Serverでは`DNS Service`は`DNS サービス`、`Kerberos Key Distribution Center`は`Kerberos キー配布センター`、`File Replication`は`ファイル レプリケーション`(加えて`DFS レプリケーション`)という名前で生成され、英語名を指定すると`ObjectNotFound`になります(`Active Directory Domain Services`だけは日本語版でも英語名のまま)。先に実機のグループ名一覧を取得し、`$groups`をそれに合わせてください。
+
 ```powershell
+# 実機のルールグループ名を確認する(ロケール依存)
+Get-NetFirewallRule | Select-Object -ExpandProperty DisplayGroup -Unique | Sort-Object
+
 $internalCidr = "<NOT SET: 環境ごとに決定する内部ネットワークCIDR>"
 
-foreach ($group in @(
+# 日本語版の例。英語版では "DNS Service", "Kerberos Key Distribution Center", "File Replication"
+$groups = @(
     "Active Directory Domain Services",
-    "DNS Service",
-    "Kerberos Key Distribution Center",
-    "File Replication"
-)) {
-    Get-NetFirewallRule -DisplayGroup $group | Set-NetFirewallRule -RemoteAddress $internalCidr
+    "DNS サービス",
+    "Kerberos キー配布センター",
+    "DFS レプリケーション",
+    "ファイル レプリケーション"
+)
+foreach ($group in $groups) {
+    Get-NetFirewallRule -DisplayGroup $group -ErrorAction Stop | Set-NetFirewallRule -RemoteAddress $internalCidr
 }
 
 Get-NetFirewallRule -DisplayGroup "Active Directory Domain Services" |
@@ -268,14 +277,15 @@ Aレコードが`ad-dc01`の実IP(`192.0.2.50`)を指し、いずれのSRVレコ
 
 ## 6. OU・グループポリシー・パスワードポリシーの設計適用
 
-[パラメータシート](03-parameter-sheet.md)「OU・グループポリシー設計」節の設計に従い、OUを親から順に作成します。既定の`CN=Users`コンテナと同名の`Users`ですが、これは別物のOUとして新規作成する点に注意してください。
+[パラメータシート](03-parameter-sheet.md)「OU・グループポリシー設計」節の設計に従い、OUをドメイン直下に作成します。
+
+> ⚠️ **`Users`という名前のOUは作れません**: ドメイン直下には既定の`CN=Users`コンテナが存在し、ADは同じ親の下で同じ相対識別名(RDN)を持つオブジェクトを、オブジェクトクラスが違っても許しません。`New-ADOrganizationalUnit -Name "Users" -Path "DC=corp,..."`は「既に使用されている名前でオブジェクトをディレクトリに追加しようとしました」で失敗します(2026-09-01の実機構築で確認。本パックの初版はこの誤った設計を含んでいました)。同じ理由で`Computers`もOU名に使えません。
 
 ```powershell
 New-ADOrganizationalUnit -Name "_Tier0-Admins" -Path "DC=corp,DC=example,DC=test" -ProtectedFromAccidentalDeletion $true
 New-ADOrganizationalUnit -Name "Servers" -Path "DC=corp,DC=example,DC=test" -ProtectedFromAccidentalDeletion $true
 New-ADOrganizationalUnit -Name "Workstations" -Path "DC=corp,DC=example,DC=test" -ProtectedFromAccidentalDeletion $true
-New-ADOrganizationalUnit -Name "Users" -Path "DC=corp,DC=example,DC=test" -ProtectedFromAccidentalDeletion $true
-New-ADOrganizationalUnit -Name "Employees" -Path "OU=Users,DC=corp,DC=example,DC=test" -ProtectedFromAccidentalDeletion $true
+New-ADOrganizationalUnit -Name "Employees" -Path "DC=corp,DC=example,DC=test" -ProtectedFromAccidentalDeletion $true
 New-ADOrganizationalUnit -Name "Groups" -Path "DC=corp,DC=example,DC=test" -ProtectedFromAccidentalDeletion $true
 New-ADOrganizationalUnit -Name "ServiceAccounts" -Path "DC=corp,DC=example,DC=test" -ProtectedFromAccidentalDeletion $true
 
@@ -297,7 +307,7 @@ Get-ADDefaultDomainPasswordPolicy
 ```powershell
 # 弱いパスワードでのユーザー作成が拒否されることを確認
 try {
-    New-ADUser -Name "test-weak-pw" -Path "OU=Employees,OU=Users,DC=corp,DC=example,DC=test" `
+    New-ADUser -Name "test-weak-pw" -Path "OU=Employees,DC=corp,DC=example,DC=test" `
       -AccountPassword (ConvertTo-SecureString "abc12345" -AsPlainText -Force) -Enabled $true
     Write-Warning "弱いパスワードでのユーザー作成が拒否されませんでした。パスワードポリシーの設定を再確認してください。"
 }
@@ -306,7 +316,7 @@ catch {
 }
 
 # 対照として、ポリシーを満たす強いパスワードでは作成できることも確認する
-New-ADUser -Name "test-strong-pw" -Path "OU=Employees,OU=Users,DC=corp,DC=example,DC=test" `
+New-ADUser -Name "test-strong-pw" -Path "OU=Employees,DC=corp,DC=example,DC=test" `
   -AccountPassword (ConvertTo-SecureString "<NOT SET: 14文字以上・複雑性要件を満たすテスト用パスワード>" -AsPlainText -Force) -Enabled $true
 Get-ADUser -Filter { Name -eq "test-strong-pw" }
 
@@ -505,13 +515,14 @@ Get-Service NTDS, DNS, Netlogon, Kdc, W32Time, windows_exporter, WinRM |
 Get-NetFirewallRule | Where-Object Enabled -eq $true |
   Select-Object DisplayName, Direction, Action | Format-Table -AutoSize
 
-# 636(LDAPS)・3269(GC LDAPS)はAD CS未導入(対象外)のため一覧に含めません。
-# 待受しないことの確認は09-network-validation-procedure.mdのANW-05で別途行います
+# 636(LDAPS)・3269(GC LDAPS)は、Local Machine\My にサーバー認証EKUを持つDCのFQDN宛て証明書が
+# あるかどうかで待受の有無が変わります(3節のWinRM用自己署名証明書が該当し、実機では待受しました)。
+# 待受の有無と証明書の由来は09-network-validation-procedure.mdのANW-05で記録します
 Get-NetTCPConnection -State Listen |
-  Where-Object LocalPort -in 53, 88, 135, 389, 445, 464, 3268, 5986, 9182 |
+  Where-Object LocalPort -in 53, 88, 135, 389, 445, 464, 636, 3268, 3269, 5986, 9182 |
   Select-Object LocalAddress, LocalPort, State
 
-Get-NetFirewallProfile | Select-Object Name, DefaultInboundAction, Enabled
+Get-NetFirewallProfile -PolicyStore ActiveStore | Select-Object Name, DefaultInboundAction, Enabled
 
 winrm enumerate winrm/config/listener
 
@@ -647,7 +658,7 @@ Remove-Item C:\temp\windows_exporter.msi -ErrorAction SilentlyContinue
 Remove-Item C:\temp\ad-dc01-winrm.cer -ErrorAction SilentlyContinue
 
 # 6節で作成した検証用オブジェクトが残っていないか再確認
-Get-ADUser -Filter { Name -like "test-*" } -SearchBase "OU=Employees,OU=Users,DC=corp,DC=example,DC=test" `
+Get-ADUser -Filter { Name -like "test-*" } -SearchBase "OU=Employees,DC=corp,DC=example,DC=test" `
   -ErrorAction SilentlyContinue | Remove-ADUser -Confirm:$false -ErrorAction SilentlyContinue
 
 # セッション変数上のDSRMパスワードを破棄
