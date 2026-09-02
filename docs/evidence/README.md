@@ -81,6 +81,7 @@ main `5480662`、common / docker role の el9 scenario ともに成功）。
 | ephemeral VM の network / UFW | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：`NW-01〜09` / `IT-12` / `ST-01,04` PASS |
 | 監視サーバー1台がN台をscrapeする実演 | ✅ [2026-08-25](https://github.com/ns7jp/server/actions/runs/32816412328)：`full-stack-e2e` の ephemeral VM 上で、2台目の node_exporter を実行時に internal network へ attach し、Prometheus が名前解決だけで `up=1` に切り替わることを `run-full-stack.sh` 内 ID `IT-13` として実測（main `774d71c`） |
 | 独立した管理端末・対象hostでの network / UFW | ❌ **NOT RUN**（[手順](../build-package/09-network-validation-procedure.md)と[結果票テンプレート](templates/network-host-validation.md)のみ） |
+| AD DC（`ad-dc01`）の構築・試験 AUT-01〜04 / AIT-01〜08,10,11 / AST-01〜08 | ✅ [2026-09-01〜02](2026-09-01-ad-build-validation.md)：フォレスト作成、OU/パスワードポリシー、System Stateバックアップ、ADごみ箱復元、サービス停止復旧(RTO 0.9秒)、再実行安全性、LDAP署名/SMBv1/監査/特権グループ/Firewall を実機で **22/22 PASS**。AIT-09(中央Prometheus scrape)は**BLOCKED**。AUT-01で手順書のコードブロック1件の構文誤りを発見し修正 |
 | AD DC（`ad-dc01`）の実機ネットワーク検証 ANW-01〜09 | ✅ [2026-09-01〜02](2026-09-01-network-host-validation-ad.md)：手元Hyper-V上のWindows Server 2022評価版VMと、ホストPCを管理端末として **9/9 PASS**。手順書の誤り4件（OU名衝突、pktmon構文、Firewallグループ名のロケール依存、`DefaultInboundAction`の表示）を実機で発見し同じPRで修正。LDAPS(636/3269)が設計と異なり待受した原因も特定。組織DNS・実ドメインメンバー・中央Prometheusからのscrapeは**NOT RUN** |
 | AlmaLinux / Rocky 9 の Molecule `el9` シナリオ | ✅ [2026-08-25](https://github.com/ns7jp/server/actions/runs/32811100007)：common / docker 両 role の el9 scenario が成功。コンテナ上の検証で、実機ホストへの適用ではない |
 | AlmaLinux / Rocky 9 実機への `site.yml` 適用 | ❌ **NOT RUN**（role は el9 コンテナで検証済み） |
