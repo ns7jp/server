@@ -89,4 +89,4 @@ Microsoft-Windows-Backup:
 - 目印 OU: 復元で消えたため削除操作は不要
 - `C:\temp\wsb-0902.log`、`ddcp.xml`、`sec.inf`、`sec2.inf`: 残置(秘密値は含まない。次回作業時に削除)
 - ホストの拡張セッションモード: 無効のまま(必要なら `Set-VMHost -EnableEnhancedSessionMode $true`)
-- チェックポイント: `phase1-complete`(2026-09-02 11:19)のみ。復元演習後の状態(GPO 修正済み)は `phase1-complete` より新しいが、チェーンを増やさないため追加取得はしていない
+- チェックポイント: 演習直後は `phase1-complete`(2026-09-02 11:19)のみ。その後、組み込み管理者の改名と定期バックアップ登録まで済ませた 16:39 に `phase1-hardened` を取得し、`phase1-complete` を `Remove-VMSnapshot` で統合して**1世代を維持**した(`.vhdx` 2 + `.avhdx` 2 の計4ファイル、C: 空き 60.9 → 63 GB)。復元点は常に最新の1つだけを持ち、更新は「新しく取る → 古いものを統合」の順で行う

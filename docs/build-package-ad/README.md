@@ -50,7 +50,7 @@ flowchart LR
 | 構築(フェーズ1) | [05-build-procedure.md](05-build-procedure.md) | 2026-09-01〜02にHyper-V VMで通しで実施。実機で見つけた誤り6件を修正済み |
 | 試験 | [06-test-specification.md](06-test-specification.md) | 原本は`NOT RUN`のまま。実績は[構築・試験結果票](../evidence/2026-09-01-ad-build-validation.md)(AUT/AIT/AST 22/22 PASS、AIT-09 BLOCKED) |
 | 引き渡し | [07-handover-checklist.md](07-handover-checklist.md) | 作成済み。ラボ範囲の項目のみ確認 |
-| 変更・ロールバック | [08-change-rollback-plan.md](08-change-rollback-plan.md) | System State復元を実演([2026-09-02](../evidence/2026-09-02-ad-restore-drill.md)、復元15分29秒)。チェックポイント復元の実演は`NOT RUN`。チェックポイントは`phase1-complete`の1世代に整理 |
+| 変更・ロールバック | [08-change-rollback-plan.md](08-change-rollback-plan.md) | System State復元を実演([2026-09-02](../evidence/2026-09-02-ad-restore-drill.md)、復元15分29秒)。チェックポイント復元の実演は`NOT RUN`。チェックポイントは`phase1-hardened`の1世代に整理(更新は「新規取得→旧世代を統合」の順) |
 | ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | [結果票](../evidence/2026-09-01-network-host-validation-ad.md) ANW-01〜09 9/9 PASS |
 | 立ち上げ・受け入れ | [10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md) | 評価版ISO + Hyper-V(Windows 11 Pro)の選択肢で実施 |
 | 作業結果報告 | [11-work-result-report.md](11-work-result-report.md) | [2026-09-02 記入済み版](../evidence/2026-09-02-work-result-SM-AD-001.md)あり |
