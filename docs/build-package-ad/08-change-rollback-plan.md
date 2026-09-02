@@ -16,7 +16,7 @@ Linux版([`08-change-rollback-plan.md`](../build-package/08-change-rollback-plan
 
 この原本の実施欄は初期状態では `NOT RUN` です。実作業では `docs/evidence/YYYY-MM-DD-change-<ID>.md` へコピーし、実際の値と出力を記録します。命名・記録ルールは[検証証跡台帳](../evidence/README.md)に合わせます。
 
-本書に対応する記入済みの記録は[2026-09-02 作業結果・引き渡し報告](../evidence/2026-09-02-work-result-SM-AD-001.md)の2節(Hyper-Vチェックポイントの系譜: `before-forest-creation` → `phase1-complete`)にあります。チェックポイントからの復元(ロールバックの実演)と、System Stateからの復元は`NOT RUN`です。以下の空欄は次の変更で再利用する原本です。
+本書に対応する記入済みの記録は[2026-09-02 作業結果・引き渡し報告](../evidence/2026-09-02-work-result-SM-AD-001.md)の2節(Hyper-Vチェックポイントの系譜)と、[2026-09-02 System State復元演習](../evidence/2026-09-02-ad-restore-drill.md)(6節の手段3を実演。復元15分29秒、DSRM再起動から全サービス正常まで約40分)にあります。チェックポイントからの復元(手段1の実演)は`NOT RUN`です。以下の空欄は次の変更で再利用する原本です。
 
 ## 2. 変更票
 
@@ -148,6 +148,8 @@ Restore-VMCheckpoint -VMName 'ad-dc01' -Name '<変更直前に取得したチェ
 Start-VM -Name 'ad-dc01' -ErrorAction SilentlyContinue
 ```
 
+> ⚠️ **チェックポイントは無料ではありません**。取得するたびに差分ディスク(`.avhdx`)の層が増え、以後の書き込みはすべて最上層へ入ります。2026-09-02の実機で、5世代の差分チェーン上でSystem Stateバックアップ(数GBの書き込み)を実行したところ、ホスト側のディスクI/Oが停止し、Hyper-VがVMを一時停止(イベント18524)→強制停止(18528)しました。運用ルールとして、(a) チェーンは1〜2世代に保ち、不要になった世代は`Remove-VMSnapshot`で統合する、(b) バックアップ・復元・大量書き込みの**直前**に新しいチェックポイントを取らない、(c) `Set-VM -AutomaticCheckpointsEnabled $false`で自動チェックポイントを止める、を守ります。統合中は`(Get-VM).Status`が「ディスクの結合中」になるので、完了を待ってから次の操作をします。
+
 2. **スナップショットが無い場合: 4節で取得した個別エクスポートの復元。** Ansibleのように単一コマンドで全体を再現する仕組みが無いため、戻し漏れがないか目視で確認します。
 
 ```powershell
@@ -164,9 +166,22 @@ System State復元には**非権威復元(non-authoritative restore)**と**権�
 非権威復元(通常の障害復旧で使用します):
 
 ```powershell
-wbadmin get versions
-wbadmin start systemstaterecovery -version:<復元対象のバージョンタイムスタンプ> -backuptarget:D: -quiet
+# DSRMで起動(ドメインアカウントではログオンできない。.\Administrator + DSRMパスワード)
+bcdedit /set safeboot dsrepair
+shutdown /r /t 0
+
+# DSRM内で
+wbadmin get versions -backupTarget:D:
+$restoreVersion = "<NOT SET: 復元対象のバージョン識別子(例: 09/02/2026-05:16)>"
+wbadmin start systemstaterecovery -version:$restoreVersion -backupTarget:D: -quiet
+
+# 通常起動へ戻す。{current} は PowerShell では引用符が必要
+bcdedit /deletevalue '{current}' safeboot
+bcdedit /enum '{current}' | Select-String safeboot   # 何も出なければ解除済み
+shutdown /r /t 0
 ```
+
+実機(2026-09-02)では復元処理が15分29秒、DSRM再起動の指示から通常起動で全サービス正常までが約40分でした(うち約18分は`safeboot`解除漏れによるDSRM再起動のやり直し)。手順の注意点は[構築手順書](05-build-procedure.md)14節、実測は[復元演習の証跡](../evidence/2026-09-02-ad-restore-drill.md)を参照してください。
 
 権威復元(誤って削除したオブジェクトを他のドメインコントローラーからの複製で上書きされないよう戻したい場合のみ検討します。非権威復元を先に実行してから、再起動前に`ntdsutil`を実行します):
 
@@ -186,7 +201,7 @@ quit
 ```
 
 ```powershell
-bcdedit /deletevalue safeboot
+bcdedit /deletevalue '{current}' safeboot
 shutdown /r /t 0
 ```
 
