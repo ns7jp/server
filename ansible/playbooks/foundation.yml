@@ -1,0 +1,14 @@
+---
+# 監視アプリなど個別ワークロードに依存しない、OS + コンテナランタイムの
+# 共通基盤だけを構築する。新しい構築案件（監視、AD、Windows、Zabbixなど）に
+# 着手する最初の一歩として、繰り返し使うことを想定している。
+#
+# site.yml（監視スタック一式）や bootstrap.yml（common role のみ）とは別に
+# 用意した理由は docs/build-package-ansible/01-basic-design.md を参照。
+- name: Build the reusable OS + container runtime foundation
+  hosts: foundation
+  become: true
+  gather_facts: true
+  roles:
+    - role: common
+    - role: docker

@@ -1366,6 +1366,39 @@ AWS実環境での稼働実績ではありません。
   許可ルールの設計値があります。
 - **確認**: `Get-NetFirewallProfile`、`Get-NetFirewallRule`
 
+## 13. Ansible自動化基盤の基礎
+
+この節は`docs/build-package-ansible/`（Ansible自動化基盤構築案件パック、案件ID`SM-ANS-001`）を
+読むための用語です。role・冪等性・handler・Molecule自体の説明は「[5. AnsibleとTerraform](#5-ansibleとterraform)」に
+あるため、ここでは本パック固有の用語だけを扱います。より丁寧な解説と、Ansibleの設計を
+覚えるための5つの概念は[案件パック初心者ガイド（Ansible版）](build-package-ansible/beginner-guide.md)にあります。
+
+### foundation group
+
+- **一言**: `ansible/playbooks/foundation.yml`が対象とするinventory group。
+- **意味**: 監視アプリ用の`monitor` groupとは独立しており、`common` + `docker` roleだけを
+  適用する。どの構築案件のベースにもなり得る、案件非依存のhost群を表す。
+- **このリポジトリ**: `ansible/inventory/foundation.local.yml.example`で定義例を示している。
+- **確認**: `ansible-inventory -i inventory/foundation.local.yml --graph`
+
+### 変数の優先順位による上書き（`svc-baseline`の例）
+
+- **一言**: 同じ変数名でも、定義した場所（階層）によって実際に使われる値が変わる仕組み。
+- **意味**: `group_vars/all`の既定値（`server_monitor_user: monitor`）より、より狭い範囲の
+  `group_vars/foundation`の値（`svc-baseline`）が優先される。roleのコードは変更しない。
+- **このリポジトリ**: `ansible/inventory/group_vars/foundation/main.yml`
+- **確認**: `ansible-inventory -i inventory/foundation.local.yml --host ans-01 | grep server_monitor_user`
+
+### フェーズ1 / フェーズ2（Ansible版パック）
+
+- **一言**: フェーズ1はUbuntu（基準環境、設計・実装済み）、フェーズ2はAlmaLinux/Rocky 9
+  実機ホストへの適用（未着手）という区分。
+- **意味**: role自体はMoleculeの`el9` scenarioでコンテナ検証済みだが、実VMへ適用した
+  実績はまだ無い。[AD版パック](build-package-ad/README.md)と同じ、実行済み範囲と設計のみの
+  範囲を区別する書き方である。
+- **このリポジトリ**: [05-build-procedure.md](build-package-ansible/05-build-procedure.md#9-フェーズ2-almalinuxrocky-9への適用未着手)
+- **確認**: [試験仕様書](build-package-ansible/06-test-specification.md)のAFIT-06欄
+
 ## 混同しやすい用語の比較
 
 | 用語A | 用語B | 違いを一言で |
