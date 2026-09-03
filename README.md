@@ -200,6 +200,7 @@ flowchart LR
 | [Windows サーバー構築案件パック](docs/build-package-windows/README.md) | 既存監視基盤へ Windows Server を監視対象ホストとして追加する設計・パラメータ・手順一式（[初心者ガイド](docs/build-package-windows/beginner-guide.md)付き。Ansible 対応 role・central 側ネットワーク拡張・ログ集約経路は未実装） |
 | [AD (Active Directory) サーバー構築案件パック](docs/build-package-ad/README.md) | 新規フォレスト・単一ドメインコントローラーを構築する設計・パラメータ・手順一式（[初心者ガイド](docs/build-package-ad/beginner-guide.md)付き）。2026-09 に手元 Hyper-V の VM で フェーズ1 を通しで実施し、必須 31 ID を PASS（[構築・試験](docs/evidence/2026-09-01-ad-build-validation.md) / [ネットワーク](docs/evidence/2026-09-01-network-host-validation-ad.md) / [引き渡し報告](docs/evidence/2026-09-02-work-result-SM-AD-001.md)）。実機で見つけた手順書の誤り 6 件は修正済み。中央監視統合はWindows版と同じ理由で未実装 |
 | [Zabbix 監視基盤構築案件パック](docs/build-package-zabbix/README.md) | 既存の Prometheus / Grafana スタックとは別に、新規ホストへ Zabbix 7.0 LTS（Server / Frontend / PostgreSQL）を構築し、既存の監視対象ホストを Zabbix Agent2 で追加監視する設計・パラメータ・手順一式（[初心者ガイド](docs/build-package-zabbix/beginner-guide.md)付き。`compose.zabbix.yaml` はCIで構文検証、Ansible role化・実ホストでの構築実績は未実装） |
+| [WSUS サーバー構築案件パック](docs/build-package-wsus/README.md) | 既存の AD ドメイン（`corp.example.test`）へ WSUS（Windows Server Update Services）サーバーを 1 台追加し、グループポリシーによる更新プログラムの集中管理を実現する設計・パラメータ・手順一式（[初心者ガイド](docs/build-package-wsus/beginner-guide.md)付き）。Windows 版・AD 版パックで「実務では推奨だが対象外」としていた WSUS/グループポリシー集中管理を埋める 5 本目の案件パック。中央監視統合は他パックと同じ理由で未実装、実ホストでの構築・試験実績も未実装 |
 | [AWS / Terraform 設計](docs/aws-architecture.md) | VPC / ALB / EC2 などの構成コード（apply 未実施） |
 | [AWS コスト計画](docs/cost-report.md) | 月額試算、Budgets |
 | [SLO / SLI / エラーバジェット設計](docs/slo.md) | サービス品質目標の決め方とアラート条件 |
