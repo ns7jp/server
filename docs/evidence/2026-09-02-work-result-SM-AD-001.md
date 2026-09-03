@@ -119,7 +119,7 @@
 | System Stateバックアップ / ADごみ箱復元試験(フェーズ1) | PASS | System Stateからの**復元**も2026-09-02午後に実演し PASS([復元演習](2026-09-02-ad-restore-drill.md)、復元15分29秒、復旧全体約40分)。演習中に DC の強制停止(LAB-11)と GPO によるレジストリ上書き(LAB-12)を発見・解消 |
 | host/ADメトリクスscrape(フェーズ2、AIT-09) | BLOCKED | 中央Prometheus hostの用意と`compose.yaml`のnetwork変更 |
 | Windows対応Ansible roleの追加 | NOT READY | 変更なし |
-| 2台目DC追加によるレプリケーション実測 | 実施済み(2026-09-03) | `ad-dc02`を追加し複製遅延17.8秒を実測、FSMO移譲でフォレスト2役割をdc02へ分離([証跡](2026-09-03-ad-second-dc-replication.md))。dc02の要塞化(WinRM HTTPS / Firewall / RDP / SMBv1)と**GPO化したセキュリティ設定3件の自動継承の検証**まで完了。dc02のwindows_exporterとSystem Stateバックアップ、役割の奪取(seize)、DC 1台停止時の可用性試験は`NOT RUN` |
+| 2台目DC追加によるレプリケーション実測 | 実施済み(2026-09-03) | `ad-dc02`を追加し複製遅延17.8秒を実測、FSMO移譲でフォレスト2役割をdc02へ分離([証跡](2026-09-03-ad-second-dc-replication.md))。dc02の要塞化(WinRM HTTPS / Firewall / RDP / SMBv1 / windows_exporter 0.31.8)と**GPO化したセキュリティ設定3件の自動継承の検証**まで完了。dc02のSystem Stateバックアップ、役割の奪取(seize)、DC 1台停止時の可用性試験は`NOT RUN` |
 | **GPOの健全性(SYSVOL側の実体)** | 是正済み(2026-09-03) | 09-02のSystem State復元により、Default Domain Policyの`gpt.ini`と`GptTmpl.inf`、および`SYSVOL\domain\scripts`が失われていた。**単一DCでは無症状**(GPOは1件も適用されない状態だが、適用済みのローカルポリシーが残るため)。2台目追加時に発覚し、`gpt.ini`再作成と`scripts`作成で復旧([証跡](2026-09-03-ad-second-dc-replication.md) LAB-19/LAB-20)。復元後の確認手順を[構築手順書](../build-package-ad/05-build-procedure.md)14節に追加 |
 | **セキュリティ設定のGPO化(残り2件)** | 是正済み(2026-09-03) | LAB-12では`LDAPServerIntegrity`のみGPO化していたが、`LdapEnforceChannelBinding`とDSアクセス監査はレジストリ/`auditpol`直編集のままで、**新規DCへ引き継がれない状態**だった。両方をDefault Domain Controllers Policyへ移し、両DCで実効値の一致を確認。[構築手順書](../build-package-ad/05-build-procedure.md)7.1・7.3節を改訂 |
 | monitor-win-01のドメイン参加検証 | NOT RUN | 同上 |
