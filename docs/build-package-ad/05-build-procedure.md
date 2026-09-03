@@ -693,7 +693,13 @@ bcdedit /enum '{current}' | Select-String safeboot     # 何も出ないこと
 netdom query fsmo
 Get-WinEvent -LogName 'Microsoft-Windows-Backup' -MaxEvents 6 | Select-Object TimeCreated, Id   # 241/242 = 回復完了
 dcdiag /q   # DSRM起動時のNTDS依存サービス起動失敗(System ログ)が残るのは正常
+
+# SYSVOLの実体が揃っているかをファイルシステムで確認する(dcdiagの合否だけで判断しない)
+Get-ChildItem C:\Windows\SYSVOL\domain -Force | Select-Object Name   # Policies と scripts が必要
+Get-SmbShare | Select-Object Name, Path                              # SYSVOL と NETLOGON
 ```
+
+> ⚠️ **復元後は SYSVOL の中身を必ず目視で確認してください**。2026-09-02の実機演習では、非権威復元の後に `C:\Windows\SYSVOL\domain\scripts`(NETLOGON共有の実体)が失われていました。単一DC構成では既存の共有定義がメモリ・レジストリ上に残るため `Get-SmbShare` には `NETLOGON` が表示され続け、症状が出ません。翌日2台目のDCを追加した際に「複製元に無いものは複製されない」形で初めて顕在化しました(詳細は[2台目DC追加の証跡](../evidence/2026-09-03-ad-second-dc-replication.md) LAB-19)。欠損していた場合は `New-Item -ItemType Directory -Path 'C:\Windows\SYSVOL\domain\scripts'` で作成し直します(DFSRが他のDCへ複製します)。
 
 いずれの手段を使った場合も、ロールバック後は11節の構築後確認と、影響範囲に応じた試験を再実行します。Go / No-Go条件、実施結果の記録様式は[変更・ロールバック計画](08-change-rollback-plan.md)を正本とします。
 
