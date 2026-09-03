@@ -79,6 +79,9 @@ Rename-LocalUser -Name "Administrator" -NewName "<環境ごとに決定する管
 
 # PowerShell 7.4系の追加導入。Windows Server 2022はWinGetが既定で無いため、
 # GitHub Releasesの公式MSIを使う(バージョンは実機決定時に確認して固定、現時点NOT SET)
+# ダウンロード・証明書エクスポートの一時置き場(既定では存在しないため先に作成する)
+New-Item -Path C:\temp -ItemType Directory -Force | Out-Null
+
 $PwshMsiVersion = "<NOT SET: 実機決定時にGitHub Releasesで確認するバージョン番号>"
 $PwshMsiUrl = "https://github.com/PowerShell/PowerShell/releases/download/v$PwshMsiVersion/PowerShell-$PwshMsiVersion-win-x64.msi"
 Invoke-WebRequest -Uri $PwshMsiUrl -OutFile C:\temp\pwsh-installer.msi
@@ -160,9 +163,11 @@ Get-NetConnectionProfile
 # 永続ストアの値(未設定なら NotConfigured)が表示され、実効動作と一致しない場合がある
 Get-NetFirewallProfile -PolicyStore ActiveStore | Select-Object Name, DefaultInboundAction, DefaultOutboundAction, Enabled
 
-# WinRM(HTTPS)を管理元CIDR限定で許可
-New-NetFirewallRule -DisplayName "WinRM-HTTPS-MgmtOnly" -Direction Inbound `
-  -Protocol TCP -LocalPort 5986 -Action Allow -RemoteAddress 192.0.2.40/32 -Profile Any
+# WinRM(HTTPS)を管理元CIDR限定で許可(2回目実行での重複作成を避けるため存在確認してから作成する。NFR-01、SIT-02)
+if (-not (Get-NetFirewallRule -DisplayName "WinRM-HTTPS-MgmtOnly" -ErrorAction SilentlyContinue)) {
+    New-NetFirewallRule -DisplayName "WinRM-HTTPS-MgmtOnly" -Direction Inbound `
+      -Protocol TCP -LocalPort 5986 -Action Allow -RemoteAddress 192.0.2.40/32 -Profile Any
+}
 
 # quickconfig等が生成した全許可ルールが有効な場合は無効化し、上記の限定ルールへ一本化する
 Get-NetFirewallRule -DisplayName "Windows Remote Management (HTTPS-In)" -ErrorAction SilentlyContinue |
@@ -173,10 +178,12 @@ Get-NetFirewallRule -DisplayName "Windows Remote Management (HTTPS-In)" -ErrorAc
 Get-NetFirewallRule -DisplayGroup "リモート デスクトップ" | Disable-NetFirewallRule
 Get-NetFirewallRule -DisplayGroup "リモート デスクトップ" | Select-Object DisplayName, Enabled
 
-# 障害時に一時的にRDPを許可するためのルール(平時はEnabled:Falseで登録し、必要時のみ有効化する)
-New-NetFirewallRule -DisplayName "RDP-Temp-MgmtOnly" -Direction Inbound `
-  -Protocol TCP -LocalPort 3389 -Action Allow -RemoteAddress 192.0.2.40/32 `
-  -Profile Any -Enabled False
+# 障害時に一時的にRDPを許可するためのルール(平時はEnabled:Falseで登録し、必要時のみ有効化する。NFR-01、SIT-02)
+if (-not (Get-NetFirewallRule -DisplayName "RDP-Temp-MgmtOnly" -ErrorAction SilentlyContinue)) {
+    New-NetFirewallRule -DisplayName "RDP-Temp-MgmtOnly" -Direction Inbound `
+      -Protocol TCP -LocalPort 3389 -Action Allow -RemoteAddress 192.0.2.40/32 `
+      -Profile Any -Enabled False
+}
 ```
 
 管理端末側で疎通を再確認する。
@@ -281,15 +288,20 @@ Get-CimInstance Win32_Service -Filter "Name='windows_exporter'" | Select-Object 
 # ローカルからの疎通確認(中央Prometheusはフェーズ2まで到達不可のため、この時点ではローカル確認のみ)
 curl.exe http://localhost:9182/metrics | Select-String "windows_iis_"
 
-# Firewall: 中央Prometheus hostのIPのみ許可(認証なし。値は環境ごとに決定するためNOT SET)
-New-NetFirewallRule -DisplayName "WindowsExporter-Prometheus-Only" -Direction Inbound `
-  -Protocol TCP -LocalPort 9182 -Action Allow `
-  -RemoteAddress "<NOT SET: 中央Prometheus hostのIPアドレス>" -Profile Any
+# Firewall: 中央Prometheus hostのIPのみ許可(認証なし。値は環境ごとに決定するためNOT SET。
+# 2回目実行での重複作成を避けるため存在確認してから作成する。NFR-01、SIT-02)
+if (-not (Get-NetFirewallRule -DisplayName "WindowsExporter-Prometheus-Only" -ErrorAction SilentlyContinue)) {
+    New-NetFirewallRule -DisplayName "WindowsExporter-Prometheus-Only" -Direction Inbound `
+      -Protocol TCP -LocalPort 9182 -Action Allow `
+      -RemoteAddress "<NOT SET: 中央Prometheus hostのIPアドレス>" -Profile Any
+}
 
 # WSUSコンテンツ(8530/tcp)を内部ネットワークCIDR限定で許可
-New-NetFirewallRule -DisplayName "WSUS-Content-InternalOnly" -Direction Inbound `
-  -Protocol TCP -LocalPort 8530 -Action Allow `
-  -RemoteAddress "<NOT SET: 環境ごとに決定する内部ネットワークCIDR>" -Profile Any
+if (-not (Get-NetFirewallRule -DisplayName "WSUS-Content-InternalOnly" -ErrorAction SilentlyContinue)) {
+    New-NetFirewallRule -DisplayName "WSUS-Content-InternalOnly" -Direction Inbound `
+      -Protocol TCP -LocalPort 8530 -Action Allow `
+      -RemoteAddress "<NOT SET: 環境ごとに決定する内部ネットワークCIDR>" -Profile Any
+}
 ```
 
 `windows_exporter`は既定`LocalSystem`アカウントで動作する。最小権限化は継続課題として記録し、本手順では是正しない。バージョン・SHA256の実測値は[パラメータシート](03-parameter-sheet.md)の実機記入欄へ記録する。
@@ -382,11 +394,26 @@ $subscription.SynchronizeAutomaticallyTimeOfDay
 設定項目はグループポリシー管理エディターの管理用テンプレート内、Windows Update関連ノードにある項目である。バージョンによってノードの階層が変わることがあるため、正確なメニュー階層は断定せず、設定「項目名」とその実体であるレジストリ値で示す。
 
 ```powershell
-$gpoName = "WSUS-Client-Policy"
-New-GPO -Name $gpoName -Comment "WSUSクライアント設定。Servers OUへのみリンクする"
+# GroupPolicyモジュール(New-GPO/New-GPLink/Set-GPRegistryValue)は2.1節のRSAT-AD-PowerShellには
+# 含まれないため、GPMC(グループポリシー管理コンソール)を別途導入する
+Install-WindowsFeature -Name GPMC
+Import-Module GroupPolicy
 
-# ドメイン直下や_Tier0-Admins OUへは広げすぎない設計判断として、Servers OUのみへリンクする
-New-GPLink -Name $gpoName -Target "OU=Servers,DC=corp,DC=example,DC=test" -LinkEnabled Yes
+$gpoName = "WSUS-Client-Policy"
+
+# 2回目実行での重複作成を避けるため、既存GPOがあれば再利用する(NFR-01、SIT-02)
+$gpo = Get-GPO -Name $gpoName -ErrorAction SilentlyContinue
+if (-not $gpo) {
+    $gpo = New-GPO -Name $gpoName -Comment "WSUSクライアント設定。Servers OUへのみリンクする"
+}
+
+# ドメイン直下や_Tier0-Admins OUへは広げすぎない設計判断として、Servers OUのみへリンクする。
+# 既にリンク済みの場合New-GPLinkはエラーになるため、そのエラーだけを許容する
+try {
+    New-GPLink -Name $gpoName -Target "OU=Servers,DC=corp,DC=example,DC=test" -LinkEnabled Yes
+} catch {
+    if ($_.Exception.Message -notmatch "already linked") { throw }
+}
 
 $auKey = "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"
 $wuKey = "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
@@ -433,12 +460,19 @@ ADの組織単位(OU)と、WSUSコンソール内の「コンピューターグ�
 $wsus = Get-WsusServer -Name "wsus-01" -PortNumber 8530
 
 # 「すべてのコンピューター」の下にServersグループを手動作成し、GPOのクライアント側
-# ターゲティング(7節)の対象グループ名と一致させる
+# ターゲティング(7節)の対象グループ名と一致させる。2回目実行での重複作成を避けるため、
+# 既存グループがあれば再利用する(NFR-01、SIT-02)
 $allComputers = $wsus.GetComputerTargetGroups() | Where-Object { $_.Name -eq "All Computers" }
-$serversGroup = $wsus.CreateComputerTargetGroup("Servers", $allComputers)
+$serversGroup = $wsus.GetComputerTargetGroups() | Where-Object { $_.Name -eq "Servers" }
+if (-not $serversGroup) {
+    $serversGroup = $wsus.CreateComputerTargetGroup("Servers", $allComputers)
+}
 
-# Serversの下にPilotサブグループを作成する(段階的展開の受け皿)
-$pilotGroup = $wsus.CreateComputerTargetGroup("Pilot", $serversGroup)
+# Serversの下にPilotサブグループを作成する(段階的展開の受け皿)。同様に既存グループを再利用する
+$pilotGroup = $wsus.GetComputerTargetGroups() | Where-Object { $_.Name -eq "Pilot" }
+if (-not $pilotGroup) {
+    $pilotGroup = $wsus.CreateComputerTargetGroup("Pilot", $serversGroup)
+}
 
 $wsus.GetComputerTargetGroups() | Select-Object Name, Id
 ```
@@ -446,11 +480,18 @@ $wsus.GetComputerTargetGroups() | Select-Object Name, Id
 自動承認ルールを1件作成する。無人承認による意図しない適用を避けるため、自動実行のスケジュール化は行わず、手動実行にとどめる設計とする。
 
 ```powershell
+$ruleName = "Critical and Security Updates - Pilot Auto-Approve"
+
+# 2回目実行での重複作成を避けるため、既存ルールがあれば再利用する(NFR-01、SIT-02)
+$rule = $wsus.GetInstallApprovalRules() | Where-Object { $_.Name -eq $ruleName }
+if (-not $rule) {
+    $rule = $wsus.CreateInstallApprovalRule($ruleName)
+}
+
 $classifications = $wsus.GetUpdateClassifications() |
   Where-Object { $_.Title -in @("Critical Updates", "Security Updates") }
 $products = $wsus.GetUpdateCategories() | Where-Object { $_.Title -eq "Windows Server 2022" }
 
-$rule = $wsus.CreateInstallApprovalRule("Critical and Security Updates - Pilot Auto-Approve")
 $rule.SetUpdateClassifications($classifications)
 $rule.SetCategories($products)
 $rule.SetComputerTargetGroups(@($pilotGroup))
@@ -517,6 +558,24 @@ WSUSコンソール側で`wsus-01`が`Servers`グループへ自己登録され�
 Get-WsusComputer -UpdateServer $wsus |
   Where-Object FullDomainName -eq "wsus-01.corp.example.test" |
   Select-Object FullDomainName, IPAddress, LastReportedStatusTime
+```
+
+クライアント側ターゲティング(7節)による自己登録は、GPOで指定した`Servers`グループへの登録だけであり、`Pilot`サブグループへは自動的には入らない。[パラメータシート](03-parameter-sheet.md)の設計どおり`wsus-01`自身も`Pilot`の検証対象とするため、明示的に`Pilot`グループへ追加する。この手順を省くと、次の自動承認ルールがPilotグループ向けにしか更新を承認しないため、`wsus-01`には何も適用されずSIT-05が成立しない。
+
+```powershell
+$wsusComputer = $wsus.GetComputerTargetGroups() |
+  Where-Object { $_.Name -eq "Servers" } |
+  ForEach-Object { $_.GetComputerTargets() } |
+  Where-Object { $_.FullDomainName -eq "wsus-01.corp.example.test" }
+
+# 既にPilotグループへ登録済みの場合はAddComputerTargetがエラーになるため、そのエラーだけを許容する(NFR-01、SIT-02)
+try {
+    $pilotGroup.AddComputerTarget($wsusComputer)
+} catch {
+    if ($_.Exception.Message -notmatch "already a member") { throw }
+}
+
+$pilotGroup.GetComputerTargets() | Select-Object FullDomainName
 ```
 
 Pilotグループ向けの自動承認ルール(8節)を手動実行し、対象更新を承認する。
