@@ -77,7 +77,7 @@ DHCPデーモンには、Ubuntuの`isc-dhcp-server`パッケージを使う`isc-
 | ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | 手順作成済み。実施結果は `NOT RUN` |
 | 立ち上げ・受け入れ | [10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md) | 最短手順を作成済み |
 | 作業結果報告 | [11-work-result-report.md](11-work-result-report.md) | 原本作成済み。対象ホストごとの実績は日付付き evidence へ複製して記録 |
-| ネットワーク結果票 | [実機検証テンプレート](../evidence/templates/network-host-validation.md) | テンプレート作成済み（Linux版と共用。本パック専用テンプレートは作らない） |
+| ネットワーク結果票 | [DHCP版実機検証テンプレート](../evidence/templates/network-host-validation-dhcp.md) | テンプレート作成済み |
 | 一次切り分け記録 | [トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md) | テンプレート作成済み（既存パックと共用） |
 
 ## 工程ゲート
@@ -103,7 +103,7 @@ DHCPデーモンには、Ubuntuの`isc-dhcp-server`パッケージを使う`isc-
 
 DHCPのDORA実演にはL2ブロードキャストが必要で、既存の[二セグメント障害ラボ](../../labs/network-troubleshooting/README.md)（Docker上の`172.28.10.0/24` / `172.28.20.0/24`）が使うDockerの既定bridgeネットワークでは素直に成立しません（Dockerがコンテナのdhcpdへ実際にDISCOVERを送る構成にはひと手間要るため）。そのため本パックは、Dockerラボではなく**VM/実機での実演を正本**とします。VirtualBoxのHost-OnlyネットワークまたはInternalネットワークで`dhcp-01`とクライアント役VMを同一セグメントに置く立ち上げ手順は[10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md)にまとめています。Dockerベースの払い出しラボは「発展的な設計・将来構想」として言及するにとどめ、未実装です。
 
-ネットワーク実機検証は、[Linux版パック](../build-package/README.md)と共用の[結果票テンプレート](../evidence/templates/network-host-validation.md)を使い、「管理端末→`dhcp-01`」「クライアントVM→`dhcp-01`（DORA）」の2方向を確認します。日付付きの結果票（例: `docs/evidence/YYYY-MM-DD-dhcp-build-validation.md`）が保存されるまで`NOT RUN`です。
+ネットワーク実機検証は、本パック専用の[結果票テンプレート](../evidence/templates/network-host-validation-dhcp.md)を使い、「管理端末→`dhcp-01`」「クライアントVM→`dhcp-01`（DORA）」の2方向を確認します。日付付きの結果票（例: `docs/evidence/YYYY-MM-DD-dhcp-build-validation.md`）が保存されるまで`NOT RUN`です。
 
 ## 完了の定義
 
