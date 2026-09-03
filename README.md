@@ -14,7 +14,7 @@
 この一連を、誰でも同じ手順でやり直せる形にしました。
 実際に動かして確かめたことと、まだ確かめていないことは、はっきり分けて書いています。
 入っているものは大きく3種類です。
-監視アプリと監視基盤そのもの（Flask / Docker Compose / Prometheus / Grafana / Loki / Ansible / Terraform）、未経験者向けの学習教材、実務形式の構築案件文書一式（4パック）です。
+監視アプリと監視基盤そのもの（Flask / Docker Compose / Prometheus / Grafana / Loki / Ansible / Terraform）、未経験者向けの学習教材、実務形式の構築案件文書一式（6パック）です。
 
 **Ubuntu serverをAnsibleで構築し、Prometheus / Grafana / Lokiで監視して、障害注入（わざと止めて、気づけるか・戻せるかを試すこと）・自動復旧・backup restoreまで再実行可能にしたインフラ構築lab**です。
 
@@ -197,6 +197,7 @@ flowchart LR
 
 | 文書 | 内容 |
 | --- | --- |
+| [Ansible自動化基盤構築案件パック](docs/build-package-ansible/README.md) | 監視アプリではなく、`common` / `docker` roleと新設した`ansible/playbooks/foundation.yml`（既存roleの組み合わせ）自体を案件の成果物として設計・試験・引き渡しする一式（[初心者ガイド](docs/build-package-ansible/beginner-guide.md)付き）。role設計・変数の優先順位・冪等性・複数OS対応が主題。YAML構文はこのリポジトリ内で確認済みだが、実ホストでの`ansible-lint`・構築・試験実績はまだ無い |
 | [Windows サーバー構築案件パック](docs/build-package-windows/README.md) | 既存監視基盤へ Windows Server を監視対象ホストとして追加する設計・パラメータ・手順一式（[初心者ガイド](docs/build-package-windows/beginner-guide.md)付き。Ansible 対応 role・central 側ネットワーク拡張・ログ集約経路は未実装） |
 | [AD (Active Directory) サーバー構築案件パック](docs/build-package-ad/README.md) | 新規フォレスト・単一ドメインコントローラーを構築する設計・パラメータ・手順一式（[初心者ガイド](docs/build-package-ad/beginner-guide.md)付き）。2026-09 に手元 Hyper-V の VM で フェーズ1 を通しで実施し、必須 31 ID を PASS（[構築・試験](docs/evidence/2026-09-01-ad-build-validation.md) / [ネットワーク](docs/evidence/2026-09-01-network-host-validation-ad.md) / [引き渡し報告](docs/evidence/2026-09-02-work-result-SM-AD-001.md)）。実機で見つけた手順書の誤り 6 件は修正済み。中央監視統合はWindows版と同じ理由で未実装 |
 | [Zabbix 監視基盤構築案件パック](docs/build-package-zabbix/README.md) | 既存の Prometheus / Grafana スタックとは別に、新規ホストへ Zabbix 7.0 LTS（Server / Frontend / PostgreSQL）を構築し、既存の監視対象ホストを Zabbix Agent2 で追加監視する設計・パラメータ・手順一式（[初心者ガイド](docs/build-package-zabbix/beginner-guide.md)付き。`compose.zabbix.yaml` はCIで構文検証、Ansible role化・実ホストでの構築実績は未実装） |
@@ -265,6 +266,11 @@ ansible-playbook -i inventory/staging.local.yml playbooks/site.yml
 
 実hostへ適用する前に、[完全なAnsible配備手順](docs/deployment-ansible.md)の前提、
 fresh hostでのcheck modeの限界、実行後確認、rollback条件を確認する。
+
+監視アプリを含む一式ではなく、OSハードニングとコンテナランタイムだけの共通基盤を
+構築したい場合は`ansible-playbook -i inventory/foundation.local.yml playbooks/foundation.yml`
+（`common` + `docker` role）を使う。この基盤構築そのものを1つの案件と見立てた設計・試験・
+引き渡し文書は[Ansible自動化基盤構築案件パック](docs/build-package-ansible/README.md)にまとめている。
 
 CI では `ansible-lint` と Molecule scenario の構文検証を常時実行する。完全な
 `molecule test` は `ansible-integration.yml`、host全体の構築・冪等性・復旧は
