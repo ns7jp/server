@@ -119,7 +119,7 @@
 | System Stateバックアップ / ADごみ箱復元試験(フェーズ1) | PASS | System Stateからの**復元**も2026-09-02午後に実演し PASS([復元演習](2026-09-02-ad-restore-drill.md)、復元15分29秒、復旧全体約40分)。演習中に DC の強制停止(LAB-11)と GPO によるレジストリ上書き(LAB-12)を発見・解消 |
 | host/ADメトリクスscrape(フェーズ2、AIT-09) | BLOCKED | 中央Prometheus hostの用意と`compose.yaml`のnetwork変更 |
 | Windows対応Ansible roleの追加 | NOT READY | 変更なし |
-| 2台目DC追加によるレプリケーション実測 | 実施済み(2026-09-03) | `ad-dc02`を追加し複製遅延17.8秒を実測([証跡](2026-09-03-ad-second-dc-replication.md))。FSMO移譲とdc02のフェーズ1相当設定(WinRM/Firewall/exporter/バックアップ)は`NOT RUN` |
+| 2台目DC追加によるレプリケーション実測 | 実施済み(2026-09-03) | `ad-dc02`を追加し複製遅延17.8秒を実測、FSMO移譲でフォレスト2役割をdc02へ分離([証跡](2026-09-03-ad-second-dc-replication.md))。dc02のフェーズ1相当設定(WinRM/Firewall/exporter/バックアップ)、役割の奪取(seize)、DC 1台停止時の可用性試験は`NOT RUN` |
 | monitor-win-01のドメイン参加検証 | NOT RUN | 同上 |
 | windows_exporterサービスアカウントの最小権限化 | NOT READY | `LocalSystem`で導入 |
 | 定期バックアップのスケジュール登録 | 登録済み(2026-09-02 夕) | `wbadmin enable backup -addtarget:D: -schedule:03:30 -systemstate -quiet` → 「スケジュールしたバックアップが有効になりました」。タスク`Microsoft-Windows-WindowsBackup`=`Ready`、`Get-WBPolicy`: 03:30 / `Backup`(D:) / SystemState=True。**初回の自動実行(09-03 03:30)は未確認** → `wbadmin get versions`に09-03の版が増えることを確認するまで`NOT RUN` |
