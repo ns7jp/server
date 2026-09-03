@@ -352,7 +352,9 @@ GUI(グループ ポリシーの管理)で設定します。対象ホストの�
 2. `フォレスト: corp.example.test` → `ドメイン` → `corp.example.test` → `Domain Controllers` → **Default Domain Controllers Policy** を右クリック → 編集
 3. `コンピューターの構成` → `ポリシー` → `Windows の設定` → `セキュリティの設定` → `ローカル ポリシー` → `セキュリティ オプション`
 4. **「ドメイン コントローラー: LDAP サーバー署名必須」** → `署名必須`
-5. **「ドメイン コントローラー: LDAP サーバー チャネル バインディング トークンの要件」** → `常に`(この項目が無いテンプレートの場合は、下記のレジストリ設定を併用)
+5. **「ドメイン コントローラー: LDAP サーバー チャネル バインディング トークンの要件」** → `常に`
+
+> **2つとも必ずGPOに入れてください。** 本パック初版は`LDAPServerIntegrity`だけをGPO化の対象としていましたが、2026-09-03の実機検証で、レジストリ直編集のままだった`LdapEnforceChannelBinding`が**追加したDCにまったく引き継がれていない**ことを確認しました([evidence](../evidence/2026-09-03-ad-second-dc-replication.md)8節)。単一DCでは「設定が効いていること」と「設定が正しく配信されていること」を区別できないため、この差は2台目を追加するまで表面化しません。
 
 ```powershell
 # GPOを即時適用し、実効値を確認する
@@ -388,12 +390,21 @@ Get-WindowsOptionalFeature -Online -FeatureName SMB1Protocol
 
 ### 7.3 監査ポリシー(AST-06)
 
-ディレクトリサービスの変更に対する監査を、成功・失敗の両方で有効化します(NFR-09)。
+ディレクトリサービスの変更に対する監査を、成功・失敗の両方で有効化します(NFR-09)。**7.1と同じ理由でGPOに設定します**。`auditpol`で直接設定した値は、そのDC上では有効になりますが、後から追加するDCには一切引き継がれません(2026-09-03の[実機検証](../evidence/2026-09-03-ad-second-dc-replication.md)8節で確認)。
+
+1. `gpmc.msc` → **Default Domain Controllers Policy** を右クリック → 編集
+2. `コンピューターの構成` → `ポリシー` → `Windows の設定` → `セキュリティの設定` → **`高度な監査ポリシーの構成`**
+3. → **`システム監査ポリシー - ローカル グループ ポリシー オブジェクト`** → **`DS アクセス`**
+4. **「ディレクトリ サービスの変更の監査」** → 「これらの監査イベントを構成する」にチェック → **成功**と**失敗**の両方にチェック
+
+> `高度な監査ポリシーの構成`は`ローカル ポリシー`の**子ではなく兄弟**で、`セキュリティの設定`直下の一覧の最下部にあります。さらにその下に`システム監査ポリシー - ローカル グループ ポリシー オブジェクト`という中間ノードが1段挟まるため、展開せずに探すと見つかりません。`ローカル ポリシー` → `監査ポリシー` にある「ディレクトリ サービス アクセスの監査」は旧世代の粗い設定で、ここで使うものとは別です。
 
 ```powershell
-auditpol /set /subcategory:"ディレクトリ サービスの変更" /success:enable /failure:enable
+gpupdate /force /target:computer
 auditpol /get /subcategory:"ディレクトリ サービスの変更"
 ```
+
+`設定`が`成功および失敗`であることを確認します。`auditpol`は**確認のためのコマンドとして使い、設定には使いません**。
 
 ### 7.4 Domain Adminsメンバーの確認(AST-07)
 
@@ -451,6 +462,34 @@ Firewallルールで許可していても、この時点では中央Prometheus�
 
 ### 9.1 System Stateバックアップの日次スケジュール登録(AIT-06)
 
+#### 事前準備: 格納先ボリュームの確保
+
+System Stateはシステムボリューム(通常C:)以外へ保存します。OSインストール後にディスクを追加してドライブ文字を割り当てる場合、**マウント中のインストールISOのDVDドライブが先に目的のドライブ文字を占有していることがあります**。`New-Partition -DriveLetter D`が`The requested access path is already in use`で失敗する原因はこれです。ディスクの初期化に失敗しているわけではありません。
+
+```powershell
+# ゲスト側: 占有しているのが何かを確認する(DriveType 5 = CD-ROM、3 = 固定ディスク)
+Get-Volume | Select-Object DriveLetter, FileSystemLabel, DriveType
+
+# ホスト側(Hyper-Vの場合): OSインストール済みならDVDドライブごと取り外す
+Get-VMDvdDrive -VMName <VM名> | Remove-VMDvdDrive
+
+# ゲスト側: 追加ディスクにドライブ文字を割り当てる
+Get-Disk | Select-Object Number, PartitionStyle, OperationalStatus   # RAW/Offlineの番号を確認
+Initialize-Disk -Number <番号> -PartitionStyle GPT
+New-Partition -DiskNumber <番号> -UseMaximumSize -DriveLetter D |
+  Format-Volume -FileSystem NTFS -NewFileSystemLabel "Backup" -Confirm:$false
+```
+
+DVDドライブを残したい場合は、ゲスト側で`Set-CimInstance`によりCD-ROMのドライブ文字を退避させます。**`DriveType`が`5`(CD-ROM)であることを確認してから実行してください**。`3`(固定ディスク)に対して実行すると、目的のボリューム自体のドライブ文字を変えてしまいます。
+
+```powershell
+$cd = Get-CimInstance -ClassName Win32_Volume -Filter "DriveLetter = 'D:'"
+$cd | Select-Object DriveLetter, Label, DriveType     # DriveType が 5 であることを確認
+Set-CimInstance -InputObject $cd -Property @{ DriveLetter = 'Z:' }
+```
+
+#### スケジュール登録
+
 ```powershell
 Install-WindowsFeature -Name Windows-Server-Backup
 
@@ -468,6 +507,23 @@ wbadmin enable backup -addtarget:$BackupTarget -schedule:03:30 -systemstate -qui
 wbadmin start systemstatebackup -backuptarget:$BackupTarget -quiet
 wbadmin get versions
 ```
+
+登録したスケジュールが実際に動作したことは、次回以降の稼働日に**タスクの実行結果とイベントログの両方**で確認します。単発実行の成功は「コマンドが通ること」の確認であって、「スケジュールが機能すること」の確認ではありません。
+
+```powershell
+Get-ScheduledTask -TaskPath '\Microsoft\Windows\Backup\' | Get-ScheduledTaskInfo |
+  Select-Object TaskName, LastRunTime, LastTaskResult, NextRunTime
+
+# Backupログ: ID 1 = 開始、ID 4 = 成功
+Get-WinEvent -LogName 'Microsoft-Windows-Backup' -MaxEvents 15 |
+  Select-Object TimeCreated, Id, LevelDisplayName
+```
+
+`LastTaskResult`が`0`で、`ID 1`→`ID 4`の対が記録されていれば成功です。
+
+対象サーバーが24時間稼働でない場合(検証環境など)、**登録した時刻ではなく起動直後にキャッチアップ実行されます**。Windows Server Backupのタスクは既定で「スケジュールされた開始時刻を過ぎたらすぐタスクを開始する」が有効なためで、登録の不具合ではありません。実測例は[2026-09-03のevidence](../evidence/2026-09-03-ad-second-dc-replication.md)9節を参照してください(03:30登録、実際の開始は起動7分半後の10:44)。
+
+所要時間は同一ホスト上の他の負荷に強く影響されます。同じサーバー・同じ格納先で、単独実行時24分17秒、他VMの構築作業と並行した回は63分48秒(2.6倍)という実測があります。**バックアップ枠は他の重い処理と競合しない時間帯に設定してください。**
 
 `wbadmin get versions`にバックアップが記録されることを確認します。保持14日([Linux版](../build-package/03-parameter-sheet.md)・[Windows版](../build-package-windows/03-parameter-sheet.md)と同じ値)は本パックの目標値であり、`wbadmin enable backup`に世代数や日数を直接指定するパラメータはありません。Windows Server Backupの保持はバックアップ格納先ボリュームの空き容量に応じた自動ローテーションのため、`14日`という値を保証する仕組みそのものは存在しません。保持状況の実測確認は、`wbadmin get versions`の出力件数と最古/最新バックアップの日付範囲を日付付きevidenceへ記録して行い、値を推測で埋めません。
 
@@ -697,9 +753,45 @@ dcdiag /q   # DSRM起動時のNTDS依存サービス起動失敗(System ログ)�
 # SYSVOLの実体が揃っているかをファイルシステムで確認する(dcdiagの合否だけで判断しない)
 Get-ChildItem C:\Windows\SYSVOL\domain -Force | Select-Object Name   # Policies と scripts が必要
 Get-SmbShare | Select-Object Name, Path                              # SYSVOL と NETLOGON
+
+# 既定の2つのGPOのSYSVOL側の実体が揃っているかを確認する
+$defaultGpos = @(
+    '{31B2F340-016D-11D2-945F-00C04FB984F9}',  # Default Domain Policy
+    '{6AC1786C-016F-11D2-945F-00C04FB984F9}'   # Default Domain Controllers Policy
+)
+foreach ($gpoId in $defaultGpos) {
+    $gpoDir = "C:\Windows\SYSVOL\domain\Policies\$gpoId"
+    [PSCustomObject]@{
+        GPO     = $gpoId
+        gptIni  = Test-Path (Join-Path $gpoDir 'gpt.ini')
+        GptTmpl = Test-Path (Join-Path $gpoDir 'MACHINE\Microsoft\Windows NT\SecEdit\GptTmpl.inf')
+    }
+}
+
+# ADオブジェクト側とSYSVOL側のバージョンが一致しているか
+Get-GPO -All | Select-Object DisplayName, @{n='DS';e={$_.Computer.DSVersion}}, @{n='Sysvol';e={$_.Computer.SysvolVersion}}
+
+# グループポリシーが実際に適用されているか(7257はGPOのダウンロード失敗、8004は成功)
+Get-WinEvent -LogName 'Microsoft-Windows-GroupPolicy/Operational' -MaxEvents 20 |
+  Select-Object TimeCreated, Id, LevelDisplayName
 ```
 
 > ⚠️ **復元後は SYSVOL の中身を必ず目視で確認してください**。2026-09-02の実機演習では、非権威復元の後に `C:\Windows\SYSVOL\domain\scripts`(NETLOGON共有の実体)が失われていました。単一DC構成では既存の共有定義がメモリ・レジストリ上に残るため `Get-SmbShare` には `NETLOGON` が表示され続け、症状が出ません。翌日2台目のDCを追加した際に「複製元に無いものは複製されない」形で初めて顕在化しました(詳細は[2台目DC追加の証跡](../evidence/2026-09-03-ad-second-dc-replication.md) LAB-19)。欠損していた場合は `New-Item -ItemType Directory -Path 'C:\Windows\SYSVOL\domain\scripts'` で作成し直します(DFSRが他のDCへ複製します)。
+
+> ⚠️ **GPOのSYSVOL側の実体も同様に確認してください**。同じ演習で、Default Domain Policy(`{31B2F340-...}`)の `gpt.ini` と `GptTmpl.inf` も失われていました。`gpt.ini` はGPOのバージョン番号だけを持つ小さなファイルですが、**これが読めないとGPO本体を取得できず、しかも1つのGPOのダウンロード失敗が適用サイクル全体を中断させます**。この状態のDCは「一部のGPOだけ効かない」ではなく「GPOが1件も適用されない」状態になります。既に適用済みのローカルポリシーは残るため、既存DCでは無症状です(パスワードポリシーはドメインオブジェクトの属性として保持されるため、これも効いたままに見えます)。`gpt.ini` が欠損していた場合は、ADオブジェクト側のバージョン番号(`Get-GPO`の`DS`列)に合わせて再作成します(詳細は[2台目DC追加の証跡](../evidence/2026-09-03-ad-second-dc-replication.md) LAB-20)。
+
+```powershell
+$gpoPath = 'C:\Windows\SYSVOL\domain\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}'
+$iniPath = Join-Path $gpoPath 'gpt.ini'
+if (Test-Path $iniPath) { throw "gpt.ini は既に存在します。上書きしないでください" }
+"[General]`r`nVersion=<Get-GPO の DS 列の値>" | Out-File -FilePath $iniPath -Encoding ASCII -NoNewline
+Add-Content -Path $iniPath -Value "" -Encoding ASCII
+
+Get-GPO -All | Select-Object DisplayName, @{n='DS';e={$_.Computer.DSVersion}}, @{n='Sysvol';e={$_.Computer.SysvolVersion}}
+gpupdate /force /target:computer
+```
+
+`DS`列と`Sysvol`列が一致し、`Microsoft-Windows-GroupPolicy/Operational` に `8004` が記録されれば復旧です。
 
 いずれの手段を使った場合も、ロールバック後は11節の構築後確認と、影響範囲に応じた試験を再実行します。Go / No-Go条件、実施結果の記録様式は[変更・ロールバック計画](08-change-rollback-plan.md)を正本とします。
 

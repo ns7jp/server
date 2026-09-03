@@ -165,11 +165,12 @@ Windows Defender FirewallでAD DS役割を導入すると、自動的にルー�
 | ディスク構成(`Get-Volume` / `Get-Disk`) | C: 30GB(OS)、D: 20GB(`Backup`、System State用に追加。設計の60GB単一構成とは異なる) | 2026-09-01 | 同上 |
 | Windows Defender Firewallの許可範囲(`Get-NetFirewallRule`) | AD DS関連5グループ=`192.0.2.0/24`、`WinRM-HTTPS-MgmtOnly`=`192.0.2.40`、RDP=Disable、windows_exporter許可ルールなし | 2026-09-02 | 同上(ANW-08) |
 | FSMO役割保持者(`netdom query fsmo`) | 5役割すべて`ad-dc01.corp.example.test` | 2026-09-01 | 同上(AIT-05) |
-| windows_exporter version / SHA256 | `0.31.8` / `0aadce6afb20182b678bfca9e8f2e8464ef48c469b28b4cf02e99d82158f5d40`(amd64.msi、公式`sha256sums.txt`と一致)。実行アカウント`LocalSystem`。中央Prometheus host未決定のためFirewall許可ルールは未作成 | 2026-09-02 | 同上(ANW-05) |
+| windows_exporter version / SHA256 | `0.31.8` / `0aadce6afb20182b678bfca9e8f2e8464ef48c469b28b4cf02e99d82158f5d40`(amd64.msi、公式`sha256sums.txt`と一致)。実行アカウント`LocalSystem`。中央Prometheus host未決定のためFirewall許可ルールは未作成。`ad-dc02`にも同一バージョンを導入済み(2026-09-03、`windows_ad_*`/`windows_dns_*` 167行、9182/tcp Listen) | 2026-09-02 | 同上(ANW-05)、[2台目DC追加](../evidence/2026-09-03-ad-second-dc-replication.md)7節 |
 | PowerShell version(`$PSVersionTable`) | `5.1.20348.558`(対象host、組込)。7.4系の追加導入は未実施 | 2026-09-02 | 同上 |
 | 適用手順書バージョン / commit SHA | 実機検証時点の手順書は初版(`6c2d1cecf21e57e296d5790e77c6ebb5d820f628`)。本記入欄と同じPRで手順書側の誤りを修正済み | 2026-09-02 | 同上「差異・問題」 |
 | System Stateバックアップの所要時間 | 24分45秒(約8GB、D:へ) | 2026-09-02 | [復元演習](../evidence/2026-09-02-ad-restore-drill.md) |
 | System State復元の所要時間(RTO) | 復元処理15分29秒。DSRM再起動指示〜全サービス正常まで約40分(`safeboot`解除漏れのやり直し約18分を含む) | 2026-09-02 | 同上 |
 | LDAP署名/チャネルバインディングの設定方法 | Default Domain Controllers Policy(GPO)で設定。レジストリ直接編集はGPOに上書きされることを実機で確認 | 2026-09-02 | 同上 |
 | 組み込み管理者(RID 500)の改名 | 実施済み(名称は秘密値台帳)。`SID.EndsWith('-500')=True`を確認 | 2026-09-02 | [作業結果報告](../evidence/2026-09-02-work-result-SM-AD-001.md) 8節 |
-| 定期バックアップのスケジュール | `wbadmin enable backup -addtarget:D: -schedule:03:30 -systemstate`を登録。タスク`Microsoft-Windows-WindowsBackup`が`Ready`、`Get-WBPolicy`で03:30/D:/SystemState=True。**初回の自動実行(2026-09-03 03:30)の結果は未確認** | 2026-09-02 | 同上 7節 |
+| 定期バックアップのスケジュール | `wbadmin enable backup -addtarget:D: -schedule:03:30 -systemstate`を登録。タスク`Microsoft-Windows-WindowsBackup`が`Ready`、`Get-WBPolicy`で03:30/D:/SystemState=True。**自動実行を2026-09-03に確認**(`LastRunTime 10:43:43` / `LastTaskResult 0` / `NextRunTime 09-04 3:30:30`、Backupログ`ID 1`→`ID 4`)。ただし実行はVM停止のため03:30ではなくOS起動7分半後のキャッチアップ、所要は他負荷と競合し**63分48秒**(単独時24分17秒の2.6倍) | 2026-09-03 | 同上 7節、[2台目DC追加](../evidence/2026-09-03-ad-second-dc-replication.md)9節 |
+| バックアップ保持世代数の実測 | D:(20GB)に2世代で使用14GB / 空き6GB。**目標の14日はこの容量では未達**(Windows Server Backupに世代数・日数の指定パラメータは無く、格納先の空き容量に応じた自動ローテーションのため) | 2026-09-03 | 同上9節 |

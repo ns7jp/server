@@ -119,10 +119,13 @@
 | System Stateバックアップ / ADごみ箱復元試験(フェーズ1) | PASS | System Stateからの**復元**も2026-09-02午後に実演し PASS([復元演習](2026-09-02-ad-restore-drill.md)、復元15分29秒、復旧全体約40分)。演習中に DC の強制停止(LAB-11)と GPO によるレジストリ上書き(LAB-12)を発見・解消 |
 | host/ADメトリクスscrape(フェーズ2、AIT-09) | BLOCKED | 中央Prometheus hostの用意と`compose.yaml`のnetwork変更 |
 | Windows対応Ansible roleの追加 | NOT READY | 変更なし |
-| 2台目DC追加によるレプリケーション実測 | 実施済み(2026-09-03) | `ad-dc02`を追加し複製遅延17.8秒を実測、FSMO移譲でフォレスト2役割をdc02へ分離([証跡](2026-09-03-ad-second-dc-replication.md))。dc02のフェーズ1相当設定(WinRM/Firewall/exporter/バックアップ)、役割の奪取(seize)、DC 1台停止時の可用性試験は`NOT RUN` |
+| 2台目DC追加によるレプリケーション実測 | 実施済み(2026-09-03) | `ad-dc02`を追加し複製遅延17.8秒を実測、FSMO移譲でフォレスト2役割をdc02へ分離([証跡](2026-09-03-ad-second-dc-replication.md))。dc02の要塞化(WinRM HTTPS / Firewall / RDP / SMBv1 / windows_exporter 0.31.8)と**GPO化したセキュリティ設定3件の自動継承の検証**まで完了。dc02のSystem Stateバックアップ、役割の奪取(seize)、DC 1台停止時の可用性試験は`NOT RUN` |
+| **GPOの健全性(SYSVOL側の実体)** | 是正済み(2026-09-03) | 09-02のSystem State復元により、Default Domain Policyの`gpt.ini`と`GptTmpl.inf`、および`SYSVOL\domain\scripts`が失われていた。**単一DCでは無症状**(GPOは1件も適用されない状態だが、適用済みのローカルポリシーが残るため)。2台目追加時に発覚し、`gpt.ini`再作成と`scripts`作成で復旧([証跡](2026-09-03-ad-second-dc-replication.md) LAB-19/LAB-20)。復元後の確認手順を[構築手順書](../build-package-ad/05-build-procedure.md)14節に追加 |
+| **セキュリティ設定のGPO化(残り2件)** | 是正済み(2026-09-03) | LAB-12では`LDAPServerIntegrity`のみGPO化していたが、`LdapEnforceChannelBinding`とDSアクセス監査はレジストリ/`auditpol`直編集のままで、**新規DCへ引き継がれない状態**だった。両方をDefault Domain Controllers Policyへ移し、両DCで実効値の一致を確認。[構築手順書](../build-package-ad/05-build-procedure.md)7.1・7.3節を改訂 |
 | monitor-win-01のドメイン参加検証 | NOT RUN | 同上 |
 | windows_exporterサービスアカウントの最小権限化 | NOT READY | `LocalSystem`で導入 |
-| 定期バックアップのスケジュール登録 | 登録済み(2026-09-02 夕) | `wbadmin enable backup -addtarget:D: -schedule:03:30 -systemstate -quiet` → 「スケジュールしたバックアップが有効になりました」。タスク`Microsoft-Windows-WindowsBackup`=`Ready`、`Get-WBPolicy`: 03:30 / `Backup`(D:) / SystemState=True。**初回の自動実行(09-03 03:30)は未確認** → `wbadmin get versions`に09-03の版が増えることを確認するまで`NOT RUN` |
+| 定期バックアップのスケジュール登録 | **実動確認済み(2026-09-03)** | 登録: `wbadmin enable backup -addtarget:D: -schedule:03:30 -systemstate -quiet`。**自動実行を確認**: `LastRunTime 2026/09/03 10:43:43` / `LastTaskResult 0` / `NextRunTime 2026/09/04 3:30:30`、Backupログ`ID 1`(10:44:21)→`ID 4`(11:48:09)。ただし実行は03:30ではなく**OS起動7分半後のキャッチアップ**(ラボVMは03:30に停止していたため)。所要は他VMの構築作業と並行したため**63分48秒**(単独実行時24分17秒の2.6倍)。24時間稼働でない環境では実行時刻が保証されないこと、バックアップ枠は他の負荷と競合させないことを[構築手順書](../build-package-ad/05-build-procedure.md)9.1節に追記 |
+| バックアップ保持14日の達成 | NOT MET(ラボ) | D:(20GB)に2世代で14GB使用、残り6GB。**この容量では14日分は保持できない**。Windows Server Backupに世代数・日数の指定パラメータは無く、格納先の空き容量に応じた自動ローテーションのため、目標値の達成には格納先容量の見積もりが必要 |
 | 組み込み管理者(RID 500)の改名 | 実施済み(2026-09-02 夕) | 昇格後のためドメイン側で`Set-ADUser -SamAccountName` + `Rename-ADObject`。新名称で`whoami`成功、`SID.EndsWith('-500')=True`。新名称は秘密値台帳。DSRM用の名前は`Administrator`のまま(昇格後は変更不可) |
 | PowerShell 7.4系の追加導入 | NOT RUN | 任意 |
 | LDAPSの正式化(AD CS / 組織CA証明書) | NOT RUN | 現状はWinRM用自己署名証明書による偶発的な待受 |

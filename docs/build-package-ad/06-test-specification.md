@@ -82,7 +82,7 @@
 | AST-03 | パスワードポリシー確認 | `Get-ADDefaultDomainPasswordPolicy` | 設計値(最小長14、複雑性有効、最長90日、履歴24世代、ロックアウト10回/観察10分/ロックアウト10分)と一致 | NOT RUN | — |
 | AST-04 | LDAP署名/チャネルバインディング確認 | `gpupdate /force`の**後に**`secedit /export`の実効ポリシーとレジストリ`LDAPServerIntegrity`/`LdapEnforceChannelBinding`を確認。再起動後に`Directory Service`ログの警告2886が無いこと | 実効ポリシーが`=4,2`、レジストリも2。Default Domain Controllers Policyが「なし」を定義しているとレジストリ編集は上書きされるため、設定直後の値だけでPASSにしない | NOT RUN | — |
 | AST-05 | SMBv1無効確認 | `Get-WindowsOptionalFeature -Online -FeatureName SMB1Protocol` | State: Disabled | NOT RUN | — |
-| AST-06 | 監査ポリシー確認 | `auditpol /get /subcategory:"ディレクトリ サービスの変更"` | 成功と失敗の両方が監査対象 | NOT RUN | — |
+| AST-06 | 監査ポリシー確認 | `gpupdate /force /target:computer` の後に `auditpol /get /subcategory:"ディレクトリ サービスの変更"` | `gpupdate`後の実効値で成功と失敗の両方が監査対象。GPO(高度な監査ポリシーの構成)で設定されていること | NOT RUN | — |
 | AST-07 | 特権グループメンバー最小化確認 | `Get-ADGroupMember "Domain Admins"` | 想定外のメンバーがいない | NOT RUN | — |
 | AST-08 | Firewall許可範囲確認 | `Get-NetFirewallRule` | Enabled=trueのルールで、AD DS関連グループのスコープが内部ネットワークCIDR、WinRM/windows_exporterのスコープが設計どおり | NOT RUN | — |
 
