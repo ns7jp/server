@@ -168,7 +168,7 @@ Windows Defender FirewallでAD DS役割を導入すると、自動的にルー�
 | windows_exporter version / SHA256 | `0.31.8` / `0aadce6afb20182b678bfca9e8f2e8464ef48c469b28b4cf02e99d82158f5d40`(amd64.msi、公式`sha256sums.txt`と一致)。実行アカウント`LocalSystem`。中央Prometheus host未決定のためFirewall許可ルールは未作成。`ad-dc02`にも同一バージョンを導入済み(2026-09-03、`windows_ad_*`/`windows_dns_*` 167行、9182/tcp Listen) | 2026-09-02 | 同上(ANW-05)、[2台目DC追加](../evidence/2026-09-03-ad-second-dc-replication.md)7節 |
 | PowerShell version(`$PSVersionTable`) | `5.1.20348.558`(対象host、組込)。7.4系の追加導入は未実施 | 2026-09-02 | 同上 |
 | 適用手順書バージョン / commit SHA | 実機検証時点の手順書は初版(`6c2d1cecf21e57e296d5790e77c6ebb5d820f628`)。本記入欄と同じPRで手順書側の誤りを修正済み | 2026-09-02 | 同上「差異・問題」 |
-| System Stateバックアップの所要時間 | 24分45秒(約8GB、D:へ) | 2026-09-02 | [復元演習](../evidence/2026-09-02-ad-restore-drill.md) |
+| System Stateバックアップの所要時間 | `ad-dc01`: 24分45秒(約8GB、D:へ)。`ad-dc02`: 27分4秒。並行負荷がある場合は63分48秒まで伸びた実測あり | 2026-09-02 / 2026-09-03 | [復元演習](../evidence/2026-09-02-ad-restore-drill.md)、[2台目DC追加](../evidence/2026-09-03-ad-second-dc-replication.md)7・9節 |
 | System State復元の所要時間(RTO) | 復元処理15分29秒。DSRM再起動指示〜全サービス正常まで約40分(`safeboot`解除漏れのやり直し約18分を含む) | 2026-09-02 | 同上 |
 | LDAP署名/チャネルバインディングの設定方法 | Default Domain Controllers Policy(GPO)で設定。レジストリ直接編集はGPOに上書きされることを実機で確認 | 2026-09-02 | 同上 |
 | 組み込み管理者(RID 500)の改名 | 実施済み(名称は秘密値台帳)。`SID.EndsWith('-500')=True`を確認 | 2026-09-02 | [作業結果報告](../evidence/2026-09-02-work-result-SM-AD-001.md) 8節 |

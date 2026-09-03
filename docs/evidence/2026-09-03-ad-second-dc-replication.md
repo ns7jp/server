@@ -18,7 +18,7 @@
 | 複製トポロジ | KCCが双方向の接続オブジェクト2件を自動生成 |
 | **レプリケーション遅延** | **17.8秒**(dc01で11:46:32.686作成 → dc02で11:46:50.510検出) |
 | FSMO移譲 | **実施済み**。フォレストレベル2役割(スキーマ、ドメイン名前付け)を`ad-dc02`へ移譲、所要**0.238秒**。ドメインレベル3役割は`ad-dc01`に残置 |
-| dc02の要塞化 | WinRM HTTPS・Firewall 3プロファイルBlock・AD関連5ルールグループのスコープ限定・RDP無効・SMBv1無効・windows_exporter(0.31.8)まで完了。System Stateバックアップは`NOT RUN` |
+| dc02の要塞化 | **フェーズ1相当の設定を完了**。WinRM HTTPS・Firewall 3プロファイルBlock・AD関連5ルールグループのスコープ限定・RDP無効・SMBv1無効・windows_exporter(0.31.8)・System Stateバックアップ(日次03:30登録+単発27分4秒) |
 | **GPOによる設定継承** | **検証成功**。LDAP署名必須・チャネルバインディング・DSアクセス監査の3設定が、dc02側で一切のレジストリ編集なしにGPO経由で適用された。ただしそこに至る過程で、Default Domain Policyの`gpt.ini`が両DCで欠損しdc02にGPOが1件も届いていなかったこと(LAB-20)を発見・修復 |
 | バックアップの実動確認 | 日次03:30のスケジュール実行が**実際に動作していた**ことをdc01で確認(`LastTaskResult: 0`)。ただし実行時刻は起動後のキャッチアップで10:44、所要時間は他の負荷と競合し24分17秒→**63分48秒**に伸びた(LAB-22) |
 
@@ -158,7 +158,7 @@ dcdiag /test:knowsofroleholders /q → 無出力(合格)
 | SMBv1無効 | 7.3 | 完了(`Get-WindowsOptionalFeature`: Disabled) |
 | LDAP署名必須・チャネルバインディング・DSアクセス監査 | 7.1 / 7.3 | **GPO経由で自動適用**(下記8節) |
 | windows_exporter(ad/dns collector) | 8 | 完了。dc01と同一バージョン・同一手順 |
-| System Stateバックアップ | 9.1 | `NOT RUN` |
+| System Stateバックアップ | 9.1 | 完了。日次03:30を登録し、単発実行**27分4秒**で成功 |
 
 windows_exporterはdc02がインターネットに出られないため、ホストPCで再取得してSHA256を照合し、`Copy-Item -ToSession`で転送してから導入しました(dc01と同じ運用)。転送後にゲスト側でもハッシュを再計算し、転送中の破損がないことを確認しています。
 
@@ -173,6 +173,32 @@ windows_ad_* / windows_dns_* の行数 → 167
 実行アカウントが`LocalSystem`である点はdc01と同じで、最小権限化はAST-07相当の継続課題として据え置きです。中央Prometheusからのscrape(AIT-09)はフェーズ2まで`BLOCKED`のため、確認はローカルからの`/metrics`取得までです。
 
 バックアップ格納先の`D:`(20GB)は、OSインストール後にVHDXを追加して割り当てました。その際にDVDドライブが`D:`を占有していた件はLAB-21に記録しています。
+
+System Stateバックアップはdc01と同じ設定・同じ手順で登録し、単発実行まで確認しました。
+
+```text
+wbadmin enable backup -addtarget:D: -schedule:03:30 -systemstate -quiet
+  ベア メタル回復: 含まない / システム状態のバックアップ: 含む
+  バックアップのボリューム: (C:)(選択されたファイル), (EFIシステムパーティション)(選択されたファイル)
+  詳細設定: VSS バックアップ オプション(コピー)
+  バックアップを格納する場所: D: / バックアップを実行する時刻: 03:30
+  → 「スケジュールしたバックアップが有効になりました」
+
+Get-ScheduledTaskInfo → NextRunTime: 2026/09/04 3:30:30   (dc01と同一)
+
+Measure-Command { wbadmin start systemstatebackup -backuptarget:D: -quiet }
+  → 27分04秒444 (TotalMinutes 27.074)
+
+wbadmin get versions
+  バックアップ時間: 2026/09/03 15:58
+  バックアップ対象: 固定ディスク ラベル付き D:
+  バージョン識別子: 09/03/2026-06:58        (UTC表記。JST 15:58)
+  回復可能: ボリューム、ファイル、アプリケーション、システム状態
+```
+
+所要時間はdc01の単独実行(24分17秒)と同水準です。dc01で63分48秒かかった回(9節)との差は、並行していた他の負荷の有無で説明できます。今回はバックアップ中にホスト側で重い操作を行わず、VMコンソールで実行しました(WinRM越しの実行はLAB-15で切断を経験しているため使いません)。
+
+`Measure-Command`はスクリプトブロックの標準出力を破棄するため、実行中はコンソールに進捗が一切表示されません。停止したように見えますが正常です。進捗を見る場合は、別途ホストPCから`Microsoft-Windows-Backup`ログのイベント`1`(開始)・`4`(成功)と`D:`の空き容量を読み取ります(短い読み取りのみのためWinRM越しで問題ありません)。
 
 ### 8. GPOによる設定継承の検証
 
@@ -340,6 +366,6 @@ LAB-19は、[復元演習の証跡](2026-09-02-ad-restore-drill.md)で`dcdiag`�
 
 - テスト用OU(`ReplTest-*`、`ReplTest2-*`)は削除済み
 - Hyper-Vチェックポイント: `ad-dc01`に`phase1-hardened`と`before-dc02-promotion`の2世代、`ad-dc02`に`自動チェックポイント`と`before-promotion`の2世代。[LAB-11](2026-09-02-ad-restore-drill.md)の教訓に従い、次の大きな書き込み作業の前に1世代へ統合する
-- `ad-dc02`のフェーズ1相当設定: WinRM HTTPSリスナー・Firewall 3プロファイルBlock・AD関連5ルールグループのスコープ限定・RDP無効・SMBv1無効・LDAP署名/チャネルバインディング/DSアクセス監査(GPO経由)・windows_exporter(0.31.8)まで完了。**System Stateバックアップは`NOT RUN`**
+- `ad-dc02`のフェーズ1相当設定は**すべて完了**(WinRM HTTPSリスナー、Firewall 3プロファイルBlock、AD関連5ルールグループのスコープ限定、RDP無効、SMBv1無効、LDAP署名/チャネルバインディング/DSアクセス監査(GPO経由)、windows_exporter 0.31.8、System Stateバックアップ)。**2台のDCが同等の設定・監視・バックアップを持つ状態**になった
 - `ad-dc02`にバックアップ格納用の`D:`(20GB動的VHDX)を追加済み。DVDドライブは取り外し済み(LAB-21)
 - FSMO役割の**奪取**(`-Force`によるseize)と、DCを1台停止した状態での可用性試験は`NOT RUN`
