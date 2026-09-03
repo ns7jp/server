@@ -1,0 +1,29 @@
+---
+# 実host用にはこのfileをfoundation.local.ymlへcopyして編集する。
+# foundation.local.ymlはansible/.gitignore対象で、実IPやSSH userをcommitしない。
+#
+# playbooks/foundation.yml（common + docker role）だけを対象ホストへ適用する
+# 専用inventory。監視アプリ(monitor group)やAD/Windows/Zabbixなど個別案件の
+# group_varsには依存しない。詳細は docs/build-package-ansible/README.md を参照。
+all:
+  children:
+    foundation:
+      hosts:
+        ans-01:
+          ansible_host: 192.0.2.20
+          ansible_user: ubuntu
+          ansible_python_interpreter: /usr/bin/python3
+          # 鍵認証で入れる管理者アカウント。空のままだと既存の authorized_keys が
+          # 必須になる（common role が両方無い状態でのpassword認証停止を拒否する）。
+          server_monitor_admin_user: ansible-admin
+          server_monitor_admin_authorized_keys:
+            - "ssh-ed25519 AAAA... replace-with-real-public-key"
+        # AlmaLinux / Rocky 9 側は同じplaybook・同じroleをそのまま適用できる。フェーズ2として
+        # 着手する場合は次の ans-el9-01 のコメントを外して編集する（インデントは ans-01 と同じ）。
+        # ans-el9-01:
+        #   ansible_host: 192.0.2.21
+        #   ansible_user: rocky
+        #   ansible_python_interpreter: /usr/bin/python3
+        #   server_monitor_admin_user: ansible-admin
+        #   server_monitor_admin_authorized_keys:
+        #     - "ssh-ed25519 AAAA... replace-with-real-public-key"
