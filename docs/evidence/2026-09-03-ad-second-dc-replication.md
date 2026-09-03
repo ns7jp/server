@@ -2,7 +2,7 @@
 
 [基本設計書](../build-package-ad/01-basic-design.md)3.4節の発展構成「2台目のDC追加とレプリケーション実測」を、[phase1-hardened](2026-09-02-work-result-SM-AD-001.md)の`ad-dc01`に対して実施した記録です。同じ演習で、前日の[System State復元演習](2026-09-02-ad-restore-drill.md)が`ad-dc01`のSYSVOLに残していた欠損を発見・修復しました。
 
-> **この証跡が示す範囲**: 同一Hyper-Vホスト・同一内部スイッチ上のVM 2台による、同一サイト内レプリケーションです。サイト間レプリケーション、WAN越しの遅延、RODC、FSMO移譲は含みません(FSMO移譲は`NOT RUN`)。
+> **この証跡が示す範囲**: 同一Hyper-Vホスト・同一内部スイッチ上のVM 2台による、同一サイト内レプリケーションとFSMO移譲です。サイト間レプリケーション、WAN越しの遅延、RODC、役割の**奪取**(seize。移譲元が復旧不能な場合の最終手段)は含みません。
 
 ## 結果の要約
 
@@ -15,7 +15,7 @@
 | グローバルカタログ | dc01・dc02 とも GC |
 | 複製トポロジ | KCCが双方向の接続オブジェクト2件を自動生成 |
 | **レプリケーション遅延** | **17.8秒**(dc01で11:46:32.686作成 → dc02で11:46:50.510検出) |
-| FSMO移譲 | `NOT RUN`(5役割とも`ad-dc01`のまま) |
+| FSMO移譲 | **実施済み**。フォレストレベル2役割(スキーマ、ドメイン名前付け)を`ad-dc02`へ移譲、所要**0.238秒**。ドメインレベル3役割は`ad-dc01`に残置 |
 
 レプリケーション遅延17.8秒は、サイト内複製の既定である**変更通知の待ち時間15秒**と整合します(15秒 + 転送 + 0.3秒間隔ポーリングの誤差)。
 
@@ -29,7 +29,7 @@
 | メモリ / vCPU | 4GB / 2 | 4GB / 2 |
 | DNS参照先 | `127.0.0.1` | 昇格前: `192.0.2.50` / 昇格後: 自身+dc01 |
 | サイト | `Default-First-Site-Name` | 同左 |
-| FSMO | 5役割すべて保持 | なし |
+| FSMO(移譲後) | PDCエミュレーター、RIDプールマネージャー、インフラストラクチャマスター | スキーママスター、ドメイン名前付けマスター |
 | GC | あり | あり |
 
 ## 実施手順と実出力
@@ -88,6 +88,58 @@ detected on dc02 at: 11:46:50.510   (Get-ADOrganizationalUnit -Server localhost)
 
 1回目の計測(`ReplTest-114239`)は、ポーリング開始から作成までの待機時間を含んでしまい65.5秒と出ました。作成時刻を基準にし直した2回目が上記の値です。**測定の起点を「相手が変更した瞬間」に合わせないと、複製時間ではなく自分の待ち時間を測ることになります。**
 
+### 6. FSMO役割の移譲
+
+5つのFSMO役割のうち、**フォレスト全体に関わる2つ**(スキーマ マスター、ドメイン名前付けマスター)を`ad-dc02`へ移譲し、**ドメイン内で頻繁に使われる3つ**(PDCエミュレーター、RIDプールマネージャー、インフラストラクチャマスター)は`ad-dc01`に残しました。フォレストレベルとドメインレベルで分けるのは、片方のDCが失われても残る役割が偏らないようにするためです。
+
+```powershell
+Move-ADDirectoryServerOperationMasterRole -Identity "ad-dc02" `
+    -OperationMasterRole SchemaMaster, DomainNamingMaster -Confirm:$false
+```
+
+```text
+=== 移譲前 (netdom query fsmo) ===
+スキーマ マスター              ad-dc01.corp.example.test
+ドメイン名前付けマスター        ad-dc01.corp.example.test
+PDC                            ad-dc01.corp.example.test
+RID プール マネージャー         ad-dc01.corp.example.test
+インフラストラクチャ マスター    ad-dc01.corp.example.test
+
+elapsed: 00:00:00.2376642
+
+=== 移譲後 ===
+スキーマ マスター              ad-dc02.corp.example.test
+ドメイン名前付けマスター        ad-dc02.corp.example.test
+PDC                            ad-dc01.corp.example.test
+RID プール マネージャー         ad-dc01.corp.example.test
+インフラストラクチャ マスター    ad-dc01.corp.example.test
+
+Get-ADDomainController:
+  AD-DC01  {PDCEmulator, RIDMaster, InfrastructureMaster}
+  AD-DC02  {SchemaMaster, DomainNamingMaster}
+```
+
+移譲後、両DCが同じ認識を持っていることを問い合わせ先を変えて確認しました。
+
+```text
+Get-ADForest -Server ad-dc02  → SchemaMaster / DomainNamingMaster = ad-dc02.corp.example.test
+Get-ADDomain -Server ad-dc02  → PDCEmulator / RIDMaster / InfrastructureMaster = ad-dc01.corp.example.test
+
+repadmin /replsummary (13:16:13)
+  ソース DSA   最大デルタ  失敗/合計  エラー
+  AD-DC01      22m:34s     0 / 5      0
+  AD-DC02      22m:13s     0 / 5      0
+  宛先 DSA     最大デルタ  失敗/合計  エラー
+  AD-DC01      22m:13s     0 / 5      0
+  AD-DC02      22m:34s     0 / 5      0
+
+dcdiag /test:knowsofroleholders /q → 無出力(合格)
+```
+
+移譲前の`repadmin`はソース・宛先とも`AD-DC01`/`AD-DC02`が1行ずつでしたが、移譲後は**両方が双方向に並んでいます**。dc02が変更を発信する側にもなり、双方向の複製が成立したことを示します。
+
+`Move-ADDirectoryServerOperationMasterRole`は既定で**移譲(transfer)**、つまり両DCが稼働している状態での正常な引き継ぎです。`-Force`を付けると**奪取(seize)**になり、移譲元が復旧不能なときの最終手段になります。奪取した役割を元のDCが持ったまま復帰すると役割が二重になるため、本演習では使用していません。
+
 ## インシデントと欠陥(LAB-16〜19)
 
 [復元演習](2026-09-02-ad-restore-drill.md)のLAB-11〜15に続く番号です。
@@ -114,4 +166,4 @@ LAB-19は、[復元演習の証跡](2026-09-02-ad-restore-drill.md)で`dcdiag`�
 - テスト用OU(`ReplTest-*`、`ReplTest2-*`)は削除済み
 - Hyper-Vチェックポイント: `ad-dc01`に`phase1-hardened`と`before-dc02-promotion`の2世代、`ad-dc02`に`自動チェックポイント`と`before-promotion`の2世代。[LAB-11](2026-09-02-ad-restore-drill.md)の教訓に従い、次の大きな書き込み作業の前に1世代へ統合する
 - `ad-dc02`は昇格直後の状態で、フェーズ1相当の設定(WinRM HTTPSリスナー、Firewallスコープ、windows_exporter、System Stateバックアップ)は`NOT RUN`
-- FSMO移譲(`Move-ADDirectoryServerOperationMasterRole`)は`NOT RUN`
+- FSMO役割の**奪取**(`-Force`によるseize)と、DCを1台停止した状態での可用性試験は`NOT RUN`
