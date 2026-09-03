@@ -64,6 +64,8 @@ Microsoft-Windows-Backup:
 
 `dcdiag /q` は `SystemLog` テストのみ失敗。内容は 15:39:15〜16 の「`rspndr` 起動失敗」「Kdc/DFSR/DNS/IsmServ は起動できなかった NTDS に依存」で、**DSRM で起動した際の正常な挙動**が System ログに残っているだけです。NTDS のデータベース(JET/ESE)エラーはありません。
 
+> ⚠️ **2026-09-03 追記・訂正**: この復元では `dcdiag` の `DFSREvent` 失敗も出ており、当時は上記と同じく再起動由来と判断しましたが、**それは不十分な切り分けでした**。実際には非権威復元によって `C:\Windows\SYSVOL\domain\scripts`(NETLOGON 共有の実体)が失われていました。単一 DC 構成では既存の共有定義が残るため症状が出ず、翌日 2台目 DC を追加して初めて顕在化しています(詳細は[2台目DC追加の証跡](2026-09-03-ad-second-dc-replication.md) LAB-19)。**System State 復元の完了確認では、`dcdiag` の合否だけでなく `Get-ChildItem C:\Windows\SYSVOL\domain` に `Policies` と `scripts` が揃っていることをファイルシステムで確認してください。**
+
 ## インシデントと欠陥(LAB-11〜15)
 
 [作業結果報告](2026-09-02-work-result-SM-AD-001.md)6節の LAB-01〜10 に続く番号です。

@@ -88,6 +88,7 @@ flowchart LR
 次は本パックの範囲に含みませんが、基礎が固まった後の発展課題として設計の方向性だけを示します。
 
 - **2台目のDC追加とレプリケーション実測**: `Install-ADDSDomainController`で2台目を追加し、`repadmin /replsummary`・`repadmin /showrepl`でレプリケーション状態を確認する。FSMO役割の一部を`Move-ADDirectoryServerOperationMasterRole`で移譲し、単一障害点を減らす設計を検証する。
+  - **2026-09-03に実施済み(ラボ範囲)**: `ad-dc02`(`192.0.2.51/24`)を追加し、NTDS複製5パーティション失敗0、SYSVOL初期同期成功、**サイト内レプリケーション遅延17.8秒**を実測しました([証跡](../evidence/2026-09-03-ad-second-dc-replication.md))。この演習で、前日のSystem State復元がdc01のSYSVOLから`scripts`フォルダーを失わせていたことが判明しています(単一DCでは共有定義が残るため露見せず、2台目を追加して初めて顕在化)。FSMO移譲は`NOT RUN`です。
 - **RODC(読み取り専用ドメインコントローラー)**: 支店やDMZ相当の環境を想定し、パスワードキャッシュポリシーを制限したRODCを追加する。
 - **monitor-win-01のドメイン参加**: [Windows版パック](../build-package-windows/01-basic-design.md)の系統Bとして言及されている「既存ADに参加させる場合の差分」を、実際に`ad-dc01`を使って検証する統合演習。
 - **Tier分離の実装**: NFR-08で言及したTier0の考え方を、特権アクセスワークステーション(PAW)や管理用ジャンプホストの導入まで含めて実装する。
