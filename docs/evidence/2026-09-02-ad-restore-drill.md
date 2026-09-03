@@ -66,6 +66,8 @@ Microsoft-Windows-Backup:
 
 > ⚠️ **2026-09-03 追記・訂正**: この復元では `dcdiag` の `DFSREvent` 失敗も出ており、当時は上記と同じく再起動由来と判断しましたが、**それは不十分な切り分けでした**。実際には非権威復元によって `C:\Windows\SYSVOL\domain\scripts`(NETLOGON 共有の実体)が失われていました。単一 DC 構成では既存の共有定義が残るため症状が出ず、翌日 2台目 DC を追加して初めて顕在化しています(詳細は[2台目DC追加の証跡](2026-09-03-ad-second-dc-replication.md) LAB-19)。**System State 復元の完了確認では、`dcdiag` の合否だけでなく `Get-ChildItem C:\Windows\SYSVOL\domain` に `Policies` と `scripts` が揃っていることをファイルシステムで確認してください。**
 
+> ⚠️ **2026-09-03 追記・訂正(2)**: 失われていたのは `scripts` だけではありませんでした。Default Domain Policy(`{31B2F340-016D-11D2-945F-00C04FB984F9}`)の `gpt.ini` と `GptTmpl.inf` も欠損しており、**この DC は GPO を1件も適用できない状態になっていました**(1つの GPO のダウンロード失敗が適用サイクル全体を中断させるため)。既に適用済みのローカルポリシーは残り、パスワードポリシーもドメインオブジェクトの属性として保持されるため、単一 DC では正常に見え続けます。これも 2台目 DC を追加して初めて発覚しました(詳細は[2台目DC追加の証跡](2026-09-03-ad-second-dc-replication.md) LAB-20)。**復元後は SYSVOL 配下の GPO の実体(`gpt.ini`・`GptTmpl.inf`)の存在と、`Microsoft-Windows-GroupPolicy/Operational` にエラー `7257` が出ていないことも確認してください。** 確認手順は[構築手順書](../build-package-ad/05-build-procedure.md)14節に追加しました。
+
 ## インシデントと欠陥(LAB-11〜15)
 
 [作業結果報告](2026-09-02-work-result-SM-AD-001.md)6節の LAB-01〜10 に続く番号です。
