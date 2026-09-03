@@ -1,0 +1,5 @@
+# {{ ansible_managed }}
+# isc-dhcp-server が bind する interface。空にすると全 interface を待受してしまう。
+
+INTERFACESv4="{{ dhcp_server_interface }}"
+INTERFACESv6=""

@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: dhcp_server
+  author: server-monitor
+  description: Install and configure isc-dhcp-server for a dedicated served LAN segment
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+  galaxy_tags:
+    - dhcp
+    - networking
+dependencies: []

@@ -1,0 +1,34 @@
+# {{ ansible_managed }}
+# SM-DHCP-001 dhcp-01 の isc-dhcp-server 設定。
+# 正本は docs/build-package-dhcp/03-parameter-sheet.md と 04-network-ip-plan.md。
+# 値を変えるときはこのテンプレートではなく、対応する Ansible 変数を変更する。
+
+default-lease-time {{ dhcp_server_default_lease_time }};
+max-lease-time {{ dhcp_server_max_lease_time }};
+
+{% if dhcp_server_authoritative %}
+# このDHCPサーバーが当該セグメントの正としてDHCPNAKを返す。
+# 意図しないセグメントで有効化すると、既存の権威DHCPサーバーと衝突する
+# （rogue DHCPと同じ症状になる）。有効化前に docs/build-package-dhcp/06-test-specification.md
+# のDST-06（rogue DHCP確認）を実施すること。
+authoritative;
+{% endif %}
+
+# Dynamic DNS更新は行わない（このパックの対象外）。
+ddns-update-style none;
+
+log-facility local7;
+
+subnet {{ dhcp_server_subnet }} netmask {{ dhcp_server_netmask }} {
+  range {{ dhcp_server_range_start }} {{ dhcp_server_range_end }};
+  option subnet-mask {{ dhcp_server_netmask }};
+  option routers {{ dhcp_server_routers | join(', ') }};
+  option domain-name-servers {{ dhcp_server_dns_servers | join(', ') }};
+  option domain-name "{{ dhcp_server_domain_name }}";
+}
+{% for reservation in dhcp_server_reservations %}
+host {{ reservation.name }} {
+  hardware ethernet {{ reservation.mac }};
+  fixed-address {{ reservation.ip }};
+}
+{% endfor %}
