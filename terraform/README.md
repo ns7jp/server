@@ -14,7 +14,9 @@ terraform/
 │   ├── compute/         # EC2 (IMDSv2 強制) / IAM / EBS / SG
 │   ├── alb/             # ALB / Target Group / Listener / ACM / Access Log
 │   ├── monitoring/      # CloudWatch Alarms / SNS / CloudTrail / GuardDuty / Budgets
-│   └── backup/          # AWS Backup vault / plan / S3 archive
+│   ├── backup/          # AWS Backup vault / plan / S3 archive
+│   ├── synthetics-probe/ # 外部probe（CloudWatch Synthetics canary）。staging限定・既定無効
+│   └── central-metrics/  # metrics中央化（AMP workspace + remote_write policy）。staging限定・既定無効
 └── environments/
     ├── dev/             # ALB用2 AZ・EC2 1台（account-wide GuardDuty / CloudTrailは作らない）
     ├── staging/         # D-2専用・ALB用2 AZ・EC2 1台（GuardDuty / CloudTrailは作らない）

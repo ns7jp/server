@@ -1,0 +1,5 @@
+---
+- name: Restart isc-dhcp-server
+  ansible.builtin.systemd:
+    name: "{{ dhcp_server_service }}"
+    state: restarted

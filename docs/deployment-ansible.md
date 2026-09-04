@@ -21,6 +21,7 @@ ansible/
 ├── playbooks/
 │   ├── site.yml         # Ubuntu hostを一括構築する完全プレイブック
 │   ├── bootstrap.yml    # 新規ホストの OS 初期化のみ
+│   ├── foundation.yml   # OS + コンテナランタイムの共通基盤のみ（common + docker）
 │   ├── deploy.yml       # アプリと監視設定だけを更新
 │   └── verify.yml       # 配備後の健全性検証
 └── roles/
@@ -228,7 +229,29 @@ GitHub Actions（`.github/workflows/ansible-check.yml`）では次を検証す�
 上記のローカル実行に加え、`.github/workflows/ansible-integration.yml` を手動実行
 して確認できる。結果は `docs/evidence/` に記録してから実績として扱う。
 
-## 10. 既存 docker-compose 環境からの移行
+## 10. common + docker だけを構築する（`foundation.yml`）
+
+監視アプリを含む一式（`site.yml`）ではなく、OS ハードニングとコンテナランタイムの
+共通基盤だけを新規ホストへ構築したい場合は `foundation.yml` を使う。`bootstrap.yml`
+（`common` role のみ）に `docker` role を加えたものであり、以後どの構築案件（監視、AD、
+Windows、Zabbix など）にも使い回せる下地を作ることを目的にしている。設計の考え方は
+[Ansible自動化基盤構築案件パック](build-package-ansible/README.md)にまとめている。
+
+```bash
+cd ansible
+cp inventory/foundation.local.yml.example inventory/foundation.local.yml
+$EDITOR inventory/foundation.local.yml  # 対象IP、SSH user、管理者の公開鍵へ置換
+ansible-playbook -i inventory/foundation.local.yml playbooks/foundation.yml --check --diff
+ansible-playbook -i inventory/foundation.local.yml playbooks/foundation.yml
+```
+
+`foundation` group には `inventory/group_vars/foundation/main.yml` が適用され、
+`server_monitor_user` などの既定値が `monitor`（監視アプリ用）ではなく
+`svc-baseline`（案件非依存の汎用名）へ上書きされる。Vault は使わない。
+`common` / `docker` 両 role は機密値を必要としないため、この2 roleだけを
+適用する構成では `ansible-vault` の初期化そのものが不要になる。
+
+## 11. 既存 docker-compose 環境からの移行
 
 1. 既存ホストの `deploy/secrets/*.txt` の値を控える
 2. それらを `inventory/group_vars/monitor/vault.yml` に転記し、`ansible-vault encrypt` で暗号化

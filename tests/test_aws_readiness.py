@@ -125,12 +125,12 @@ def test_staging_root_and_restore_outputs_are_complete() -> None:
 
 def test_force_destroy_is_isolated_to_short_lived_staging() -> None:
     staging = text("terraform/environments/staging/main.tf")
-    assert len(re.findall(r"force_destroy\s*=\s*true", staging)) == 3
+    assert len(re.findall(r"force_destroy\s*=\s*true", staging)) == 4
     assert "protect_recovery_points = false" in staging
     assert re.search(r"enable_guardduty\s*=\s*false", staging)
     assert re.search(r"enable_cloudtrail\s*=\s*false", staging)
 
-    for module in ("alb", "backup"):
+    for module in ("alb", "backup", "synthetics-probe"):
         variables = text(f"terraform/modules/{module}/variables.tf")
         force_destroy = variables.split('variable "force_destroy"', 1)[1].split("}", 1)[0]
         assert "default     = false" in force_destroy
@@ -138,6 +138,7 @@ def test_force_destroy_is_isolated_to_short_lived_staging() -> None:
     assert "force_destroy = var.force_destroy" in text("terraform/modules/alb/main.tf")
     backup_main = text("terraform/modules/backup/main.tf")
     assert backup_main.count("force_destroy = var.force_destroy") == 2
+    assert "force_destroy = var.force_destroy" in text("terraform/modules/synthetics-probe/main.tf")
 
     monitoring_variables = text("terraform/modules/monitoring/variables.tf")
     assert 'variable "force_destroy"' not in monitoring_variables
@@ -323,6 +324,41 @@ def test_aws_provider_version_constraints_are_identical() -> None:
     assert len(set(constraints.values())) == 1, constraints
 
 
+def test_boto3_and_botocore_pins_are_the_same_version() -> None:
+    """boto3とbotocoreはversion番号を同期してreleaseされる。
+
+    Dependabotのpip ecosystemは既定でungroupedなため、片方だけをbumpする
+    PRが別々に生成されうる。そちらだけmergeすると、
+    `pip install -r ansible/controller-requirements.txt`が
+    botocoreの依存解決で失敗する（boto3は自身と同じversionのbotocoreを
+    要求する）。dependabot.ymlのboto3-botocore groupで1つのPRにまとめている
+    ことの前提となる不変条件を検査する。
+    """
+    content = text("ansible/controller-requirements.txt")
+    boto3_version = re.search(r"^boto3==(\S+)$", content, re.MULTILINE)
+    botocore_version = re.search(r"^botocore==(\S+)$", content, re.MULTILINE)
+    assert boto3_version and botocore_version, "boto3/botocore pins not found"
+    assert boto3_version.group(1) == botocore_version.group(1), (
+        boto3_version.group(1),
+        botocore_version.group(1),
+    )
+
+    import yaml
+
+    config = yaml.safe_load(
+        (ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+    )
+    pip_updates = [u for u in config["updates"] if u["package-ecosystem"] == "pip"]
+    assert pip_updates, "pip ecosystem entry is missing"
+    grouped_patterns = {
+        pattern
+        for update in pip_updates
+        for group in update.get("groups", {}).values()
+        for pattern in group.get("patterns", [])
+    }
+    assert {"boto3", "botocore"} <= grouped_patterns
+
+
 def test_managed_node_can_use_the_ssm_file_transfer_bucket() -> None:
     """SSM 経由で Ansible を流すには、管理対象ノード側にも S3 権限が要る。
 
@@ -362,3 +398,46 @@ def test_backup_vault_policy_cannot_lock_out_the_caller() -> None:
     assert "vault_policy_admin_arns" in backup
     assert "caller_role_arn" in backup
     assert 'data.aws_caller_identity.current.arn' in backup
+
+
+def test_central_observability_defaults_off_and_wires_remote_write_when_enabled() -> None:
+    """外部probe / AMPはコストを伴うため、明示的に有効化しない限り作られない。
+
+    有効化したときにEC2 instance roleへremote_write権限が届かないと、
+    Prometheusのsigv4 remote_writeがAccessDeniedで無言で失敗し続ける。
+    """
+    variables = text("terraform/environments/staging/variables.tf")
+    assert 'variable "enable_central_observability"' in variables
+    enable_block = variables.split('variable "enable_central_observability"', 1)[1].split("}", 1)[0]
+    assert "default     = false" in enable_block
+
+    main = text("terraform/environments/staging/main.tf")
+    assert main.count("count  = var.enable_central_observability ? 1 : 0") == 2
+    assert 'module "central_metrics"' in main
+    assert 'module "synthetics_probe"' in main
+    assert (
+        "additional_iam_policy_arns = var.enable_central_observability "
+        "? [module.central_metrics[0].remote_write_policy_arn] : []"
+    ) in main
+    assert "alarm_sns_topic_arn = module.monitoring.sns_topic_arn" in main
+
+    central_metrics_outputs = text("terraform/modules/central-metrics/outputs.tf")
+    assert 'output "remote_write_policy_arn"' in central_metrics_outputs
+    assert 'output "remote_write_url"' in central_metrics_outputs
+
+    compute_variables = text("terraform/modules/compute/variables.tf")
+    assert 'variable "additional_iam_policy_arns"' in compute_variables
+
+
+def test_synthetics_canary_name_respects_the_aws_length_limit() -> None:
+    """CloudWatch Syntheticsのcanary名は21文字を超えると apply 時に弾かれる。
+
+    局所的な文字列だけを見ると気づきにくいので、環境側で実際に渡す値と
+    モジュール側のvalidationを両方検査する。
+    """
+    variables = text("terraform/modules/synthetics-probe/variables.tf")
+    assert "length(var.canary_name) <= 21" in variables
+
+    main = text("terraform/environments/staging/main.tf")
+    canary_name = main.split('canary_name = "', 1)[1].split('"', 1)[0]
+    assert len(canary_name) <= 21

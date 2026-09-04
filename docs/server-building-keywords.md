@@ -160,6 +160,39 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
 
 ## 2. Linux操作とファイル管理
 
+### Git
+
+- **一言**: ファイルの変更履歴を記録し、過去の状態に戻せるバージョン管理システム。
+- **意味**: 誰が、いつ、何を変更したかを記録し、複数人での並行作業や巻き戻しを可能にします。
+  このリポジトリ自体もGitで管理されています。
+- **このリポジトリ**: `.git/`ディレクトリに履歴が保存されています（通常は中身を直接見ません）。
+- **確認**: `git --version`、`git log --oneline -5`
+
+### リポジトリ（repository）
+
+- **一言**: プロジェクトのファイルと変更履歴をまとめて管理する保管場所。
+- **意味**: ローカル（自分のPC上）とリモート（GitHub等）の2種類があります。
+  `git clone`でリモートの複製をローカルに作り、`git pull`で最新化します。
+- **このリポジトリ**: `github.com/ns7jp/server`がリモートリポジトリ、
+  `git clone`した先がローカルリポジトリです。
+- **確認**: `git remote -v`
+
+### clone
+
+- **一言**: リモートリポジトリの内容を、履歴ごと手元に複製すること。
+- **意味**: このリポジトリを初めて使う場合、最初に一度だけ実行します。
+  2回目以降は複製し直さず`git pull`で最新化します。
+- **このリポジトリ**: `git clone https://github.com/ns7jp/server.git`
+- **確認**: `git status`（clone直後はcleanな状態のはず）
+
+### commit
+
+- **一言**: 変更を1つの区切りとして記録すること。
+- **意味**: commitごとに一意なID（SHA）が振られ、「どの時点のコードか」を正確に指せます。
+  このリポジトリ全体で「commit SHA」という言葉が繰り返し出てくるのはこのためです。
+- **このリポジトリ**: `git log --oneline`でcommitの履歴を確認できます。
+- **確認**: `git rev-parse HEAD`
+
 ### ファイルシステムとパス
 
 - **一言**: ファイルの保存規則と、その場所を示す住所。
@@ -208,6 +241,15 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
 - **意味**: 依存関係や配布元を管理します。UbuntuはAPT、RHEL系はDNFを使います。
 - **このリポジトリ**: AnsibleのOS別varsとtasksでAPT/DNF差分を吸収します。
 - **確認**: `apt-cache policy docker-ce`または`dnf info docker-ce`
+
+### venv（Python仮想環境）
+
+- **一言**: プロジェクト専用のPython環境を`.venv`ディレクトリに作る仕組み。
+- **意味**: OS共通のPythonへ直接libraryを入れると、別のプロジェクトと版が衝突します。
+  `python3 -m venv .venv`で専用環境を作り、`source .venv/bin/activate`で切り替えてから
+  installすると、影響がそのディレクトリ内に収まります。作業後は`deactivate`で戻します。
+- **このリポジトリ**: 学習ガイドの「小さく確認する」手順で`.venv`を作り、`requirements-dev.txt`をinstallします。
+- **確認**: `python3 -m venv --help`、`echo "$VIRTUAL_ENV"`
 
 ### systemdとunit
 
@@ -371,6 +413,31 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
 - **このリポジトリ**: `/healthz`は認証なしで最小限の稼働状態だけを返します。
 - **確認**: `curl -fsS http://127.0.0.1:8080/healthz`
 
+### DHCP（Dynamic Host Configuration Protocol）
+
+- **一言**: 端末が起動時にIPアドレスを自動で受け取る仕組み。
+- **意味**: 手作業でIPアドレスを1台ずつ設定しなくても、DHCPサーバーが空いているIPアドレスを
+  自動で貸し出します。あわせてgateway、DNSサーバー、ドメイン名も配布できます。
+- **このリポジトリ**: [DHCPサーバー構築案件パック](build-package-dhcp/README.md)でisc-dhcp-serverを構築します。
+- **確認**: `sudo dhcpd -t -cf /etc/dhcp/dhcpd.conf`（設定の構文検査。実際に配布するには対象セグメントが必要）
+
+### DORA（DISCOVER/OFFER/REQUEST/ACK）
+
+- **一言**: DHCPでIPアドレスが決まるまでの4回のやり取り。
+- **意味**: クライアントが全体へ「IPアドレスが欲しい」と呼びかけ（DISCOVER）、サーバーが候補を
+  提示し（OFFER）、クライアントがそれを選び（REQUEST）、サーバーが確定させます（ACK）。
+- **このリポジトリ**: [DHCPサーバー構築案件パック](build-package-dhcp/README.md)のDIT-02・DNW-06でこの4パケットを実機確認します。
+- **確認**: `sudo tcpdump -nn -i <interface> udp port 67 or port 68`
+
+### リース（lease）とスコープ/プール
+
+- **一言**: リースはIPアドレスを貸し出す期限、スコープ/プールは貸し出せるIPアドレスの範囲。
+- **意味**: DHCPで配られるIPアドレスは永久に固定されるわけではなく、期限（リース）付きで
+  貸し出されます。期限が近づくとクライアントは同じサーバーへ更新（renew）を試みます。
+- **このリポジトリ**: [DHCPサーバー構築案件パック](build-package-dhcp/03-parameter-sheet.md)で
+  `192.168.50.100`〜`192.168.50.200`をプールとして設計しています。
+- **確認**: `cat /var/lib/dhcp/dhcpd.leases`
+
 ## 4. Dockerとコンテナ
 
 ### コンテナとイメージ
@@ -452,6 +519,16 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
   no-new-privilegesは実行中の権限昇格を防ぎます。
 - **このリポジトリ**: Flask、Nginx、Lokiなどに複数の制限を組み合わせます。
 - **確認**: `docker compose config`、`docker inspect <container>`
+
+### privileged
+
+- **一言**: コンテナにホストへの強い権限（ほぼrootと同等）を与えるオプション。
+- **意味**: non-root、read-only、no-new-privilegesとは逆方向で、コンテナの分離をほぼ
+  無効化します。ネットワーク名前空間の操作のように、通常のコンテナ権限では出来ない
+  操作が必要な場合にのみ使い、何をするか正確に分からないまま付けません。
+- **このリポジトリ**: `labs/routing`、`docs/drills`のネットワーク演習ラボが、
+  1台のコンテナだけをprivilegedにし、host側には何も残さない設計にしています。
+- **確認**: `docker inspect <container> --format '{{.HostConfig.Privileged}}'`
 
 ### Docker socket
 
@@ -542,6 +619,14 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
   依存する後続taskなど、fresh hostでは完全な予測にならない場合があります。
 - **このリポジトリ**: 配備手順は本適用前のcheck modeを必須の確認にします。
 - **確認**: `ansible-playbook ... --check --diff`
+
+### Molecule
+
+- **一言**: Ansibleのroleを実際に起動・冪等性確認・破棄まで行う自動テストツール。
+- **意味**: check modeは適用前の「予測」にとどまりますが、Moleculeはcontainer上で
+  実際にroleを適用し、2回目の冪等性確認、検証（verify）、破棄までを自動化します。
+- **このリポジトリ**: `molecule/`配下にシナリオがあり、CI（`ansible-check.yml`）で実行します。
+- **確認**: `molecule test`（対応するroleディレクトリで実行。破壊的操作を伴うため検証用コンテナでのみ実行します）
 
 ### 冪等性
 
@@ -829,6 +914,15 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
 - **このリポジトリ**: 各runbookに復旧完了とescalation条件があります。
 - **確認**: runbookの終了条件を作業前に読みます。
 
+### ADR（Architecture Decision Record）
+
+- **一言**: 設計判断を「比較案・採用理由・欠点・見直し条件」の形で残す記録。
+- **意味**: 決定した内容だけでなく、なぜ他の案を選ばなかったかを残すことで、後から
+  見直す際の判断基準になります。「何を実装したか」ではなく「なぜそう決めたか」を記録します。
+- **このリポジトリ**: [`docs/design-decisions.md`](design-decisions.md)にADR-001〜が
+  まとめられています。
+- **確認**: [`docs/design-decisions.md`](design-decisions.md)のADR見出しを確認します。
+
 ### 要件、基本設計、詳細設計
 
 - **一言**: 要件は必要なこと、基本設計は全体方針、詳細設計は実装可能な具体値。
@@ -837,6 +931,25 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
 - **このリポジトリ**: `docs/build-package/00`から`02`へ工程順に整理しています。
 - **確認**: 要件IDが設計とtest IDへつながっているか確認します。
 
+### NFR（非機能要件）
+
+- **一言**: 機能そのものではなく、速さ、止まりにくさ、安全性などの品質面の要求。
+- **意味**: 「監視画面が見られる」は機能要件、「管理UIをloopbackだけにbindする」
+  「2回目の適用で差分が出ない」はNFRです。曖昧になりやすいため、ID、判定方法、
+  対応するtest IDを対にして初めて合否を判定できます。
+- **このリポジトリ**: `docs/build-package/00-requirements.md`にNFR-01（再現性）からの表があり、
+  各NFRが受け入れ試験IDへつながります。
+- **確認**: `grep -n "NFR-" docs/build-package/00-requirements.md`
+
+### Gate（工程ゲート）
+
+- **一言**: 次の工程へ進んでよいかを判定する、案件の区切りG0〜G5。
+- **意味**: G0要件確定、G1設計確定、G2構築完了、G3試験完了、G4作業完了、G5引き渡しの順に、
+  前の条件を満たさないまま先へ進まないための関門です。表の右端は現在の状態で、
+  文書が揃っただけの段階と、実測で通過した段階を区別します。
+- **このリポジトリ**: 各案件パックのREADMEに「工程ゲート」表があり、冒頭の表の「引き渡し判定」列と対応します。
+- **確認**: `grep -n "工程ゲート" docs/build-package/README.md`
+
 ### parameter sheet
 
 - **一言**: host名、IP、port、versionなどの設定値を一覧化した表。
@@ -844,6 +957,15 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
   秘密値そのものは記載せず、保管場所や受け渡し方法を書きます。
 - **このリポジトリ**: `03-parameter-sheet.md`にOS、SSH、監視設定を整理します。
 - **確認**: 実設定とparameter sheetの差分を受け入れ試験で確認します。
+
+### 正本と原本
+
+- **一言**: 正本はその値の正しい出どころ、原本は記入前の元の様式。
+- **意味**: 同じ値が複数の文書へ写ると、どれが正しいか分からなくなります。設計値の正本は
+  構成codeとparameter sheet、実行結果の正本は日付付きevidenceと決めておきます。
+  試験仕様書のような様式は原本を空のまま保ち、結果は複製した日付付きファイルへ記入します。
+- **このリポジトリ**: `docs/build-package/03-parameter-sheet.md`が設計値の索引、`docs/evidence/`が結果の正本です。
+- **確認**: `grep -n "正本" docs/build-package/00-requirements.md`
 
 ### test specificationとacceptance criteria
 
@@ -885,6 +1007,24 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
 - **このリポジトリ**: 初心者導線の回帰testとstorage安全gateのnegative testがあります。
 - **確認**: `pytest -q`と、対象test名・期待する失敗条件を確認します。
 
+### 前提診断
+
+- **一言**: 演習を始める前に、必要な道具が揃っているかだけを読み取り専用で調べること。
+- **意味**: 足りないものに気づかないまま構築へ進むと、原因の切り分けが難しくなります。
+  前提診断は設定変更、package install、sudo、container起動を行わず、Linux、Git、Python、
+  OpenSSL、Docker、Compose、Ansible、空き容量、memory、portの状態だけを表示します。
+- **このリポジトリ**: `scripts/learning/check-prerequisites.sh`が学習の最初の1手です。
+- **確認**: `./scripts/learning/check-prerequisites.sh --help`
+
+### compileallとpytest
+
+- **一言**: compileallは構文だけの検査、pytestは実際に動かす自動test。
+- **意味**: `python -m compileall app.py tests`はPythonの文法error（typoやindent崩れ）を
+  実行前に見つけます。文法が通ることと期待どおり動くことは別なので、続けて`pytest`で
+  振る舞いを確認します。見るのは終了コードとtest件数です。
+- **このリポジトリ**: `tests/`にAPI認証、masking、metricsなどのtestがあります。
+- **確認**: `python -m compileall --help`、`pytest -q --collect-only`
+
 ### PASS、FAIL、BLOCKED、NOT RUN
 
 - **一言**: 成功、失敗、前提不足、未実行を区別する結果状態。
@@ -892,6 +1032,25 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
   完了不能、NOT RUNは実行していない状態です。推測をPASSにしません。
 - **このリポジトリ**: test結果票と証跡台帳で同じ状態を使います。
 - **確認**: 各PASSに日時、環境、command、出力、SHAがあるか確認します。
+
+### WARNとNEXT
+
+- **一言**: WARNは合格ではない注意、NEXTは次に何をすればよいかの指示行。
+- **意味**: 前提診断はPASS、WARN、FAILの3種類を表示します。FAILは必須条件の不足なので
+  先へ進まず、その項目のNEXTに従います。WARNは今の段階では必須でない不足（例: Ansibleは
+  Level 4で必要）で、影響を理解したうえで続行できます。解消前の結果は`BLOCKED`と記録します。
+- **このリポジトリ**: `scripts/learning/check-prerequisites.sh`が`[PASS]`、`[WARN]`、`[FAIL]`と
+  `NEXT:`行を出し、末尾に`Summary: FAIL=n WARN=n`を表示します。
+- **確認**: `grep -n "NEXT" scripts/learning/check-prerequisites.sh`
+
+### NOT SETとNOT READY
+
+- **一言**: NOT SETは値や承認がまだ決まっていない、NOT READYは条件を満たさず先へ進めない。
+- **意味**: PASS、FAIL、BLOCKED、NOT RUNがtest結果の状態であるのに対し、この2語は案件側の
+  状態です。実案件の承認者や日時が未定なら`NOT SET`、必須testが未実施で引き渡せない工程
+  ゲートは`NOT READY`と書き、「未定」を「完了」に見せません。
+- **このリポジトリ**: 各案件パックREADMEの工程ゲート表と、冒頭の引き渡し判定欄で使います。
+- **確認**: `grep -n "NOT SET\|NOT READY" docs/build-package/README.md`
 
 ### evidenceとartifact
 
@@ -970,6 +1129,300 @@ AWS実環境での稼働実績ではありません。
   Prometheus/Alertmanagerとは監視範囲と運用主体が異なります。
 - **このリポジトリ**: `terraform/modules/monitoring/`に設計例があります。
 - **確認**: threshold、通知先、課金見込みをcodeとplanで確認します。
+
+## 10. Active Directory（AD）の基礎
+
+この節は`docs/build-package-ad/`（AD サーバー構築案件パック、案件ID`SM-AD-001`）を読むための用語です。
+このリポジトリではAD自体をまだ実機構築していないため、以下は**設計・手順書上の例**であり、
+実機での稼働実績ではありません。実測と未実測の境界は[案件パックREADME](build-package-ad/README.md)を参照してください。
+
+### フォレストとドメイン
+
+- **一言**: ドメインは1つの管理単位、フォレストはドメインの集合全体の一番外側の境界。
+- **意味**: 小規模構成では1フォレストに1ドメインだけを作ることが多く、この案件パックもその形です。
+  フォレストが違うと、既定では信頼関係（trust）が無い限り管理範囲が分かれます。
+- **このリポジトリ**: `corp.example.test`という1つの新規フォレスト・新規ドメインを設計しています。
+- **確認**: `Get-ADForest`、`Get-ADDomain`（設計値は[要件定義書](build-package-ad/00-requirements.md)参照）
+
+### ドメインコントローラー（DC）
+
+- **一言**: フォレスト・ドメインの認証とディレクトリ情報を持つ本体サーバー。
+- **意味**: ユーザーやコンピューターのログオン、パスワードポリシー、グループポリシーの配布などを担います。
+  1台構成は単一障害点（SPOF）になるため、実務では複数台に分けるのが一般的です。
+- **このリポジトリ**: 論理ホスト名`ad-dc01`が最初の1台目のDCです。2台目追加は発展課題として言及のみです。
+- **確認**: `netdom query fsmo`、`Get-Service NTDS`
+
+### OU（組織単位）
+
+- **一言**: ユーザーやコンピューターを整理し、グループポリシーを適用する単位になるフォルダー。
+- **意味**: 既定の`CN=Users`・`CN=Computers`コンテナにはグループポリシーを直接適用できないため、
+  管理したい単位でOUを作り直すのが実務での定石です。
+- **このリポジトリ**: `_Tier0-Admins`、`Servers`、`Workstations`、`Users`配下の`Employees`等のOUを設計しています。
+- **確認**: `Get-ADOrganizationalUnit -Filter *`（設計は[パラメータシート](build-package-ad/03-parameter-sheet.md)参照）
+
+### GPO（グループポリシーオブジェクト）
+
+- **一言**: 「この範囲のパソコンやユーザーには、この設定を配る」というルールのまとまり。
+- **意味**: ドメイン・OUなどの単位にリンクし、パスワードポリシーや画面ロックなどを一括で強制できます。
+  Ansibleの`site.yml`が構成をコードで揃えるのと似た「まとめて同じ状態にそろえる」考え方です。
+- **このリポジトリ**: 既定ドメインGPOでパスワードポリシー（最小長14文字等）を設定しています。
+- **確認**: `Get-ADDefaultDomainPasswordPolicy`
+
+### FSMO（5つの役割）
+
+- **一言**: フォレスト・ドメインの中で「1台だけが持つべき」特別な役割の名前。
+- **意味**: スキーママスターなど5種類があり、通常はすべて最初のDCが持ちます。DCが複数台になったとき、
+  誰がどの役割を持つかを意識する必要があります。
+- **このリポジトリ**: 単一DC構成のため、`ad-dc01`が5役割すべてを保持する設計です。
+- **確認**: `netdom query fsmo`
+
+### DSRM（ディレクトリサービス復元モード）
+
+- **一言**: DCが壊れて通常起動できないときに使う、AD専用の緊急復旧モード。
+- **意味**: フォレスト作成時に専用パスワードを設定します。実値はリポジトリのどの文書にも書かず、
+  Git管理外の秘密値台帳で管理します。
+- **このリポジトリ**: [要件定義書](build-package-ad/00-requirements.md)の前提条件に記載しています（値は非公開）。
+- **確認**: 実機でのみ`DSRMAdminLogon`等の設定状況を確認します（このリポジトリでは実測なし）。
+
+### Kerberos
+
+- **一言**: ADの標準的な認証方式。チケットを使って「なりすまし」を防ぐ仕組み。
+- **意味**: 時刻のずれが大きい（既定5分超）と認証に失敗するため、時刻同期（W32Time）がADの前提になります。
+- **このリポジトリ**: PDCエミュレータを権威時刻源とし、外部NTPと同期する設計です。
+- **確認**: `w32tm /query /status`、`klist`
+
+### LDAP
+
+- **一言**: ディレクトリ（AD）に「このユーザーはいますか」のように問い合わせるための通信の仕組み。
+- **意味**: 平文のLDAP（389番）と暗号化されたLDAPS（636番）があり、近年は署名・チャネルバインディングの
+  必須化がMicrosoftから求められています。
+- **このリポジトリ**: LDAP署名とチャネルバインディングを必須化する設計です（NFR-05）。
+- **確認**: レジストリの`LDAPServerIntegrity`・`LdapEnforceChannelBinding`
+
+### SYSVOL
+
+- **一言**: GPOの設定ファイルなどを、DC間で共有するための共有フォルダー。
+- **意味**: SMB（445番）を使ってDC間・クライアント間で複製されます。SYSVOLが読めないと、
+  グループポリシーが正しく配布されません。
+- **このリポジトリ**: 単一DC構成のためDC間複製は発生しませんが、ポート設計上445番を確保しています。
+- **確認**: `\\corp.example.test\SYSVOL`への到達性（実機のみ）
+
+### グローバルカタログ
+
+- **一言**: フォレスト全体を横断して検索できる、ADの検索用インデックス。
+- **意味**: 通常のLDAP（389番）はドメイン内の検索が中心ですが、グローバルカタログ（3268番）は
+  フォレスト全体を検索できます。単一ドメインでは差が目立ちませんが、複数ドメインで重要になります。
+- **このリポジトリ**: 単一DCがグローバルカタログを兼ねる設計です。
+- **確認**: `nltest /dsgetdc:corp.example.test /GC`
+
+### NetBIOS名
+
+- **一言**: ドメインFQDNとは別に持つ、短い（15文字以内）昔ながらのドメイン呼び名。
+- **意味**: `CORP\ユーザー名`のような表記で使われる短縮名です。FQDN（`corp.example.test`）と
+  NetBIOS名（`CORP`）は別の値なので、文書やコマンドで混同しないようにします。
+- **このリポジトリ**: FQDN`corp.example.test`に対し、NetBIOS名`CORP`を設計しています。
+- **確認**: `Get-ADDomain`の`NetBIOSName`
+
+### tombstone lifetime（保持期間）
+
+- **一言**: ADでオブジェクトを削除してから、AD ごみ箱等で復元できる期限。
+- **意味**: 既定180日（フォレスト機能レベルWindows Server 2008 R2以降）で、期限を過ぎると
+  復元できなくなります。バックアップの保持世代（14日）とは別の期限であることに注意します。
+- **このリポジトリ**: 既定の180日をそのまま使う設計です（[基本設計書](build-package-ad/01-basic-design.md)参照）。
+- **確認**: `Get-ADObject`の`msDS-DeletedObjectLifetime`
+
+## 11. Zabbix監視基盤の基礎
+
+この節は`docs/build-package-zabbix/`（Zabbix監視基盤構築案件パック、案件ID`SM-ZBX-001`）を
+読むための用語です。既存のPrometheus/Grafanaスタック（`docs/build-package/`）とは別に、
+同じ監視対象ホスト`monitor-01`を独立した2本目の経路であるZabbixからも監視できるようにする
+設計・手順書上の例であり、実機での稼働実績ではありません。実測と未実測の境界は
+[案件パックREADME](build-package-zabbix/README.md)を参照してください。
+
+### Host（ホスト）
+
+- **一言**: Zabbixが監視する対象1台を表すオブジェクトの名前。
+- **意味**: OSのホスト名と紛らわしいですが、Zabbix内部の「監視対象の登録簿の1行」だと考えると
+  分かりやすいです。Itemはこの1行に紐づいて集められます。
+- **このリポジトリ**: `monitor-01`という1つのHostを作り、組み込みテンプレートをリンクする設計です。
+- **確認**: Frontendの`Data collection` → `Hosts`（設計は[要件定義書](build-package-zabbix/00-requirements.md)参照）
+
+### Template（テンプレート）
+
+- **一言**: 「このHostにはこのItem/Triggerの束を適用する」という設定のひな形。
+- **意味**: 監視項目を1つずつ手作りしなくても、テンプレートをリンクするだけで一式のItem/Triggerが
+  適用されます。カスタムテンプレートを自作するか、組み込みを使うかは設計判断の1つです。
+- **このリポジトリ**: 組み込みの「Linux by Zabbix agent active」をそのままリンクし、自作しません。
+- **確認**: Frontendの`Data collection` → `Templates`
+
+### Item（アイテム）
+
+- **一言**: 実際に集める1つの数値・データ項目。
+- **意味**: 「CPU使用率」のような組み込みItemのほか、UserParameterで独自に定義したItemも
+  同じ扱いで集計・グラフ化・Trigger判定の対象になります。
+- **このリポジトリ**: `service_monitor.healthz`というカスタムItemをUserParameterで追加しています。
+- **確認**: `zabbix_agent2 -t service_monitor.healthz`（対象ホスト上でItemの値を単体確認）
+
+### Trigger（トリガー）
+
+- **一言**: Itemの値が条件を満たしたときに「異常（Problem）」を宣言するルール。
+- **意味**: 「3分間healthzが1以外」のような条件式を書き、条件を満たすとProblem状態になり、
+  満たさなくなるとOKへ自動的に戻ります。障害の検知と復旧の両方を表現できます。
+- **このリポジトリ**: エージェント到達不能相当のTriggerと、`service_monitor.healthz`用のカスタムTriggerを使います。
+- **確認**: Frontendの`Monitoring` → `Problems`（設計は[詳細設計書](build-package-zabbix/02-detailed-design.md)参照）
+
+### Action / Media type
+
+- **一言**: Triggerが発火したときに「誰に・どうやって」知らせるかの設定。
+- **意味**: Media typeが通知の「経路」（Slack、メール等）、Actionが「どのTrigger条件のとき、
+  誰にどのMedia typeで送るか」という配線を担います。
+- **このリポジトリ**: 組み込みの`Slack (webhook)` media typeへ、Docker secretsで注入したwebhook URLを設定します。
+- **確認**: Frontendの`Alerts` → `Media types` / `Actions`（webhookと受信先を用意した場合のみ実配信を試験）
+
+### Severity（重要度）
+
+- **一言**: Triggerの深刻さを表すランク。
+- **意味**: `Not classified`から`Disaster`まで段階があり、通知経路や色分けの判断材料になります。
+  一律に最高ランクにすると本当に重大な障害が埋もれるため、段階を分けて設計します。
+- **このリポジトリ**: Disaster（Agent自体unreachable）/ High（healthz異常）/ Warning（閾値超過）の3段階です。
+- **確認**: Frontendの`Monitoring` → `Problems`のSeverity列
+
+### active check / passive check
+
+- **一言**: メトリクスを「エージェントから送る」か「サーバーが取りに行く」かの2方式。
+- **意味**: active checkはエージェントがサーバーへpushし、passive checkはサーバーがエージェントへ
+  取りに行きます（pull）。監視対象ホストが増えたときに、サーバー側から新しい経路を増やさずに
+  済むのはactive checkです。
+- **このリポジトリ**: active checkを主方式とし、passive checkは既定で未使用（将来拡張として設計のみ）です。
+- **確認**: `grep -E '^(Server|ServerActive)' /etc/zabbix/zabbix_agent2.conf`（active checkの送信先設定）
+
+### trapper（トラッパー）
+
+- **一言**: active checkのpushを受け取る、Zabbix Server側の受け口。
+- **意味**: `10051/tcp`で待ち受け、他ホストのエージェントからの着信を受ける唯一の監視系ポートです。
+  管理UIと違いloopback限定にはできず、送信元CIDR制限で守ります。
+- **このリポジトリ**: `zbx-01`の`10051/tcp`が`monitor-01`のIPのみ許可するUFWルールで保護されています。
+- **確認**: `ss -lntup | grep 10051`（zbx-01側）、`zabbix_get -s <対象IP> -k agent.ping`（passive check側の疎通確認に使う専用CLI）
+
+### Agent2
+
+- **一言**: 監視対象ホストへ導入する収集エージェントのソフトウェア本体。
+- **意味**: 旧来のZabbix Agentの後継で、プラグインによる拡張やTLS対応など機能が強化されています。
+- **このリポジトリ**: `monitor-01`へZabbix公式リポジトリからAgent2を導入する設計です。
+- **確認**: `zabbix_agent2 -V`、`systemctl status zabbix-agent2`
+
+### UserParameter（ユーザーパラメータ）
+
+- **一言**: 組み込みのItemだけでは取れない値を、設定ファイルに1行追加して独自に定義する仕組み。
+- **意味**: `UserParameter=<key>,<実行コマンド>`という1行で、任意のシェルコマンドの出力をItemの値に
+  できます。既存の安全設計（外部非公開のエンドポイント等）を緩めずに監視したいときに使えます。
+- **このリポジトリ**: `/healthz`が既存パックの設計でloopback限定のため、`monitor-01`自身の
+  Agent2からcurlさせるUserParameterとして`service_monitor.healthz`を定義しています。
+- **確認**: `zabbix_agent2 -t service_monitor.healthz`（設定ファイルの記述例は
+  [ネットワーク設計](build-package-zabbix/04-network-ip-plan.md)・[詳細設計書](build-package-zabbix/02-detailed-design.md)参照）
+
+## 12. Windows Server監視対象ホストの基礎
+
+この節は`docs/build-package-windows/`（Windowsサーバー構築案件パック、案件ID`SM-WIN-001`）を
+読むための用語です。このリポジトリではWindows Server自体をまだ実機構築していないため、
+以下は**設計・手順書上の例**であり、実機での稼働実績ではありません。実測と未実測の境界は
+[案件パックREADME](build-package-windows/README.md)を参照してください。より丁寧な解説と
+現場用語ブリッジは[案件パック初心者ガイド（Windows版）](build-package-windows/beginner-guide.md)に
+あります。
+
+### WinRM（Windows Remote Management）
+
+- **一言**: Linuxの SSH に相当する、Windows をリモートから操作するための仕組み。
+- **意味**: HTTP（5985）とHTTPS（5986）の2経路があり、本パックはHTTPS専用とし、
+  平文相当のBasic認証を無効化します。
+- **このリポジトリ**: `monitor-win-01`への管理経路として、証明書によるHTTPSリスナーを設計しています。
+- **確認**: `Test-WSMan -ComputerName <対象> -UseSSL`（対象ホスト上で実行する場合は`Test-WSMan`のみ）
+
+### IIS（Internet Information Services）
+
+- **一言**: Windows標準のWebサーバー機能。
+- **意味**: Linux版のNginx + Flaskアプリにおける「監視される側」の役割を、このパックでは
+  IISが担います。
+- **このリポジトリ**: 検証用サイトをIISで公開する設計です。
+- **確認**: `Get-Service W3SVC`、`Invoke-WebRequest http://localhost/`
+
+### windows_exporter
+
+- **一言**: WindowsホストのCPU・memory・disk等をPrometheus形式で公開する部品。
+- **意味**: Linux版のnode-exporterに相当するWindows版です。
+- **このリポジトリ**: `monitor-win-01`へ導入し、既定9182/tcpで公開する設計です
+  （中央Prometheusからのscrapeはフェーズ2、`monitoring`ネットワークの制約で`BLOCKED`）。
+- **確認**: `Invoke-WebRequest http://localhost:9182/metrics`
+
+### 系統A / 系統B
+
+- **一言**: このパックが扱う2つの運用パターン。
+- **意味**: 系統A（ワークグループ、本パックの既定）はローカルAdministratorと証明書認証、
+  系統B（ADドメイン参加）はドメインアカウントとKerberos認証を使います。Linux版の
+  Debian系／RHEL系の違いに近い位置づけです。
+- **このリポジトリ**: 基準・既定は系統Aで、系統Bは差分の記載にとどめています。
+- **確認**: [基本設計書](build-package-windows/01-basic-design.md)2.1節の比較表
+
+### 済（自動） / 済（手動） / 未実装
+
+- **一言**: この案件パックだけで使う実装状態の3区分。
+- **意味**: 済（自動）は既存のAnsible機能で今すぐ実行できるもの（`app_node_exporter_targets`
+  への1行追加のみ）、済（手動）はAnsible化されていないが本パックのPowerShell手順で今すぐ
+  実施できるもの、未実装は設計のみでコードが無いものです。Linux版の「済／未実装」の
+  2区分より1段階細かい区分です。
+- **このリポジトリ**: [要件定義書](build-package-windows/00-requirements.md)冒頭で定義しています。
+- **確認**: 各文書の該当欄がこの3区分のどれに当たるかを確認します。
+
+### RDP（リモートデスクトップ）
+
+- **一言**: 画面ごと遠隔操作するWindows標準のプロトコル。
+- **意味**: 本パックは既定Disableとし、必要時のみ管理元CIDR限定で一時有効化します
+  （WinRMが主な管理経路です）。
+- **このリポジトリ**: [ネットワーク設計](build-package-windows/04-network-ip-plan.md)で
+  RDP（3389/tcp）を必要時のみの経路として設計しています。
+- **確認**: `Get-NetFirewallRule -DisplayGroup "リモート デスクトップ"`（対象ホスト上）
+
+### Windows Defender Firewall
+
+- **一言**: Windows標準のFirewall。
+- **意味**: 本パックはDefault Inbound Blockとし、WinRM／IIS／windows_exporterの3経路だけを、
+  経路ごとに送信元を個別制限して許可します。LinuxのUFW/firewalldに相当します。
+- **このリポジトリ**: [パラメータシート](build-package-windows/03-parameter-sheet.md)に
+  許可ルールの設計値があります。
+- **確認**: `Get-NetFirewallProfile`、`Get-NetFirewallRule`
+
+## 13. Ansible自動化基盤の基礎
+
+この節は`docs/build-package-ansible/`（Ansible自動化基盤構築案件パック、案件ID`SM-ANS-001`）を
+読むための用語です。role・冪等性・handler・Molecule自体の説明は「[5. AnsibleとTerraform](#5-ansibleとterraform)」に
+あるため、ここでは本パック固有の用語だけを扱います。より丁寧な解説と、Ansibleの設計を
+覚えるための5つの概念は[案件パック初心者ガイド（Ansible版）](build-package-ansible/beginner-guide.md)にあります。
+
+### foundation group
+
+- **一言**: `ansible/playbooks/foundation.yml`が対象とするinventory group。
+- **意味**: 監視アプリ用の`monitor` groupとは独立しており、`common` + `docker` roleだけを
+  適用する。どの構築案件のベースにもなり得る、案件非依存のhost群を表す。
+- **このリポジトリ**: `ansible/inventory/foundation.local.yml.example`で定義例を示している。
+- **確認**: `ansible-inventory -i inventory/foundation.local.yml --graph`
+
+### 変数の優先順位による上書き（`svc-baseline`の例）
+
+- **一言**: 同じ変数名でも、定義した場所（階層）によって実際に使われる値が変わる仕組み。
+- **意味**: `group_vars/all`の既定値（`server_monitor_user: monitor`）より、より狭い範囲の
+  `group_vars/foundation`の値（`svc-baseline`）が優先される。roleのコードは変更しない。
+- **このリポジトリ**: `ansible/inventory/group_vars/foundation/main.yml`
+- **確認**: `ansible-inventory -i inventory/foundation.local.yml --host ans-01 | grep server_monitor_user`
+
+### フェーズ1 / フェーズ2（Ansible版パック）
+
+- **一言**: フェーズ1はUbuntu（基準環境、設計・実装済み）、フェーズ2はAlmaLinux/Rocky 9
+  実機ホストへの適用（未着手）という区分。
+- **意味**: role自体はMoleculeの`el9` scenarioでコンテナ検証済みだが、実VMへ適用した
+  実績はまだ無い。[AD版パック](build-package-ad/README.md)と同じ、実行済み範囲と設計のみの
+  範囲を区別する書き方である。
+- **このリポジトリ**: [05-build-procedure.md](build-package-ansible/05-build-procedure.md#9-フェーズ2-almalinuxrocky-9への適用未着手)
+- **確認**: [試験仕様書](build-package-ansible/06-test-specification.md)のAFIT-06欄
 
 ## 混同しやすい用語の比較
 

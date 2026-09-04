@@ -72,7 +72,7 @@ storage role は何も実行しない（既定は「触らない」）。
 | ファイルシステム | `xfs` または `ext4` | `ansible/roles/storage/defaults/main.yml` |
 | fstab の書き方 | `UUID=` 指定 | `ansible/roles/storage/tasks/apply.yml` |
 | 縮小 | **禁止**（`shrink: false`） | 同上 |
-| 既存署名のあるディスク | **拒否**（`wipefs` で実読み） | `ansible/roles/storage/tasks/main.yml` |
+| 既存署名のあるディスク | **拒否**（`wipefs` で実読み） | `ansible/roles/storage/tasks/manage.yml` |
 
 ### 実機記入欄（ディスク）
 
@@ -103,7 +103,7 @@ storage role は何も実行しない（既定は「触らない」）。
 | 対象 | 設定値 | 正本 |
 | --- | --- | --- |
 | app base | `python:3.12-slim` | `Dockerfile` |
-| app packages | Flask `>=3.0,<4`、psutil `>=5.9,<8`、prometheus-client `>=0.26.0,<1`、Gunicorn `>=22,<24` | `requirements.txt` |
+| app packages | Flask `>=3.1.3,<4`、psutil `>=5.9,<8`、prometheus-client `>=0.26.0,<1`、Gunicorn `>=22,<24` | `requirements.txt` |
 | Nginx | `nginx:1.27-alpine` | `compose.yaml` |
 | Prometheus | `prom/prometheus:v2.55.1` | `compose.yaml` |
 | Alertmanager | `prom/alertmanager:v0.27.0` | `compose.yaml` |

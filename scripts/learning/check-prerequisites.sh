@@ -9,8 +9,9 @@ usage() {
   cat <<'EOF'
 Usage: ./scripts/learning/check-prerequisites.sh
 
-Linux、Git、Python、OpenSSL、Docker、Compose、空き容量、memory、portを診断します。
+Linux、Git、Python、OpenSSL、Docker、Compose、Ansible、空き容量、memory、portを診断します。
 設定変更、package installation、sudo、container起動は行いません。
+この診断はLevel 0〜3相当のみを必須対象とし、Ansible（Level 4で必要）はWARN扱いです。
 終了コード: 0=必須条件PASS、1=必須条件FAIL（WARNだけなら0）
 EOF
 }
@@ -85,6 +86,13 @@ if command -v docker >/dev/null 2>&1; then
 else
   fail "dockerがPATHにありません"
   next "公式手順でDocker EngineとCompose pluginを導入してください"
+fi
+
+if command -v ansible >/dev/null 2>&1 || command -v ansible-playbook >/dev/null 2>&1; then
+  pass "Ansible: $(version_line ansible --version)"
+else
+  warn "ansible/ansible-playbookがPATHにありません（一本道ラーニングパスのLevel 4で必要になります）"
+  next "Ubuntu: pipx install ansible-core（詳細はdocs/deployment-ansible.mdを参照）"
 fi
 
 available_kib="$(df -Pk . 2>/dev/null | awk 'NR==2 {print $4}' || true)"

@@ -14,7 +14,7 @@
 ## 1. 管理端末の準備
 
 ```bash
-git clone https://github.com/ns7jp/server-monitor.git
+git clone https://github.com/ns7jp/server.git
 cd server-monitor
 git rev-parse HEAD
 python3 -m venv .venv

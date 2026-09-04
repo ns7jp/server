@@ -16,6 +16,23 @@ alerting:
     - static_configs:
         - targets: ["alertmanager:9093"]
 
+{% if app_amp_remote_write_url %}
+# 単一ホストPrometheusは、ホストが消えると時系列の正本も一緒に失われる
+# （docs/roadmap/external-probe-central-telemetry.md）。Amazon Managed
+# Service for Prometheus へ remote_write することで、ホスト外に正本を残す。
+# EC2 instance roleに terraform/modules/central-metrics の
+# remote_write_policy_arn がアタッチされている前提（sigv4はinstance
+# metadataの認証情報を使う）。
+remote_write:
+  - url: "{{ app_amp_remote_write_url }}"
+    sigv4:
+      region: {{ app_amp_remote_write_region }}
+    queue_config:
+      max_samples_per_send: 1000
+      max_shards: 30
+      capacity: 2500
+{% endif %}
+
 scrape_configs:
   - job_name: server-monitor
     metrics_path: /metrics

@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # 本体の Dockerfile と同じ方針で、非 root ユーザーで動かす。
 RUN useradd --system --create-home --shell /usr/sbin/nologin apuser

@@ -119,11 +119,11 @@ windows_exporterは実機決定時にバージョンとSHA256ハッシュをこ�
 
 ## 監視・ログ
 
-フェーズ2(中央監視統合)のうち、ログ集約(WIT-06)は[要件定義書](00-requirements.md)に記載の未実装事項(Grafana Alloy for Windows未導入)が解消するまで`BLOCKED`です。windows_exporter scrape・blackbox probeはコード側の制約(monitoring networkの外部到達性、probe対象の汎用化)が解消済みのため、対象ホスト未構築による`NOT RUN`です。値自体は設計として決まっていますが、実行結果としては数えません。
+フェーズ2(中央監視統合)のうち、ログ集約(WIT-06)は[要件定義書](00-requirements.md)に記載の未実装事項(Grafana Alloy for Windows未導入)が解消するまで`BLOCKED`です。windows_exporter scrape(WIT-03)はDockerホスト↔対象ネットワーク間の実L3到達性・windows_exporter側Firewall許可(いずれも`NOT SET`)が確立するまで`BLOCKED`です。blackbox probe(WIT-05)はコード側の制約(`prometheus.yml.j2`のprobe対象汎用化)が解消済みのため、対象ホスト未構築による`NOT RUN`です。値自体は設計として決まっていますが、実行結果としては数えません。
 
 | 項目 | 設定値(設計) | 状態 | 正本 |
 | --- | --- | --- | --- |
-| windows_exporter scrape interval | 中央の既存`linux-node` jobの設定(15秒)を流用予定 | `NOT RUN`(WIT-03。`remote-targets` network追加によりコードは実装済み。対象ホスト未構築のため未実施) | `ansible/roles/app/defaults/main.yml`の`app_node_exporter_targets` |
+| windows_exporter scrape interval | 中央の既存`linux-node` jobの設定(15秒)を流用予定 | `BLOCKED`(WIT-03。Dockerホスト↔対象ネットワーク間の実接続・windows_exporter側Firewall許可が確立するまで) | `ansible/roles/app/defaults/main.yml`の`app_node_exporter_targets` |
 | blackbox probe interval | 中央の既存blackbox jobの設定(30秒)を流用予定 | `NOT RUN`(WIT-05。`prometheus.yml.j2`の`app_blackbox_probe_targets`によるprobe対象汎用化は実装済み。対象ホスト未構築のため未実施) | [Linux版パラメータシート](../build-package/03-parameter-sheet.md) |
 | ログ集約 | Grafana Alloy for Windows経由で既存Lokiへ集約する設計のみ | `BLOCKED`(WIT-06。Alloy for Windows未導入のため) | [詳細設計書](02-detailed-design.md) |
 | 可用性SLO / latency SLO | Windows対象ホスト個別の数値目標は未設定 | `NOT SET`(フェーズ2有効化後に既存[SLO](../slo.md)へ統合予定) | — |

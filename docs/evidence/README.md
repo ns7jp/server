@@ -15,14 +15,14 @@ Linux / Docker / Ansible / Terraform runtime は `NOT RUN` です。過去の E2
 監視stack、認証、network/UFW、D-1、backup restore、使い捨てrunner上のGit-mode
 構成commitロールバックまで実測証跡があります。**
 [2026-08-22 Full-stack E2E](2026-08-22-full-stack-e2e.md)では、使い捨てUbuntu 24.04 runner上で
-23 IDをすべてPASSとして採録しました（[Actions run 32563104045](https://github.com/ns7jp/server-monitor/actions/runs/32563104045)）。
+23 IDをすべてPASSとして採録しました（[Actions run 32563104045](https://github.com/ns7jp/server/actions/runs/32563104045)）。
 PR #74のmain merge commit `43d36ee674f090108153b09451e825e3383494c1`でも5 workflowを再確認し、
 さらにPR #75のruntime変更最終commit `7622a9da974f694ae75e0173135923701be9e5a5`では、
-[Full-stack E2E run 32572409469](https://github.com/ns7jp/server-monitor/actions/runs/32572409469)を
+[Full-stack E2E run 32572409469](https://github.com/ns7jp/server/actions/runs/32572409469)を
 含む5 workflowがすべてsuccessとなりました。後者ではDocker API proxyのGET成功・POST拒否・
 Loki log到達、`directory` modeのtracked archive / sync、初回適用`changed=30 / failed=0`、2回目
 `changed=0 / failed=0`まで実測しています。PR #75時点では`git` modeのremote fetchから配備までが
-`NOT RUN`でしたが、2026-08-23の[run 32611251044](https://github.com/ns7jp/server-monitor/actions/runs/32611251044)で
+`NOT RUN`でしたが、2026-08-23の[run 32611251044](https://github.com/ns7jp/server/actions/runs/32611251044)で
 候補SHAの配備から旧SHAへのrollbackを実測しました。commitごとの区別・境界は
 [2026-08-22 E2E証跡](2026-08-22-full-stack-e2e.md#pr-75-hardening後の再検証)と
 [Git-mode rollback証跡](2026-08-23-change-CI-GIT-ROLLBACK.md)に記録しています。
@@ -48,7 +48,7 @@ B-1〜B-4 は 2026-08-24 に実行し、証跡を採録済みです（下表）�
 安全装置negative test（ST-06）の実行証跡を追加しました。**
 どちらも2026-08-25、`full-stack-e2e`のephemeral VM（GitHub-hosted runner、
 device-mapperあり）上で実測しています
-（[run 32816412328](https://github.com/ns7jp/server-monitor/actions/runs/32816412328)、
+（[run 32816412328](https://github.com/ns7jp/server/actions/runs/32816412328)、
 main `774d71c`）。IDは`06-test-specification.md`の公式番号体系とは別に、
 `run-full-stack.sh`内で完結する固有IDです。
 
@@ -59,9 +59,9 @@ shellcheck が掛かっておらず、安全装置の実行テストと B-1〜B-
 AlmaLinux 実機への `site.yml` 適用は `NOT RUN` です。
 
 **Molecule `el9` シナリオは 2026-08-25 に実行証跡を採録しました**
-（[run #14](https://github.com/ns7jp/server-monitor/actions/runs/32811100007)、
+（[run #14](https://github.com/ns7jp/server/actions/runs/32811100007)、
 main `5480662`、common / docker role の el9 scenario ともに成功）。
-初回実行（[run #9](https://github.com/ns7jp/server-monitor/actions/runs/32809471372)）
+初回実行（[run #9](https://github.com/ns7jp/server/actions/runs/32809471372)）
 は 3 件の実欠陥に阻まれて失敗し、1 件ずつ実行して直しました。
 [欠陥台帳](defects-found.md) に追加しています。実機の AlmaLinux / Rocky 9
 ホストへの適用ではなく、コンテナ（`geerlingguy/docker-rockylinux9-ansible`）上の
@@ -79,11 +79,18 @@ main `5480662`、common / docker role の el9 scenario ともに成功）。
 | 二セグメント障害ラボの実測 | ✅ [2026-08-19](2026-08-19-network-drill.md)（障害注入→切り分け→復旧、PASS） |
 | ネットワーク切り分けの一次メモ | ✅ [2026-08-21](2026-08-21-network-firstlook.md)：公開port不成立を切り分け。2026-08-22に内部segmentを維持した`host-access`構成へ修正し、E2Eでloopback bind / namespace遮断 / SSH tunnelを確認 |
 | ephemeral VM の network / UFW | ✅ [2026-08-22](2026-08-22-full-stack-e2e.md)：`NW-01〜09` / `IT-12` / `ST-01,04` PASS |
-| 監視サーバー1台がN台をscrapeする実演 | ✅ [2026-08-25](https://github.com/ns7jp/server-monitor/actions/runs/32816412328)：`full-stack-e2e` の ephemeral VM 上で、2台目の node_exporter を実行時に internal network へ attach し、Prometheus が名前解決だけで `up=1` に切り替わることを `run-full-stack.sh` 内 ID `IT-13` として実測（main `774d71c`） |
+| 監視サーバー1台がN台をscrapeする実演 | ✅ [2026-08-25](https://github.com/ns7jp/server/actions/runs/32816412328)：`full-stack-e2e` の ephemeral VM 上で、2台目の node_exporter を実行時に internal network へ attach し、Prometheus が名前解決だけで `up=1` に切り替わることを `run-full-stack.sh` 内 ID `IT-13` として実測（main `774d71c`） |
 | 独立した管理端末・対象hostでの network / UFW | ❌ **NOT RUN**（[手順](../build-package/09-network-validation-procedure.md)と[結果票テンプレート](templates/network-host-validation.md)のみ） |
-| AlmaLinux / Rocky 9 の Molecule `el9` シナリオ | ✅ [2026-08-25](https://github.com/ns7jp/server-monitor/actions/runs/32811100007)：common / docker 両 role の el9 scenario が成功。コンテナ上の検証で、実機ホストへの適用ではない |
+| AD DC（`ad-dc01`）の構築・試験 AUT-01〜04 / AIT-01〜08,10,11 / AST-01〜08 | ✅ [2026-09-01〜02](2026-09-01-ad-build-validation.md)：フォレスト作成、OU/パスワードポリシー、System Stateバックアップ、ADごみ箱復元、サービス停止復旧(RTO 0.9秒)、再実行安全性、LDAP署名/SMBv1/監査/特権グループ/Firewall を実機で **22/22 PASS**。AIT-09(中央Prometheus scrape)は**BLOCKED**。AUT-01で手順書のコードブロック1件の構文誤りを発見し修正 |
+| AD DC 2台目追加とレプリケーション実測 | ✅ [2026-09-03](2026-09-03-ad-second-dc-replication.md)：`ad-dc02` を追加し、NTDS 複製 5 パーティション失敗 0、SYSVOL 初期同期成功、**サイト内レプリケーション遅延 17.8 秒**を実測。**FSMO 移譲**でフォレストレベル2役割を dc02 へ分離（0.238秒、両DCの認識一致・複製双方向を確認）。dc02 を要塞化し、**GPO 化したセキュリティ設定 3 件が新規 DC へ自動継承されること**を検証（LAB-12 の是正が正しかったことの実証）。その過程で、前日の System State 復元が dc01 から `scripts` フォルダーと Default Domain Policy の `gpt.ini` を失わせていたこと（**いずれも単一 DC では無症状**、後者は GPO が 1 件も適用されない状態）を発見・修復（LAB-16〜22）。日次バックアップのスケジュール実行が実際に動作していたことも確認（`LastTaskResult: 0`、ただし実行時刻は起動後キャッチアップ、所要は負荷競合で 24分→64分）。**dc02 のフェーズ1相当設定も完了**（要塞化・windows_exporter 0.31.8・System State バックアップ 27分4秒） |
+| AD DC 1台停止時の可用性試験 | ✅ [2026-09-03](2026-09-03-ad-dc-outage-drill.md)：`ad-dc01`（ドメインレベル3役割の保持DC）を計画停止し、`ad-dc02` 単独での継続性を実測。**DNS・LDAP・Kerberos・GC・新規オブジェクト作成は継続**、**PDCエミュレータ/RIDマスター固有の操作（GPMC等）のみ縮退**（RPCタイムアウト27秒。`-Server`明示指定で回避可能）。dc01復帰後、**ディレクトリ完全収束まで18分31秒**（サービス復旧は4分51秒）。DNSサービス復旧だけでは複製が自然収束せず`repadmin /syncall`による強制再同期が必要だったこと（LAB-23）を発見・記録 |
+| AD FSMO役割の奪取（seize）とdc01の完全喪失想定復旧 | ✅ [2026-09-04](2026-09-04-ad-fsmo-seize.md)：`ad-dc01`を復旧不能と想定し、`ad-dc02`から`-Force`でドメインレベル3役割を奪取。`ntdsutil`のメタデータクリーンアップで`ad-dc01`をADから完全除去し、単一DC（`ad-dc02`）で全役割・DNS・LDAP・Kerberosが正常稼働することを確認。`ad-dc01`のVMも削除。これにより基本設計書3.4節の発展課題（2台目DC追加・可用性試験・FSMO奪取）はすべて実施済みとなった |
+| AD DC（`ad-dc01`）の System State 復元演習 | ✅ [2026-09-02](2026-09-02-ad-restore-drill.md)：バックアップ→目印作成→DSRM→`wbadmin systemstaterecovery`→目印消失を確認。復元 **15分29秒**、復旧全体約40分。演習中に DC の強制停止(差分チェーン上の I/O 停止)と、GPO がレジストリ編集を上書きしていた欠陥を発見・解消(LAB-11〜15) |
+| AD DC（`ad-dc01`）の作業結果・引き渡し報告 | ✅ [2026-09-02 SM-AD-001](2026-09-02-work-result-SM-AD-001.md)：計画対実績、試験集計 31/31 PASS + 1 BLOCKED、設計差異10項目、障害10件(LAB-01〜10)、残存リスク、引き渡し物、受領判定。ラボ範囲の引き渡しで、組織環境向けではない |
+| AD DC（`ad-dc01`）の実機ネットワーク検証 ANW-01〜09 | ✅ [2026-09-01〜02](2026-09-01-network-host-validation-ad.md)：手元Hyper-V上のWindows Server 2022評価版VMと、ホストPCを管理端末として **9/9 PASS**。手順書の誤り4件（OU名衝突、pktmon構文、Firewallグループ名のロケール依存、`DefaultInboundAction`の表示）を実機で発見し同じPRで修正。LDAPS(636/3269)が設計と異なり待受した原因も特定。組織DNS・実ドメインメンバー・中央Prometheusからのscrapeは**NOT RUN** |
+| AlmaLinux / Rocky 9 の Molecule `el9` シナリオ | ✅ [2026-08-25](https://github.com/ns7jp/server/actions/runs/32811100007)：common / docker 両 role の el9 scenario が成功。コンテナ上の検証で、実機ホストへの適用ではない |
 | AlmaLinux / Rocky 9 実機への `site.yml` 適用 | ❌ **NOT RUN**（role は el9 コンテナで検証済み） |
-| B-1 ディスク設計・LVM 拡張演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-1.md)：**5 PASS / 0 FAIL**。初回適用・冪等性・ENOSPC 再現・PV 追加による online 拡張（220M→457M、mount 維持）を実測。安全装置テスト（`storage-guard-test.sh`、7 ケース）は[2026-08-25](https://github.com/ns7jp/server-monitor/actions/runs/32816412328)、`full-stack-e2e` の ephemeral VM（device-mapper あり）で `run-full-stack.sh` 内 ID `ST-06` として実行し PASS。証跡本体（`storage-guard-test.log` / `*-B-1-guard.md`）は当該 run の artifact に含まれる |
+| B-1 ディスク設計・LVM 拡張演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-1.md)：**5 PASS / 0 FAIL**。初回適用・冪等性・ENOSPC 再現・PV 追加による online 拡張（220M→457M、mount 維持）を実測。安全装置テスト（`storage-guard-test.sh`、7 ケース）は[2026-08-25](https://github.com/ns7jp/server/actions/runs/32816412328)、`full-stack-e2e` の ephemeral VM（device-mapper あり）で `run-full-stack.sh` 内 ID `ST-06` として実行し PASS。証跡本体（`storage-guard-test.log` / `*-B-1-guard.md`）は当該 run の artifact に含まれる |
 | B-2 3 層構成の障害切り分け演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-2.md)：実コンテナ（Docker 29.3.1）で **9 PASS / 0 FAIL**。層分離の遮断、DB 停止・AP 停止・経路断の切り分けを実測 |
 | B-3 DB バックアップ・復元演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-3.md)：実 PostgreSQL 16 で **7 PASS / 0 FAIL**。RTO **0.149 秒** / RPO **2.344 秒**、内容ハッシュ一致まで実測 |
 | B-4 L2 / L3 切り分け演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-4.md)：**6 PASS / 0 FAIL / 3 SKIP-ENV**。静的ルート・戻り経路の欠落・`ip_forward` を実測。VLAN 部はこの kernel が `CONFIG_VLAN_8021Q` 無効のため未検証 |
@@ -155,8 +162,8 @@ PostgreSQL がこう返すはず」という想定**であり、確認できた�
 制御フローと判定ロジックまでです。
 
 それでもこの検証には意味がありました。走らせて初めて次の欠陥が見つかり、
-[#83](https://github.com/ns7jp/server-monitor/pull/83) 〜
-[#86](https://github.com/ns7jp/server-monitor/pull/86) で修正しています。
+[#83](https://github.com/ns7jp/server/pull/83) 〜
+[#86](https://github.com/ns7jp/server/pull/86) で修正しています。
 `shellcheck` と構文チェックはいずれも通っていました。
 
 | 見つかったもの | 影響 |
@@ -235,6 +242,7 @@ repository内で完結する構成commit / 設定rollback rehearsalは採録済�
 | 永続host再起動・24h / 72h確認 | `docs/evidence/YYYY-MM-DD-host-reboot-72h.md` |
 | 二セグメント通信障害 | `docs/evidence/YYYY-MM-DD-network-drill.md` |
 | Linux 実ホスト network / UFW | `docs/evidence/YYYY-MM-DD-network-host-validation.md` |
+| AD DC 実ホスト network / Firewall | `docs/evidence/YYYY-MM-DD-network-host-validation-ad.md` |
 | 構成commit / 設定rollback rehearsal | `docs/evidence/YYYY-MM-DD-change-<ID>.md` |
 | 仮説検証を含む一次切り分け | `docs/evidence/YYYY-MM-DD-troubleshooting-<slug>.md` |
 | スクリーンショット | `docs/evidence/screenshots/<kind>_<commit>_<yyyymmdd>.png` |
@@ -249,7 +257,8 @@ repository内で完結する構成commit / 設定rollback rehearsalは採録済�
 | AWS 短時間検証 | [templates/aws-validation.md](templates/aws-validation.md) |
 | Molecule フル実行 | [templates/molecule.md](templates/molecule.md) |
 | Linux 実ホスト network / UFW | [templates/network-host-validation.md](templates/network-host-validation.md) |
-| 仮説 → コマンド → 結果 → 学び | [templates/troubleshooting-worklog.md](templates/troubleshooting-worklog.md) |
+| AD DC 実ホスト network / Firewall | [templates/network-host-validation-ad.md](templates/network-host-validation-ad.md)（[記入済み例: 2026-09-01](2026-09-01-network-host-validation-ad.md)） |
+| 仮説 → コマンド → 結果 → 学び | [templates/troubleshooting-worklog.md](templates/troubleshooting-worklog.md)（[記入例](templates/troubleshooting-worklog-example.md)あり） |
 | 作業結果・引き渡し報告 | [../build-package/11-work-result-report.md](../build-package/11-work-result-report.md) |
 | D-1 プロセスダウン | [../drills/logs/TEMPLATE-D-1-process-down.md](../drills/logs/TEMPLATE-D-1-process-down.md) |
 | D-2 ホスト障害復旧 | [../drills/logs/TEMPLATE-D-2-host-failure.md](../drills/logs/TEMPLATE-D-2-host-failure.md) |

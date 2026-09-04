@@ -1,10 +1,20 @@
 # Windows サーバー構築案件パック
 
-このディレクトリは、`docs/build-package/`にあるLinuxサーバー構築案件パックの構成・文体・厳格さを踏襲し、既存の監視基盤(案件ID `SM-LAB-001`、正本は[../build-package/README.md](../build-package/README.md))にWindows Serverを新しい監視対象ホストとして追加登録する構築案件の成果物を工程順にまとめたものです。監視スタック(Prometheus / Grafana / Loki / Alertmanager)をWindows上にもう1式作るのではなく、既存の中央監視基盤を拡張します。本文書にある「設計値」と、実機で取得した「実績値」は分けて管理します。
+**一言でいうと**: すでにある Linux の監視基盤に、Windows Server 1 台を監視される側として追加登録する案件の書類一式です。
+
+初めての方は、先に[案件パック 初心者ガイド(Windows版)](beginner-guide.md)を読むと全体像がつかめます。
+
+このディレクトリは、Windows Serverを新しい監視対象ホストとして追加登録する構築案件の成果物を、工程順にまとめたものです。追加先は既存の監視基盤(案件ID `SM-LAB-001`、正本は[../build-package/README.md](../build-package/README.md))です。監視スタック(Prometheus / Grafana / Loki / Alertmanager)をWindows上にもう1式作るのではなく、既存の中央監視基盤を拡張します。
+
+案件は「何を作るか決める → 設計する → 作る → 試験する → 報告して渡す」の順に進みます。工程ごとに書類が分かれるため、文書は00から11までの12個あります。番号は作られた順で、読む順とは一致しません。初めて読むときは、下の「最短レビュー順」に従ってください。
+
+構成・文体・厳格さは`docs/build-package/`にあるLinuxサーバー構築案件パックを踏襲します。本文書にある「設計値」と、実機で取得した「実績値」は分けて管理します。
 
 | 案件 ID | 対象 | 現在の引き渡し判定 |
 | --- | --- | --- |
 | `SM-WIN-001` | Windows Server 2022 Standard(Desktop Experience 基準)の検証用 VM 1 台(論理ホスト名 `monitor-win-01`)を、既存 Linux 監視 host(論理名 `monitor-01`)配下の監視対象ホストとして追加登録 | **`NOT READY`** — 引き渡し対象ホストが未指定で、フェーズ1必須試験が `NOT RUN`。フェーズ2は「未実装」3点により `BLOCKED` |
+
+表中の `NOT READY` は、必須の試験が終わっておらず、引き渡せる状態ではないことを表します。
 
 ```mermaid
 flowchart LR
@@ -19,11 +29,19 @@ flowchart LR
     W --> H["引き渡し判定 07"]
 ```
 
-文書が「作成済み」であること、フェーズ1の手順を実機で実行して `PASS` したこと、特定の引き渡し対象ホスト(`monitor-win-01`)で受け入れが完了したことは別の状態です。最終判定は[作業結果・引き渡し報告書](11-work-result-report.md)と[引き渡しチェックリスト](07-handover-checklist.md)を使います。
+次の3つは、それぞれ別の状態です。ひとまとめにしないでください。
 
-初めて「要件定義書」「非機能要件（NFR）」「Gate」といった言葉に触れる場合は、先に
-[Linux版の案件パック 初心者ガイド](../build-package/beginner-guide.md)で案件パック全体の
-地図と用語を確認してください。文書の番号構成（00〜11）と役割は Linux 版と共通です。
+- 文書が「作成済み」であること
+- フェーズ1の手順を実機で実行して `PASS` したこと
+- 特定の引き渡し対象ホスト(`monitor-win-01`)で受け入れが完了したこと
+
+最終判定は[作業結果・引き渡し報告書](11-work-result-report.md)と[引き渡しチェックリスト](07-handover-checklist.md)を使います。
+
+初めて「要件定義書」「非機能要件（NFR。速さ・止まりにくさ・安全性など、機能以外の要求）」
+「Gate（次の工程へ進んでよいかを判断する関門）」といった言葉に触れる場合は、先に
+[案件パック 初心者ガイド（Windows版）](beginner-guide.md)で案件パック全体の地図と、
+フェーズ1／フェーズ2・WinRM・IIS などの Windows 固有の言い回しを確認してください。
+文書の番号構成（00〜11）と役割は[Linux版](../build-package/beginner-guide.md)と共通です。
 
 ## Linux版との違い
 
@@ -31,18 +49,18 @@ flowchart LR
 
 1. **単一ホスト完結ではなく2ホスト構成**: Linux版(`SM-LAB-001`)は監視スタックと監視対象アプリが同一VM上で完結する単一ホスト構成です。本パック(`SM-WIN-001`)は、既存の中央Linux監視host(論理名 `monitor-01`。詳細は[../build-package/03-parameter-sheet.md](../build-package/03-parameter-sheet.md))と、新規のWindows監視対象host(論理名 `monitor-win-01`)の2ホスト構成です。中央側の監視スタックは変更せず、既存基盤の監視対象ホストを1台追加する形を取ります。
 2. **Ansible自動化roleが無く、手動PowerShell手順が中心**: Linux版は `ansible/playbooks/site.yml` によるほぼ全自動の構築です。本パックにはWindows対応role(`common_windows` 等)が無いため、OS初期設定・Firewall・IIS・windows_exporter導入・バックアップ設定は、本パックのPowerShell手順による「済(手動)」が中心になります。唯一の自動化経路は、中央host側の `ansible/roles/app/defaults/main.yml` の `app_node_exporter_targets` へWindowsホストのaddress/host/environmentを1行追加し `site.yml` を再適用する「済(自動)」だけです。この扱いの定義は各文書で共通して使います。
-3. **フェーズ1/フェーズ2の2段階に分かれる**: Linux版は構築から試験まで単一フェーズで完結します。本パックは、Windows Server 1台だけで検証・完了できる**フェーズ1(ホスト単体構築)**と、中央監視基盤への統合を要する**フェーズ2(中央監視統合)**に分けます。フェーズ2は、Windows対応Ansible roleの不在、`monitoring` networkの `internal: true` 制約、Windows向けログ集約経路の不在という「未実装」3点が解消するまで `BLOCKED` です。
+3. **フェーズ1/フェーズ2の2段階に分かれる**: Linux版は構築から試験まで単一フェーズで完結します。本パックは、Windows Server 1台だけで検証・完了できる**フェーズ1(ホスト単体構築)**と、中央監視基盤への統合を要する**フェーズ2(中央監視統合)**に分けます。フェーズ2は、Windows対応Ansible roleの不在、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)が未確立であること、Windows向けログ集約経路の不在という3点が解消するまで `BLOCKED` です。
 
 ## 最短レビュー順
 
-1. [要件定義書](00-requirements.md) — 案件範囲、要件 ID(FR-01〜FR-07, NFR-01〜NFR-12)、受け入れ条件
-2. [基本設計書](01-basic-design.md) — 対象構成、フェーズ1/フェーズ2の区分、非機能設計
-3. [パラメータシート](03-parameter-sheet.md) — OS・WinRM・Firewall・windows_exporter・バックアップの設定値
-4. [構築手順書](05-build-procedure.md) — Windows Server 1台を手動PowerShellで構築する手順(フェーズ1)
-5. [試験仕様書・結果票](06-test-specification.md) — WUT/WIT/WST/WNW の合否基準と実測結果の記入先
-6. [ネットワーク実機検証手順](09-network-validation-procedure.md) — IP/route/DNS/ICMP/待受/HTTP/packet/Firewall の確認
-7. [作業結果・引き渡し報告書](11-work-result-report.md) — 計画対実績、試験集計、差異、残存リスク、完了判定
-8. [検証証跡台帳](../evidence/README.md) — 実測済み・未実測の境界
+1. [要件定義書](00-requirements.md) — 何を作り、何を作らないか。どうなれば合格かを決める(受け入れ条件。要件 ID は FR-01〜FR-07, NFR-01〜NFR-12)
+2. [基本設計書](01-basic-design.md) — 全体の構成、フェーズ1とフェーズ2の分け方、非機能(NFR)の設計方針
+3. [パラメータシート](03-parameter-sheet.md) — 実際に入力する設定値の一覧(OS・WinRM・Firewall・windows_exporter・バックアップ)
+4. [構築手順書](05-build-procedure.md) — Windows Server 1台を手作業のPowerShell操作で組み立てる手順(フェーズ1)
+5. [試験仕様書・結果票](06-test-specification.md) — 何を確かめれば合格かと、実測結果を書き込む用紙(WUT/WIT/WST/WNW)
+6. [ネットワーク実機検証手順](09-network-validation-procedure.md) — 実機で通信できるかの確認(通信が届くか、名前が引けるか、経路は正しいか、待ち受けているか。IP/route/DNS/ICMP/待受/HTTP/packet/Firewall)
+7. [作業結果・引き渡し報告書](11-work-result-report.md) — 計画対実績（予定と実際の比較）、試験の集計、差異、残存リスク（残ったままの危険）、完了判定
+8. [検証証跡台帳](../evidence/README.md) — 実測済み・未実測の境界(どこまで実機で確かめ、どこからが未確認か)
 
 ## 成果物一覧
 
@@ -65,12 +83,14 @@ flowchart LR
 
 ## 工程ゲート
 
+表中の `NOT SET` は、値や承認がまだ決まっていないことを表します。
+
 | Gate | 完了条件 | 現在の状態 |
 | --- | --- | --- |
 | G0 要件確定 | 要件 ID、対象、対象外、受け入れ条件が合意済み | 文書作成済み。実案件での承認は `NOT SET` |
 | G1 設計確定 | 基本・詳細・パラメータ・ネットワーク設計のレビュー完了 | 文書作成済み。実案件での承認は `NOT SET` |
 | G2(フェーズ1)構築完了 | 対象VMへの初回手動構築(`WIT-01`)が成功し、2回目実行で不要な変更が無いこと(`WIT-02`)を記録 | 手順作成済み。引き渡し対象ホストは `NOT RUN` |
-| G2(フェーズ2)統合完了 | `app_node_exporter_targets` へのWindowsホスト追加、`monitoring` networkのegress拡張、Windows向けログ集約経路の導入が完了 | 設計のみ。3点とも未実装で、着手時期は `NOT SET` |
+| G2(フェーズ2)統合完了 | `app_node_exporter_targets` へのWindowsホスト追加、Dockerホスト↔対象Windowsホスト間の実L3到達性確立とwindows_exporter側Firewall許可(Dockerホストの実IP向け)、Windows向けログ集約経路の導入が完了 | 設計のみ。3点とも未着手で、着手時期は `NOT SET` |
 | G3(フェーズ1)試験完了 | フェーズ1必須 ID(`WUT-01`, `WUT-02`, `WUT-05`, `WIT-01`, `WIT-02`, `WIT-04`, `WIT-08`, `WIT-09`, `WIT-10`, `WST-01`〜`WST-06`, `WNW-01`〜`WNW-09`)がすべて `PASS` | `NOT READY` |
 | G3(フェーズ2)試験完了 | フェーズ2必須 ID(`WIT-03`, `WIT-05`, `WIT-06`, `WIT-07`, `WIT-11`)がすべて `PASS` | `BLOCKED`(G2フェーズ2の解消が前提) |
 | G4 作業完了 | 作業結果報告書に実績、障害、差異、残存リスクを記録 | 原本のみ。実案件報告は `NOT SET` |
@@ -91,7 +111,7 @@ flowchart LR
 次をすべて満たした時点で「構築・試験完了」とします。
 
 - フェーズ1の必須試験(`WUT-01`, `WUT-02`, `WUT-05`, `WIT-01`, `WIT-02`, `WIT-04`, `WIT-08`, `WIT-09`, `WIT-10`, `WST-01`〜`WST-06`, `WNW-01`〜`WNW-09`)がすべて `PASS`
-- フェーズ2の必須試験(`WIT-03`, `WIT-05`, `WIT-06`, `WIT-07`, `WIT-11`)は、[基本設計書](01-basic-design.md)に記す「未実装」3点(Windows対応Ansible roleの不在、`monitoring` networkの `internal: true` 制約、Windows向けログ集約経路の不在)の解消条件とともに `BLOCKED` として明記されていること
+- フェーズ2の必須試験(`WIT-03`, `WIT-05`, `WIT-06`, `WIT-07`, `WIT-11`)は、[基本設計書](01-basic-design.md)に記す3点(Windows対応Ansible roleの不在、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)が未確立であること、Windows向けログ集約経路の不在)の解消条件とともに `BLOCKED` として明記されていること
 - 実行日時、環境、ホストのビルド番号(`winver` または `Get-ComputerInfo` の `OsBuildNumber`)、実行コマンド、実出力、判定が証跡として保存される
 - 未解決事項、秘密値(証明書・パスワード)の受け渡し方法、ロールバック方法が引き渡し記録に残る
 - 実ホストの名前解決、経路、待受、HTTP疎通、Windows Defender Firewall を確認し、実行出力を保存する

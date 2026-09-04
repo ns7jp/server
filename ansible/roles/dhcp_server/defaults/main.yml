@@ -1,0 +1,42 @@
+---
+# SM-DHCP-001 DHCPサーバー構築案件パック（docs/build-package-dhcp/）の構築コード。
+# isc-dhcp-server で dhcp-01 の払い出しセグメントを構成する。設計値の正本は
+# docs/build-package-dhcp/03-parameter-sheet.md と 04-network-ip-plan.md。
+
+dhcp_server_package: isc-dhcp-server
+dhcp_server_service: isc-dhcp-server
+
+# 払い出し対象セグメントへ実際に bind する interface 名。環境ごとに異なるため
+# 既定値を置かず、inventory から明示的に与える（未設定なら assert で止める）。
+dhcp_server_interface: ""
+
+dhcp_server_authoritative: true
+
+# docs/build-package-dhcp/04-network-ip-plan.md の検証用LANセグメント既定値。
+dhcp_server_subnet: 192.168.50.0
+dhcp_server_netmask: 255.255.255.0
+dhcp_server_range_start: 192.168.50.100
+dhcp_server_range_end: 192.168.50.200
+dhcp_server_routers:
+  - 192.168.50.1
+dhcp_server_dns_servers:
+  - 192.168.50.1
+  - 1.1.1.1
+dhcp_server_domain_name: lab.example.test
+dhcp_server_default_lease_time: 43200
+dhcp_server_max_lease_time: 86400
+
+# 固定IP予約。host reservation は動的プール（range_start〜range_end）の外側に
+# 置く運用とし、この一覧はプール範囲との重複を検査しない（08-change-rollback-plan.md
+# の変更手順で都度確認する前提）。
+#   dhcp_server_reservations:
+#     - name: printer-01
+#       mac: "08:00:27:aa:bb:cc"
+#       ip: 192.168.50.20
+dhcp_server_reservations: []
+
+# firewall を実際に操作するか。common_manage_firewall と同じ切り替え方針。
+# UDP 67 (DHCPサーバーの待受port) は、送信元CIDRではなく dhcp_server_interface
+# （払い出し対象セグメント側interface）で許可範囲を絞る。DHCPDISCOVERの送信元は
+# クライアントがまだIPを持たないため 0.0.0.0 であり、送信元CIDRでは絞れない。
+dhcp_server_manage_firewall: true

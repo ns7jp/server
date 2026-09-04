@@ -49,6 +49,21 @@
 > 「突然落ちた」状態を再現するため、`d1-process-down.sh` はコンテナのホスト側 PID
 > （`docker inspect -f '{{.State.Pid}}'`）に対して直接 `kill -9` を実行している。
 
+> **Docker Desktop（Mac/Windows）を使っている場合の注意**
+>
+> `docker inspect -f '{{.State.Pid}}'` が返すPIDは、Dockerデーモンが動いている側から見たPIDです。
+> Linux実機・WSL2ではこれがそのままホストのPIDですが、Docker Desktop for Mac/Windowsでは
+> Docker Desktop内部の隠しLinux VMの名前空間のPIDであり、macOS/Windows側のプロセス一覧には
+> 存在しません（[初心者向け学習ガイド](../beginner-learning-guide.md)113行目が別の場面
+> 「WindowsまたはmacOSのDocker Desktopでは、表示される値がLinux実機と同じとは限りません」
+> と述べているのと同じ理由です）。この演習をDocker Desktop環境でそのまま実行すると、
+> `sudo kill -9`が`kill: (PID): No such process`で失敗するか、無関係な別プロセスに
+> 一致してしまう可能性があります。**この演習はLinux実機またはWSL2で実施してください。**
+> Docker Desktop環境で試す場合は、`docker exec <container> sh -c 'kill -9 1'` のように
+> コンテナ内部からコンテナのPID 1を直接killする方法を検討してください（`restart: unless-stopped`
+> の挙動確認という演習の目的自体は同じですが、ホスト側PIDへの直接killとは前提が異なる点に
+> 注意してください）。
+
 ## 4. 手動でやる場合
 
 スクリプトを使わずに体感したい場合の手順。
@@ -112,3 +127,9 @@ RTO 5 分以内なら合格。これを超える場合はランブック / 設�
 [docs/drill-template.md](../drill-template.md) をコピーして
 `docs/drills/logs/YYYY-MM-DD-D-1.md` に保存。Slack スレッドのリンクを貼り、
 発見事項 / 改善アクションを記入して PR にする。
+
+RTO計測結果とタイムラインの要約は`docs/drill-template.md`（この節）を使い、
+「なぜそう判断したか」という調査過程そのもの（仮説→根拠→コマンド→結果→解釈）を
+詳しく残したい場合は、[トラブルシューティング一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md)
+（[記入例](../evidence/templates/troubleshooting-worklog-example.md)あり）を別途使う。
+2つのテンプレートは役割が異なり、どちらか一方だけで両方を兼ねさせない。

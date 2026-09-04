@@ -4,7 +4,7 @@
 
 初期値の `NOT SET` は情報未確定、`NOT RUN` は未実行、`NOT READY` は完了条件未達です。空欄や `NOT RUN` を `PASS` として集計しません。
 
-本書はフェーズ1(ホスト単体構築)とフェーズ2(中央監視統合)を区別して記載します。フェーズ2は[要件定義書](00-requirements.md)に記載した「未実装」3点(monitoring networkの`internal: true`制約、probe対象の未汎用化、ログ集約経路が無いこと)が解消するまで`BLOCKED`が前提であり、`BLOCKED`のままであること自体はフェーズ1の完了判定を妨げません。
+本書はフェーズ1(ホスト単体構築)とフェーズ2(中央監視統合)を区別して記載します。フェーズ2は[要件定義書](00-requirements.md)に記載した3点(Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)が未確立、probe対象の未汎用化、ログ集約経路が無いこと)が解消するまで`BLOCKED`が前提であり、`BLOCKED`のままであること自体はフェーズ1の完了判定を妨げません。
 
 `monitor-win-01`に相当する実ホストの構築そのものがまだ行われていないため、本書に対応する日付付きevidenceは現時点で1件もありません。以下の空欄は次の構築作業で複製して使う原本であり、実ホストでの作業結果は現在も`NOT RUN`です。
 
@@ -101,7 +101,7 @@ Windows版にはLinux版のような単一のcommit SHAで対象ホストの構�
 | サービス停止復旧演習・RTO記録(フェーズ1、D-1相当) | NOT RUN | 対象ホストでWIT-08を実行 |
 | バックアップ復元試験(フェーズ1) | NOT RUN | 別ボリューム/別ホストへの復元でWIT-09を実行 |
 | windows_exporterサービスアカウントの最小権限化 | NOT READY | 現状LocalSystemでの運用実績を積んだうえで、最小権限アカウントへの移行方針を検討・適用 |
-| host metrics scrape(フェーズ2、WIT-03) | BLOCKED | `compose.yaml`の`monitoring` networkが`internal: true`であるため、Prometheusコンテナがサーバー外にある実machine(Windows Server)の`windows_exporter`(既定9182/tcp)へ到達できない。Prometheusサービスを追加の管理用bridge networkにも接続するcompose.yaml変更が必要(現状未実装)。あわせてjob名`linux-node`にWindowsを混ぜること自体、名前が実態と合わなくなる点も未解消 |
+| host metrics scrape(フェーズ2、WIT-03) | BLOCKED | Prometheusコンテナは`monitoring`(`internal: true`)に加え`host-access`(internal指定なしのbridge、nftables実機検証でMASQUERADE/`DOCKER-FORWARD` acceptを確認済み)にも接続されており egress自体は塞がれていないが、(a)Dockerホストとサーバー外にある実machine(Windows Server)のネットワークセグメント間の実L3到達性、(b)`windows_exporter`(既定9182/tcp)側Firewallが実際の送信元(`host-access`のMASQUERADEによりDockerホスト自身の実IPとして見える)を許可しているか、の2点が未確立(`NOT SET`)。あわせてjob名`linux-node`にWindowsを混ぜること自体、名前が実態と合わなくなる点も未解消 |
 | blackbox probe(フェーズ2、WIT-05) | BLOCKED | `ansible/roles/app/templates/prometheus.yml.j2`のprobe対象がLinux側の想定で汎用化されておらず、IISサイトをprobe対象へ追加する仕組みが無い(現状未実装) |
 | ログ集約(フェーズ2、WIT-06) | BLOCKED | Windows Event Log / IISログを既存Lokiへ送る経路(Grafana Alloy for Windowsの導入、Lokiのpush APIをloopback以外からも安全に受け付けるための認証・network設計)が無い(現状未実装) |
 | alert通知(フェーズ2、WIT-07) | BLOCKED | WIT-03(host metrics scrape)の解消が前提のため連鎖してBLOCKED |

@@ -28,7 +28,7 @@ pwsh -Command '$PSVersionTable.PSVersion'
 
 ```bash
 # この案件パックの取得
-git clone https://github.com/ns7jp/server-monitor.git
+git clone https://github.com/ns7jp/server.git
 cd server-monitor
 git rev-parse HEAD
 ```
@@ -216,7 +216,7 @@ New-NetFirewallRule -DisplayName "WindowsExporter-Prometheus-Only" -Direction In
 
 `windows_exporter`は既定`LocalSystem`アカウントで動作します。最小権限化はWST-03で継続課題として記録し、本手順では是正しません。上記のバージョン・SHA256・実行アカウントの実測値は[パラメータシート](03-parameter-sheet.md)の実機記入欄へ記録します。
 
-Firewallルールで許可していても、この時点では中央Prometheusコンテナ側が`compose.yaml`の`monitoring`ネットワーク(`internal: true`)の制約により到達できません。したがってこの節で確認できるのは「対象ホスト上でwindows_exporterサービスが起動し、ローカルから`/metrics`が200で返る」ことまでであり、中央Prometheusからのscrape成立(WIT-03)はフェーズ2まで`BLOCKED`のままです。
+Firewallルールで許可していても、この時点では中央Prometheusからのscrapeは成立しません。Prometheusコンテナ自体は`compose.yaml`上で`host-access`(`internal`指定なしのbridge)にも接続されておりegress自体は塞がれていませんが、中央監視host(monitor-01)のDockerホストと本ホストの実ネットワークセグメントとの実L3到達性、およびwindows_exporter側Firewallが実際の送信元(`host-access`のMASQUERADEによりDockerホスト自身の実IPとして見える)を許可しているかが、いずれも未確立(`NOT SET`)なためです。したがってこの節で確認できるのは「対象ホスト上でwindows_exporterサービスが起動し、ローカルから`/metrics`が200で返る」ことまでであり、中央Prometheusからのscrape成立(WIT-03)はフェーズ2まで`BLOCKED`のままです。
 
 ### 4.3 Windows Server Backup
 
@@ -280,7 +280,7 @@ curl -s http://localhost:9090/api/v1/targets | \
   jq '.data.activeTargets[] | select(.labels.host=="monitor-win-01")'
 ```
 
-`app_node_exporter_targets`への追加と`site.yml`の再適用自体は正常に完了し、Prometheusの設定ファイル(`prometheus.yml`)にはWindowsホストのtargetが反映されます。しかし`compose.yaml`の`monitoring`ネットワークが`internal: true`であるため、Prometheusコンテナは対象ホストの9182/tcpへ到達できず、上記APIの`health`は`unhealthy`または`up=0`のままです。これは[基本設計書](01-basic-design.md)・[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)に記載のとおり想定内であり、WIT-03は`BLOCKED`のまま記録します。「設定への追加が完了したこと」と「scrapeが成立すること」を区別し、後者をPASSと誤記しません。
+`app_node_exporter_targets`への追加と`site.yml`の再適用自体は正常に完了し、Prometheusの設定ファイル(`prometheus.yml`)にはWindowsホストのtargetが反映されます。しかしPrometheusコンテナから対象ホストの9182/tcpへの実scrapeは成立せず、上記APIの`health`は`unhealthy`または`up=0`のままです。原因は`compose.yaml`の`monitoring`ネットワークの`internal: true`単体ではありません(Prometheusは`internal`指定のない`host-access`ネットワークにも接続されており、egress自体は塞がれていません)。実際に未確立なのは、中央監視host(monitor-01)のDockerホストと対象ホストの実ネットワークセグメントとの実L3到達性、およびwindows_exporter側Firewallが実際の送信元(Dockerホストの実IP)を許可しているかの2点であり、いずれも`NOT SET`です。これは[基本設計書](01-basic-design.md)・[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)に記載のとおり想定内であり、WIT-03は`BLOCKED`のまま記録します。「設定への追加が完了したこと」と「scrapeが成立すること」を区別し、後者をPASSと誤記しません。
 
 また、現状のjob名`linux-node`へWindowsホストを混ぜる形になるため、job名が実態と合わなくなる点も残存課題として証跡に残します。
 

@@ -18,28 +18,31 @@
 >
 > ### フェーズ2のIDのうちBLOCKEDが前提のもの
 >
-> フェーズ2(中央監視統合)に属する **WIT-06** は、[要件定義書](00-requirements.md)に記載した
-> 次の「未実装」事項が解消するまで、実行しても前提が揃わず `BLOCKED` になることが設計時点で
-> 分かっています。
+> フェーズ2(中央監視統合)に属する **WIT-03、WIT-06、WIT-07、WIT-11** は、[要件定義書](00-requirements.md)
+> に記載した次の「未実装」3点が解消するまで、実行しても前提が揃わず `BLOCKED` になることが
+> 設計時点で分かっています。
 >
 > 1. `ansible/roles` 配下にWindows対応role(`common_windows`等)が無く、Ansibleでの自動構築ができない
-> 2. Windows Event Log / IISログを既存Lokiへ送る経路(Grafana Alloy for Windowsの導入、Lokiの
->    push APIをloopback以外からも安全に受け付けるための認証・network設計)が無い(WIT-06を直接ブロック)
+> 2. Prometheusコンテナは `monitoring`(`internal: true`)に加え `host-access`(internal指定なしの
+>    bridge)にも接続されており、nftables実機検証でMASQUERADE/`DOCKER-FORWARD` acceptを確認済みの
+>    ため、`internal: true` 単体は外部egressを塞いでいない。未確立なのは、Dockerホストと対象
+>    Windowsホストの実ネットワークセグメント間のL3到達性(`NOT SET`)、およびwindows_exporter側
+>    Firewallが実際の送信元(Dockerホストの実IP)を許可しているか(`NOT SET`)の2点。現状のjob名
+>    `linux-node` へWindowsを混ぜること自体、名前が実態と合わなくなる点も残存課題です
+> 3. Windows Event Log / IISログを既存Lokiへ送る経路(Grafana Alloy for Windowsの導入、Lokiの
+>    push APIをloopback以外からも安全に受け付けるための認証・network設計)が無い
 >
 > `BLOCKED` は失敗ではなく、前提条件と解除条件を記録した状態です。ただし本書は実行そのものを
 > していない空白の原本なので、結果欄はここでもなお `NOT RUN` のままにし、実際に実行して
 > `BLOCKED` と確定した時点で日付付きの証跡へ理由とともに記入します。期待結果欄には、
 > どの未実装点が解除条件になるかをあらかじめ書き添えています。
 >
-> **WIT-03、WIT-05、WIT-07、WIT-11** を長らく塞いでいた「`compose.yaml` の `monitoring`
-> ネットワークが `internal: true` で Prometheus コンテナが実machineの windows_exporter へ
-> 到達できない」「`prometheus.yml.j2` の probe 対象が汎用化されておらずIISを追加できない」の
-> 2点は、Prometheus専用の `remote-targets` bridge network(`compose.yaml`)と
-> `app_blackbox_probe_targets` 変数(`ansible/roles/app/defaults/main.yml`、`prometheus.yml.j2`)
-> によりコードとしては解消済みです。ただし対象ホスト monitor-win-01 自体が未構築で、実機
-> windows_exporter/IISへのscrape/probe成功実績もまだ無いため、これらのIDは `BLOCKED` ではなく
-> 通常の `NOT RUN`(対象ホスト構築後に実施可能)として扱います。job名 `linux-node` に
-> Windowsホストを混ぜること自体、名前が実態と合わなくなる点は残存課題のままです。
+> **WIT-05** を塞いでいた「`prometheus.yml.j2` の probe 対象が汎用化されておらずIISを追加
+> できない」制約(上記3点には含まれない、WIT-05固有の理由)は、`app_blackbox_probe_targets`
+> 変数(`ansible/roles/app/defaults/main.yml`、`prometheus.yml.j2`)によりコードとしては
+> 解消済みです。ただし対象ホスト monitor-win-01 自体が未構築で、実機IISへのprobe成功実績も
+> まだ無いため、WIT-05は `BLOCKED` ではなく通常の `NOT RUN`(対象ホスト構築後に実施可能)として
+> 扱います。
 >
 > ### この原本を埋めるには
 >
@@ -93,15 +96,15 @@ WUT-02は中央host側(既存Linux監視host)の設定検証だけであり、Wi
 | --- | --- | --- | --- | --- | --- |
 | WIT-01 | 新規構築 | 本パックの手動PowerShell手順一式を実行 | エラーなく完了 | NOT RUN | — |
 | WIT-02 | 冪等性 | 同一手順を2回目実行 | 不要な変更(サービス再作成、Firewallルール重複等)が発生しない | NOT RUN | — |
-| WIT-03 | host metrics(フェーズ2) | 中央PrometheusのTargets画面を確認 | `up{job="linux-node", host="monitor-win-01"}=1`(コード実装済み: `compose.yaml` の `remote-targets` network。対象ホスト未構築のためNOT RUN) | NOT RUN | — |
+| WIT-03 | host metrics(フェーズ2) | 中央PrometheusのTargets画面を確認 | `up{job="linux-node", host="monitor-win-01"}=1`(BLOCKED: Dockerホスト↔対象ネットワーク間の実L3到達性、およびwindows_exporter側Firewall許可(Dockerホストの実IP向け)が確立するまで) | NOT RUN | — |
 | WIT-04 | IIS site | health用エンドポイントへHTTP GET | 200 | NOT RUN | — |
 | WIT-05 | blackbox probe(フェーズ2) | 中央blackbox-exporterのprobe結果を確認 | `probe_success=1`(コード実装済み: `prometheus.yml.j2` の `app_blackbox_probe_targets`。対象ホスト未構築のためNOT RUN) | NOT RUN | — |
 | WIT-06 | ログ集約(フェーズ2) | GrafanaでLogQLを実行 | Windows Event Log / IISログを検索できる(BLOCKED: Grafana Alloy for Windows未導入のため) | NOT RUN | — |
-| WIT-07 | alert(フェーズ2) | テストアラートを発火 | 2分以内に通知(WIT-03が前提。WIT-03のコード実装は完了、対象ホスト未構築のためNOT RUN) | NOT RUN | — |
+| WIT-07 | alert(フェーズ2) | テストアラートを発火 | 2分以内に通知(BLOCKED: WIT-03が前提。WIT-03はDockerホスト↔対象ネットワーク間の実L3到達性・Firewall許可が確立するまでBLOCKEDのため連鎖してBLOCKED) | NOT RUN | — |
 | WIT-08 | サービス停止復旧演習(D-1相当) | windows_exporterまたはIISサービスを停止 | 検知・復旧・正常化までの時間を記録 | NOT RUN | — |
 | WIT-09 | backup restore | バックアップアーカイブを別ボリューム/別ホストへ復元 | 内容が一致 | NOT RUN | — |
 | WIT-10 | 実ホストnetwork | [WNW-01〜09](09-network-validation-procedure.md)を実行 | 設計どおり | NOT RUN | [結果票テンプレート](../evidence/templates/network-host-validation-windows.md) |
-| WIT-11 | 複数ターゲットscrape(フェーズ2) | Windowsホストをもう1台追加 | テンプレート変更なしでup=1が増える(`app_node_exporter_targets` の汎用性の実演。WIT-03と同じくコード実装済み、対象ホスト未構築のためNOT RUN) | NOT RUN | — |
+| WIT-11 | 複数ターゲットscrape(フェーズ2) | Windowsホストをもう1台追加 | テンプレート変更なしでup=1が増える(`app_node_exporter_targets` の汎用性の実演。BLOCKED: WIT-03と同じくDockerホスト↔対象ネットワーク間の実L3到達性・Firewall許可が確立するまで連鎖してBLOCKED) | NOT RUN | — |
 
 ## セキュリティ試験
 
@@ -135,10 +138,10 @@ WNW-09には、Linux版のNW-09との非対称性があります。Linux版は�
 ## 終了判定
 
 - フェーズ1必須ID: WUT-01, WUT-02, WUT-05, WIT-01, WIT-02, WIT-04, WIT-08, WIT-09, WIT-10, WST-01, WST-02, WST-03, WST-04, WST-05, WST-06, WNW-01〜09
-- フェーズ2必須ID: WIT-03, WIT-05, WIT-06, WIT-07, WIT-11(「未実装」2点の解消後に必須化。ただしWIT-03/05/07/11はコード実装が完了しており、対象ホスト構築後は先行して`NOT RUN`から実施できます)
+- フェーズ2必須ID: WIT-03, WIT-05, WIT-06, WIT-07, WIT-11(「未実装」3点の解消後に必須化。ただしWIT-05はprobe対象汎用化のコード実装が完了しており、対象ホスト構築後は先行して`NOT RUN`から実施できます)
 - フェーズ1の必須IDに `FAIL` または `BLOCKED` が1件でもあれば、フェーズ1(ホスト単体構築)は完了としません。
 - フェーズ1の必須IDに `NOT RUN` が残る場合も、フェーズ1は完了としません。
-- フェーズ2必須IDのうちWIT-06は、未実装2点(Windows対応Ansible role、Windows Event Log / IISログをLokiへ送る経路)が解消するまで `BLOCKED` であることを前提とします。`BLOCKED` のままであること自体はフェーズ1の完了判定には影響しません。WIT-03/05/07/11はコード側の制約(`monitoring` networkの外部到達、blackbox probe対象の汎用化)が解消済みのため、`BLOCKED`ではなく通常の`NOT RUN`として扱い、対象ホスト構築後に実施します。
-- 未実装2点の解消後もWIT-06が `NOT RUN` のまま残る場合、また対象ホスト構築後もWIT-03/05/07/11が `NOT RUN` のまま残る場合は、フェーズ2(中央監視統合)は完了としません。
-- 構築案件全体の完了は、フェーズ1の必須試験がすべて `PASS` し、かつフェーズ2必須IDがすべて `PASS`(WIT-06のみ、未実装2点の解消条件とともに `BLOCKED` として明記されている状態も許容)である状態を指します。揃って初めて[作業結果・引き渡し報告書](11-work-result-report.md)へ記載できます。
+- フェーズ2必須IDのうちWIT-03/06/07/11は、未解消の3点(Windows対応Ansible role、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)、Windows Event Log / IISログをLokiへ送る経路)が解消するまで `BLOCKED` であることを前提とします。`BLOCKED` のままであること自体はフェーズ1の完了判定には影響しません。WIT-05はprobe対象汎用化のコード側の制約が解消済みのため、`BLOCKED`ではなく通常の`NOT RUN`として扱い、対象ホスト構築後に実施します。
+- 未実装3点の解消後もWIT-03/06/07/11が `NOT RUN` のまま残る場合、また対象ホスト構築後もWIT-05が `NOT RUN` のまま残る場合は、フェーズ2(中央監視統合)は完了としません。
+- 構築案件全体の完了は、フェーズ1の必須試験がすべて `PASS` し、かつフェーズ2必須IDがすべて `PASS`(WIT-03/06/07/11は、未実装3点の解消条件とともに `BLOCKED` として明記されている状態も許容)である状態を指します。揃って初めて[作業結果・引き渡し報告書](11-work-result-report.md)へ記載できます。
 - 結果はこの原本を直接上書きせず、日付付きの証跡ファイルへコピーして保存します。命名・記録ルールは[検証証跡台帳](../evidence/README.md)に合わせます。

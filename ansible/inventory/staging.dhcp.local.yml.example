@@ -1,0 +1,23 @@
+---
+# 実host用にはこのfileをstaging.dhcp.local.ymlへcopyして編集する。
+# staging.dhcp.local.ymlはansible/.gitignore対象で、実IPやSSH userをcommitしない。
+# SM-DHCP-001（docs/build-package-dhcp/）専用のinventoryで、
+# 既存のstaging.local.yml（監視host `monitor`グループ）とは独立している。
+all:
+  children:
+    dhcp:
+      hosts:
+        dhcp-01:
+          ansible_host: 192.0.2.30
+          ansible_user: ubuntu
+          ansible_python_interpreter: /usr/bin/python3
+          server_monitor_environment: staging
+          # 払い出し対象セグメントへ実際にbindするinterface名。
+          # クラウド/VirtualBoxで名前が変わるため、必ず実機の`ip -br link`で確認する。
+          dhcp_server_interface: eth1
+          # 既定値（192.168.50.0/24）から変える場合はここで上書きする。
+          # docs/build-package-dhcp/04-network-ip-plan.mdを正本とする。
+          # dhcp_server_subnet: 192.168.50.0
+          # dhcp_server_netmask: 255.255.255.0
+          # dhcp_server_range_start: 192.168.50.100
+          # dhcp_server_range_end: 192.168.50.200

@@ -6,6 +6,15 @@
 `server-monitor` 本体は監視基盤（Prometheus / Grafana / Loki）が主題なので、
 「アプリケーション基盤としての 3 層構成」と「DB の復元試験」はこちらで扱う。
 
+## 前提・安全ルール
+
+- [一本道ラーニングパス](../../docs/learning-path.md)のLevel 6（発展）に位置づけられるラボ。
+  Level 0〜5 の必修範囲を先に終えてから取り組むことを推奨する。
+- 破棄できるDocker環境で実行する。会社や共有端末では実行しない。
+- 後述の「後始末」で使う `down -v` は、このラボ専用のPostgreSQLデータを消す操作であり、
+  本体の `server-monitor` スタックに対しては使わない（理由は「後始末」節を参照）。
+- 実行していない確認は `NOT RUN` と記録し、PASSと書かない。
+
 ## 構成
 
 ```mermaid
@@ -115,6 +124,13 @@ AP 側の所属ネットワーク・名前解決まで見て初めて区別で�
 
 ## 後始末
 
+> `down -v` はこのラボ専用の使い捨てPostgreSQLデータを削除するためのものです。ここで
+> 使ってよいのは、このラボが他と独立した検証用DBだからです。[初心者向け学習ガイド](../../docs/beginner-learning-guide.md)や
+> [一本道ラーニングパス](../../docs/learning-path.md)で「入門では使わない」としている
+> `docker compose down -v` は、本体 `server-monitor` スタック（Prometheus等の永続データ）に
+> 対する操作を指しており、それとは別の対象です。通常の `server-monitor` スタック停止では、
+> ここでも `docker compose down`（`-v`無し）のみを使ってください。
+
 ```bash
 docker compose -f labs/three-tier/compose.yaml down -v
 rm -rf labs/three-tier/.backups
@@ -125,7 +141,7 @@ rm -rf labs/three-tier/.backups
 - 単一ホスト上のコンテナ構成であり、物理的に分かれた 3 台のサーバー、
   L2 スイッチ、VLAN、ファイアウォール機器は扱わない
   （L2 / L3 は [`labs/routing`](../routing/README.md) が担当する）。
-- DB のレプリケーション、フェイルオーバー、PITR は扱わない。
+- DB のレプリケーション、フェイルオーバー、PITR（Point-in-Time Recovery、任意時点への復元）は扱わない。
 - 認証、TLS 終端、WAF は扱わない（本体の `server-monitor` 側が担当）。
 - パスワードはラボ用の固定値をそのまま書いている。実ホストでは
   Docker secrets と Ansible Vault を使う（本体 `compose.yaml` / `ansible/` 参照）。

@@ -23,3 +23,8 @@ ssm_controller_role_name = ""
 
 # Replace with the approved management egress CIDR. Never use 0.0.0.0/0.
 allowed_ingress_cidrs = ["192.0.2.0/24"]
+
+# Optional: CloudWatch Synthetics external probe + AMP metrics centralization
+# (docs/roadmap/external-probe-central-telemetry.md). Adds AMP + Synthetics
+# cost while enabled; leave false until the drill plan explicitly calls for it.
+enable_central_observability = false

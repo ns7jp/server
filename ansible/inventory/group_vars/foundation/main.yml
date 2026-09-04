@@ -1,0 +1,26 @@
+---
+# foundation group（playbooks/foundation.yml）専用の既定値。
+#
+# group_vars/all/main.yml の server_monitor_user 等は「監視アプリ用ユーザー」を
+# 前提にした名前（monitor）になっている。foundation group はどの案件にも属さない
+# 汎用の下地ホストなので、案件非依存な名前へ変数の優先順位で上書きする。
+# group_vars/<group> は group_vars/all より優先されるため、common / docker
+# 両 role のタスクは同じ変数名を読んだまま、値だけがこのファイルの内容に変わる。
+server_monitor_user: svc-baseline
+server_monitor_group: svc-baseline
+server_monitor_install_dir: /opt/ansible-foundation
+
+# このgroupではDocker Composeでワークロードを起動しないため、追加の着信ポートは
+# 開けない。SSH（22/tcp）だけが開いた状態を「基盤の既定値」として維持する。
+server_monitor_allowed_tcp_ports:
+  - 22
+
+# common role が作る管理者アカウント（common_admin_user）は、鍵認証の
+# authorized_keys だけを受け取り、パスワードは一切設定しない（このgroupは
+# ansible-vaultを使わない設計のため、パスワードハッシュを渡す手段が無い）。
+# common_admin_sudo_nopasswd の既定値はfalse（sudoにpasswordを要求）なので、
+# 既定のままだと「passwordが存在しないのでsudoが恒久的に使えないアカウント」
+# ができてしまう。2026-09-04にans-01実機で踏んだ実欠陥（
+# docs/evidence/defects-found.md #30）。鍵認証をこのgroupの唯一の認証要素と
+# 割り切り、sudoはNOPASSWDにする。
+common_admin_sudo_nopasswd: true
