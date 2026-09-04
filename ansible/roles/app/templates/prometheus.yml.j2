@@ -83,6 +83,11 @@ scrape_configs:
           environment: {{ server_monitor_environment }}
 
   # SLI: ユーザーが触る入口 (nginx) を通して /healthz を 30 秒ごとに probe する。
+  # 監視対象を増やすときは app_blackbox_probe_targets へ 1 行足す
+  # (windows_exporter host の IIS health エンドポイント等、node_exporter targets
+  # と同じ「1 台の監視サーバーが N 台を見る」形)。対象が Docker ホスト外の実マシンの
+  # 場合、到達性(実L3接続・Firewall許可)は監視対象ごとに別途確立が必要
+  # (docs/build-package-windows/01-basic-design.md 3.1 参照)。
   - job_name: blackbox-probe-health
     metrics_path: /probe
     params:
@@ -95,6 +100,14 @@ scrape_configs:
         labels:
           environment: {{ server_monitor_environment }}
           slo_service: server-monitor
+{% for target in app_blackbox_probe_targets %}
+      - targets:
+          - {{ target.url }}
+        labels:
+          environment: {{ target.environment | default(server_monitor_environment) }}
+          slo_service: {{ target.slo_service | default('external') }}
+          host: {{ target.host | default(target.url | regex_replace('^https?://([^/:]+).*$', '\\1')) }}
+{% endfor %}
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

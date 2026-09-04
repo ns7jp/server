@@ -43,6 +43,25 @@
 - name: Configure the Docker repository and install the engine
   ansible.builtin.include_tasks: "repo-{{ ansible_os_family }}.yml"
 
+# RHEL 系のみ。common role の selinux.yml が enforcing のまま
+# reboot_required を返していないことを確認したうえで、この boolean を
+# 有効化する。container_manage_cgroup は container-selinux パッケージが
+# 提供するポリシーモジュールに属し、docker-ce の依存として上の
+# 「Docker公式repo追加＋engine導入」で確実に入った後でなければ
+# "boolean is not defined in persistent policy" で失敗する
+# （2026-09-04、AlmaLinux 9実機で確認した実欠陥。以前は common role の
+# selinux.yml 側にあったが、パッケージの導入順序と矛盾していたため移した）。
+- name: Ensure the container SELinux boolean is enabled
+  ansible.posix.seboolean:
+    name: container_manage_cgroup
+    state: true
+    persistent: true
+  when:
+    - ansible_os_family == 'RedHat'
+    - common_manage_selinux | default(true) | bool
+    - common_selinux_state | default('enforcing') == 'enforcing'
+    - not (common_selinux_applied.reboot_required | default(false))
+
 # The dedicated service account never invokes Docker. Remove only the
 # root-equivalent docker membership left by older role versions, preserving
 # unrelated supplementary groups that an operator may have assigned.

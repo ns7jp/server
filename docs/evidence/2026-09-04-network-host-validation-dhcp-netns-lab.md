@@ -130,7 +130,7 @@ ACK観測時刻:      17:33:03.689811
 UFW status/default: Status: active / Default: deny (incoming), allow (outgoing), disabled (routed)
 許可rule（UDP67の送信元CIDR）: 67/udp on seg0 ALLOW IN Anywhere（interface限定、送信元CIDRでの絞り込みではない。DHCPDISCOVERの送信元は0.0.0.0のためCIDRで絞れない設計）
 上流security group/NACL（該当時）: 該当なし（ラボ内完結のため）
-判定: PASS（要注記）。UFWのrule自体は設計どおりseg0限定でACCEPTになっているが、実機検証（DIT-05）でisc-dhcp-serverがraw socket(LPF)でinterfaceから直接受信しnetfilterのINPUT chainを経由しないことを確認した。実際の受信interface制限は/etc/default/isc-dhcp-serverのINTERFACESv4が担っており、UFWのこのruleはdhcpdの受信自体には効いていない（多層防御・意図の明示としては有効）。詳細は本体の証跡ファイルの「見つかった欠陥」#33を参照
+判定: PASS（要注記）。UFWのrule自体は設計どおりseg0限定でACCEPTになっているが、実機検証（DIT-05）でisc-dhcp-serverがraw socket(LPF)でinterfaceから直接受信しnetfilterのINPUT chainを経由しないことを確認した。実際の受信interface制限は/etc/default/isc-dhcp-serverのINTERFACESv4が担っており、UFWのこのruleはdhcpdの受信自体には効いていない（多層防御・意図の明示としては有効）。詳細は本体の証跡ファイルの「見つかった欠陥」#34を参照
 ```
 
 ### DNW-08 クライアント側end-to-end
@@ -154,7 +154,7 @@ UFW status/default: Status: active / Default: deny (incoming), allow (outgoing),
 
 | Issue | 観測事実 | 影響 | 暫定対応 | 恒久対応 / link |
 | --- | --- | --- | --- | --- |
-| DNW-07 | UFWのUDP67許可ruleはisc-dhcp-serverの受信そのものには効いていない（raw socket受信のためnetfilterを経由しない） | 実害なし（INTERFACESv4が実際のinterface制限を担っている） | `ansible/roles/dhcp_server/defaults/main.yml`のコメントを訂正（本PRに含む） | [欠陥台帳#33](defects-found.md) |
+| DNW-07 | UFWのUDP67許可ruleはisc-dhcp-serverの受信そのものには効いていない（raw socket受信のためnetfilterを経由しない） | 実害なし（INTERFACESv4が実際のinterface制限を担っている） | `ansible/roles/dhcp_server/defaults/main.yml`のコメントを訂正（本PRに含む） | [欠陥台帳#34](defects-found.md) |
 
 ## 終了判定
 

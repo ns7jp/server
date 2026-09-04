@@ -14,9 +14,9 @@
 | --- | --- |
 | 済(自動) | 今すぐ実行可能なコードとして用意したもの。`ansible/playbooks/foundation.yml`とその依存role・inventory・group_varsがこれに当たる |
 | 済(手動) | コード化されていないが、本パックの手順書（コマンド）で今すぐ実施できるもの（対象VMの用意、SSH鍵の配布、inventoryの編集） |
-| 未実装 | 本パックは設計のみを示し、実行実績がまだ無いもの（AlmaLinux/Rocky 9実機ホストでの構築、`foundation.yml`合成後の実コンテナ収束・冪等性確認をCIの`ansible-integration.yml`へ追加すること） |
+| 未実装 | 本パックは設計のみを示し、実行実績がまだ無いもの（専用の新規AlmaLinux/Rocky 9実機ホストでの構築、`foundation.yml`合成後の実コンテナ収束・冪等性確認をCIの`ansible-integration.yml`へ追加すること） |
 
-「済(自動)」を、実ホストで実行して`PASS`したことと混同しないでください。コードが存在することを意味します。実ホストでの実測は2026-09-04にUbuntu（フェーズ1）で実施済みです（[結果票](../evidence/2026-09-04-ansible-foundation-build.md)）。AlmaLinux/Rocky 9（フェーズ2）はMoleculeのコンテナ検証のみで、実機構築は「未実装」のまま残ります。
+「済(自動)」を、実ホストで実行して`PASS`したことと混同しないでください。コードが存在することを意味します。実ホストでの実測は2026-09-04にUbuntu（フェーズ1、[結果票](../evidence/2026-09-04-ansible-foundation-build.md)）とAlmaLinux 9.7（フェーズ2、[結果票](../evidence/2026-09-04-ansible-foundation-el9-build.md)）の両方で実施済みです。ただしフェーズ2で使ったVMは以前の用途からの再利用環境のため、「専用の新規AlmaLinux/Rocky 9実機ホストでの構築」は引き続き未実装のまま残ります。
 
 ## 2. 案件概要
 

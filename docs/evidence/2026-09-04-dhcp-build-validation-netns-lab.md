@@ -73,11 +73,11 @@
 
 ## 見つかった欠陥
 
-実行して初めて見つかった実装上の欠陥・仕様理解のギャップが3件あります。詳細は[欠陥台帳](defects-found.md)（#31〜#33）を参照してください。
+実行して初めて見つかった実装上の欠陥・仕様理解のギャップが3件あります。詳細は[欠陥台帳](defects-found.md)（#32〜#34）を参照してください。
 
-1. **`common`ロールの欠陥（#31）**: Ubuntu 24.04では`hwclock`が`util-linux`パッケージから`util-linux-extra`パッケージへ分離されており、`common_os_packages`（Debian系）に`util-linux`しか無かったため、`community.general.timezone`タスクが`Failed to find required executable "hwclock"`で失敗した。全パック共通の`common`ロールに影響する欠陥で、`ansible/roles/common/vars/Debian.yml`へ`util-linux-extra`を追加して修正済み（本PRに含む）。
-2. **isc-dhcp-serverの仕様（#32）**: `default-lease-time`に300秒以下を指定しても、実際に払い出す`lease-time`（DHCPACKのoption 51）を300秒へ暗黙にクランプする。`dhcpd -t`の構文検査は通過するため設定ミスとして気づきにくい。値を60→100→299→300→301→500→3600と変えながら実測し、300秒がしきい値であることを確認した。`ansible/roles/dhcp_server/defaults/main.yml`の`dhcp_server_default_lease_time`にコメントで注記済み（本PRに含む）。
-3. **UFWがdhcpdの受信を実際には制御していない（#33）**: isc-dhcp-serverはLinux上でinterfaceに直結したraw socket（LPF）経由でDHCPパケットを受信するため、netfilter（iptables/UFW）のINPUT chainを経由しない。`iptables -I INPUT`でUDP 67宛を明示的にDROPしても、dhcpdは変わらず受信・応答した（対照実験として、通常のUDPソケット宛の通信は同じ形のDROPルールで確実に遮断されることを確認済み）。実際にinterfaceを絞っているのは`/etc/default/isc-dhcp-server`の`INTERFACESv4`であり、UFWのallow ruleはdhcpdの受信自体には効いていない。セキュリティ上の実害は無い（`INTERFACESv4`が正しく機能している限りinterface制限は保たれる）が、「UFWがinterfaceを絞っている」という説明はdhcpdについては不正確なため、`ansible/roles/dhcp_server/defaults/main.yml`のコメントを訂正した（本PRに含む）。
+1. **`common`ロールの欠陥（#32）**: Ubuntu 24.04では`hwclock`が`util-linux`パッケージから`util-linux-extra`パッケージへ分離されており、`common_os_packages`（Debian系）に`util-linux`しか無かったため、`community.general.timezone`タスクが`Failed to find required executable "hwclock"`で失敗した。全パック共通の`common`ロールに影響する欠陥で、`ansible/roles/common/vars/Debian.yml`へ`util-linux-extra`を追加して修正済み（本PRに含む）。
+2. **isc-dhcp-serverの仕様（#33）**: `default-lease-time`に300秒以下を指定しても、実際に払い出す`lease-time`（DHCPACKのoption 51）を300秒へ暗黙にクランプする。`dhcpd -t`の構文検査は通過するため設定ミスとして気づきにくい。値を60→100→299→300→301→500→3600と変えながら実測し、300秒がしきい値であることを確認した。`ansible/roles/dhcp_server/defaults/main.yml`の`dhcp_server_default_lease_time`にコメントで注記済み（本PRに含む）。
+3. **UFWがdhcpdの受信を実際には制御していない（#34）**: isc-dhcp-serverはLinux上でinterfaceに直結したraw socket（LPF）経由でDHCPパケットを受信するため、netfilter（iptables/UFW）のINPUT chainを経由しない。`iptables -I INPUT`でUDP 67宛を明示的にDROPしても、dhcpdは変わらず受信・応答した（対照実験として、通常のUDPソケット宛の通信は同じ形のDROPルールで確実に遮断されることを確認済み）。実際にinterfaceを絞っているのは`/etc/default/isc-dhcp-server`の`INTERFACESv4`であり、UFWのallow ruleはdhcpdの受信自体には効いていない。セキュリティ上の実害は無い（`INTERFACESv4`が正しく機能している限りinterface制限は保たれる）が、「UFWがinterfaceを絞っている」という説明はdhcpdについては不正確なため、`ansible/roles/dhcp_server/defaults/main.yml`のコメントを訂正した（本PRに含む）。
 
 ## 見つかった構築上のつまずき（欠陥ではないが記録する事実）
 
