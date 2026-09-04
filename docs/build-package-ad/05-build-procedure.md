@@ -18,7 +18,7 @@ Ansible role化された自動構築経路(`ansible/roles/common`相当のWindow
 - 本パックはAnsible role化されていないため、Linux版のような対象commit SHA固定によるコード配備管理はありません。ただし、本パック文書側の版(このリポジトリの`git rev-parse HEAD`)は事後の突合のため記録しておきます
 - 実値の秘密情報(DSRMパスワード、証明書秘密鍵、ローカルAdministratorの新しいパスワード等)をIssue、PR、端末ログへ貼りません
 - [要件定義書](00-requirements.md)と[変更・ロールバック計画](08-change-rollback-plan.md)の対象環境、Go / No-Go条件を確認済みであること
-- 本書はフェーズ1(ホスト単体構築)の範囲のみを扱うこと、10節の中央側コマンドを実行してもフェーズ2のscrapeは`compose.yaml`の`monitoring`ネットワークの制約が解消するまで成立しないことを再確認済み
+- 本書はフェーズ1(ホスト単体構築)の範囲のみを扱うこと、10節の中央側コマンドを実行してもフェーズ2のscrapeはDockerホスト↔対象ホスト間の実接続・windows_exporterのFirewall許可が確立するまで成立しないことを再確認済み
 
 ## 1. 管理端末の準備
 
@@ -456,7 +456,7 @@ New-NetFirewallRule -DisplayName "WindowsExporter-Prometheus-Only" -Direction In
 
 `windows_exporter`は既定`LocalSystem`アカウントで動作します。最小権限化はAST-07相当の継続課題として記録し、本手順では是正しません。上記のバージョン・SHA256・実行アカウントの実測値は[パラメータシート](03-parameter-sheet.md)の実機記入欄へ記録します。
 
-Firewallルールで許可していても、この時点では中央Prometheusコンテナ側が`compose.yaml`の`monitoring`ネットワーク(`internal: true`)の制約により到達できません。したがってこの節で確認できるのは「対象ホスト上でwindows_exporterサービスが起動し、ローカルから`/metrics`が200で返り、`ad`・`dns`collectorのメトリクスが出力される」ことまでであり、中央Prometheusからのscrape成立(AIT-09)はフェーズ2まで`BLOCKED`のままです。
+Firewallルールでこの送信元IPを許可していても、この時点で中央Prometheusからのscrapeが成立するとは限りません。Prometheusコンテナ自体は`monitoring`(`internal: true`)に加えて非internalなbridge network`host-access`にも接続されており、`host-access`経由でDockerホストのnetwork interfaceを介したegress(MASQUERADE/NAT)は機能する(nftablesルール確認済み)ため、`internal: true`自体が到達を妨げているわけではありません。ただし、Dockerホストと`ad-dc01`の間の実L3接続(本ラボは全ホストRFC 5737の例示用アドレス`192.0.2.0/24`を使用しており未確立)、および上記Firewallルールの`RemoteAddress`をDockerホストのNAT後の実IP(コンテナ内部IPではない)に正しく設定することの2点が未確立なため、この節で確認できるのは「対象ホスト上でwindows_exporterサービスが起動し、ローカルから`/metrics`が200で返り、`ad`・`dns`collectorのメトリクスが出力される」ことまでであり、中央Prometheusからのscrape成立(AIT-09)はフェーズ2まで`BLOCKED`のままです。
 
 ## 9. バックアップ設定
 
@@ -585,7 +585,7 @@ curl -s http://localhost:9090/api/v1/targets | \
   jq '.data.activeTargets[] | select(.labels.host=="ad-dc01")'
 ```
 
-`app_node_exporter_targets`への追加と`site.yml`の再適用自体は正常に完了し、Prometheusの設定ファイル(`prometheus.yml`)には`ad-dc01`のtargetが反映されます。しかし`compose.yaml`の`monitoring`ネットワークが`internal: true`であるため、Prometheusコンテナは対象ホストの9182/tcpへ到達できず、上記APIの`health`は`unhealthy`または`up=0`のままです。これは[基本設計書](01-basic-design.md)・[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)に記載のとおり想定内であり、AIT-09は`BLOCKED`のまま記録します。「設定への追加が完了したこと」と「scrapeが成立すること」を区別し、後者をPASSと誤記しません。
+`app_node_exporter_targets`への追加と`site.yml`の再適用自体は正常に完了し、Prometheusの設定ファイル(`prometheus.yml`)には`ad-dc01`のtargetが反映されます。Prometheusコンテナは`monitoring`(`internal: true`)に加えて非internalなbridge network`host-access`にも接続されており、`host-access`経由のegress(MASQUERADE/NAT、nftablesルール確認済み)自体は機能するため、`internal: true`が到達を妨げているわけではありません。しかしDockerホストと`ad-dc01`の間の実L3接続(本ラボは全ホストRFC 5737の例示用アドレス`192.0.2.0/24`を使用しており未確立)、およびwindows_exporterのFirewall許可をDockerホストのNAT後の実IPに対して設定することの2点がいずれも`NOT SET`のままであるため、上記APIの`health`は`unhealthy`または`up=0`のままです。これは[基本設計書](01-basic-design.md)・[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)に記載のとおり想定内であり、AIT-09は`BLOCKED`のまま記録します。「設定への追加が完了したこと」と「scrapeが成立すること」を区別し、後者をPASSと誤記しません。
 
 また、現状のjob名`linux-node`へWindowsホストを混ぜる形になるため、job名が実態と合わなくなる点も残存課題として証跡に残します([Windows版パック](../build-package-windows/05-build-procedure.md)と共通の残存課題です)。
 

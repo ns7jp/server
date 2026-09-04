@@ -120,9 +120,10 @@ Gate（ゲート）や証跡の意味は[5. 現場用語ブリッジ](#5-現場�
 >
 > あちらは**構築作業そのものを 2 段階に分ける区切り**です。
 > フェーズ1は `monitor-win-01` 単体で完結する「済（手動）」の範囲です。
-> フェーズ2は 3 点の未実装事項が解消するまで `BLOCKED` の範囲です。
-> 3 点とは、Windows 対応 Ansible role・`compose.yaml` の `monitoring` ネットワーク
-> （`internal: true`）・Windows 向けログ集約経路です。
+> フェーズ2は 3 点の未解消事項が解消するまで `BLOCKED` の範囲です。
+> 3 点とは、Windows 対応 Ansible role・Docker ホストと対象 Windows ホストの実ネットワーク接続
+> および windows_exporter の Firewall 許可（許可先を Docker ホストの本当の IP アドレスに
+> しないと、実は届きません）・Windows 向けログ集約経路です。
 >
 > 一方この章の「5フェーズ（決める→描く→作る・変える→確かめる→渡す）」は、
 > **12 文書を読む順番を覚えるための、この初心者ガイドだけの言葉**です。
@@ -207,13 +208,15 @@ Gate（ゲート）や証跡の意味は[5. 現場用語ブリッジ](#5-現場�
 - **なぜ必要か**: 到達制御の正本は、Windows Defender Firewall（Windows 標準の Firewall）による
   送信元 IP 制限になる。Linux 版のようなループバック（127.0.0.1。そのPCの中からだけ届く宛先）
   への bind ではない。この違いを知らないと、公開範囲を誤りやすいため
-- **読むポイント**: 「monitoring ネットワークの `internal: true` 制約」の節。この制約が
+- **読むポイント**: 「Docker ホスト↔対象ネットワーク間の実接続・Firewall 許可」の節。これが
   フェーズ2が `BLOCKED` である直接の技術的理由
 - **実例**: WinRM（5986）は管理元 CIDR（接続を許す IP アドレスの範囲）限定、
   windows_exporter（9182）は中央 Prometheus host の IP のみ許可という設計。
-  ただし `compose.yaml` の `monitoring` ネットワークが `internal: true` のため、
-  この許可があってもフェーズ2の scrape（Prometheus が定期的に値を取りに行く動作）は
-  まだ成立しない
+  ただし実際に scrape が届くには、中央側の Docker ホストと Windows Server が実ネットワークで
+  つながっていること、かつ windows_exporter の Firewall がその Docker ホストの本当の IP
+  アドレス（コンテナの中の見かけ上のアドレスではない）を許可していることの両方が必要で、
+  これがまだ確認できていないため（`NOT SET`）、フェーズ2の scrape（Prometheus が定期的に
+  値を取りに行く動作）はまだ成立しない
 
 ### 05 構築手順書
 
@@ -326,7 +329,7 @@ Windows Server を初めて構築する人が、専門用語を専門用語の�
 | windows_exporter | 一言で言うと、Windows ホストの CPU・memory・disk 等を Prometheus 形式で公開する部品。Linux 版の node-exporter に相当する Windows 版 |
 | 系統A / 系統B | 一言で言うと、本パックが扱う 2 つの運用パターン。系統A（ワークグループ、本パックの既定）はローカル Administrator と証明書認証、系統B（AD ドメイン参加）はドメインアカウントと Kerberos 認証を使う。Linux 版の Debian 系／RHEL 系の違いに近い |
 | 済（自動） / 済（手動） / 未実装 | 一言で言うと、この案件パックだけで使う実装状態の 3 区分。済（自動）は既存の Ansible 機能で今すぐ実行できるもの（`app_node_exporter_targets` への 1 行追加のみ）、済（手動）は Ansible 化されていないが本パックの PowerShell 手順で今すぐ実施できるもの、未実装は設計のみでコードが無いもの。Linux 版の「済／未実装」の 2 区分より 1 段階細かい |
-| `monitoring` ネットワークの `internal: true` 制約 | 一言で言うと、中央監視host側の Docker ネットワーク設定により、Prometheus コンテナが同じ Docker ホストの外にある実マシン（Windows Server）へ到達できないという技術的な壁。フェーズ2が `BLOCKED` である直接の理由の 1 つ |
+| Docker ホスト↔対象ネットワーク間の実接続・Firewall 許可 | 一言で言うと、Prometheus コンテナ自体は（`host-access` という別の Docker ネットワーク経由で）外に出られるが、その先で「Docker ホストと Windows Server が実際に同じネットワークにつながっているか」「windows_exporter の Firewall が Docker ホストの本当の IP アドレスを許可しているか」の 2 つがまだ確認できていないという状態。フェーズ2が `BLOCKED` である直接の理由の 1 つ（旧来「`monitoring` ネットワークの `internal: true` 制約」と説明されていたが、それは正確ではなかった。詳しくは[04 ネットワーク設計・IPアドレス表](04-network-ip-plan.md)を参照） |
 | RDP（リモートデスクトップ） | 一言で言うと、画面ごと遠隔操作する Windows 標準のプロトコル。本パックは既定 Disable とし、必要時のみ管理元 CIDR 限定で一時有効化する（WinRM が主な管理経路） |
 | Windows Defender Firewall | 一言で言うと、Windows 標準の Firewall。本パックは Default Inbound Block とし、WinRM／IIS／windows_exporter の 3 経路だけを、経路ごとに送信元を個別制限して許可する |
 
@@ -339,14 +342,34 @@ Windows Server を初めて構築する人が、専門用語を専門用語の�
 > （論理名 `monitor-win-01`）の 2 台に分かれます。
 > 中央側の監視スタックは変更せず、既存基盤の監視対象ホストを 1 台追加する形を取ります。
 >
-> この構成の違いが、Linux 版にはない「monitoring ネットワークの `internal: true` 制約」という
-> 問題を生みます。
+> この構成の違いが、Linux 版にはない「Docker ホスト↔対象ネットワーク間の実接続・
+> Firewall 許可」という課題を生みます。
 > Linux 版は監視スタックと監視対象が同じ Docker ホスト上にあり、ネットワーク越しの
 > 到達性を気にする必要がありませんでした。
 > Windows 版は監視対象（`monitor-win-01`）が最初から独立した実マシンです。
-> そのため、Docker ネットワークの外から到達できるようにする設計変更が必要になります。
-> これが未解決である限り、フェーズ1（ホスト単体構築）は完了できても、
-> フェーズ2（中央監視統合）は `BLOCKED` のままです。
+>
+> ここで一度きちんと確認しておく必要があります。中央側の Prometheus コンテナは
+> `compose.yaml` 上で `monitoring`（`internal: true`。コンテナ同士の通信専用で、外への
+> 出口を持たないネットワーク）だけでなく、`host-access`（`internal: true` の付かない普通の
+> ネットワーク）にも接続されています。実機で調べたところ、`host-access` 側には
+> ちゃんと外へ出ていくための経路（NAT・MASQUERADE と呼ばれる仕組み）が用意されていました。
+> つまり「`monitoring` が `internal: true` だから届かない」という理屈自体が誤りで、
+> Prometheus コンテナは Docker ホストの外へ出ること自体はもうできる状態です。
+>
+> それでも実際の scrape（メトリクスの取得）がまだ成立しないのは、その先の 2 つが
+> 確認できていないからです。(a) 中央監視host（`monitor-01`）を動かしている Docker ホストと、
+> Windows Server が本当にネットワークでつながっているか（本ラボの各ホストは
+> `192.0.2.0/24` という、ドキュメント作成用に予約された、実際のネットワークには使わない
+> 例示用アドレスを使っており、実機同士をつないだことは一度もありません）。
+> (b) windows_exporter の Firewall が許可すべき送信元は、実は Prometheus コンテナの中の
+> アドレスではなく、`host-access` の NAT を経由したあとに Windows Server 側から見える
+> Docker ホスト自身の本当の IP アドレスだという点を踏まえて設定されているか。
+> どちらも `NOT SET`（まだ決まっていない）です。
+>
+> これらが未解決である限り、フェーズ1（ホスト単体構築）は完了できても、
+> フェーズ2（中央監視統合）は `BLOCKED` のままです。ちなみにこの訂正自体、
+> 「たぶんこうだろう」で決めつけず実機で nftables のルールを確認して確かめたものです。
+> 分からないことは推測で済ませず検証する、という本ガイドの姿勢そのものの実例でもあります。
 
 ## 6. 読む順とかかる時間の目安
 
@@ -380,7 +403,7 @@ Windows Server を初めて構築する人が、専門用語を専門用語の�
 2. `NOT RUN` と `NOT SET` の違いは何ですか。
 3. フェーズ1とフェーズ2の違いは何ですか。
 4. 「済（自動）」「済（手動）」「未実装」の 3 区分をそれぞれ一言で説明できますか。
-5. フェーズ2が `BLOCKED` である技術的な理由を、`compose.yaml` のどの設定に絡めて説明できますか。
+5. フェーズ2が `BLOCKED` である技術的な理由のうち、ネットワークに関わる部分を説明できますか。
 6. WinRM が Linux の何に相当するか言えますか。
 7. なぜ Windows 版だけ「2ホスト構成」なのですか。
 
@@ -391,7 +414,7 @@ Windows Server を初めて構築する人が、専門用語を専門用語の�
 2. `NOT RUN` は「まだ実行していない」、`NOT SET` は「値そのものをまだ決めていない」
 3. フェーズ1は `monitor-win-01` 単体で完結する範囲（済・手動が中心）、フェーズ2は中央監視統合の範囲で、3 点の未実装事項が解消するまで `BLOCKED`
 4. 済（自動）は既存の Ansible 機能で今すぐ実行できるもの、済（手動）は Ansible 化されていないが本パックの PowerShell 手順で今すぐ実施できるもの、未実装は設計のみでコードが無いもの
-5. `compose.yaml` の `monitoring` ネットワークが `internal: true` のため、Prometheus コンテナが同じ Docker ホストの外にある実マシン（Windows Server）の windows_exporter へ到達できないため
+5. Prometheus コンテナは `host-access` ネットワーク経由で Docker ホストの外へ出ること自体はできる（`monitoring` の `internal: true` 単体が原因ではない）。それでも、(a) Docker ホストと Windows Server が実ネットワークでつながっているか、(b) windows_exporter の Firewall が Docker ホストの本当の IP アドレスを許可しているか、の 2 点がまだ確認できていない（`NOT SET`）ため
 6. Linux の SSH に相当する、リモートから操作するための仕組み
 7. 監視スタックと監視対象アプリが同一VMで完結するLinux版と異なり、Windows版は監視対象（`monitor-win-01`）が既存の中央監視host（`monitor-01`）とは別筐体の独立した実マシンであるため
 
@@ -411,9 +434,10 @@ Windows Server を初めて構築する人が、専門用語を専門用語の�
 
 構築は [フェーズ1（ホスト単体構築）] と [フェーズ2（中央監視統合）] の2段階に
 分けており、フェーズ1は Ansible 化されていない [PowerShell による手動手順] で
-完結します。フェーズ2は [Windows対応Ansible roleの不在、monitoringネットワークの
-internal:true制約、Windows向けログ集約経路の不在] という3点の未実装事項が
-解消するまで [BLOCKED] として明記しています。
+完結します。フェーズ2は [Windows対応Ansible roleの不在、Dockerホストと対象
+Windowsホストの実ネットワーク接続およびwindows_exporterのFirewall許可の未確立、
+Windows向けログ集約経路の不在] という3点が解消するまで [BLOCKED] として
+明記しています。
 
 試験仕様書は [コマンドと期待結果を先に決めた合否判定の基準] であり、
 実行結果は原本を上書きせず [日付付きの証跡] へコピーして記録します。
@@ -433,7 +457,7 @@ internal:true制約、Windows向けログ集約経路の不在] という3点の
 | `NOT RUN` は失敗の印 | `NOT RUN` は「まだ実行していない」であって `FAIL`（実行して不一致）ではありません。ただし必須試験が `NOT RUN` のままでは完了と判定しません |
 | このパックは実案件の実績 | `SM-WIN-001` は、現場と同じ形式で作った練習用の文書一式であり、実機で構築した実績ではありません。[06 試験仕様書](06-test-specification.md)の結果欄はすべて `NOT RUN` のままです |
 | 番号順（00→11）が読む順 | 番号は作られた順です。初めて読むときは「[6. 読む順とかかる時間の目安](#6-読む順とかかる時間の目安)」の順番を推奨します |
-| フェーズ2が `BLOCKED` なのは単に「まだやっていない」だけ | `compose.yaml` の `monitoring` ネットワークが `internal: true` であるという、現状のコードに起因する技術的な制約が理由です。「あとで時間ができたらやる」というより、先に `compose.yaml` の設計変更が必要という解除条件が明記されています |
+| フェーズ2が `BLOCKED` なのは `compose.yaml` の `monitoring` ネットワークが `internal: true` だから | それは正確ではありません。Prometheus コンテナは `internal: true` の付かない `host-access` ネットワークにも接続されており、実機の nftables ルールを確認すると外へ出ていく経路（NAT）はすでに存在します。実際にまだ確立していないのは、Docker ホストと Windows Server の実ネットワーク接続、および windows_exporter の Firewall が Docker ホストの本当の IP アドレスを許可しているかの 2 点で、どちらも `NOT SET` です |
 | Windows版もLinux版と同じくAnsibleで全自動構築される | Windows対応のAnsible roleは未実装のため、本パックの構築手順（05）はほぼ全て「済（手動）」のPowerShell手順です。唯一の「済（自動）」は中央host側の`app_node_exporter_targets`への1行追加だけです |
 
 ## 次に読む文書

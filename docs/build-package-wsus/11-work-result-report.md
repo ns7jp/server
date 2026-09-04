@@ -4,7 +4,7 @@
 
 初期値の `NOT SET` は情報未確定、`NOT RUN` は未実行、`NOT READY` は完了条件未達です。空欄や `NOT RUN` を `PASS` として集計しません。
 
-本書はフェーズ1(ホスト単体構築)とフェーズ2(中央監視統合)を区別して記載します。フェーズ2は[要件定義書](00-requirements.md)に記載した「未実装」3点(Windows対応Ansible roleの不在、`compose.yaml`の`monitoring`ネットワークの`internal: true`制約、Windows向けログ集約経路の不在)が解消するまで`BLOCKED`が前提であり、`BLOCKED`のままであること自体はフェーズ1の完了判定を妨げません。この3点の理由付けは[Windows版パック](../build-package-windows/11-work-result-report.md)・[AD版パック](../build-package-ad/11-work-result-report.md)と同一とし、本パック独自の理由へ作り替えません。
+本書はフェーズ1(ホスト単体構築)とフェーズ2(中央監視統合)を区別して記載します。フェーズ2は[要件定義書](00-requirements.md)に記載した「未実装」3点(Windows対応Ansible roleの不在、Dockerホストと`wsus-01`の実ネットワーク接続・windows_exporterのFirewall許可先の確定が無いこと、Windows向けログ集約経路の不在)が解消するまで`BLOCKED`が前提であり、`BLOCKED`のままであること自体はフェーズ1の完了判定を妨げません。この3点の理由付けは[Windows版パック](../build-package-windows/11-work-result-report.md)・[AD版パック](../build-package-ad/11-work-result-report.md)と同一とし、本パック独自の理由へ作り替えません。
 
 `wsus-01`に相当する実ホストの構築そのものがまだ行われていないため、本書に対応する日付付きevidenceは現時点で1件もありません。以下の空欄は次の構築作業で複製して使う原本であり、実ホストでの作業結果は現在も`NOT RUN`です。依存案件の[AD版パック](../build-package-ad/README.md)は実機評価済みの体裁ですが、本パックはこれを踏襲せず、[Windows版パック](../build-package-windows/11-work-result-report.md)と同じ「作成済みだが未実施」の状態を保ちます。
 
@@ -124,7 +124,7 @@ WSUS版にはLinux版のような単一のcommit SHAで対象ホストの構成�
 | レプリカ/ダウンストリームWSUSサーバーによる階層化構成 | 対象外 | 複数拠点・大規模展開が要件化した時点で別途計画 |
 | windows_exporterサービスアカウントの最小権限化 | NOT READY | 現状LocalSystemでの運用実績を積んだうえで、最小権限アカウントへの移行方針を検討・適用 |
 | WSUSコンソールのレポート機能用ランタイム | NOT RUN | 実機でレポート機能を確認し、表示用ランタイムの追加インストールが必要かどうかを記録(NFR-08) |
-| 中央監視統合(フェーズ2、SIT-09) | BLOCKED | Windows対応Ansible roleが`ansible/roles`に無いこと、`compose.yaml`の`monitoring`ネットワークが`internal: true`でPrometheusが`wsus-01`のwindows_exporter(9182/tcp)へ到達できないこと、Windows Event Log / IISログを既存Lokiへ送る経路(Grafana Alloy for Windows等)が無いこと、の3点が解消するまで実行不能。[Windows版パック](../build-package-windows/00-requirements.md)・[AD版パック](../build-package-ad/00-requirements.md)と同一の理由付け |
+| 中央監視統合(フェーズ2、SIT-09) | BLOCKED | Windows対応Ansible roleが`ansible/roles`に無いこと、中央監視hostのDockerホストと`wsus-01`を実際に同一ネットワークセグメントへ接続した実績・windows_exporter(9182/tcp)のFirewall許可先(Dockerホストの実IP)の確定が無いこと(PrometheusはNAT egress自体は`host-access`ネットワーク経由で持つ)、Windows Event Log / IISログを既存Lokiへ送る経路(Grafana Alloy for Windows等)が無いこと、の3点が解消するまで実行不能。[Windows版パック](../build-package-windows/00-requirements.md)・[AD版パック](../build-package-ad/00-requirements.md)と同一の理由付け |
 | Windows対応Ansible role(`common_windows`等)の追加 | NOT READY | `ansible/roles`配下へWindows対応roleを新設し、フェーズ1のPowerShell手順を自動化するかを検討 |
 
 ## 8. 引き渡し物

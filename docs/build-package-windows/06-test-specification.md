@@ -23,10 +23,12 @@
 > 前提が揃わず `BLOCKED` になることが設計時点で分かっています。
 >
 > 1. `ansible/roles` 配下にWindows対応role(`common_windows`等)が無く、Ansibleでの自動構築ができない
-> 2. `compose.yaml` の `monitoring` ネットワークが `internal: true` のため、Prometheusコンテナが
->    同じDockerホスト外にある実machine(Windows Server)の windows_exporter(既定9182/tcp)へ
->    到達できない。現状のjob名 `linux-node` へWindowsを混ぜること自体、名前が実態と合わなくなる点も
->    残存課題です
+> 2. Prometheusコンテナは `monitoring`(`internal: true`)に加え `host-access`(internal指定なしの
+>    bridge)にも接続されており、nftables実機検証でMASQUERADE/`DOCKER-FORWARD` acceptを確認済みの
+>    ため、`internal: true` 単体は外部egressを塞いでいない。未確立なのは、Dockerホストと対象
+>    Windowsホストの実ネットワークセグメント間のL3到達性(`NOT SET`)、およびwindows_exporter側
+>    Firewallが実際の送信元(Dockerホストの実IP)を許可しているか(`NOT SET`)の2点。現状のjob名
+>    `linux-node` へWindowsを混ぜること自体、名前が実態と合わなくなる点も残存課題です
 > 3. Windows Event Log / IISログを既存Lokiへ送る経路(Grafana Alloy for Windowsの導入、Lokiの
 >    push APIをloopback以外からも安全に受け付けるための認証・network設計)が無い
 >
@@ -87,7 +89,7 @@ WUT-02は中央host側(既存Linux監視host)の設定検証だけであり、Wi
 | --- | --- | --- | --- | --- | --- |
 | WIT-01 | 新規構築 | 本パックの手動PowerShell手順一式を実行 | エラーなく完了 | NOT RUN | — |
 | WIT-02 | 冪等性 | 同一手順を2回目実行 | 不要な変更(サービス再作成、Firewallルール重複等)が発生しない | NOT RUN | — |
-| WIT-03 | host metrics(フェーズ2) | 中央PrometheusのTargets画面を確認 | `up{job="linux-node", host="monitor-win-01"}=1`(BLOCKED: `compose.yaml` の `monitoring` networkの `internal: true` 制約が解消するまで) | NOT RUN | — |
+| WIT-03 | host metrics(フェーズ2) | 中央PrometheusのTargets画面を確認 | `up{job="linux-node", host="monitor-win-01"}=1`(BLOCKED: Dockerホスト↔対象ネットワーク間の実L3到達性、およびwindows_exporter側Firewall許可(Dockerホストの実IP向け)が確立するまで) | NOT RUN | — |
 | WIT-04 | IIS site | health用エンドポイントへHTTP GET | 200 | NOT RUN | — |
 | WIT-05 | blackbox probe(フェーズ2) | 中央blackbox-exporterのprobe結果を確認 | `probe_success=1`(BLOCKED: `ansible/roles/app/templates/prometheus.yml.j2` のprobe対象汎用化が未実装のため) | NOT RUN | — |
 | WIT-06 | ログ集約(フェーズ2) | GrafanaでLogQLを実行 | Windows Event Log / IISログを検索できる(BLOCKED: Grafana Alloy for Windows未導入のため) | NOT RUN | — |
@@ -132,7 +134,7 @@ WNW-09には、Linux版のNW-09との非対称性があります。Linux版は�
 - フェーズ2必須ID(「未実装」3点の解消後に必須化): WIT-03, WIT-05, WIT-06, WIT-07, WIT-11
 - フェーズ1の必須IDに `FAIL` または `BLOCKED` が1件でもあれば、フェーズ1(ホスト単体構築)は完了としません。
 - フェーズ1の必須IDに `NOT RUN` が残る場合も、フェーズ1は完了としません。
-- フェーズ2の必須IDは、未実装3点(Windows対応Ansible role、`compose.yaml` の `monitoring` networkの外部到達、Windows Event Log / IISログをLokiへ送る経路)が解消するまで `BLOCKED` であることを前提とします。`BLOCKED` のままであること自体はフェーズ1の完了判定には影響しません。
+- フェーズ2の必須IDは、未解消の3点(Windows対応Ansible role、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)、Windows Event Log / IISログをLokiへ送る経路)が解消するまで `BLOCKED` であることを前提とします。`BLOCKED` のままであること自体はフェーズ1の完了判定には影響しません。
 - 未実装3点の解消後もフェーズ2必須IDが `NOT RUN` のまま残る場合は、フェーズ2(中央監視統合)は完了としません。
 - 構築案件全体の完了は、フェーズ1の必須試験がすべて `PASS` し、かつフェーズ2が「未実装3点」の解消条件とともに `BLOCKED` として明記されている状態を指します。両方が揃って初めて[作業結果・引き渡し報告書](11-work-result-report.md)へ記載できます。
 - 結果はこの原本を直接上書きせず、日付付きの証跡ファイルへコピーして保存します。命名・記録ルールは[検証証跡台帳](../evidence/README.md)に合わせます。

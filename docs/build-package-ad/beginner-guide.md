@@ -136,8 +136,9 @@ flowchart LR
 > 「フェーズ」が出てきます。あちらは**構築作業そのものを 2 段階に分ける区切り**です。
 >
 > - フェーズ1: `ad-dc01` 単体で完結する「済（手動）」の範囲
-> - フェーズ2: Windows 対応 Ansible role・`compose.yaml` の `monitoring` ネットワーク・
->   Windows 向けログ集約経路という 3 点の未実装事項が解消するまで `BLOCKED` の範囲
+> - フェーズ2: Windows 対応 Ansible role・Docker ホストと `ad-dc01` 間の実接続および
+>   windows_exporter の Firewall 許可・Windows 向けログ集約経路という 3 点の未確立事項が
+>   解消するまで `BLOCKED` の範囲
 >
 > 一方この章の「5フェーズ（決める→描く→作る・変える→確かめる→渡す）」は、
 > **12 文書を読む順番を覚えるための、この初心者ガイドだけの言葉**です。

@@ -203,7 +203,7 @@ Test-NetConnection -ComputerName $TargetFQDN -Port $ExporterPort
 - (1)(2)は`TcpTestSucceeded : True`(管理端末が内部ネットワークCIDR・管理元CIDRに含まれる前提)
 - (3)は`TcpTestSucceeded : False`または接続拒否(windows_exporterの許可送信元は中央Prometheus hostのIPのみであり、管理端末を含むそれ以外からは拒否される設計のため)
 
-(3)が拒否になることは本設計では`PASS`です。中央Prometheus host自体からの実際のscrape到達性は、[要件定義書](00-requirements.md)に記載のフェーズ2未実装3点(`compose.yaml`の`monitoring`network制約を含む)が解消するまでAIT-09として`BLOCKED`であり、本項目はFirewallスコープの設計確認にとどまります。
+(3)が拒否になることは本設計では`PASS`です。中央Prometheus host自体からの実際のscrape到達性は、[要件定義書](00-requirements.md)に記載のフェーズ2の未確立事項(Dockerホスト↔対象ホスト間の実接続・windows_exporterのFirewall許可を含む)が解消するまでAIT-09として`BLOCKED`であり、本項目はFirewallスコープの設計確認にとどまります。
 
 ## 10. ANW-07: packet capture
 
