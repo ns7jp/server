@@ -1,0 +1,18 @@
+name: server-monitor-dhcp-lab
+
+# トポロジは Docker の network ではなく、コンテナの中で network namespace と
+# veth を自分で組む（labs/dhcp-lab/topology.sh）。理由は topology.sh の冒頭
+# を参照。要点は、DHCPクライアントは応答を得るまで IP を持たない
+# （送信元 0.0.0.0 でブロードキャスト）ため、Docker の既定 bridge が
+# コンテナへ先に IP を払い出してしまう構成とかみ合わないこと。
+#
+# 必要な権限をこの 1 コンテナへ閉じ込めているので、後始末は down で済み、
+# host 側のネットワークには何も残らない（labs/routing と同じ方針）。
+services:
+  dhcplab:
+    image: nicolaka/netshoot:v0.13
+    command: ["sleep", "infinity"]
+    # netns / veth の作成、dhcpd・sshd の起動に必要。
+    privileged: true
+    volumes:
+      - ./topology.sh:/opt/topology.sh:ro

@@ -18,6 +18,11 @@ common_os_packages:
   # Self-signed TLS generation drops privileges with runuser while the
   # Ansible module itself stays out of the managed application directory.
   - util-linux
+  # Ubuntu 22.04以降、util-linuxパッケージからhwclockが分離されuniverseの
+  # util-linux-extraへ移動した(実機確認: 24.04ではutil-linuxだけを入れても
+  # /usr/sbin/hwclockが存在せず、community.general.timezoneモジュールが
+  # 「hwclockが見つからない」で失敗する)。タイムゾーン設定の前提として明示的に導入する。
+  - util-linux-extra
   - tcpdump
   # storage role が LVM を扱うため、OS 側で先に用意する。
   - lvm2

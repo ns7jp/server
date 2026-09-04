@@ -77,6 +77,7 @@
     name: "{{ dhcp_server_service }}"
     enabled: true
     state: started
+  when: dhcp_server_manage_service | bool
 
 - name: Allow DHCP (UDP 67) on the served interface only
   community.general.ufw:
