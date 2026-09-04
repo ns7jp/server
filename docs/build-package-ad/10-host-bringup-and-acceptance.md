@@ -11,7 +11,7 @@
 - インターネット越しのWindows Defender Firewall(実管理端末からの到達性)
 - フェーズ2(中央監視統合)一式(AIT-09)
 
-**フェーズ1の範囲は、1台の検証用ホスト(`ad-dc01`)を用意すると大半が一度に埋まります。** これに対してフェーズ2は、検証用ホストの有無に関わらず[要件定義書](00-requirements.md)に記載した「未実装」3点(Windows対応Ansible role、`compose.yaml`の`monitoring` networkの`internal: true`制約、Windows向けログ集約経路)が解消しない限り埋まりません。**逆に言えば、検証用ホストが無い限りフェーズ1の項目はどれも埋まりません。**
+**フェーズ1の範囲は、1台の検証用ホスト(`ad-dc01`)を用意すると大半が一度に埋まります。** これに対してフェーズ2は、検証用ホストの有無に関わらず[要件定義書](00-requirements.md)に記載した「未実装」3点(Windows対応Ansible role、Dockerホストと`ad-dc01`間の実接続・windows_exporterのFirewall許可の未確立、Windows向けログ集約経路)が解消しない限り埋まりません。**逆に言えば、検証用ホストが無い限りフェーズ1の項目はどれも埋まりません。**
 
 この文書は、フェーズ1のホストを「用意してから証跡が出るまで」を最短で通すための手順です。フェーズ2の統合手順は[構築手順書](05-build-procedure.md)、統合後の判定基準は[試験仕様書・結果票](06-test-specification.md)を参照してください。
 
@@ -112,7 +112,7 @@ Install-ADDSForest -DomainName "corp.example.test" -DomainNetbiosName "CORP" -Fo
 
 ### 中央監視への統合(フェーズ2、現時点はBLOCKED)
 
-[構築手順書](05-build-procedure.md)(`app_node_exporter_targets`への追記、中央host側の`ansible-playbook site.yml`再適用)は「済(自動)」の範囲であり、フェーズ1のホスト単体構築とは独立に、中央host側の設定だけなら今すぐ試せます。ただしscrapeが実際に成功するかどうか(AIT-09)は、[要件定義書](00-requirements.md)の「未実装」3点のうち`compose.yaml`の`monitoring` networkの`internal: true`制約が解消するまでBLOCKEDです。フェーズ1の受け入れ試験(3節)にはこの統合作業を含めません。
+[構築手順書](05-build-procedure.md)(`app_node_exporter_targets`への追記、中央host側の`ansible-playbook site.yml`再適用)は「済(自動)」の範囲であり、フェーズ1のホスト単体構築とは独立に、中央host側の設定だけなら今すぐ試せます。ただしscrapeが実際に成功するかどうか(AIT-09)は、Prometheusコンテナが`monitoring`(`internal: true`)に加えて非internalなbridge network`host-access`にも接続され、`host-access`経由のegress自体はnftablesルール確認済みで機能する(`internal: true`単体は妨げにならない)ことを踏まえても、Dockerホストと`ad-dc01`間の実L3接続(本ラボは全ホストRFC 5737の例示用アドレス`192.0.2.0/24`を使用しており未確立)とwindows_exporterのFirewall許可(Dockerホストの実IPに対する設定が必要)が[要件定義書](00-requirements.md)記載のとおりいずれも`NOT SET`のままであるためBLOCKEDです。フェーズ1の受け入れ試験(3節)にはこの統合作業を含めません。
 
 ## 3. 受け入れ試験
 
@@ -224,7 +224,7 @@ Register-ScheduledTask -TaskName "ad-dc01-soak" -Action $action -Trigger $trigge
 
 | 項目 | 追加で必要なもの |
 | --- | --- |
-| フェーズ2(中央監視統合)一式(AIT-09) | [要件定義書](00-requirements.md)の「未実装」3点(Windows対応Ansible role、`compose.yaml`の`monitoring` network拡張、Windows向けログ集約経路)の解消 |
+| フェーズ2(中央監視統合)一式(AIT-09) | [要件定義書](00-requirements.md)の「未実装」3点(Windows対応Ansible role、Dockerホスト↔対象Windowsホスト間の実接続・windows_exporterのFirewall許可、Windows向けログ集約経路)の解消 |
 | 2台目のDC追加によるレプリケーション実測 | 2台目のWindows Serverホストと、[基本設計書](01-basic-design.md)2.4節に記す`Install-ADDSDomainController`・`repadmin`による検証 |
 | `monitor-win-01`のドメイン参加検証 | [Windows版パック](../build-package-windows/README.md)の監視対象ホスト(`monitor-win-01`)と、両パックを同時に運用できる検証環境 |
 | 組織DNS / 上流firewall | 実際の組織ネットワーク |

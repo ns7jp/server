@@ -11,15 +11,17 @@ Linux版は単一ホスト完結の構成であり、Compose networkの管理UI�
 | 管理端末 | 例示IPv4: `192.0.2.40` | WinRM HTTPS(5986/tcp)、必要時のみRDP(3389/tcp) | Windows Defender Firewallで管理元CIDR限定に許可(WST-04) |
 | monitor-win-01(Windows Server) | 例示IPv4: `192.0.2.30/24`、例示FQDN: `monitor-win.example.test` | WinRM(5986)、IIS(80/443)、windows_exporter(9182) | Windows Defender Firewall Default Inbound Block。許可はこの3経路のみ、経路ごとに送信元を個別制限 |
 | 中央監視host monitor-01(既存Linux、変更なし) | 環境ごとに決定(`NOT SET`。[パラメータシート](../build-package/03-parameter-sheet.md)の実機記入欄を参照) | Prometheus/Grafana/Alertmanager/Lokiの既存UI/APIはloopbackのみbind(既存設計のまま変更なし) | 既存Linux版設計のまま。本案件によるFirewall変更は無い |
-| `compose.yaml`の`monitoring`ネットワーク | Docker管理、`internal: true` | Prometheus等コンテナ間通信 | 外部egress不可。windows_exporter(実machine、既定9182/tcp)へは現状到達不可(未実装、フェーズ2 `BLOCKED`) |
+| `compose.yaml`の`monitoring`ネットワーク | Docker管理、`internal: true` | Prometheus等コンテナ間通信 | ネットワーク単体では外部egress不可(仕様どおり)。ただしPrometheusは`internal`指定のない`host-access`ネットワークにも接続されており、windows_exporter(実machine、既定9182/tcp)への到達を妨げているのは本ネットワークの制約ではなく、Dockerホスト↔対象ネットワーク間の実接続・Firewall許可の未確立(`NOT SET`、フェーズ2 `BLOCKED`) |
 
 ポート単位の許可範囲・認証方式の詳細(WinRM 5986/tcp、RDP 3389/tcp、IIS 80/443/tcp、windows_exporter 9182/tcp)は[パラメータシート](03-parameter-sheet.md)のアクセス制御表を正本とします。
 
-### monitoring networkの`internal: true`制約(本書の中心)
+### Dockerホスト↔対象ネットワーク間の実接続・Firewall許可(本書の中心)
 
-中央側では、`compose.yaml`の`monitoring`ネットワークが`internal: true`で定義されており、Prometheusコンテナは同じDockerホストの外にある実machine(Windows Server、windows_exporterの既定9182/tcp)へは現状到達できません。到達させるには、たとえばPrometheusサービスだけを`internal`ではない追加の管理用bridge network(例: `remote-targets`のような名前)にも接続する`compose.yaml`変更が必要ですが、これは未実装です(フェーズ2、`BLOCKED`)。現状のjob名`linux-node`へWindowsを混ぜること自体、名前が実態と合わなくなる点も残存課題として明記します。
+中央側では、`compose.yaml`の`monitoring`ネットワークが`internal: true`で定義されていますが、Prometheusコンテナは同時に`internal`指定のない`host-access`ネットワーク(通常のbridge)にも接続されています。nftablesルールを実機で確認したところ、`host-access`側にはMASQUERADE(NAT)ルールと、`DOCKER-FORWARD`chainでの当該bridge向けacceptが自動生成されており、`monitoring`の`internal: true`単体がDockerホスト外への egress を塞いでいるわけではありません。つまり、外部の実machine(Windows Server、windows_exporterの既定9182/tcp)への到達を妨げているのは、`monitoring`ネットワークの制約ではありません。
 
-この制約が解消するまで、Windows Server側でwindows_exporterの9182/tcpをFirewallで許可していても、中央Prometheusからのscrapeは成立しません。フェーズ1で行うFirewall許可設定(WST-04)と、フェーズ2で成立するscrape経路(WIT-03)は別の状態であることを、証跡の記録時に混同しないでください。
+実際にscrapeを成立させるうえで未確立なのは次の2点であり、いずれも`NOT SET`です。(a) 中央監視host(monitor-01)のDockerホスト自身と、Windows Serverが稼働するネットワークセグメントとの実L3到達性。本ラボの各ホスト(monitor-01、monitor-win-01、ad-dc01、ad-dc02、wsus-01)はRFC 5737の例示用アドレス`192.0.2.0/24`を使用しており、実ネットワーク上でDockerホストとWindowsホストを同一セグメントに接続した実績はこれまで一度もありません。(b) windows_exporter側Windows Defender Firewallルール(「許可: 中央Prometheus hostのIPアドレスのみ」)が、実際にscrapeを送出する送信元IPを許可しているか。`host-access`はMASQUERADE(SNAT)を行うため、Windows Server側から見える送信元はPrometheusコンテナの内部アドレス(172.x.x.x)ではなく、Dockerホスト自身の実IPになります。この点を踏まえた許可設定はまだ検討されていません。現状のjob名`linux-node`へWindowsを混ぜること自体、名前が実態と合わなくなる点も残存課題として明記します。
+
+上記2点が解消するまで、Windows Server側でwindows_exporterの9182/tcpをFirewallで許可していても、中央Prometheusからのscrapeは成立しません。フェーズ1で行うFirewall許可設定(WST-04)と、フェーズ2で成立するscrape経路(WIT-03)は別の状態であることを、証跡の記録時に混同しないでください。
 
 ## 2. 複数ホスト構成の考慮
 
@@ -44,7 +46,7 @@ flowchart LR
     end
 
     subgraph DockerHost["中央監視host monitor-01 (既存Linux、変更なし)"]
-        subgraph MonNet["compose.yamlのmonitoringネットワーク(internal: true)"]
+        subgraph MonNet["compose.yamlのmonitoringネットワーク(internal: true)\n※Prometheusはhost-access(internal指定なし)にも接続"]
             Prom["Prometheusコンテナ"]
             Graf["Grafana"]
             AM["Alertmanager"]
@@ -55,13 +57,13 @@ flowchart LR
     Admin -->|"WinRM HTTPS 5986/tcp\n管理元CIDR限定"| FW
     Admin -->|"HTTP/HTTPS 80,443\n内部/管理ネットワークのみ"| FW
 
-    WinExp -.->|"9182/tcp scrape(フェーズ2)\nBLOCKED: monitoringがinternal:trueのため到達不可"| Prom
+    WinExp -.->|"9182/tcp scrape(フェーズ2)\nBLOCKED: 実L3到達・Firewall許可(Dockerホスト実IP向け)が未検証"| Prom
 
     classDef blocked stroke-dasharray: 4 3;
     class WinExp blocked;
 ```
 
-実線は現時点(フェーズ1)で成立する経路、点線はFirewallで許可していても現状は到達しない経路(フェーズ2、`BLOCKED`)を示します。管理端末からWindows Serverへの経路(WinRM、IIS)はフェーズ1の「済(手動)」範囲で成立しますが、windows_exporterから中央Prometheusへの経路は、上記1節の`internal: true`制約が解消するまで成立しません。また、管理端末と中央監視hostのDockerホストは、通常は別々のネットワークセグメントに存在するため、運用者は少なくとも2種類の経路(管理端末→Windows Server、管理端末→中央監視host)を個別に把握しておく必要があります。これはLinux版が単一ホスト内で完結していたのとは異なる、Windows追加分特有の運用上の考慮点です。
+実線は現時点(フェーズ1)で成立する経路、点線はFirewallで許可していても現状は到達しない経路(フェーズ2、`BLOCKED`)を示します。管理端末からWindows Serverへの経路(WinRM、IIS)はフェーズ1の「済(手動)」範囲で成立しますが、windows_exporterから中央Prometheusへの経路は、上記1節に記載したDockerホスト↔対象ネットワーク間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)の両方が確立するまで成立しません(`monitoring`ネットワークの`internal: true`自体は、Prometheusが同時に接続する`host-access`経由のegressがあるため、単独の妨げにはなりません)。また、管理端末と中央監視hostのDockerホストは、通常は別々のネットワークセグメントに存在するため、運用者は少なくとも2種類の経路(管理端末→Windows Server、管理端末→中央監視host)を個別に把握しておく必要があります。これはLinux版が単一ホスト内で完結していたのとは異なる、Windows追加分特有の運用上の考慮点です。
 
 ## 3. 実環境で確認する項目
 

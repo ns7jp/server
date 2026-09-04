@@ -9,7 +9,7 @@
 - インターネット越しのWindows Defender Firewall(実管理端末からの到達性)
 - フェーズ2(中央監視統合)一式(`SIT-09`)
 
-**フェーズ1の範囲は、1台の検証用ホスト(`wsus-01`)を用意すると大半が一度に埋まる。** これに対してフェーズ2は、検証用ホストの有無に関わらず[要件定義書](00-requirements.md)に記載した「未実装」3点(Windows対応Ansible role、`compose.yaml`の`monitoring`ネットワークの`internal: true`制約、Windows向けログ集約経路)が解消しない限り埋まらない。**逆に言えば、検証用ホストが無い限りフェーズ1の項目はどれも埋まらない。**
+**フェーズ1の範囲は、1台の検証用ホスト(`wsus-01`)を用意すると大半が一度に埋まる。** これに対してフェーズ2は、検証用ホストの有無に関わらず[要件定義書](00-requirements.md)に記載した「未実装」3点(Windows対応Ansible role、Dockerホストと`wsus-01`の実ネットワーク接続・windows_exporterのFirewall許可先の確定、Windows向けログ集約経路)が解消しない限り埋まらない。**逆に言えば、検証用ホストが無い限りフェーズ1の項目はどれも埋まらない。**
 
 本書は、フェーズ1のホストを「用意してから証跡が出るまで」を最短で通すための手順である。フェーズ2の統合手順は[構築手順書](05-build-procedure.md)10節、統合後の判定基準は[試験仕様書・結果票](06-test-specification.md)を参照する。
 
@@ -95,7 +95,7 @@ $wsus.GetComputerTargetGroups() | Select-Object Name
 
 ### 中央監視への統合(フェーズ2、現時点はBLOCKED)
 
-[構築手順書](05-build-procedure.md)10節(`app_node_exporter_targets`への追記、中央host側の`site.yml`再適用)は「済(自動)」の範囲であり、フェーズ1のホスト単体構築とは独立に今すぐ試せる。ただしscrapeが実際に成功するかどうか(`SIT-09`)は、[要件定義書](00-requirements.md)の「未実装」3点のうち`compose.yaml`の`monitoring`ネットワークの`internal: true`制約が解消するまでBLOCKEDである。フェーズ1の受け入れ試験(3節)にはこの統合作業を含めない。
+[構築手順書](05-build-procedure.md)10節(`app_node_exporter_targets`への追記、中央host側の`site.yml`再適用)は「済(自動)」の範囲であり、フェーズ1のホスト単体構築とは独立に今すぐ試せる。ただしscrapeが実際に成功するかどうか(`SIT-09`)は、[要件定義書](00-requirements.md)の「未実装」3点のうち、Dockerホストと`wsus-01`の実ネットワーク接続・windows_exporterのFirewall許可先(Dockerホストの実IP)の確定が解消するまでBLOCKEDである。フェーズ1の受け入れ試験(3節)にはこの統合作業を含めない。
 
 ## 3. 受け入れ試験
 

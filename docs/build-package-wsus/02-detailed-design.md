@@ -25,7 +25,7 @@
 7. **コンピューターグループ・承認ルール**: `すべてのコンピューター`配下に`Servers`グループを手動作成(ADのOUとは別概念)、その下にサブグループ`Pilot`を作成し`wsus-01`自身を所属させる。自動承認ルール「Critical and Security Updates - Pilot Auto-Approve」(分類: Critical/Security Updates、製品: Windows Server 2022、対象: Pilot)を作成するが、無人承認を避けるためスケジュール化はせず手動実行にとどめる。他は手動承認とする(FR-05、NFR-08、SIT-05、SIT-06)。
 8. **クリーンアップ・バックアップ登録**: `Invoke-WsusServerCleanup`を毎週日曜03:00(Asia/Tokyo)にタスクスケジューラへ登録する(FR-06、SIT-07)。バックアップは本書後段を参照(FR-07、SIT-08)。
 9. **windows_exporter導入**: 署名付きMSIを`Get-FileHash`でSHA256検証のうえ(SUT-04)導入し、`--collectors.enabled`に`cpu, cs, logical_disk, net, os, service, iis`を指定する。バージョンは実機決定時に固定するため現時点`NOT SET`。
-10. **中央監視統合(フェーズ2、`BLOCKED`)**: `app_node_exporter_targets`への追記と`site.yml`再適用自体は「済(自動)」だが、[Windows版](../build-package-windows/02-detailed-design.md)・[AD版](../build-package-ad/02-detailed-design.md)と共通の3点(Windows対応Ansible roleの不在、`compose.yaml`のmonitoring networkの`internal: true`制約、Windows向けログ集約経路の不在)が解消するまで`BLOCKED`である。理由付けは両パックと同一とし作り替えない(FR-08、SIT-09)。
+10. **中央監視統合(フェーズ2、`BLOCKED`)**: `app_node_exporter_targets`への追記と`site.yml`再適用自体は「済(自動)」だが、[Windows版](../build-package-windows/02-detailed-design.md)・[AD版](../build-package-ad/02-detailed-design.md)と共通の3点(Windows対応Ansible roleの不在、中央監視hostのDockerホストと`wsus-01`の実ネットワーク接続・windows_exporterのFirewall許可先が未検証であること、Windows向けログ集約経路の不在)が解消するまで`BLOCKED`である。2点目はPrometheusコンテナが`monitoring`に加えて`host-access`(internal指定なしのbridge)にも接続されているため`internal: true`自体が壁ではなく、Dockerホストと`wsus-01`を実際に同一ネットワークセグメントへ接続した実績、およびFirewall許可先(Dockerホストの実IP)の確定が無いことが理由である。理由付けは両パックと同一とし作り替えない(FR-08、SIT-09)。
 
 動作確認はフェーズ1でSUT-01〜05、SIT-01〜08、SST-01〜06、SNW-01〜09、フェーズ2でSIT-09(`BLOCKED`前提)を実施する。判定基準は[試験仕様書・結果票](06-test-specification.md)を正本とする。
 

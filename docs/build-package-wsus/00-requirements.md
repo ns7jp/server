@@ -10,7 +10,7 @@
 | --- | --- |
 | 済(自動) | 既存のAnsible機能で今すぐ実行できるもの。本パックには該当項目がありません(Windows対応role自体が未実装のため) |
 | 済(手動) | Ansible化はされていないが、本パックのPowerShell手順で今すぐ実施できるもの(ドメイン参加、WSUSロール導入、GPO設計、承認ルール設計、クリーンアップ・バックアップのスケジュール登録、windows_exporter導入等) |
-| 未実装 | 設計のみでコードが無いもの(Windows対応Ansible role、`compose.yaml`の`monitoring`ネットワークの外部到達、Windows向けログ集約経路) |
+| 未実装 | 設計のみでコードが無いもの(Windows対応Ansible role、中央監視hostのDockerホストと`wsus-01`の実ネットワーク接続・windows_exporterのFirewall許可先の確定、Windows向けログ集約経路) |
 
 構築は2段階です。フェーズ1(ホスト単体構築)は「済(手動)」の範囲で`wsus-01`単体として完結し、`wsus-01`自身をWSUSクライアントとして自己登録・同期・承認・適用まで一巡させます。フェーズ2(中央監視統合)は上記「未実装」3点の解消まで`BLOCKED`とし、[Windows版パック](../build-package-windows/00-requirements.md)・[AD版パック](../build-package-ad/00-requirements.md)と全く同じ理由付けを踏襲します。
 
@@ -46,7 +46,7 @@
 | FR-05 | コンピューターグループ・承認ルールを設計し、少なくとも1件の自動承認ルールを構成すること | [詳細設計書](02-detailed-design.md) |
 | FR-06 | WSUSサーバークリーンアップウィザード相当のコマンドレットの定期実行をスケジュールすること | [構築手順書](05-build-procedure.md) |
 | FR-07 | SUSDB・コンテンツストア・IIS構成のバックアップ手順を用意すること | [構築手順書](05-build-procedure.md) |
-| FR-08 | 中央Linux監視基盤へ`wsus-01`を監視対象ホストとして統合すること(フェーズ2、要ネットワーク拡張。`BLOCKED`前提) | `ansible/roles/app/defaults/main.yml`(`app_node_exporter_targets`)、`compose.yaml`(`monitoring`ネットワークの拡張が必要) |
+| FR-08 | 中央Linux監視基盤へ`wsus-01`を監視対象ホストとして統合すること(フェーズ2、`BLOCKED`前提) | `ansible/roles/app/defaults/main.yml`(`app_node_exporter_targets`)、中央監視hostのDockerホストと`wsus-01`の実ネットワーク接続の確立 |
 
 ## 4. 非機能要件
 

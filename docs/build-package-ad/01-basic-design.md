@@ -17,7 +17,7 @@ Windows Server 1台へ新規のActive Directoryフォレスト・ドメインを
 | 配備 | 本パックのPowerShell手順による手動構築(Ansible化されたWindows対応roleは未実装) |
 | ディレクトリ | Active Directory Domain Services(AD DS)、新規フォレスト・新規ドメイン(`corp.example.test`、NetBIOS名`CORP`) |
 | DNS | AD統合ゾーン。DC自身がDNSサーバーを兼ねる |
-| 監視(フェーズ2、要ネットワーク拡張) | windows_exporterのAD/DNS collectorによるホスト・ディレクトリメトリクス。既存の中央Prometheus側で実施する設計であり、Windows側に新規の監視サーバーは置かない |
+| 監視(フェーズ2、実接続・Firewall許可未確立) | windows_exporterのAD/DNS collectorによるホスト・ディレクトリメトリクス。既存の中央Prometheus側で実施する設計であり、Windows側に新規の監視サーバーは置かない |
 | ログ(フェーズ2、未実装) | Grafana Alloy for Windows経由で既存Lokiへ集約する設計のみ存在し、実装はまだ無い |
 | 運用 | Windows Server Backup(System State)によるバックアップ、AD ごみ箱、ランブック、変更管理、サービス停止復旧演習 |
 
@@ -36,7 +36,7 @@ Windows Server 1台へ新規のActive Directoryフォレスト・ドメインを
 - **フェーズ1(ホスト単体構築)**: OS初期設定、WinRM、Firewall、フォレスト・ドメイン作成、DC昇格、AD統合DNS、OU/GPO設計、FSMO確認、windows_exporter導入、バックアップ、単体でのnetwork実機検証まで。「済(手動)」の範囲で完結し、Windows Server 1台だけで検証・完了できます。
 - **フェーズ2(中央監視統合)**: 中央Prometheusからのscrape、blackbox probe、ログ集約、アラート経路。[Windows版パック](../build-package-windows/01-basic-design.md)と共通の次の3点が解消するまで`BLOCKED`です。
   1. `ansible/roles`配下にWindows対応role(`common_windows`等)が無く、Ansibleでの自動構築ができない。
-  2. `compose.yaml`のmonitoring networkは`internal: true`(外部egress不可)であり、Prometheusコンテナは今のままでは同じDockerホストの外にある実マシン(`ad-dc01`)のwindows_exporter(既定9182/tcp)へ到達できません。
+  2. Prometheusコンテナは`monitoring`(`internal: true`)に加えて非internalなbridge network`host-access`にも接続されており、`host-access`経由でDockerホスト自身のnetwork interfaceを介した実際の外部egress(MASQUERADE/NAT、nftablesルール確認済み)が機能するため、`internal: true`自体は到達を妨げていません。ただし、Dockerホストと`ad-dc01`が属するネットワークセグメント間の実L3接続(本ラボは全ホストRFC 5737の例示用アドレス`192.0.2.0/24`を使用しており未確立)、およびwindows_exporterのFirewall許可をDockerホストの実NAT後送信元IP(コンテナ内部IPではない)に対して設定することの2点が、依然として`NOT SET`のまま残っています。
   3. Windows Event Log/ADディレクトリサービス監査ログを既存Lokiへ送る経路(Grafana Alloy for Windowsの導入、Lokiのpush APIをloopback以外からも安全に受け付けるための認証・network設計)が無い。
 
   解消後は、[Windows版パック](../build-package-windows/05-build-procedure.md)5節と同じ手順で、`ansible/roles/app/defaults/main.yml`の`app_node_exporter_targets`変数へ`ad-dc01`のaddress/host/environmentを1行追加し、中央host側で`ansible-playbook site.yml`を再適用するだけでscrapeを有効化できます。
@@ -71,7 +71,7 @@ flowchart LR
         Loki --> Graf
     end
 
-    WinExp -.->|"フェーズ2: scrape targets追加\nBLOCKED: monitoring networkがinternal:true"| Prom
+    WinExp -.->|"フェーズ2: scrape targets追加\nBLOCKED: 実L3接続・Firewall許可が未確立"| Prom
 
     classDef future stroke-dasharray: 4 3;
     class Client future;

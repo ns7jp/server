@@ -168,7 +168,7 @@ ADの組織単位(OU)と、WSUSコンソール内の「コンピューターグ�
 
 | 項目 | 設定値(設計) | 状態 | 正本 |
 | --- | --- | --- | --- |
-| windows_exporter scrape interval | 中央の既存`linux-node` jobの設定(15秒)を流用予定 | `BLOCKED`(SIT-09。monitoring networkの`internal: true`制約が解消するまで) | `ansible/roles/app/defaults/main.yml`の`app_node_exporter_targets` |
+| windows_exporter scrape interval | 中央の既存`linux-node` jobの設定(15秒)を流用予定 | `BLOCKED`(SIT-09。Dockerホストと`wsus-01`の実ネットワーク接続・Firewall許可先が未検証のため) | `ansible/roles/app/defaults/main.yml`の`app_node_exporter_targets` |
 | ログ集約 | Grafana Alloy for Windows経由で既存Lokiへ集約する設計のみ(WSUS同期・クリーンアップログ、Windows Event Log、IISログを含む) | `BLOCKED`(Alloy for Windows未導入のため) | [詳細設計書](02-detailed-design.md) |
 | WSUSコンソールのレポート機能(承認状況・準拠状況の確認) | フェーズ1の範囲で確認可能な設計。Windows Server 2016以降のWSUSコンソールでレポート機能を使うには、別途レポート表示用ランタイムの追加インストールが必要になる場合がある(NFR-08) | 設計のみ、`NOT RUN` | [構築手順書](05-build-procedure.md) |
 | 可用性SLO / latency SLO | `wsus-01`個別の数値目標は未設定 | `NOT SET`(フェーズ2有効化後に既存[SLO](../slo.md)へ統合予定) | — |

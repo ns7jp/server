@@ -12,7 +12,7 @@
 | --- | --- |
 | 済(自動) | 既存のAnsible機能で今すぐ実行できるもの。本パックには該当項目がありません(Windows対応role自体が未実装のため) |
 | 済(手動) | Ansible化はされていないが、本パックのPowerShell手順で今すぐ実施できるもの(フォレスト作成、DC昇格、OU/GPO設計、windows_exporter導入、バックアップ等) |
-| 未実装 | 本パックは設計のみを示しており、コードが無いもの(Windows対応Ansible role、`compose.yaml`の`monitoring`ネットワークの外部到達、Windows Event Log/AD監査ログをLokiへ送る経路) |
+| 未実装 | 本パックは設計のみを示しており、コードが無いもの(Windows対応Ansible role、Dockerホストと`ad-dc01`間の実ネットワーク接続およびwindows_exporterのFirewall許可(Dockerホストの実IP)、Windows Event Log/AD監査ログをLokiへ送る経路) |
 
 構築は2段階のフェーズに分かれます。フェーズ1(ホスト単体構築)は「済(手動)」の範囲で`ad-dc01`単体として完結し、フェーズ2(中央監視統合)は上記「未実装」3点の解消まで`BLOCKED`として扱います。これは[Windows版パック](../build-package-windows/00-requirements.md)が抱える制約と同一であり、Windows Serverを新しく中央監視へつなぐ経路そのものが、まだこのリポジトリに無いためです。
 
@@ -41,7 +41,7 @@
 | FR-06 | System Stateバックアップを取得し、AD ごみ箱で誤削除オブジェクトを復元できること | AIT-06、AIT-07 | [構築手順書](05-build-procedure.md) |
 | FR-07 | ディレクトリサービス関連サービスの停止を検知し、復旧と正常性確認までの時間を記録できること | AIT-08 | [構築手順書](05-build-procedure.md) |
 | FR-08 | 管理端末から`ad-dc01`までの名前解決、経路、待受、LDAP/Kerberos到達性、Firewallを確認できること | ANW-01〜09 | [ネットワーク実機検証手順](09-network-validation-procedure.md) |
-| FR-09 | windows_exporterのAD/DNS collectorを中央Prometheusが収集できること(フェーズ2、要ネットワーク拡張) | AIT-09 | `ansible/roles/app/defaults/main.yml`(`app_node_exporter_targets`)、`compose.yaml`(`monitoring`ネットワークの拡張が必要) |
+| FR-09 | windows_exporterのAD/DNS collectorを中央Prometheusが収集できること(フェーズ2、実接続・Firewall許可が未確立) | AIT-09 | `ansible/roles/app/defaults/main.yml`(`app_node_exporter_targets`)、Dockerホスト↔`ad-dc01`間の実接続・windows_exporterのFirewall許可(未確立) |
 
 ## 4. 非機能要件
 
@@ -71,7 +71,7 @@
 - AD CS(証明書サービス)、AD FS(フェデレーションサービス)、Microsoft Entra ID(旧Azure AD)連携は対象外です。
 - 中央監視基盤本体(Prometheus/Grafana/Loki/Alertmanagerの構成)の変更は対象外です。既存のLinux版設計([詳細設計書](../build-package/02-detailed-design.md))のまま変更しません。
 - [Windows版パック](../build-package-windows/README.md)の監視対象ホスト(`monitor-win-01`)をこのドメインへ参加させる作業(系統B相当)は、本パックの対象外です。将来の統合演習として[基本設計書](01-basic-design.md)に言及するにとどめます。
-- フェーズ2(中央監視統合)に必要な3点(Windows対応Ansible role、`compose.yaml`の`monitoring`ネットワークの外部到達、Windows向けログ集約経路)は、[Windows版パック](../build-package-windows/00-requirements.md)と共通の制約であり、「対象外」ではなく「解消条件付きの`BLOCKED`」として扱います。
+- フェーズ2(中央監視統合)に必要な3点(Windows対応Ansible role、Dockerホストと`ad-dc01`間の実ネットワーク接続およびwindows_exporterのFirewall許可(Dockerホストの実IP)、Windows向けログ集約経路)は、[Windows版パック](../build-package-windows/00-requirements.md)と共通の制約であり、「対象外」ではなく「解消条件付きの`BLOCKED`」として扱います。
 - Windows Server 2022 Server Coreでの構築は検討課題であり、本案件の基準VMはDesktop Experienceです。
 - クラウド(Azure/AWS等)のWindows Serverインスタンスでの構築は[立ち上げ環境の選択肢](10-host-bringup-and-acceptance.md)に示す選択肢の一つに過ぎず、`apply`/`destroy`相当の実行証跡がない限り本案件の構築実績には含めません。
 

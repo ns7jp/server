@@ -10,7 +10,7 @@
 | --- | --- |
 | 済(自動) | 既存の Ansible 機能で今すぐ実行できるもの。`ansible/roles/app/defaults/main.yml` の `app_node_exporter_targets` 変数へ Windows ホストを 1 行追加し、中央 host 側で `site.yml` を再適用する経路のみが該当します |
 | 済(手動) | Ansible 化はされていないが、本パックの PowerShell 手順で今すぐ実施できるもの(OS 設定、Firewall、IIS、windows_exporter 導入、バックアップ等) |
-| 未実装 | 本パックは設計のみを示しており、コードが無いもの(Windows 対応 Ansible role、`compose.yaml` の `monitoring` ネットワークの外部到達、Windows Event Log/IIS ログを Loki へ送る経路) |
+| 未実装 | 本パックは設計のみを示しており、コードが無いもの(Windows 対応 Ansible role、Windows Event Log/IIS ログを Loki へ送る経路)。あわせて、Docker ホストと対象 Windows ホストの実ネットワーク接続、および windows_exporter の Firewall 許可(Docker ホストの実 IP 向け)も未確立(`NOT SET`)であり、これはコード未実装ではなく実機での接続・許可設定が未検証という意味で、他の2点と合わせて計3点がフェーズ 2 を `BLOCKED` にしています |
 
 構築は 2 段階のフェーズに分かれます。フェーズ 1(ホスト単体構築)は「済(手動)」の範囲で monitor-win-01 単体として完結し、フェーズ 2(中央監視統合)は上記「未実装」3 点の解消まで `BLOCKED` として扱います。
 
@@ -34,7 +34,7 @@
 | --- | --- | --- | --- |
 | FR-01 | 運用者が WinRM(HTTPS)経由で Windows Server を管理できること | WIT-01 | [構築手順書](05-build-procedure.md)(WinRM HTTPS リスナー設定) |
 | FR-02 | IIS の監視対象サイトが稼働し、health 用エンドポイントを提供すること | WIT-04 | [構築手順書](05-build-procedure.md)(IIS Web-Server 機能) |
-| FR-03 | CPU/memory/disk などのホストメトリクスを windows_exporter 経由で中央 Prometheus が収集できること(フェーズ 2、要ネットワーク拡張) | WIT-03 | `ansible/roles/app/defaults/main.yml`(`app_node_exporter_targets`)、`ansible/roles/app/templates/prometheus.yml.j2`、`compose.yaml`(`monitoring` ネットワークの拡張が必要) |
+| FR-03 | CPU/memory/disk などのホストメトリクスを windows_exporter 経由で中央 Prometheus が収集できること(フェーズ 2、要 Docker ホスト↔対象ホスト間の実接続・Firewall 許可) | WIT-03 | `ansible/roles/app/defaults/main.yml`(`app_node_exporter_targets`)、`ansible/roles/app/templates/prometheus.yml.j2`、Docker ホストと対象 Windows ホストの実 L3 到達性および windows_exporter 側 Firewall(Docker ホストの実 IP 向けの許可が必要) |
 | FR-04 | IIS サイトの HTTP 到達性を中央の blackbox-exporter で probe できること(フェーズ 2、要テンプレート拡張) | WIT-05 | `ansible/roles/app/templates/prometheus.yml.j2`(`blackbox-probe-health` ジョブの汎用化が必要) |
 | FR-05 | Windows Event Log/IIS ログを既存 Loki へ集約し Grafana から検索できること(フェーズ 2、要 Alloy for Windows 導入) | WIT-06 | [詳細設計書](02-detailed-design.md)(Grafana Alloy for Windows は未導入、設計のみ) |
 | FR-06 | サービス停止を検知し、復旧と正常性確認までの時間を記録できること(D-1 相当) | WIT-08 | [構築手順書](05-build-procedure.md)、[試験仕様書・結果票](06-test-specification.md) |
@@ -67,7 +67,7 @@
 - 複数の Windows Server ホストによる冗長構成・負荷分散・フェイルオーバーは対象外です。監視対象ホストは monitor-win-01 の 1 台です。
 - Windows Server 2022 Server Core は構成の対応を検討する課題ですが、本案件の基準 VM は Desktop Experience です。Server Core での実測は個別の証跡が必要です。
 - クラウド(Azure/AWS 等)の Windows Server インスタンスでの構築は[立ち上げ環境の選択肢](10-host-bringup-and-acceptance.md)に示す選択肢の一つに過ぎず、`apply`/`destroy` 相当の実行証跡がない限り本案件の構築実績には含めません。
-- フェーズ 2(中央監視統合)に必要な 3 点(Windows 対応 Ansible role、`compose.yaml` の `monitoring` ネットワークの外部到達、Windows 向けログ集約経路)は「対象外」ではなく「解消条件付きの `BLOCKED`」として扱います。本案件の範囲には含まれますが、現時点では実行できません。
+- フェーズ 2(中央監視統合)に必要な 3 点(Windows 対応 Ansible role、Docker ホストと対象 Windows ホストの実ネットワーク接続および windows_exporter の Firewall 許可(Docker ホストの実 IP 向け)、Windows 向けログ集約経路)は「対象外」ではなく「解消条件付きの `BLOCKED`」として扱います。本案件の範囲には含まれますが、現時点では実行できません。
 
 ## 6. 前提条件
 

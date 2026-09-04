@@ -24,7 +24,7 @@
 | 既存ADドメイン(`ad-dc01`・`ad-dc02`、変更なし) | `192.0.2.50/24`、`192.0.2.51/24` | Kerberos/LDAP/DNS/SMB(SYSVOL、GPO配布) | [AD版パック](../build-package-ad/04-network-ip-plan.md)の設計のまま。本パックによるFirewall変更は無い |
 | 内部ネットワーク(将来のドメインメンバー) | 環境ごとに決定(`NOT SET`) | AD関連通信(DNS/Kerberos/LDAP/SMB等)、`wsus-01`のWSUSコンテンツ配信(8530) | 内部ネットワークCIDR限定。範囲の考え方は2節を参照 |
 | 中央監視host`monitor-01`(既存Linux、変更なし) | 環境ごとに決定(`NOT SET`) | Prometheus/Grafana/Alertmanager/Lokiの既存UI/APIはloopbackのみbind(既存設計のまま変更なし) | 既存Linux版設計のまま。本案件によるFirewall変更は無い |
-| `compose.yaml`の`monitoring`ネットワーク | Docker管理、`internal: true` | Prometheus等コンテナ間通信 | 外部egress不可。`wsus-01`のwindows_exporter(既定9182/tcp)へは現状到達不可(未実装、フェーズ2`BLOCKED`) |
+| `compose.yaml`の`monitoring`ネットワーク | Docker管理、`internal: true`(ただしPrometheusは`host-access`にも接続済み) | Prometheus等コンテナ間通信 | `internal: true`単体は外部egressを禁止するが、Prometheusは`host-access`(internal指定なしのbridge)にも接続済みでNAT egressを実際に持つ。`wsus-01`のwindows_exporter(既定9182/tcp)への到達は、Dockerホストと`wsus-01`の実ネットワーク接続・Firewall許可先が未検証のため現状BLOCKED(フェーズ2) |
 
 ポート単位の許可範囲・認証方式の詳細は[パラメータシート](03-parameter-sheet.md)のアクセス制御表を正本とする。
 
@@ -50,7 +50,7 @@ flowchart LR
     end
 
     subgraph DockerHost["中央監視host monitor-01 (既存Linux、変更なし)"]
-        subgraph MonNet["compose.yamlのmonitoringネットワーク(internal: true)"]
+        subgraph MonNet["compose.yamlのmonitoringネットワーク(internal: true。Prometheusはhost-accessにも接続)"]
             Prom["Prometheusコンテナ"]
             Graf["Grafana"]
             AM["Alertmanager"]
@@ -68,20 +68,20 @@ flowchart LR
 
     WsusSite -->|"HTTPS 443/tcp\n日次01:00同期"| MU["Microsoft Update(外部)"]
 
-    WinExp -.->|"9182/tcp scrape(フェーズ2)\nBLOCKED: monitoringがinternal:trueのため到達不可"| Prom
+    WinExp -.->|"9182/tcp scrape(フェーズ2)\nBLOCKED: Dockerホスト↔wsus-01間の実接続・Firewall許可先が未検証"| Prom
 ```
 
 実線は現時点(フェーズ1)で成立する経路、点線は冗長経路(`ad-dc02`経由の認証)、またはフェーズ2で構築予定の経路(現状は設計のみで`NOT RUN`/`BLOCKED`)を示す。管理端末は`wsus-01`単体だけでなく、`ad-dc01`・`ad-dc02`それぞれへも個別にWinRM経路を持つ。各ホストのWindows Defender Firewallはホストごとに独立して設定するため(この構成には中央集約型のFirewallアプライアンスは無い)、管理元CIDRのスコープを3台それぞれで一致させて維持する必要がある。
 
-### `compose.yaml`の`monitoring`ネットワークの制約(フェーズ2が`BLOCKED`である技術的理由)
+### Dockerホスト↔`wsus-01`間の実接続(フェーズ2が`BLOCKED`である技術的理由)
 
-中央側では、`compose.yaml`の`monitoring`ネットワークが`internal: true`で定義されており、Prometheusコンテナは同じDockerホストの外にある実machine(`wsus-01`、windows_exporterの既定9182/tcp)へは現状到達できない。到達させるには、たとえばPrometheusサービスだけを`internal`ではない追加の管理用bridge network(例: `remote-targets`のような名前)にも接続する`compose.yaml`変更が必要だが、これは未実装である(フェーズ2、`BLOCKED`)。この制約は[Windows版パック](../build-package-windows/04-network-ip-plan.md)・[AD版パック](../build-package-ad/04-network-ip-plan.md)と共通であり、フェーズ2が`BLOCKED`である理由は次の3点である。この理由付けは両パックと同じ扱いとし、本パック独自の理由には作り替えない。
+中央側では、`compose.yaml`の`monitoring`ネットワークが`internal: true`で定義されているが、Prometheusコンテナは`monitoring`に加えて`host-access`(internal指定なしのbridge)にも接続されている。Dockerは`host-access`のサブネットに対してNAT(POSTROUTINGのmasquerade)とFORWARD許可を自動生成するため(`docker network inspect`と生成された実際のnftablesルールで確認済み)、`internal: true`単体はDockerホスト外への到達を防ぐ壁ではない。したがって、以前このパックが述べていた「到達にはPrometheusサービスだけを`internal`ではない追加のbridge networkへ接続する`compose.yaml`変更が必要」という説明は誤りで、その追加のbridge network(`host-access`)は既に存在し、Prometheusは既に接続済みである。この点は[Windows版パック](../build-package-windows/04-network-ip-plan.md)・[AD版パック](../build-package-ad/04-network-ip-plan.md)と共通の訂正であり、フェーズ2が`BLOCKED`である理由は次の3点に整理し直す。この理由付けは両パックと同じ扱いとし、本パック独自の理由には作り替えない。
 
 1. `ansible/roles`配下にWindows対応role(`common_windows`等)が無く、Ansibleでの自動構築ができない。
-2. `compose.yaml`の`monitoring`ネットワークが`internal: true`であり、上記のとおりPrometheusコンテナが`wsus-01`のwindows_exporterへ到達できない。
+2. 実際にscrapeを成立させるには、(a)中央監視hostのDockerホスト自体が`wsus-01`の属するネットワークセグメントへ実際に到達できること、(b)windows_exporterのFirewallルールが、`host-access`経由のMASQUERADEで送信元がDockerホストの実IPへ書き換わった後の値を許可対象とすることが必要である。本ラボの各ホストはRFC 5737の例示用アドレス(`192.0.2.0/24`。実運用を想定しないドキュメント用range)であり、DockerホストとWindowsホストを実際に同一セグメントへ接続した実績が無いため、これらは`NOT SET`・未検証のままである。
 3. Windows Event Log/IISログを既存Lokiへ送る経路(Grafana Alloy for Windowsの導入、Lokiのpush APIをloopback以外からも安全に受け付けるための認証・network設計)が無い。
 
-`wsus-01`のwindows_exporterはIISコレクター(`iis`)を有効化し、WSUS管理サイトのメトリクスも公開対象に含めるが、これは公開する指標の種類の話であり、上記の到達性制約とは無関係である。9182/tcpという同一ポート・同一の`internal: true`という同一の壁が、他パックの監視対象ホストと同様にそのまま`wsus-01`にも当てはまる。
+`wsus-01`のwindows_exporterはIISコレクター(`iis`)を有効化し、WSUS管理サイトのメトリクスも公開対象に含めるが、これは公開する指標の種類の話であり、上記2点目の到達性の未検証とは無関係である。9182/tcpという同一ポートに対する同一の未検証状態が、他パックの監視対象ホストと同様にそのまま`wsus-01`にも当てはまる。
 
 現状のFirewall許可設定(SST-01、windows_exporterの9182/tcpを中央Prometheus hostのIPのみへ許可)と、フェーズ2で成立するscrape経路(SIT-09)は別の状態である。証跡の記録時に、フェーズ1で「Firewallルールを許可した」ことと、フェーズ2で「実際にscrapeが成立した」ことを混同しない。
 

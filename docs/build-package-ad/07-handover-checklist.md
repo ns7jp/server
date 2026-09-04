@@ -18,7 +18,7 @@
 | フェーズ1: 再実行安全性 AIT-11 | `NOT RUN` |
 | フェーズ1: セキュリティ試験 AST-01〜08 | `NOT RUN` |
 | フェーズ1: 構成commit相当の記録 / 設定rollback rehearsal | `NOT RUN`（対象host未指定。Ansible role非対応のため[変更・ロールバック計画](08-change-rollback-plan.md)の手動手順で実施） |
-| フェーズ2: host/ADメトリクスscrape AIT-09 | `BLOCKED`（`compose.yaml`の`monitoring` networkが`internal: true`のため解消まで解除不可。[要件定義書](00-requirements.md)記載の未実装3点、[試験仕様書・結果票](06-test-specification.md)参照） |
+| フェーズ2: host/ADメトリクスscrape AIT-09 | `BLOCKED`（Dockerホスト↔`ad-dc01`間の実接続・windows_exporterのFirewall許可が未確立のため解消まで解除不可。[要件定義書](00-requirements.md)記載の未実装3点、[試験仕様書・結果票](06-test-specification.md)参照） |
 | 作業結果報告書 | 原本作成済み。対象ホストの報告は `NOT SET` |
 | 必須試験完了（フェーズ1） | `NOT READY` |
 | 必須試験完了（フェーズ2） | `BLOCKED`（[要件定義書](00-requirements.md)記載の「未実装」3点の解消が前提） |
