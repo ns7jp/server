@@ -66,6 +66,11 @@ scrape_configs:
           environment: {{ server_monitor_environment }}
 
   # SLI: ユーザーが触る入口 (nginx) を通して /healthz を 30 秒ごとに probe する。
+  # 監視対象を増やすときは app_blackbox_probe_targets へ 1 行足す
+  # (windows_exporter host の IIS health エンドポイント等、node_exporter targets
+  # と同じ「1 台の監視サーバーが N 台を見る」形)。この job の static_configs へ
+  # 追加する Prometheus 自身は、対象が Docker ホスト外の実マシンであっても
+  # remote-targets network 経由で到達できる(compose.yaml 参照)。
   - job_name: blackbox-probe-health
     metrics_path: /probe
     params:
@@ -78,6 +83,14 @@ scrape_configs:
         labels:
           environment: {{ server_monitor_environment }}
           slo_service: server-monitor
+{% for target in app_blackbox_probe_targets %}
+      - targets:
+          - {{ target.url }}
+        labels:
+          environment: {{ target.environment | default(server_monitor_environment) }}
+          slo_service: {{ target.slo_service | default('external') }}
+          host: {{ target.host | default(target.url | regex_replace('^https?://([^/:]+).*$', '\\1')) }}
+{% endfor %}
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

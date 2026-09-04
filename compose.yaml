@@ -76,6 +76,7 @@ services:
     networks:
       - monitoring
       - host-access
+      - remote-targets
     security_opt:
       - no-new-privileges:true
 
@@ -241,6 +242,13 @@ networks:
   # hostへ転送されない。公開対象だけをこのbridgeにも接続し、各ports定義側で
   # 127.0.0.1へ明示bindする。app/exporter/collectorはinternal networkだけに残す。
   host-access:
+    driver: bridge
+  # docs/build-package-windows 向け: Prometheusだけが、同じDockerホスト外の
+  # 実マシン(windows_exporter・IISのhealthエンドポイント等)へscrape/probeで
+  # 到達するための非internal bridge。他のmonitoring serviceは参加させない
+  # (Prometheus以外にLAN/外部egressを与えない)。host-accessは各serviceの
+  # published port用途で共有されており混用しないため、用途ごとに分離する。
+  remote-targets:
     driver: bridge
   # Docker API proxy is reachable only from Alloy. No host port is published and
   # no other monitoring service joins this network.

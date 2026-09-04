@@ -42,12 +42,13 @@ Linux 版が Debian 系 / RHEL 系でツール（apt/dnf、ufw/firewalld 等）�
 本案件は次の 2 段階で構成します。[試験仕様書・結果票](06-test-specification.md)、[引き渡しチェックリスト](07-handover-checklist.md)、[作業結果・引き渡し報告書](11-work-result-report.md)でもこの 2 段階を区別して記載します。
 
 - **フェーズ1（ホスト単体構築）**: OS 初期設定、WinRM、Firewall、IIS、windows_exporter 導入、バックアップ、単体での network 実機検証まで。「済（手動）」の範囲で完結し、Windows Server 1 台だけで検証・完了できます。
-- **フェーズ2（中央監視統合）**: 中央 Prometheus からの scrape、blackbox probe、ログ集約、アラート経路。次の 3 点が解消するまで `BLOCKED` です。
+- **フェーズ2（中央監視統合）**: 中央 Prometheus からの scrape、blackbox probe、ログ集約、アラート経路。次の 2 点が解消するまで `BLOCKED` です。
   1. `ansible/roles` 配下に Windows 対応 role（`common_windows` 等）が無く、Ansible での自動構築ができない。
-  2. `compose.yaml` の monitoring network は `internal: true`（外部 egress 不可）であり、Prometheus コンテナは今のままでは同じ Docker ホストの外にある実マシン（Windows Server）の windows_exporter（既定 9182/tcp）へ到達できません。到達させるには、たとえば Prometheus サービスだけを internal ではない追加の管理用 bridge network（例: `remote-targets` のような名前）にも接続する `compose.yaml` 変更が必要ですが、これは未実装です。現状の job 名 `linux-node` へ Windows を混ぜること自体、名前が実態と合わなくなる点も残存課題として明記します。
-  3. Windows Event Log / IIS ログを既存 Loki へ送る経路（Grafana Alloy for Windows の導入、Loki の push API を loopback 以外からも安全に受け付けるための認証・network 設計）が無い。
+  2. Windows Event Log / IIS ログを既存 Loki へ送る経路（Grafana Alloy for Windows の導入、Loki の push API を loopback 以外からも安全に受け付けるための認証・network 設計）が無い。
 
   解消後は、`ansible/roles/app/defaults/main.yml` の `app_node_exporter_targets` 変数へ Windows ホストの address/host/environment を 1 行追加し、中央 host 側で `ansible-playbook site.yml` を再適用するだけで scrape を有効化できます（この変数はもともと「監視サーバー 1 台が N 台の node_exporter を scrape する」ための汎用機構で、`ansible/roles/app/templates/prometheus.yml.j2` が `linux-node` という 1 つの Prometheus job に for ループで target を展開しており、windows_exporter も同じ形（address:port + host label）で追加できるためです）。
+
+  > **2026-09-04 追記（実装済み）:** 以前ここに記載していた「`compose.yaml` の monitoring network が `internal: true` で Prometheus コンテナが実マシンの windows_exporter へ到達できない」という制約は解消しました。Prometheus サービスだけを、`internal` ではない専用の `remote-targets` bridge network（`compose.yaml`）にも接続し、同じ Docker ホスト外の実マシンへ scrape/probe で到達できるようにしています。あわせて `prometheus.yml.j2` の `blackbox-probe-health` job を `app_blackbox_probe_targets` 変数で汎用化し、node_exporter targets と同じ「1 行足すだけ」の形で IIS の health エンドポイント等を probe 対象へ追加できるようにしました（`ansible/roles/app/defaults/main.yml` 参照）。job 名 `linux-node` に Windows ホストを混ぜること自体、名前が実態と合わなくなる点は残存課題のままです。**この時点ではコード実装のみで、実機 Windows Server・windows_exporter・IIS に対する scrape/probe 成功の実測はまだありません**（対象ホスト monitor-win-01 自体が未構築のため）。`WIT-03`・`WIT-05` は `NOT RUN` のまま、[試験仕様書・結果票](06-test-specification.md)で実施・記録します。
 
 ### 3.2 構成図
 
@@ -78,15 +79,15 @@ flowchart LR
         Loki --> Graf
     end
 
-    WinExp -.->|"フェーズ2: scrape targets追加\nBLOCKED: monitoring networkがinternal:true"| Prom
-    BB -.->|"フェーズ2: HTTP probe\nBLOCKED: prometheus.yml.j2 未対応"| IIS
+    WinExp -.->|"フェーズ2: scrape (remote-targets network実装済み)\n対象host未構築のためNOT RUN"| Prom
+    BB -.->|"フェーズ2: HTTP probe (app_blackbox_probe_targets実装済み)\n対象host未構築のためNOT RUN"| IIS
     Alloy -.->|"フェーズ2: ログpush\n未実装（Alloy未導入）"| Loki
 
     classDef future stroke-dasharray: 4 3;
     class Alloy future;
 ```
 
-実線は現時点（フェーズ1）で成立する経路、点線はフェーズ2で構築予定の経路（現状は設計のみで `NOT RUN`/`BLOCKED`）を示します。Windows Defender Firewall のルール自体（windows_exporter・IIS への許可）はフェーズ1の「済（手動）」範囲で設定しますが、中央 Prometheus / blackbox-exporter からの実際の到達は 3.1 に記載した未実装事項が解消するまで成立しません。
+実線は現時点（フェーズ1）で成立する経路、点線はまだ実機での到達・動作が確認できていない経路を示します。WinExp→Prom、BB→IIS の2経路はコード（`compose.yaml` の `remote-targets` network、`prometheus.yml.j2` の `app_blackbox_probe_targets`)としては実装済みですが、対象ホスト monitor-win-01 自体が未構築のため `NOT RUN` のまま点線としています。Alloy→Loki は 3.1 に記載のとおり未実装（`BLOCKED`）です。Windows Defender Firewall のルール自体（windows_exporter・IIS への許可）はフェーズ1の「済（手動）」範囲で設定します。
 
 ## 4. 非機能要件
 
@@ -115,7 +116,7 @@ flowchart LR
 本書の受け入れ条件は次のとおりです。
 
 - フェーズ1必須試験（WUT-01, WUT-02, WUT-05, WIT-01, WIT-02, WIT-04, WIT-08, WIT-09, WIT-10, WST-01〜WST-06, WNW-01〜WNW-09）がすべて `PASS` していること。
-- フェーズ2対象試験（WIT-03, WIT-05, WIT-06, WIT-07, WIT-11）は、3.1 に記載した 3 点の未実装事項が解消するまで `BLOCKED` として明記され、理由と解除条件が記録されていること。
+- フェーズ2対象試験のうち、`WIT-06`(ログ集約)は 3.1 に記載した Grafana Alloy for Windows 未導入が解消するまで `BLOCKED` として明記され、理由と解除条件が記録されていること。`WIT-03`(host metrics scrape)・`WIT-05`(blackbox probe)・`WIT-07`(alert通知)・`WIT-11`(複数ターゲットscrape)は、コード側の制約(monitoring networkの到達性・probe対象の汎用化)は解消済みのため、対象ホスト monitor-win-01 が構築され次第 `NOT RUN` から実施できる状態であることが記録されていること(Ansible Windows role が無いため対象ホスト自体の構築は引き続き手動 PowerShell が前提)。
 - 実行日時、環境、ホストのビルド番号（`winver` または `Get-ComputerInfo` の `OsBuildNumber`）、実行コマンド、実出力、判定が証跡として保存されていること。
 - 未解決事項、秘密値（証明書・パスワード）の受け渡し方法、ロールバック方法が[作業結果・引き渡し報告書](11-work-result-report.md)に記録されていること。
 

@@ -38,6 +38,14 @@ app_prometheus_monitor_label: "server-monitor-{{ server_monitor_environment }}"
 #     - address: "10.0.1.22:9100"
 #       host: db-01
 app_node_exporter_targets: []
+# blackbox-exporter による外形監視(HTTP probe)の追加対象。node_exporter_targets
+# と同じ「1 台の監視サーバーが N 台を見る」形で、nginx の /healthz probe に加えて
+# 1 行足すごとに対象が増える(例: docs/build-package-windows の IIS health)。
+#   app_blackbox_probe_targets:
+#     - url: "https://monitor-win-01.example.test/healthz.html"
+#       host: monitor-win-01
+#       slo_service: monitor-win-01-iis
+app_blackbox_probe_targets: []
 # 外部の dead man's switch の URL。設定すると Watchdog をそこへ送る。
 # 空のままだと Watchdog は通知先を持たない receiver で止まる。
 app_watchdog_webhook_url: ""
