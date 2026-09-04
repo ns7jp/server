@@ -19,7 +19,7 @@
 | 対象host/管理端末の network DNW-01〜09 | サンドボックスラボでDNW-03（DNS）以外`PASS`（[ネットワーク結果票](../evidence/2026-09-04-network-host-validation-dhcp.md)）。独立した実ホストでは`NOT RUN` |
 | 構成commit / 設定rollback rehearsal | `NOT RUN`（対象host未指定） |
 | 作業結果報告書 | 原本作成済み。対象ホストの報告は `NOT SET` |
-| 必須試験完了（DUT/DIT/DST/DNW 合計31 ID） | サンドボックスラボで26 ID `PASS` / 4 ID `SKIP-ENV`。独立した実ホストでは`NOT READY` |
+| 必須試験完了（DUT/DIT/DST/DNW 合計31 ID） | サンドボックスラボで27 ID `PASS` / 4 ID `SKIP-ENV`。独立した実ホストでは`NOT READY` |
 | 受領 | `NOT SET` |
 
 `dhcp_server` roleと`dhcp.yml`playbookが実装済みで静的チェックがPASSしていることは、未指定の引き渡し対象host（`dhcp-01`に相当する実機）を受領可能と判定する材料にはしません。サンドボックスラボでの実測（上表）も、**独立した物理／VPSホストでの受け入れの代替にはしません**。[試験仕様書](06-test-specification.md)を対象hostで実施した日付付き結果票（[記録テンプレート](../evidence/templates/network-host-validation-dhcp.md)を含む）を確認してから、この表を更新します。DST-06（rogue DHCP確認）は[構築手順書](05-build-procedure.md)3.2節の適用前確認と、[ネットワーク実機検証手順](09-network-validation-procedure.md)のDNW-09（構築後の再確認）の両方が揃って初めて完了とみなします。

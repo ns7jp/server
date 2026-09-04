@@ -12,7 +12,7 @@
 
 | 案件 ID | 対象 | 現在の引き渡し判定 |
 | --- | --- | --- |
-| `SM-DHCP-001` | Ubuntu Server 24.04 LTS の検証用 VM 1 台（新規・論理ホスト名 `dhcp-01`）へ isc-dhcp-server を構築し、検証用LANセグメント `192.168.50.0/24` 向けにDHCPv4のリース払い出し（動的プール・固定予約）を提供する | **`NOT READY`** — 引き渡し対象の実VM（独立した物理／VPSホスト）は未指定。2026-09-04にAI支援セッションのサンドボックスコンテナ内のnetwork namespaceラボ（`labs/dhcp-lab/`）で`DUT-01〜05`・`DIT-01〜09`・`DIT-11`・`DST-01`・`DST-02`・`DST-04`・`DST-06`・`DNW-01`・`DNW-02`・`DNW-04〜09`（31 ID中26 ID）を実測`PASS`（[結果票](../evidence/2026-09-04-dhcp-build-validation.md)、[ネットワーク結果票](../evidence/2026-09-04-network-host-validation-dhcp.md)）。`DIT-10`（監視統合）・`DST-03`（AppArmor）・`DST-05`（監査ログ）・`DNW-03`（DNS）はサンドボックスの環境制約により`SKIP-ENV`。独立した実ホストでの受け入れは引き続き`NOT RUN` |
+| `SM-DHCP-001` | Ubuntu Server 24.04 LTS の検証用 VM 1 台（新規・論理ホスト名 `dhcp-01`）へ isc-dhcp-server を構築し、検証用LANセグメント `192.168.50.0/24` 向けにDHCPv4のリース払い出し（動的プール・固定予約）を提供する | **`NOT READY`** — 引き渡し対象の実VM（独立した物理／VPSホスト）は未指定。2026-09-04にAI支援セッションのサンドボックスコンテナ内のnetwork namespaceラボ（`labs/dhcp-lab/`）で`DUT-01〜05`・`DIT-01〜09`・`DIT-11`・`DST-01`・`DST-02`・`DST-04`・`DST-06`・`DNW-01`・`DNW-02`・`DNW-04〜09`（31 ID中27 ID）を実測`PASS`（[結果票](../evidence/2026-09-04-dhcp-build-validation.md)、[ネットワーク結果票](../evidence/2026-09-04-network-host-validation-dhcp.md)）。`DIT-10`（監視統合）・`DST-03`（AppArmor）・`DST-05`（監査ログ）・`DNW-03`（DNS）はサンドボックスの環境制約により`SKIP-ENV`。独立した実ホストでの受け入れは引き続き`NOT RUN` |
 
 表中の `NOT READY` は、必須の試験が終わっておらず、引き渡せる状態ではないことを表します。
 
@@ -46,7 +46,7 @@ flowchart LR
 本パックは[Linux版パック](../build-package/README.md)、[Windows版パック](../build-package-windows/README.md)、[AD版パック](../build-package-ad/README.md)、[Zabbix版パック](../build-package-zabbix/README.md)と同じ構成・文体・厳格さを踏襲しますが、次の2点が特徴です。
 
 1. **単一フェーズで完結する構成であること**: Windows版・AD版パックは「フェーズ1（ホスト単体構築）」「フェーズ2（中央監視統合）」に分かれます。`dhcp-01`はLinuxホストのため、既存の中央Prometheus（`monitor-01`）の`app_node_exporter_targets`へそのまま1行追加でき、Windows/AD版のような「中央監視基盤への統合待ち`BLOCKED`」という区分が本パックには**ありません**。そのため本パックは、[Linux版パック](../build-package/README.md)と同じ単一フェーズの工程ゲート（G0〜G5）で完結します。
-2. **既に実装済みのAnsible roleがあり、サンドボックスラボでの実適用結果はあるが、独立した実ホストでの受け入れがまだ無いこと**: 新規role `ansible/roles/dhcp_server/` と専用playbook `ansible/playbooks/dhcp.yml` は実装済みで、`ansible-lint --offline`（production profile）とAnsible構文チェックはローカルで通過を確認しています。2026-09-04には、AI支援セッションのサンドボックスコンテナ内のnetwork namespaceラボへ実際に`dhcp.yml`を適用し、DORA（DHCPの4-way handshake）実演を含む31 ID中26 IDを`PASS`しました（[結果票](../evidence/2026-09-04-dhcp-build-validation.md)）。一方、独立した物理／VPSホストでの受け入れはまだ行っていません。この境界は[00-requirements.md](00-requirements.md)と[01-basic-design.md](01-basic-design.md)に明記しています。
+2. **既に実装済みのAnsible roleがあり、サンドボックスラボでの実適用結果はあるが、独立した実ホストでの受け入れがまだ無いこと**: 新規role `ansible/roles/dhcp_server/` と専用playbook `ansible/playbooks/dhcp.yml` は実装済みで、`ansible-lint --offline`（production profile）とAnsible構文チェックはローカルで通過を確認しています。2026-09-04には、AI支援セッションのサンドボックスコンテナ内のnetwork namespaceラボへ実際に`dhcp.yml`を適用し、DORA（DHCPの4-way handshake）実演を含む31 ID中27 IDを`PASS`しました（[結果票](../evidence/2026-09-04-dhcp-build-validation.md)）。一方、独立した物理／VPSホストでの受け入れはまだ行っていません。この境界は[00-requirements.md](00-requirements.md)と[01-basic-design.md](01-basic-design.md)に明記しています。
 
 DHCPデーモンには、Ubuntuの`isc-dhcp-server`パッケージを使う`isc-dhcp-server`を採用しています。ISC（開発元）は2022年にisc-dhcpをEOL（開発終了）とし、後継として`isc-kea-dhcp4-server`（Kea DHCP、JSON設定）を推奨していますが、本パックはあえて`isc-dhcp-server`を選んでいます。理由は[00-requirements.md](00-requirements.md)の1章と[01-basic-design.md](01-basic-design.md)の2章に記載し、Keaへの移行は「発展的な設計・将来構想」として次のステップに明記しています。
 
@@ -89,7 +89,7 @@ DHCPデーモンには、Ubuntuの`isc-dhcp-server`パッケージを使う`isc-
 | G0 要件確定 | 要件 ID、対象、対象外、受け入れ条件が合意済み | 文書作成済み。実案件での承認は `NOT SET` |
 | G1 設計確定 | 基本・詳細・パラメータ・ネットワーク設計のレビュー完了 | 文書作成済み。実案件での承認は `NOT SET` |
 | G2 構築完了 | `dhcp.yml`の初回適用が成功し、2回目適用で`changed=0`になること | サンドボックスラボで実測`PASS`（初回`ok=46 changed=16 failed=0`、2回目`changed=0`）。独立した実ホストでの適用は `NOT RUN` |
-| G3 試験完了 | 対象ホストの必須31 ID（`DUT-01〜05`、`DIT-01〜11`、`DST-01〜06`、`DNW-01〜09`）がすべて `PASS` | サンドボックスラボで26 ID `PASS`、4 ID `SKIP-ENV`（`DIT-10`・`DST-03`・`DST-05`・`DNW-03`）。独立した実ホストでは`NOT READY` |
+| G3 試験完了 | 対象ホストの必須31 ID（`DUT-01〜05`、`DIT-01〜11`、`DST-01〜06`、`DNW-01〜09`）がすべて `PASS` | サンドボックスラボで27 ID `PASS`、4 ID `SKIP-ENV`（`DIT-10`・`DST-03`・`DST-05`・`DNW-03`）。独立した実ホストでは`NOT READY` |
 | G4 作業完了 | 作業結果報告書に実績、障害、差異、残存リスクを記録 | 原本のみ。実案件報告は `NOT SET` |
 | G5 引き渡し | 受領者、日時、未解決事項を記録 | `NOT READY` |
 
