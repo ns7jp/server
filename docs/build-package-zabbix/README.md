@@ -12,7 +12,7 @@
 
 | 案件 ID | 対象 | 現在の引き渡し判定 |
 | --- | --- | --- |
-| `SM-ZBX-001` | Ubuntu Server 24.04 LTS の検証用 VM 1 台（新規・論理ホスト名 `zbx-01`）へ Zabbix 7.0 LTS（Server / Frontend / PostgreSQL）を構築し、既存監視対象ホスト `monitor-01`（[Linux版パック](../build-package/03-parameter-sheet.md)と同一）を Zabbix Agent2 の active check で追加監視 | **`NOT READY`** — 引き渡し対象ホストが未指定で、必須試験（`ZUT`/`ZIT`/`ZST`）が `NOT RUN` |
+| `SM-ZBX-001` | Ubuntu Server 24.04 LTS の検証用 VM 1 台（新規・論理ホスト名 `zbx-01`）へ Zabbix 7.0 LTS（Server / Frontend / PostgreSQL）を構築し、既存監視対象ホスト `monitor-01`（[Linux版パック](../build-package/03-parameter-sheet.md)と同一）を Zabbix Agent2 の active check で追加監視 | **`NOT READY`** — 引き渡し対象の実VM 2台は未指定。2026-09-04にクラウドsandboxコンテナで`ZUT-01`〜`03`・`ZST-03`とbackup/restoreスクリプトの中核ロジックを実測`PASS`（[結果票](../evidence/2026-09-04-zabbix-build-validation.md)）したが、Docker Hub / `repo.zabbix.com`へのegressが同環境でブロックされており、Zabbix本体を含む必須試験の大半は引き続き`NOT RUN` |
 
 表中の `NOT READY` は、必須の試験が終わっておらず、引き渡せる状態ではないことを表します。
 
