@@ -85,9 +85,9 @@ scrape_configs:
   # SLI: ユーザーが触る入口 (nginx) を通して /healthz を 30 秒ごとに probe する。
   # 監視対象を増やすときは app_blackbox_probe_targets へ 1 行足す
   # (windows_exporter host の IIS health エンドポイント等、node_exporter targets
-  # と同じ「1 台の監視サーバーが N 台を見る」形)。この job の static_configs へ
-  # 追加する Prometheus 自身は、対象が Docker ホスト外の実マシンであっても
-  # remote-targets network 経由で到達できる(compose.yaml 参照)。
+  # と同じ「1 台の監視サーバーが N 台を見る」形)。対象が Docker ホスト外の実マシンの
+  # 場合、到達性(実L3接続・Firewall許可)は監視対象ごとに別途確立が必要
+  # (docs/build-package-windows/01-basic-design.md 3.1 参照)。
   - job_name: blackbox-probe-health
     metrics_path: /probe
     params:
