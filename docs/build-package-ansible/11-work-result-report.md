@@ -49,7 +49,7 @@
 
 | リスク | 影響 | 対応方針 |
 | --- | --- | --- |
-| AlmaLinux/Rocky 9実機ホストでの構築が未実施 | RHEL系での動作保証がMoleculeのコンテナ検証にとどまる | フェーズ2としてVM用意後に着手（[05-build-procedure.md 手順9](05-build-procedure.md#9-フェーズ2-almalinuxrocky-9への適用未着手)） |
+| AlmaLinux/Rocky 9実機ホストでの構築が未実施 | RHEL系での動作保証がMoleculeのコンテナ検証にとどまる | フェーズ2としてVM用意後に着手（[05-build-procedure.md 手順9](05-build-procedure.md#9-フェーズ2-almalinuxrocky-9への適用)） |
 | `foundation.yml`合成後のCI自動検証が無い | role単体は検証されるが、組み合わせた際の実コンテナ収束は手動確認に依存 | `ansible-integration.yml`への追加を検討（[07-handover-checklist.md](07-handover-checklist.md#未解決事項)） |
 | この検証環境でのansible-lint/構文検証が未実施 | 実行環境のネットワーク制約による | GitHub Actions側の実行結果で代替確認する |
 

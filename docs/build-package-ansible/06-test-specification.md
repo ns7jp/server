@@ -37,7 +37,7 @@
 | AFIT-03 | Docker動作確認 | `docker version && docker compose version && systemctl is-active docker` | いずれも正常応答、`active` | `NOT RUN` | — |
 | AFIT-04 | 時刻同期 | `systemctl is-active chrony`（Ubuntu）/ `chronyd`（RHEL系） | `active` | `NOT RUN` | — |
 | AFIT-05 | 自動更新設定 | Ubuntu: `unattended-upgrade --dry-run -d`／RHEL系: `dnf automatic --timer status`相当の確認 | 有効化されている | `NOT RUN` | — |
-| AFIT-06 | RHEL系（フェーズ2）構築 | [05-build-procedure.md 手順9](05-build-procedure.md#9-フェーズ2-almalinuxrocky-9への適用未着手) | `failed=0`、AFIT-01〜05相当がRHEL系でも成立 | `BLOCKED`（フェーズ2着手待ち。実VM未用意） | — |
+| AFIT-06 | RHEL系（フェーズ2）構築 | [05-build-procedure.md 手順9](05-build-procedure.md#9-フェーズ2-almalinuxrocky-9への適用) | `failed=0`、AFIT-01〜05相当がRHEL系でも成立 | `BLOCKED`（フェーズ2着手待ち。実VM未用意） | — |
 | AFIT-07 | 実ホストnetwork | [09-network-validation-procedure.md](09-network-validation-procedure.md)のAFNW-01〜05を実行 | 名前解決/経路/待受/SSH到達性/firewallが設計どおり | `NOT RUN` | [結果票テンプレート](../evidence/templates/network-host-validation.md) |
 
 ## セキュリティ試験（AFST）

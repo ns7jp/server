@@ -1421,7 +1421,7 @@ AWS実環境での稼働実績ではありません。
 - **意味**: role自体はMoleculeの`el9` scenarioでコンテナ検証済みだが、実VMへ適用した
   実績はまだ無い。[AD版パック](build-package-ad/README.md)と同じ、実行済み範囲と設計のみの
   範囲を区別する書き方である。
-- **このリポジトリ**: [05-build-procedure.md](build-package-ansible/05-build-procedure.md#9-フェーズ2-almalinuxrocky-9への適用未着手)
+- **このリポジトリ**: [05-build-procedure.md](build-package-ansible/05-build-procedure.md#9-フェーズ2-almalinuxrocky-9への適用)
 - **確認**: [試験仕様書](build-package-ansible/06-test-specification.md)のAFIT-06欄
 
 ## 混同しやすい用語の比較

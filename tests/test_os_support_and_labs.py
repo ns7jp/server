@@ -1182,14 +1182,25 @@ def test_selinux_boolean_waits_for_pending_reboot():
     次の task（container_manage_cgroup boolean の設定）がこれを無視すると、
     実行中の SELinux はまだ disabled のままなので
     "SELinux is disabled on this host" で fail する。
-    ansible.posix.selinux の reboot_required 仕様から想定した挙動で、
-    AlmaLinux 実機での実行証跡は未採録。
+    ansible.posix.selinux の reboot_required 仕様から想定した挙動。
+
+    このtaskは元々 common role の selinux.yml にあったが、2026-09-04に
+    AlmaLinux 9実機で「container-selinux パッケージ未導入のため boolean
+    自体が persistent policy に定義されていない」という別の実欠陥が見つかり
+    （docs/evidence/defects-found.md #31）、container-selinux が docker-ce の
+    依存として確実に入った後に設定されるよう docker role へ移した
+    （common role 側は reboot_required 判定用の register だけを残す）。
     """
-    selinux = read("ansible", "roles", "common", "tasks", "selinux.yml")
-    idx = selinux.index("Ensure the container SELinux boolean is enabled")
-    block = selinux[idx:idx + 400]
+    docker_tasks = read("ansible", "roles", "docker", "tasks", "main.yml")
+    idx = docker_tasks.index("Ensure the container SELinux boolean is enabled")
+    block = docker_tasks[idx:idx + 400]
     assert "not (common_selinux_applied.reboot_required" in block, (
         "boolean 設定が reboot_required を見ていない"
+    )
+
+    selinux = read("ansible", "roles", "common", "tasks", "selinux.yml")
+    assert "Ensure the container SELinux boolean is enabled" not in selinux, (
+        "boolean 設定が docker role へ移った後も common role 側に残っている"
     )
 
 
