@@ -1,0 +1,26 @@
+name: server-monitor-dhcp-lab
+
+# トポロジは Docker の network ではなく、コンテナの中で network namespace と
+# veth を自分で組む（labs/dhcp-lab/topology.sh）。理由は topology.sh の冒頭
+# を参照。要点は、DHCPクライアントは応答を得るまで IP を持たない
+# （送信元 0.0.0.0 でブロードキャスト）ため、Docker の既定 bridge が
+# コンテナへ先に IP を払い出してしまう構成とかみ合わないこと。
+#
+# 必要な権限をこの 1 コンテナへ閉じ込めているので、後始末は down で済み、
+# host 側のネットワークには何も残らない（labs/routing と同じ方針）。
+#
+# 重要: このファイルと topology.sh が用意するのはトポロジ（netns / veth /
+# IPアドレス）だけで、isc-dhcp-server・sshd・Ansible の導入や起動は行わない。
+# また既定イメージ（netshoot）は Alpine ベースのため、dhcp_server role が
+# 要求する Debian 系のままでは role を適用できない。実際に Ansible ロールを
+# 適用してDORAを再現するには、image を Ubuntu/Debian 系へ差し替えたうえで
+# 手動プロビジョニングが必要。詳細は README.md を参照。
+services:
+  dhcplab:
+    image: nicolaka/netshoot:v0.13
+    command: ["sleep", "infinity"]
+    # netns / veth の作成に必要。dhcpd・sshd 自体はこのコンテナが自動起動しない
+    # （上記のとおり手動プロビジョニングが前提）。
+    privileged: true
+    volumes:
+      - ./topology.sh:/opt/topology.sh:ro

@@ -2,6 +2,8 @@
 
 [実行手順](../build-package-dhcp/09-network-validation-procedure.md)に沿って、AI支援セッションのサンドボックスコンテナ上に構築したDHCP環境で実施した結果です。「この証跡が示す範囲」は[構築・試験結果票](2026-09-04-dhcp-build-validation.md)を参照してください（VM/実機ではなく、network namespace + veth + bridgeで模擬した単一コンテナ内の検証です）。
 
+> 別のAI支援セッションが`labs/dhcp-lab/`（隔離されたnetwork namespaceラボ）で独立に実施したネットワーク結果票は[`2026-09-04-network-host-validation-dhcp-netns-lab.md`](2026-09-04-network-host-validation-dhcp-netns-lab.md)を参照してください。
+
 ## 基本情報
 
 | 項目 | 値 |

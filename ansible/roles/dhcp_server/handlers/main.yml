@@ -3,3 +3,4 @@
   ansible.builtin.systemd:
     name: "{{ dhcp_server_service }}"
     state: restarted
+  when: dhcp_server_manage_service | bool

@@ -2,6 +2,8 @@
 
 [試験仕様書・結果票](../build-package-dhcp/06-test-specification.md)の原本をコピーし、`dhcp_server` role（`ansible/roles/dhcp_server/`）と実プレイブック（`ansible/playbooks/dhcp.yml`）を、AI支援セッションのサンドボックスコンテナ上へ適用した結果を記入したものです。原本は`NOT RUN`のまま保持し、実施結果はこの日付付きファイルへ記録します。
 
+> **他の同日付証跡との関係**: 同じ2026-09-04に、別のAI支援セッションが独立に本パックの実機検証を行った記録が[`2026-09-04-dhcp-build-validation-netns-lab.md`](2026-09-04-dhcp-build-validation-netns-lab.md)（`labs/routing/`と同じ方式のnetwork namespace + veth隔離ラボ`labs/dhcp-lab/`、`common`ロールも含めて適用、31 ID中27 ID `PASS`）にあります。本ファイルはセッション自身のコンテナをDocker bridge越しに`dhcp-01`役として使う構成（`common` roleは安全上の理由で未適用、31 ID中22 ID `PASS`）です。両者は互いを置き換えるものではなく、異なる構成・スコープでの並行した実測として両方保持しています。
+
 ## この証跡が示す範囲（重要）
 
 このパックの[README](../build-package-dhcp/README.md)は「VM/実機での実演を正本とする」と定めています。本証跡はその正本ではなく、VM/実機を用意できないAI支援セッションのサンドボックスコンテナ上で、**Linuxのnetwork namespace + veth pair + 独自bridge**を使ってDHCPのL2ブロードキャストを模擬し、実際に`isc-dhcp-server`（apt版、改変なし）を動かして得た記録です。既存の[二セグメント障害ラボ](../../labs/network-troubleshooting/README.md)が使うDocker bridgeとも異なる、本セッション限定の構成です。

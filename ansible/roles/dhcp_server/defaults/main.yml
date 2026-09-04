@@ -6,6 +6,13 @@
 dhcp_server_package: isc-dhcp-server
 dhcp_server_service: isc-dhcp-server
 
+# isc-dhcp-server の enable/start（および設定変更時の restart handler）を実際に
+# 行うか。既定 true。systemd が PID 1 として動作していない検証コンテナ
+# （Molecule 等）では false にし、導入とdhcpd.conf生成・構文検証までを確認する
+# （docker roleの docker_manage_service、monitoring roleの
+# monitoring_run_validation と同じ方針）。
+dhcp_server_manage_service: true
+
 # 払い出し対象セグメントへ実際に bind する interface 名。環境ごとに異なるため
 # 既定値を置かず、inventory から明示的に与える（未設定なら assert で止める）。
 dhcp_server_interface: ""
@@ -23,6 +30,11 @@ dhcp_server_dns_servers:
   - 192.168.50.1
   - 1.1.1.1
 dhcp_server_domain_name: lab.example.test
+# 実機確認(2026-09-04): isc-dhcp-server 4.4.3-P1 は default-lease-time に
+# 300秒以下を指定しても、実際に払い出すlease-timeを300秒へ暗黙にクランプする
+# （dhcpd -t の構文検査は通るため設定ミスとして気づきにくい）。短いリース時間で
+# RENEW/REBINDを検証したい場合は301秒以上を指定すること。
+# 参照: docs/evidence/2026-09-04-dhcp-build-validation.md
 dhcp_server_default_lease_time: 43200
 dhcp_server_max_lease_time: 86400
 
@@ -39,4 +51,14 @@ dhcp_server_reservations: []
 # UDP 67 (DHCPサーバーの待受port) は、送信元CIDRではなく dhcp_server_interface
 # （払い出し対象セグメント側interface）で許可範囲を絞る。DHCPDISCOVERの送信元は
 # クライアントがまだIPを持たないため 0.0.0.0 であり、送信元CIDRでは絞れない。
+#
+# 実機確認(2026-09-04、docs/evidence/2026-09-04-dhcp-build-validation.md参照):
+# isc-dhcp-server（dhcpd）はLinux上でinterfaceに直結したraw socket(LPF)経由で
+# DHCPパケットを受信するため、netfilter（iptables/UFW）のINPUT chainを経由
+# しない。つまりこのUFW許可ruleはdhcpdの受信自体を制御していない
+# （実際にiptablesでこのruleより先にDROPしても、dhcpdは変わらず受信・応答した）。
+# udp/67の受信interfaceを実際に絞っているのは/etc/default/isc-dhcp-serverの
+# INTERFACESv4（後述のisc-dhcp-server.j2で dhcp_server_interface から生成）で
+# あり、このUFW ruleは多層防御・意図の明示として維持する（他プロセスや将来の
+# 構成変更に対する保険にはなる）。
 dhcp_server_manage_firewall: true
