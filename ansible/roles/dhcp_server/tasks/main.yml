@@ -1,0 +1,89 @@
+---
+# dhcp-01 (SM-DHCP-001) 向けの isc-dhcp-server 構築。
+# 対象は Debian 系（Ubuntu）のみ。RHEL 系は package/service 名が異なり、
+# 未対応（docs/build-package-dhcp/00-requirements.md の対象外を参照）。
+- name: Refuse an unsupported OS family before any host mutation
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == 'Debian'
+    fail_msg: >-
+      Unsupported OS family {{ ansible_os_family | default('unknown') }}.
+      This role supports Debian family (Ubuntu) only.
+
+- name: Validate DHCP inputs before any host mutation
+  vars:
+    ipv4_pattern: '^\d{1,3}(\.\d{1,3}){3}$'
+    mac_pattern: '^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$'
+    cidr_pattern: '^\d{1,3}(\.\d{1,3}){3}/\d{1,2}$'
+    reservation_names: "{{ dhcp_server_reservations | map(attribute='name') | list }}"
+    reservation_macs: "{{ dhcp_server_reservations | map(attribute='mac') | map('lower') | list }}"
+    reservation_ips: "{{ dhcp_server_reservations | map(attribute='ip') | list }}"
+  ansible.builtin.assert:
+    that:
+      - (dhcp_server_interface | string) is match('^[A-Za-z0-9_.-]+$')
+      - (dhcp_server_interface | string) | length > 0
+      - (dhcp_server_subnet | string) is match(ipv4_pattern)
+      - (dhcp_server_netmask | string) is match(ipv4_pattern)
+      - (dhcp_server_range_start | string) is match(ipv4_pattern)
+      - (dhcp_server_range_end | string) is match(ipv4_pattern)
+      - dhcp_server_routers | length > 0
+      - dhcp_server_routers | reject('match', ipv4_pattern) | list | length == 0
+      - dhcp_server_dns_servers | length > 0
+      - dhcp_server_dns_servers | reject('match', ipv4_pattern) | list | length == 0
+      - (dhcp_server_domain_name | string) is match('^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$')
+      - (dhcp_server_default_lease_time | string) is match('^[0-9]+$')
+      - (dhcp_server_max_lease_time | string) is match('^[0-9]+$')
+      - (dhcp_server_default_lease_time | int) > 0
+      - (dhcp_server_default_lease_time | int) <= (dhcp_server_max_lease_time | int)
+      - (dhcp_server_ufw_allowed_cidr | string) is match(cidr_pattern)
+      - reservation_names | select('match', '^[A-Za-z0-9][A-Za-z0-9_.-]*$') | list | length == reservation_names | length
+      - reservation_names | unique | list | length == reservation_names | length
+      - reservation_macs | select('match', mac_pattern) | list | length == reservation_macs | length
+      - reservation_macs | unique | list | length == reservation_macs | length
+      - reservation_ips | select('match', ipv4_pattern) | list | length == reservation_ips | length
+      - reservation_ips | unique | list | length == reservation_ips | length
+    fail_msg: >-
+      Refusing DHCP mutation: interface, subnet/netmask/range, routers, DNS
+      servers, domain name, lease times, UFW source CIDR, and every
+      reservation (unique name / MAC / fixed IP) must all validate before
+      dhcpd.conf is rendered. See docs/build-package-dhcp/03-parameter-sheet.md.
+
+- name: Install isc-dhcp-server
+  ansible.builtin.apt:
+    name: "{{ dhcp_server_package }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Render dhcpd.conf
+  ansible.builtin.template:
+    src: dhcpd.conf.j2
+    dest: /etc/dhcp/dhcpd.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/sbin/dhcpd -t -cf %s
+  notify: Restart isc-dhcp-server
+
+- name: Bind isc-dhcp-server to the served interface
+  ansible.builtin.template:
+    src: isc-dhcp-server.j2
+    dest: /etc/default/isc-dhcp-server
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart isc-dhcp-server
+
+- name: Enable and start isc-dhcp-server
+  ansible.builtin.systemd:
+    name: "{{ dhcp_server_service }}"
+    enabled: true
+    state: started
+
+- name: Allow DHCP (UDP 67) from the served segment only
+  community.general.ufw:
+    rule: allow
+    port: "67"
+    proto: udp
+    from_ip: "{{ dhcp_server_ufw_allowed_cidr }}"
+  when: dhcp_server_manage_firewall | bool

@@ -413,6 +413,31 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
 - **このリポジトリ**: `/healthz`は認証なしで最小限の稼働状態だけを返します。
 - **確認**: `curl -fsS http://127.0.0.1:8080/healthz`
 
+### DHCP（Dynamic Host Configuration Protocol）
+
+- **一言**: 端末が起動時にIPアドレスを自動で受け取る仕組み。
+- **意味**: 手作業でIPアドレスを1台ずつ設定しなくても、DHCPサーバーが空いているIPアドレスを
+  自動で貸し出します。あわせてgateway、DNSサーバー、ドメイン名も配布できます。
+- **このリポジトリ**: [DHCPサーバー構築案件パック](build-package-dhcp/README.md)でisc-dhcp-serverを構築します。
+- **確認**: `sudo dhcpd -t -cf /etc/dhcp/dhcpd.conf`（設定の構文検査。実際に配布するには対象セグメントが必要）
+
+### DORA（DISCOVER/OFFER/REQUEST/ACK）
+
+- **一言**: DHCPでIPアドレスが決まるまでの4回のやり取り。
+- **意味**: クライアントが全体へ「IPアドレスが欲しい」と呼びかけ（DISCOVER）、サーバーが候補を
+  提示し（OFFER）、クライアントがそれを選び（REQUEST）、サーバーが確定させます（ACK）。
+- **このリポジトリ**: [DHCPサーバー構築案件パック](build-package-dhcp/README.md)のDIT-02・DNW-06でこの4パケットを実機確認します。
+- **確認**: `sudo tcpdump -nn -i <interface> udp port 67 or port 68`
+
+### リース（lease）とスコープ/プール
+
+- **一言**: リースはIPアドレスを貸し出す期限、スコープ/プールは貸し出せるIPアドレスの範囲。
+- **意味**: DHCPで配られるIPアドレスは永久に固定されるわけではなく、期限（リース）付きで
+  貸し出されます。期限が近づくとクライアントは同じサーバーへ更新（renew）を試みます。
+- **このリポジトリ**: [DHCPサーバー構築案件パック](build-package-dhcp/03-parameter-sheet.md)で
+  `192.168.50.100`〜`192.168.50.200`をプールとして設計しています。
+- **確認**: `cat /var/lib/dhcp/dhcpd.leases`
+
 ## 4. Dockerとコンテナ
 
 ### コンテナとイメージ

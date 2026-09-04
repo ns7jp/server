@@ -1,0 +1,21 @@
+---
+# SM-DHCP-001 DHCPサーバー構築案件パック（docs/build-package-dhcp/）専用の適用対象。
+# site.yml（既存の監視スタック本体）とは分離してあり、dhcp-01単体の構築・変更を
+# 独立した作業として計画・実施・記録できる。
+#
+#   ansible-playbook -i inventory/staging.dhcp.local.yml playbooks/dhcp.yml --check --diff
+#   ansible-playbook -i inventory/staging.dhcp.local.yml playbooks/dhcp.yml
+#
+- name: Bootstrap OS for the DHCP host
+  hosts: dhcp
+  become: true
+  gather_facts: true
+  roles:
+    - role: common
+
+- name: Configure the DHCP server
+  hosts: dhcp
+  become: true
+  gather_facts: true
+  roles:
+    - role: dhcp_server
