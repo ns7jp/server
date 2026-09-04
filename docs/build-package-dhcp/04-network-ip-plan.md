@@ -11,7 +11,7 @@
 | Zone | CIDR / interface | 主な通信 | 制御 |
 | --- | --- | --- | --- |
 | 管理端末 | 組織で割り当て（本書内の記入例: `192.0.2.30`。CIDRは`192.0.2.0/24`を仮定） | SSH 22/tcp | production受入では上流FW/VPNまたはsource指定UFW ruleで管理元CIDRのみ |
-| dhcp-01 | `192.168.50.5/24`（払い出し対象セグメント内の固定IP。動的プール対象外） | SSH（構築・運用）、DHCPペイロード（UDP67受信）、node_exporter応答（9100/tcp） | UFW default deny incoming。67/udpは`192.168.50.0/24`限定、9100/tcpは`monitor-01`限定、22/tcpは全送信元への`LIMIT`（production受入では管理元CIDR限定を追加） |
+| dhcp-01 | `192.168.50.5/24`（払い出し対象セグメント内の固定IP。動的プール対象外） | SSH（構築・運用）、DHCPペイロード（UDP67受信）、node_exporter応答（9100/tcp） | UFW default deny incoming。67/udpは払い出し対象interface（`dhcp_server_interface`）限定（DHCPDISCOVERの送信元は`0.0.0.0`のため送信元CIDRでは絞れない）、9100/tcpは`monitor-01`限定、22/tcpは全送信元への`LIMIT`（production受入では管理元CIDR限定を追加） |
 | 払い出し対象LANセグメント | `192.168.50.0/24` | DORA（DISCOVER/OFFER/REQUEST/ACK）、クライアントの通常通信 | ゲートウェイ`192.168.50.1`経由で外部と通信。同一セグメント内でDHCPサーバーとして応答してよいのは`dhcp-01`のみ（NFR-08、DST-06、DNW-09で非存在を確認） |
 | 中央Prometheus（`monitor-01`） | 既存監視基盤側。値は[Linux版ネットワーク設計](../build-package/04-network-ip-plan.md)を参照（本案件による変更なし） | `dhcp-01`のnode_exporter（9100/tcp）へのscrape（pull型） | UFWで9100/tcpの送信元を`monitor-01`のみに限定。`dhcp-01`側からmonitor-01への到達性は前提としない |
 
@@ -59,7 +59,7 @@ default-lease-timeは`43200`秒（12時間）、max-lease-timeは`86400`秒（24
 - `ip route` / `ip route get 192.168.50.1` でdefault gatewayと経路を確認する
 - `ss -lunp` でUDP67（DHCP）の待受を確認し、`ss -lntup`でTCP22（SSH）とTCP9100（node_exporter）の待受を確認する
 - `sudo tcpdump -nn -i <interface> udp port 67 or port 68` でDORA（DISCOVER/OFFER/REQUEST/ACK）の4パケットを観測する
-- `sudo ufw status verbose` でUDP67の許可送信元が`192.168.50.0/24`のみであり、他ネットワークへの許可が無いことを確認する
+- `sudo ufw status verbose` でUDP67の許可がinterface `dhcp_server_interface`（払い出し対象セグメント側）限定であり、他ネットワークへの許可が無いことを確認する
 - クライアント検証VM側で`sudo dhclient -v <interface>`を実行し、動的プール範囲内でのリース取得と、`ip route`・`resolvectl status`（または`cat /etc/resolv.conf`）でgateway・DNS・ドメイン名が設計値どおり反映されていることを確認する
 - `sudo nmap --script broadcast-dhcp-discover`相当の確認、またはクライアント側で応答したDHCPサーバーのIPを確認し、`dhcp-01`（`192.168.50.5`）以外に応答するDHCPサーバーが存在しない（rogue DHCPが無い）ことを構築直前・構築後の両方で確認する
 

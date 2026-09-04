@@ -171,7 +171,7 @@ ssh "$TARGET_HOST" 'sudo nft list ruleset || sudo iptables -S'
 
 - `Status: active`
 - default incomingが`deny`
-- 67/udpの許可送信元が`192.168.50.0/24`のみで、他ネットワークへの許可が無い（NFR-03、DST-01のネットワーク版）
+- 67/udpの許可がinterface `dhcp_server_interface`（払い出し対象セグメント側）限定で、他ネットワークへの許可が無い（NFR-03、DST-01のネットワーク版）
 - 9100/tcpの許可送信元が中央Prometheus host（`monitor-01`）のIPのみ
 - 22/tcpは repository既定で全送信元へ`LIMIT`。production受入では上流FW/VPNまたはsource指定UFW ruleにより、許可元が承認済みの管理元CIDRだけであること
 - 上記以外の外部向けallowルールが無い

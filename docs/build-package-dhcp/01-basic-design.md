@@ -53,7 +53,7 @@ flowchart LR
     Prom -->|"scrape 9100/tcp\napp_node_exporter_targetsへ1行追加"| NodeExp
 ```
 
-管理経路（SSH）とDHCPペイロード経路（UDP 67/68）は、送信元制限の考え方が異なります。SSH（22/tcp）はUFWの`LIMIT`ルールで全送信元を対象としつつ、production受入では管理元CIDR限定へ絞る前提とし、DHCP（67/udp）はUFWで払い出し対象セグメント`192.168.50.0/24`のみを許可し、他セグメント・インターネットへは非公開とします（NFR-03、DST-01）。この非対称なbind/送信元制限の考え方は、[Zabbixパックのtrapper port](../build-package-zabbix/01-basic-design.md)や[Linux版のnode_exporter](../build-package/04-network-ip-plan.md)と同じ「用途ごとに公開範囲を最小化する」設計方針の踏襲です。
+管理経路（SSH）とDHCPペイロード経路（UDP 67/68）は、制限の考え方が異なります。SSH（22/tcp）はUFWの`LIMIT`ルールで全送信元を対象としつつ、production受入では管理元CIDR限定へ絞る前提とします。DHCP（67/udp）は送信元CIDRでは絞れません。DHCPDISCOVERはクライアントがまだIPアドレスを持たない状態で送出するため送信元が`0.0.0.0`であり、`192.168.50.0/24`のようなCIDRに一致しないためです。そこでUFWは払い出し対象セグメント側interface（`dhcp_server_interface`）を対象にDHCPの待受を限定し、他のinterface（管理面NIC等）からは67/udpへ到達できないようにします（NFR-03、DST-01）。この考え方は、[Zabbixパックのtrapper port](../build-package-zabbix/01-basic-design.md)や[Linux版のnode_exporter](../build-package/04-network-ip-plan.md)と同じ「用途ごとに公開範囲を最小化する」設計方針の踏襲です。
 
 DHCPクライアントとの通信はブロードキャストを含むため、`dhcp-01`は払い出し対象セグメントへ直接接続されたNIC（`dhcp_server_interface`変数で指定、既定値は空文字で必ずinventoryで実機確認後に指定する）上でのみ待ち受けます。DHCPリレー（`dhcrelay`）を使った複数セグメントへの配信は対象外のため、本パックは単一セグメント内へ`dhcp-01`を直接配置する構成のみを扱います（詳細は[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)）。
 
@@ -98,7 +98,7 @@ Windows版・AD版パックがフェーズ2を`BLOCKED`とする理由は、次�
 | --- | --- | --- | --- | --- |
 | NFR-01 | 再現性 | 未構築の対象VMへ`dhcp.yml`を適用し、エラーなく完了すること | `common` role → `dhcp_server` role の順に適用。role冒頭で`ansible.builtin.assert`により全入力（interface名、range、DNS等）を検証してから`/etc/dhcp/dhcpd.conf`を書き換える | DIT-01 |
 | NFR-02 | 冪等性 | `dhcp.yml`の2回目適用が`changed=0`になること | `ansible.builtin.template`・`ansible.builtin.package`など宣言的モジュールのみを使用し、シェルコマンドでの状態変更を避ける | DIT-01（2回目） |
-| NFR-03 | セキュリティ | UFWでUDP 67を`192.168.50.0/24`限定にし、それ以外のネットワークへ非公開とすること | `dhcp_server_manage_firewall: true`・`dhcp_server_ufw_allowed_cidr: 192.168.50.0/24`変数に基づき、roleがUFW ruleを追加する | DST-01 |
+| NFR-03 | セキュリティ | UFWでUDP 67の待受を払い出し対象interface限定にし、それ以外のネットワークへ非公開とすること | `dhcp_server_manage_firewall: true`変数に基づき、roleが`dhcp_server_interface`をinterfaceとして指定したUFW ruleを追加する | DST-01 |
 | NFR-04 | セキュリティ | `/etc/dhcp/dhcpd.conf`の所有者・権限が`root:root`かつ`0644`以下であること | `templates/dhcpd.conf.j2`を配布する`template`タスクで`owner`/`group`/`mode`を明示指定する | DST-02 |
 | NFR-05 | セキュリティ | AppArmorプロファイル`usr.sbin.dhcpd`がenforceモードで有効であること | Ubuntuの`isc-dhcp-server`パッケージが同梱するAppArmorプロファイルを無効化せず、既定のenforceモードのまま維持する | DST-03 |
 | NFR-06 | セキュリティ | SSHは`common` roleの既定強化（root禁止、パスワード認証禁止）を継承すること | `dhcp.yml`のplay順序で`common` roleを`dhcp_server` roleより先に適用し、既存の強化設定を上書きしない | DST-04 |

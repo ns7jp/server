@@ -98,7 +98,7 @@
 | `dhcp_server_max_lease_time` | `86400`（秒、24時間） | `max-lease-time` |
 | `dhcp_server_reservations` | `[]`（空リスト） | 固定IP予約（`name`/`mac`/`ip`を持つ辞書のリスト）。1件追加すると`dhcpd.conf`に`host`ブロックが1つ生成される |
 | `dhcp_server_manage_firewall` | `true` | UFWルールの管理をこのroleが行うかどうか（`common_manage_firewall`と同じ切り替え方針） |
-| `dhcp_server_ufw_allowed_cidr` | `192.168.50.0/24` | UDP 67を許可する送信元CIDR。既定は払い出し対象セグメント自身のみ |
+| `dhcp_server_interface` | （既定は空文字。inventoryで指定） | UDP 67のUFW許可対象interface。DHCPDISCOVERの送信元は`0.0.0.0`のため送信元CIDRでは絞れず、`dhcp_server_interface`（払い出し対象セグメント側interface）で許可範囲を限定する |
 
 これらの変数は、`ansible.builtin.assert`によって「変更前に検証する」方針（interface名の書式、各IPアドレスの書式、lease時間の大小関係、UFW CIDRの書式、予約のname/MAC/IPの重複有無を含む）で全入力を検査してから`/etc/dhcp/dhcpd.conf`へ反映されます。テンプレート適用時も`ansible.builtin.template`の`validate`パラメータで`dhcpd -t -cf %s`を実行し、構文エラーのある設定は反映前に拒否されます（詳細は[詳細設計書](02-detailed-design.md)）。
 
@@ -107,7 +107,7 @@
 | Port/Proto | Service | Bind/送信元制限 | 用途 |
 | --- | --- | --- | --- |
 | 22/tcp | SSH | UFW `LIMIT`（全送信元）。production受入では上流FW/VPNまたはsource指定UFW ruleで管理元CIDRのみ | 構築・運用 |
-| 67/udp | isc-dhcp-server（DHCPサーバー） | UFWで`192.168.50.0/24`のみ許可。他セグメント・インターネットへは非公開 | DHCPペイロード（DISCOVER/REQUEST受信） |
+| 67/udp | isc-dhcp-server（DHCPサーバー） | UFWで払い出し対象interface（`dhcp_server_interface`）限定で許可。他セグメント・インターネットへは非公開 | DHCPペイロード（DISCOVER/REQUEST受信） |
 | 68/udp | DHCPクライアント側（`dhcp-01`自身は使わない） | — | クライアントの受信port（参考情報として記載） |
 | 9100/tcp | node_exporter | 中央Prometheus host（`monitor-01`）からのみ許可 | 中央監視統合 |
 

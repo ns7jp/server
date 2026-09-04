@@ -41,7 +41,7 @@ sequenceDiagram
 
 1. **`common` role適用(済・自動)**: ユーザー、timezone、SSH hardening(root禁止・パスワード認証禁止、NFR-06)、UFWの基本方針、自動更新等のOS基盤を整えます。他パックと同じ土台です。
 2. **rogue DHCP事前確認(済・手動)**: `dhcp_server` role適用前に、同一セグメントに想定外のDHCPサーバーが存在しないことを確認します(NFR-08)。手順は[構築手順書](05-build-procedure.md)と[ネットワーク実機検証手順](09-network-validation-procedure.md)のDST-06/DNW-09に定義します。
-3. **`dhcp_server` role適用(済・自動)**: `tasks/main.yml`は次の順で実行します。(a) OS familyがDebian系であることを`assert`で確認し非対応OSを拒否、(b) interface/subnet/range/routers/DNS/domain名/lease時間/UFW許可CIDR/各予約(name・MAC・IPの形式・一意性)をすべて`assert`で事前検証、(c) `isc-dhcp-server`パッケージをapt導入、(d) `dhcpd.conf.j2`を`/etc/dhcp/dhcpd.conf`へrender(`validate: /usr/sbin/dhcpd -t -cf %s`により構文エラーのある内容は反映前に拒否)、(e) `isc-dhcp-server.j2`を`/etc/default/isc-dhcp-server`へrenderしbind interfaceを指定、(f) systemdサービスをenable・start、(g) UFWでUDP 67を`dhcp_server_ufw_allowed_cidr`(既定`192.168.50.0/24`)のみ許可。(d)と(e)の変更はhandler`Restart isc-dhcp-server`を通じてのみ反映され、変更が無ければ再起動も走らないため冪等です(NFR-02、DIT-01の2回目)。
+3. **`dhcp_server` role適用(済・自動)**: `tasks/main.yml`は次の順で実行します。(a) OS familyがDebian系であることを`assert`で確認し非対応OSを拒否、(b) interface/subnet/range/routers/DNS/domain名/lease時間/各予約(name・MAC・IPの形式・一意性)をすべて`assert`で事前検証、(c) `isc-dhcp-server`パッケージをapt導入、(d) `dhcpd.conf.j2`を`/etc/dhcp/dhcpd.conf`へrender(`validate: /usr/sbin/dhcpd -t -cf %s`により構文エラーのある内容は反映前に拒否)、(e) `isc-dhcp-server.j2`を`/etc/default/isc-dhcp-server`へrenderしbind interfaceを指定、(f) systemdサービスをenable・start、(g) UFWでUDP 67の待受を`dhcp_server_interface`(払い出し対象セグメント側interface)限定で許可。DHCPDISCOVERの送信元は`0.0.0.0`でありCIDRに一致しないため、送信元CIDRではなくinterfaceで絞ります。(d)と(e)の変更はhandler`Restart isc-dhcp-server`を通じてのみ反映され、変更が無ければ再起動も走らないため冪等です(NFR-02、DIT-01の2回目)。
 4. **node_exporter導入(済・手動)**: dhcp-01へ`prometheus-node-exporter`をaptで個別導入し、UFWで9100/tcpを`monitor-01`のIPのみ許可します。現時点の`dhcp_server` roleにはこの導入タスクを含めていないため、[構築手順書](05-build-procedure.md)の手順に沿った手動作業です。
 5. **中央Prometheus登録(済・自動、対象は`monitor-01`側)**: `ansible/roles/app/defaults/main.yml`の`app_node_exporter_targets`へ`address: "192.168.50.5:9100"`、`host: dhcp-01`の1行を追加し、`monitor-01`側で`site.yml`を再適用します。`dhcp-01`は既存Compose stackの外側にある独立したLinux実machineであるため、Windows/AD版パックが抱える`monitoring`ネットワーク(`internal: true`)起因の到達性ブロッカーは発生しません(FR-09、DIT-10)。
 6. **動作確認**: DUT-01〜05、DIT-01〜11、DST-01〜06、DNW-01〜09を実施します。判定基準は[試験仕様書・結果票](06-test-specification.md)を正本とします。現時点はroleの`ansible-lint --offline`(production profile)とAnsible構文チェックのみ実施済みで(DUT-02、DUT-03)、対象ホストへの実適用と残りの試験はいずれも`NOT RUN`です。
@@ -53,7 +53,7 @@ UFWは既定で内向き通信を拒否し、明示的に許可した通信の�
 | 経路 | 公開範囲 | 認証 |
 | --- | --- | --- |
 | SSH | 管理元(組織で割り当て。記入例`192.0.2.0/24`)。production受入では上流FW/VPNまたはUFW ruleで管理元CIDRのみ | 公開鍵認証(`common` role継承、root禁止・パスワード認証禁止) |
-| DHCP(UDP 67) | `192.168.50.0/24`のみ(UFW)。他セグメント・インターネットへは非公開 | 認証なし(プロトコル自体に認証機構が無く、rogue DHCP対策はDST-06/DNW-09の能動的なスキャンに依存) |
+| DHCP(UDP 67) | 払い出し対象interface（`dhcp_server_interface`）限定(UFW)。他セグメント・インターネットへは非公開。DHCPDISCOVERの送信元は`0.0.0.0`のためCIDRでは絞れず、interfaceで絞る | 認証なし(プロトコル自体に認証機構が無く、rogue DHCP対策はDST-06/DNW-09の能動的なスキャンに依存) |
 | node_exporter(TCP 9100) | 中央Prometheus host(`monitor-01`)のIPのみ | 認証なし、ネットワーク制限のみ(既存node-exporterと同じ思想) |
 
 ## ログ・監視設計

@@ -82,7 +82,7 @@
 
 - [ ] 本パックはAPIトークンやDB資格情報のような秘密値を扱わないことを確認した（[構築手順書](05-build-procedure.md)2節のとおり、`ansible-vault`によるVault暗号化は不要）
 - [ ] 不要な一時アカウント、テストデータ（rogue DHCP確認・DORA確認でクライアント検証VMに残った一時リース）、firewallの一時許可を削除した
-- [ ] SSH、UFW（UDP 67が`192.168.50.0/24`のみに限定されていること）、AppArmor（`usr.sbin.dhcpd`がenforceモード）、公開port（22/tcp、67/udp、9100/tcp）を確認し、SSH許可元が上流FW/VPNまたはsource指定UFW ruleで管理元CIDRのみに限定されていることを採録した
+- [ ] SSH、UFW（UDP 67の許可がinterface `dhcp_server_interface`限定であること）、AppArmor（`usr.sbin.dhcpd`がenforceモード）、公開port（22/tcp、67/udp、9100/tcp）を確認し、SSH許可元が上流FW/VPNまたはsource指定UFW ruleで管理元CIDRのみに限定されていることを採録した
 - [ ] `/etc/dhcp/dhcpd.conf`の所有者・権限が`root:root`かつ`0644`以下であることを確認した
 - [ ] 実ログとスクリーンショットからIP、MACアドレス、account IDをマスクした
 

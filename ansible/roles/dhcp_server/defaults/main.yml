@@ -36,7 +36,7 @@ dhcp_server_max_lease_time: 86400
 dhcp_server_reservations: []
 
 # firewall を実際に操作するか。common_manage_firewall と同じ切り替え方針。
+# UDP 67 (DHCPサーバーの待受port) は、送信元CIDRではなく dhcp_server_interface
+# （払い出し対象セグメント側interface）で許可範囲を絞る。DHCPDISCOVERの送信元は
+# クライアントがまだIPを持たないため 0.0.0.0 であり、送信元CIDRでは絞れない。
 dhcp_server_manage_firewall: true
-# UDP 67 (DHCPサーバーの待受port) を許可する送信元 CIDR。既定は払い出し対象
-# セグメント自身のみで、それ以外のネットワークからは到達させない。
-dhcp_server_ufw_allowed_cidr: "192.168.50.0/24"

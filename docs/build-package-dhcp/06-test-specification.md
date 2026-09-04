@@ -92,7 +92,7 @@ DUT-03・DUT-05はこのリポジトリのcheckout環境だけで対象ホスト
 | DIT-04 | プール枯渇 | プール内の全アドレスを払い出した状態で新規クライアントが要求 | 新規クライアントはDHCPNAKまたは無応答（新規リースが払い出されない） | NOT RUN | — |
 | DIT-05 | リース更新 | 検証用に短いリース時間（例: `dhcp_server_default_lease_time: 120`等）を一時適用し、T1到達時のunicast DHCPREQUEST（RENEW）とT2到達時のbroadcast DHCPREQUEST（REBIND）をtcpdumpで観測 | T1到達時はリース元サーバーへの2パケット（DHCPREQUEST→DHCPACK）のunicast RENEWで、新たなDISCOVER/OFFERを介さずリース期限が延長される。REBINDまで進んだ場合はDHCPREQUESTがbroadcastで送出される | NOT RUN | — |
 | DIT-06 | サービス再起動後のリース永続化 | `sudo systemctl restart isc-dhcp-server`後に`/var/lib/dhcp/dhcpd.leases`を確認 | 既存のリース内容が保持されている | NOT RUN | — |
-| DIT-07 | リース解放 | クライアントで`sudo dhclient -r <interface>` | DHCPRELEASE送出後、同一IPが即座に他クライアントへ払い出し可能になる | NOT RUN | — |
+| DIT-07 | リース解放 | クライアントで`sudo dhclient -r <interface>`実行後、`sudo cat /var/lib/dhcp/dhcpd.leases`で対象IPの最新エントリを確認 | DHCPRELEASE送出がjournalに記録され、`dhcpd.leases`内の対象IPの最新エントリが`binding state free;`へ遷移している(dhcpdが次にどのクライアントへどのIPを払い出すかは実装依存のため、同一IPが直後の別クライアントへ払い出されることまでは要求しない) | NOT RUN | — |
 | DIT-08 | オプション配布 | クライアントで`ip route`、`resolvectl status`（または`cat /etc/resolv.conf`） | gateway・DNS・ドメイン名が設計値と一致 | NOT RUN | — |
 | DIT-09 | サービス停止復旧 | `sudo systemctl stop isc-dhcp-server`後の検知・復旧 | 検知・自動復旧または手動復旧・正常化までの時間（RTO）を記録 | NOT RUN | — |
 | DIT-10 | 監視統合 | `app_node_exporter_targets`へ`dhcp-01`を追加し`site.yml`再適用後、Prometheusで確認 | `up{host="dhcp-01"}=1` | NOT RUN | — |
@@ -106,7 +106,7 @@ DIT-02・DIT-03・DIT-07・DIT-08・DIT-09は、クライアント役のVMをも
 
 | ID | 試験 | 操作 | 期待結果 | 結果 | 証跡 |
 | --- | --- | --- | --- | --- | --- |
-| DST-01 | UFW | `sudo ufw status verbose` | UDP 67は`192.168.50.0/24`のみ許可、他ネットワークへの許可がない | NOT RUN | — |
+| DST-01 | UFW | `sudo ufw status verbose` | UDP 67の許可がinterface `dhcp_server_interface`（払い出し対象セグメント側）限定、他ネットワークへの許可がない | NOT RUN | — |
 | DST-02 | ファイル権限 | `stat -c '%U:%G %a' /etc/dhcp/dhcpd.conf` | `root:root`、`644`以下 | NOT RUN | — |
 | DST-03 | AppArmor | `sudo aa-status \| grep dhcpd` | `usr.sbin.dhcpd`がenforceモード | NOT RUN | — |
 | DST-04 | SSH hardening | `sudo sshd -T \| grep -E 'permitrootlogin\|passwordauthentication'` | `permitrootlogin no`、`passwordauthentication no` | NOT RUN | — |
@@ -132,7 +132,7 @@ base Linux版の[NW-01〜09](../build-package/09-network-validation-procedure.md
 | DNW-04 | ICMP疎通 | `ping` | 方針どおりの疎通または遮断 | NOT RUN | — |
 | DNW-05 | 待受port（UDP 67、TCP 22、TCP 9100） | `ss -lntup` / `ss -lunp` | 設計どおりの待受のみ | NOT RUN | — |
 | DNW-06 | DORAのpacket capture | `tcpdump -nn -i <interface> udp port 67 or port 68` | DISCOVER/OFFER/REQUEST/ACKの4パケットを観測 | NOT RUN | — |
-| DNW-07 | UFWとkernel rule | `sudo ufw status verbose`、`nft` / `iptables` | UDP 67は`192.168.50.0/24`限定、他は非公開 | NOT RUN | — |
+| DNW-07 | UFWとkernel rule | `sudo ufw status verbose`、`nft` / `iptables` | UDP 67の許可がinterface `dhcp_server_interface`限定、他は非公開 | NOT RUN | — |
 | DNW-08 | クライアント側から見たend-to-end | クライアントVMで`sudo dhclient -v <interface>` | 設計どおりのプール範囲でリースを取得し、gateway・DNS・ドメイン名も一致 | NOT RUN | — |
 | DNW-09 | rogue DHCP非存在の実機確認 | `sudo nmap --script broadcast-dhcp-discover`相当、または応答元DHCPサーバーIPの確認 | 応答するDHCPサーバーが`dhcp-01`のみ | NOT RUN | — |
 

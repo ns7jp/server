@@ -113,7 +113,7 @@ DHCPのDORA実演にはL2ブロードキャストが必要で、既存の[二セ
 - 2回目の適用が`changed=0`になる（NFR-02 / DIT-01の2回目）
 - クライアントVMで`dhclient`実行時に、DISCOVER/OFFER/REQUEST/ACKの4パケット（DORA）をtcpdumpで観測し、`192.168.50.100`〜`.200`の範囲でIPを取得する（DIT-02）
 - [試験仕様書](06-test-specification.md)の必須31 ID（`DUT-01〜05`、`DIT-01〜11`、`DST-01〜06`、`DNW-01〜09`）がすべて`PASS`
-- UFWでUDP 67を`192.168.50.0/24`限定にし、`dhcpd.conf`の権限・AppArmorのenforceモード・SSH hardeningを確認する（DST-01〜04）
+- UFWでUDP 67の待受を払い出し対象interface（`dhcp_server_interface`）限定にし、`dhcpd.conf`の権限・AppArmorのenforceモード・SSH hardeningを確認する（DST-01〜04）
 - 構築直前に、同一セグメントに想定外のDHCPサーバー（rogue DHCP）が存在しないことを確認した記録が残る（NFR-08 / DST-06 / DNW-09）
 - `dhcpd.conf`とリースDBのバックアップ・復元手順を実施し、復元後に新規リースが正常に払い出されることとRTOを記録する（NFR-09 / DIT-11）
 - 中央Prometheus（`monitor-01`）の`app_node_exporter_targets`へ`dhcp-01`を追加し、`up{host="dhcp-01"}=1`を確認する（NFR-13 / DIT-10）
