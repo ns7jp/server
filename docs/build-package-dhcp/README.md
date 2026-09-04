@@ -12,7 +12,7 @@
 
 | 案件 ID | 対象 | 現在の引き渡し判定 |
 | --- | --- | --- |
-| `SM-DHCP-001` | Ubuntu Server 24.04 LTS の検証用 VM 1 台（新規・論理ホスト名 `dhcp-01`）へ isc-dhcp-server を構築し、検証用LANセグメント `192.168.50.0/24` 向けにDHCPv4のリース払い出し（動的プール・固定予約）を提供する | **`NOT READY`** — 引き渡し対象ホストが未指定で、必須試験（`DUT`/`DIT`/`DST`/`DNW`）が `NOT RUN` |
+| `SM-DHCP-001` | Ubuntu Server 24.04 LTS の検証用 VM 1 台（新規・論理ホスト名 `dhcp-01`）へ isc-dhcp-server を構築し、検証用LANセグメント `192.168.50.0/24` 向けにDHCPv4のリース払い出し（動的プール・固定予約）を提供する | **`NOT READY`** — VM/実機での正本実演は未着手。2026-09-04にAI支援セッションのサンドボックスコンテナ上（network namespace + veth + bridgeによるDORA模擬、VM/実機ではない）で`dhcp_server` role単独適用とDORA・固定予約・プール枯渇・リース更新解放・バックアップ復元を実測し、必須31 IDのうち22件`PASS`（[結果票](../evidence/2026-09-04-dhcp-build-validation.md)）。残る9件は`common` role未適用・実systemd/AppArmor/journald不在・`monitor-01`不在という環境制約による`BLOCKED`/`NOT RUN` |
 
 表中の `NOT READY` は、必須の試験が終わっておらず、引き渡せる状態ではないことを表します。
 
@@ -70,13 +70,13 @@ DHCPデーモンには、Ubuntuの`isc-dhcp-server`パッケージを使う`isc-
 | 詳細設計 | [02-detailed-design.md](02-detailed-design.md) | 作成済み |
 | パラメータ設計 | [03-parameter-sheet.md](03-parameter-sheet.md) | 作成済み |
 | ネットワーク設計 | [04-network-ip-plan.md](04-network-ip-plan.md) | 作成済み |
-| 構築 | [05-build-procedure.md](05-build-procedure.md) | 手順作成済み。`dhcp_server` roleは`ansible-lint --offline`（production profile）とAnsible構文チェックをローカルで通過済み（DUT-02, DUT-03）。実機結果は証跡台帳で管理 |
-| 試験 | [06-test-specification.md](06-test-specification.md) | 仕様作成済み・未実施欄は `NOT RUN` |
+| 構築 | [05-build-procedure.md](05-build-procedure.md) | 手順作成済み。`dhcp_server` roleは`ansible-lint --offline`（production profile）とAnsible構文チェックをローカルで通過済み（DUT-02, DUT-03）。2026-09-04にサンドボックスコンテナ上で`dhcp_server` role単独適用を実測（[結果票](../evidence/2026-09-04-dhcp-build-validation.md)）。VM/実機での正本適用は`NOT RUN` |
+| 試験 | [06-test-specification.md](06-test-specification.md) | 原本は`NOT RUN`のまま。実績は[結果票](../evidence/2026-09-04-dhcp-build-validation.md)（必須31 IDのうち22件`PASS`、環境制約により6件`BLOCKED`・3件`NOT RUN`） |
 | 引き渡し | [07-handover-checklist.md](07-handover-checklist.md) | 作成済み |
 | 変更・ロールバック | [08-change-rollback-plan.md](08-change-rollback-plan.md) | 計画・記録様式作成済み。実施結果は `NOT RUN` |
-| ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | 手順作成済み。実施結果は `NOT RUN` |
-| 立ち上げ・受け入れ | [10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md) | 最短手順を作成済み |
-| 作業結果報告 | [11-work-result-report.md](11-work-result-report.md) | 原本作成済み。対象ホストごとの実績は日付付き evidence へ複製して記録 |
+| ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | 手順作成済み。[結果票](../evidence/2026-09-04-network-host-validation-dhcp.md) DNW-01/02/04/05/06/08/09 PASS、DNW-03はNOT RUN、DNW-07はBLOCKED |
+| 立ち上げ・受け入れ | [10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md) | 最短手順を作成済み。VM/実機での実施はまだ |
+| 作業結果報告 | [11-work-result-report.md](11-work-result-report.md) | 原本は未記入のまま保持。[2026-09-04 記入済み版](../evidence/2026-09-04-work-result-SM-DHCP-001.md)（サンドボックス実測、`NOT READY`）あり |
 | ネットワーク結果票 | [DHCP版実機検証テンプレート](../evidence/templates/network-host-validation-dhcp.md) | テンプレート作成済み |
 | 一次切り分け記録 | [トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md) | テンプレート作成済み（既存パックと共用） |
 
@@ -88,22 +88,26 @@ DHCPデーモンには、Ubuntuの`isc-dhcp-server`パッケージを使う`isc-
 | --- | --- | --- |
 | G0 要件確定 | 要件 ID、対象、対象外、受け入れ条件が合意済み | 文書作成済み。実案件での承認は `NOT SET` |
 | G1 設計確定 | 基本・詳細・パラメータ・ネットワーク設計のレビュー完了 | 文書作成済み。実案件での承認は `NOT SET` |
-| G2 構築完了 | `dhcp.yml`の初回適用が成功し、2回目適用で`changed=0`になること | roleは`ansible-lint --offline`・Ansible構文チェックともPASS。対象ホストでの適用は `NOT RUN` |
-| G3 試験完了 | 対象ホストの必須31 ID（`DUT-01〜05`、`DIT-01〜11`、`DST-01〜06`、`DNW-01〜09`）がすべて `PASS` | `NOT READY` |
-| G4 作業完了 | 作業結果報告書に実績、障害、差異、残存リスクを記録 | 原本のみ。実案件報告は `NOT SET` |
+| G2 構築完了 | `dhcp.yml`の初回適用が成功し、2回目適用で`changed=0`になること | roleは`ansible-lint --offline`・Ansible構文チェックともPASS。2026-09-04にサンドボックスコンテナ上で`dhcp_server` role単独適用の冪等性を実測（systemdタスクを除く6タスクが`changed=0`）。VM/実機かつ`common`役割込みの完全な2play適用は`NOT RUN` |
+| G3 試験完了 | 対象ホストの必須31 ID（`DUT-01〜05`、`DIT-01〜11`、`DST-01〜06`、`DNW-01〜09`）がすべて `PASS` | 部分実施 — サンドボックス実測で22/31が`PASS`（[結果票](../evidence/2026-09-04-dhcp-build-validation.md)）。セキュリティ強化・監視統合・VM/実機実演を含む完全な`PASS`は`NOT READY` |
+| G4 作業完了 | 作業結果報告書に実績、障害、差異、残存リスクを記録 | 原本は未記入のまま。[2026-09-04 記入済み版](../evidence/2026-09-04-work-result-SM-DHCP-001.md)（サンドボックス実測分、`NOT READY`）あり |
 | G5 引き渡し | 受領者、日時、未解決事項を記録 | `NOT READY` |
 
 ## 検証環境
 
 基準環境は Ubuntu Server 24.04 LTS の単一ホスト（`dhcp-01`、静的IP`192.168.50.5/24`）です。構築コードは新規role `ansible/roles/dhcp_server/`（`defaults/main.yml`、`meta/main.yml`、`tasks/main.yml`、`handlers/main.yml`、`templates/dhcpd.conf.j2`、`templates/isc-dhcp-server.j2`）と、専用playbook `ansible/playbooks/dhcp.yml`（`hosts: dhcp`グループに対して`common` role → `dhcp_server` roleの順で適用する2 play構成）です。既存の`site.yml`とは独立しています。
 
-ローカルで`ansible-lint --offline`（production profile）を実行し0 failureを確認済み、`ansible-playbook -i inventory/staging.yml playbooks/dhcp.yml --syntax-check`も成功済みです（DUT-02, DUT-03）。CI（`.github/workflows/ansible-check.yml`）にも同等の構文チェックを追加済みですが、molecule対象role一覧（common/docker/nginx/monitoring）には含めていません（`app`/`backup`/`storage`と同様、molecule scenarioは用意していません）。**実ホストへの適用、DORA（DISCOVER/OFFER/REQUEST/ACK）の実演は`NOT RUN`**です。
+ローカルで`ansible-lint --offline`（production profile）を実行し0 failureを確認済み、`ansible-playbook -i inventory/staging.yml playbooks/dhcp.yml --syntax-check`も成功済みです（DUT-02, DUT-03）。CI（`.github/workflows/ansible-check.yml`）にも同等の構文チェックを追加済みですが、molecule対象role一覧（common/docker/nginx/monitoring）には含めていません（`app`/`backup`/`storage`と同様、molecule scenarioは用意していません）。
+
+**2026-09-04にAI支援セッションのサンドボックスコンテナ上で、`dhcp_server` role単独適用とDORA（DISCOVER/OFFER/REQUEST/ACK）実演を実測しました**（[結果票](../evidence/2026-09-04-dhcp-build-validation.md)）。VM/実機ではなくnetwork namespace + veth + 独自bridgeでL2ブロードキャストを模擬した構成で、コードは無改変・isc-dhcp-serverも実バイナリです。DORA・固定予約・プール枯渇・リース更新解放・バックアップ復元は実測`PASS`した一方、`common` role未適用（安全上の理由）と実systemd/AppArmor/journald不在という環境制約により、UFW・AppArmor・SSH hardening・監査ログ・監視統合は未検証のまま残ります。**この記録は本パックの正本（下記の「VM/実機での実演」）を置き換えるものではなく、それを補う追加証跡です。**
 
 新規inventory例は`ansible/inventory/staging.dhcp.local.yml.example`です。コピーして`staging.dhcp.local.yml`として使います（`.gitignore`対象）。`dhcp_server_interface`は既定値が空文字で、払い出し対象セグメント`192.168.50.0/24`へ実際に接続されたNIC名を`ip -br link`で実機確認したうえでinventoryに明示指定する必要があります。
 
 DHCPのDORA実演にはL2ブロードキャストが必要で、既存の[二セグメント障害ラボ](../../labs/network-troubleshooting/README.md)（Docker上の`172.28.10.0/24` / `172.28.20.0/24`）が使うDockerの既定bridgeネットワークでは素直に成立しません（Dockerがコンテナのdhcpdへ実際にDISCOVERを送る構成にはひと手間要るため）。そのため本パックは、Dockerラボではなく**VM/実機での実演を正本**とします。VirtualBoxのHost-OnlyネットワークまたはInternalネットワークで`dhcp-01`とクライアント役VMを同一セグメントに置く立ち上げ手順は[10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md)にまとめています。Dockerベースの払い出しラボは「発展的な設計・将来構想」として言及するにとどめ、未実装です。
 
-ネットワーク実機検証は、本パック専用の[結果票テンプレート](../evidence/templates/network-host-validation-dhcp.md)を使い、「管理端末→`dhcp-01`」「クライアントVM→`dhcp-01`（DORA）」の2方向を確認します。日付付きの結果票（例: `docs/evidence/YYYY-MM-DD-dhcp-build-validation.md`）が保存されるまで`NOT RUN`です。
+上記のDocker既定bridgeとは別に、AI支援セッションのサンドボックスコンテナ（Docker Hub等の外部レジストリへの到達性が制限され、VMも用意できない環境）では、Linuxのnetwork namespace + veth pair + 独自bridgeを使ってDORAのL2ブロードキャストを模擬する第三の方法で2026-09-04に実演しました（[結果票](../evidence/2026-09-04-dhcp-build-validation.md)）。これはVM/実機の正本を置き換えるものではなく、本パックの完了条件（下記）には算入しません。
+
+ネットワーク実機検証は、本パック専用の[結果票テンプレート](../evidence/templates/network-host-validation-dhcp.md)を使い、「管理端末→`dhcp-01`」「クライアントVM→`dhcp-01`（DORA）」の2方向を確認します。VM/実機での日付付きの結果票が保存されるまで`NOT RUN`です（サンドボックスでの代替実施結果は[2026-09-04版](../evidence/2026-09-04-network-host-validation-dhcp.md)を参照）。
 
 ## 完了の定義
 
