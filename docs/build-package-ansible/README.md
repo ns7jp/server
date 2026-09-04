@@ -20,7 +20,7 @@
 
 | 案件 ID | 対象 | 現在の引き渡し判定 |
 | --- | --- | --- |
-| `SM-ANS-001` | 新規VM 1台（論理ホスト名`ans-01`、Ubuntu Server 24.04 LTS基準）へ`common` + `docker` roleを適用し、以後どの案件でも使い回せるOS+コンテナランタイム基盤を構築する。AlmaLinux/Rocky 9（論理ホスト名`ans-el9-01`）はフェーズ2として同一playbookでの対応を設計 | **フェーズ1 `PASS`（ラボ範囲）** — 2026-09-04に手元Hyper-VのVM 1台で必須16 IDをすべて`PASS`（[結果票](../evidence/2026-09-04-ansible-foundation-build.md)）。任意項目のAFNW-06（rate limit）は未実施。フェーズ2（RHEL系実機）は`BLOCKED`（未着手） |
+| `SM-ANS-001` | 新規VM 1台（論理ホスト名`ans-01`、Ubuntu Server 24.04 LTS基準）へ`common` + `docker` roleを適用し、以後どの案件でも使い回せるOS+コンテナランタイム基盤を構築する。AlmaLinux/Rocky 9（論理ホスト名`ans-el9-01`）はフェーズ2として同一playbookでの対応を設計 | **フェーズ1 `PASS`（ラボ範囲）** — 2026-09-04に手元Hyper-VのVM 1台で必須16 IDをすべて`PASS`（[結果票](../evidence/2026-09-04-ansible-foundation-build.md)）。任意項目のAFNW-06（rate limit）は未実施。**フェーズ2（AlmaLinux 9.7実機）も2026-09-04に構築・冪等性・SELinux enforcingを実測`PASS`**（[結果票](../evidence/2026-09-04-ansible-foundation-el9-build.md)）だが、対象VMが以前の用途からの再利用環境のため「新規構築」「最小公開」の証跡としては専用の新規VMでの再実施が必要 |
 
 ```mermaid
 flowchart LR
@@ -39,7 +39,7 @@ flowchart LR
 
 - 文書が「作成済み」であること
 - `foundation.yml`が実行可能なコードとして存在すること
-- 特定の引き渡し対象ホストで受け入れが完了したこと（`ans-01`はフェーズ1主要項目が完了、フェーズ2は未着手）
+- 特定の引き渡し対象ホストで受け入れが完了したこと（`ans-01`はフェーズ1完了。`ans-el9-01`はrole自体の動作は実測済みだが、再利用VMのため「新規構築」の証跡としては別途専用VMでの再実施が必要）
 
 最終判定は[作業結果・引き渡し報告書](11-work-result-report.md)と[引き渡しチェックリスト](07-handover-checklist.md)を使います。
 
@@ -67,8 +67,8 @@ flowchart LR
 | 詳細設計 | [02-detailed-design.md](02-detailed-design.md) | 作成済み |
 | パラメータ設計 | [03-parameter-sheet.md](03-parameter-sheet.md) | 作成済み |
 | ネットワーク設計 | [04-network-ip-plan.md](04-network-ip-plan.md) | 作成済み |
-| 構築（フェーズ1） | [05-build-procedure.md](05-build-procedure.md) | 2026-09-04にHyper-V VMで通しで実施。実機結果は[構築・試験結果票](../evidence/2026-09-04-ansible-foundation-build.md) |
-| 試験 | [06-test-specification.md](06-test-specification.md) | 原本は`NOT RUN`のまま。実績は[構築・試験結果票](../evidence/2026-09-04-ansible-foundation-build.md)（フェーズ1必須16 ID全件PASS、任意のAFNW-06のみ残る） |
+| 構築（フェーズ1/フェーズ2） | [05-build-procedure.md](05-build-procedure.md) | 2026-09-04にHyper-V VM 2台（Ubuntu・AlmaLinux）で通しで実施。実機結果は[フェーズ1結果票](../evidence/2026-09-04-ansible-foundation-build.md) / [フェーズ2結果票](../evidence/2026-09-04-ansible-foundation-el9-build.md) |
+| 試験 | [06-test-specification.md](06-test-specification.md) | 原本は`NOT RUN`のまま。実績は[フェーズ1結果票](../evidence/2026-09-04-ansible-foundation-build.md)（必須16 ID全件PASS、任意のAFNW-06のみ残る）と[フェーズ2結果票](../evidence/2026-09-04-ansible-foundation-el9-build.md) |
 | 引き渡し | [07-handover-checklist.md](07-handover-checklist.md) | 作成済み。ラボ範囲の項目のみ確認 |
 | 変更・ロールバック | [08-change-rollback-plan.md](08-change-rollback-plan.md) | 計画・記録様式作成済み。実行実績は`NOT RUN` |
 | ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | [結果票](../evidence/2026-09-04-ansible-foundation-build.md) AFNW-01〜05 PASS、任意のAFNW-06はNOT RUN |
@@ -85,17 +85,19 @@ flowchart LR
 | G0 要件確定 | 要件ID、対象、対象外、受け入れ条件が合意済み | 文書作成済み。実案件での承認は`NOT SET` |
 | G1 設計確定 | 基本・詳細・パラメータ・ネットワーク設計のレビュー完了 | 文書作成済み。実案件での承認は`NOT SET` |
 | G2（フェーズ1）構築完了 | `ans-01`（Ubuntu）への初回適用が成功し、実績値と差異を記録 | `PASS`（2026-09-04、Hyper-V VM） |
-| G2（フェーズ2）構築完了 | `ans-el9-01`（AlmaLinux/Rocky 9）への初回適用が成功 | 設計のみ。着手時期は`NOT SET` |
+| G2（フェーズ2）構築完了 | `ans-el9-01`（AlmaLinux/Rocky 9）への初回適用が成功 | `PASS`（2026-09-04、AlmaLinux 9.7実機。ただし再利用VM、専用新規VMでの再実施が望ましい） |
 | G3（フェーズ1）試験完了 | フェーズ1必須試験IDがすべて`PASS` | `PASS`（2026-09-04、必須16 ID全件。任意のAFNW-06のみ未実施） |
-| G3（フェーズ2）試験完了 | `AFIT-06`が`PASS` | `BLOCKED`（G2フェーズ2の着手が前提） |
+| G3（フェーズ2）試験完了 | `AFIT-06`が`PASS` | `PASS`（2026-09-04、構築・冪等性・SELinux enforcing実測。AFST-03相当の最小公開は再利用VMのため対象外） |
 | G4 作業完了 | 作業結果報告書に実績、障害、差異、残存リスクを記録 | `PASS`（[2026-09-04 報告書](../evidence/2026-09-04-work-result-SM-ANS-001.md)） |
 | G5 引き渡し | 受領者、日時、鍵の受け渡し、未解決事項を記録 | ラボ範囲で完了（引き渡し元/先とも本人）。組織環境への引き渡しは`NOT RUN` |
 
 ## 検証環境
 
-基準環境はUbuntu Server 24.04 LTSの単一ホスト（論理ホスト名`ans-01`）です。`common` / `docker`両roleはAlmaLinux/Rocky 9にも対応するコードとして実装済みで、Moleculeの`el9` scenarioでコンテナ検証していますが、実VMでの構築はフェーズ2として区分し、現時点では未着手です。単一ホストの検証構成であり、複数ホストへの同時適用や高可用性は対象外です。
+基準環境はUbuntu Server 24.04 LTSの単一ホスト（論理ホスト名`ans-01`）です。`common` / `docker`両roleはAlmaLinux/Rocky 9にも対応するコードとして実装済みで、Moleculeの`el9` scenarioでコンテナ検証しています。単一ホストの検証構成であり、複数ホストへの同時適用や高可用性は対象外です。
 
 2026-09-04に、Windows上のHyper-V（Quick Create、Ubuntu 24.04.4 LTS gallery image）にVM 1台を立て、同じホストPC上のWSL2をAnsible controllerとしてフェーズ1を実施しました（[結果票](../evidence/2026-09-04-ansible-foundation-build.md)）。VMイメージにnetplan設定が無くDHCPv4が要求されない、`common`roleが作る管理者アカウントに既定のままだとsudoが使えない、という2件の事実を実行して初めて発見し、前者は運用上の回避、後者はコード側の欠陥修正（[欠陥台帳](../evidence/defects-found.md)#30）で対応しました。ホストPCとVMが同一物理機であるため、独立した管理端末や組織DNSからの検証は含みません。
+
+同日、フェーズ2としてHyper-V VM（世代2、AlmaLinux 9.7）へも同じ`foundation.yml`を`--limit`で適用しました（[結果票](../evidence/2026-09-04-ansible-foundation-el9-build.md)）。ここでも実行して初めて欠陥が1件見つかり（`container_manage_cgroup` SELinux booleanの導入順序、[欠陥台帳](../evidence/defects-found.md)#31）、修正後に構築・冪等性・SELinux enforcing・dnf-automaticを実測`PASS`しました。ただしこのVMは以前の用途（Zabbixサーバー等）から再利用した環境であり、他サービスが既に稼働していたため、「まっさらな新規ホストへの構築」「最小公開（SSHのみ）」の証跡としては専用の新規VMでの再実施が必要です。
 
 ## 完了の定義
 

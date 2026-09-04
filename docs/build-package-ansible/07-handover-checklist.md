@@ -44,8 +44,8 @@
 
 | 項目 | 内容 | 解消条件 |
 | --- | --- | --- |
-| RHEL系実機構築 | AlmaLinux/Rocky 9への`foundation.yml`適用が未実施 | フェーズ2用VMの用意、[05-build-procedure.md 手順9](05-build-procedure.md#9-フェーズ2-almalinuxrocky-9への適用未着手)の実施 |
-| `foundation.yml`合成後のCI検証 | 現在のCIは各roleのMolecule scenarioを個別に検証しており、`common`+`docker`を組み合わせた`foundation.yml`自体の実コンテナ収束・冪等性の自動検証はCIに無い。2026-09-04に実VM（Hyper-V）で人手による実測は完了している（[結果票](../evidence/2026-09-04-ansible-foundation-build.md)） | `.github/workflows/ansible-integration.yml`への追加を検討 |
+| RHEL系実機構築（専用新規VM） | AlmaLinux/Rocky 9への`foundation.yml`適用は2026-09-04に実施したが、対象VMが以前の用途からの再利用環境だったため、「新規構築」「最小公開」の証跡としては専用の新規VMでの再実施が必要（[結果票](../evidence/2026-09-04-ansible-foundation-el9-build.md)参照） | 専用の新規AlmaLinux/Rocky 9 VMを用意し、[05-build-procedure.md 手順9](05-build-procedure.md#9-フェーズ2-almalinuxrocky-9への適用)を再実施 |
+| `foundation.yml`合成後のCI検証 | 現在のCIは各roleのMolecule scenarioを個別に検証しており、`common`+`docker`を組み合わせた`foundation.yml`自体の実コンテナ収束・冪等性の自動検証はCIに無い。2026-09-04に実VM（Hyper-V、Ubuntu/AlmaLinux両方）で人手による実測は完了している（[結果票](../evidence/2026-09-04-ansible-foundation-build.md) / [フェーズ2結果票](../evidence/2026-09-04-ansible-foundation-el9-build.md)） | `.github/workflows/ansible-integration.yml`への追加を検討 |
 | rate limit発火確認（AFNW-06、任意項目） | 対象ホストへの負荷を伴うため2026-09-04の実機セッションでは見送った | 負荷を許容できる場面で実施 |
 
 これらは引き渡しを妨げる欠陥ではなく、[00-requirements.md](00-requirements.md#5-制約と対象外)に明記した対象外・未実装事項です。引き渡し先が誤って「全機能実装済み」と解釈しないよう、この表をそのまま共有します。

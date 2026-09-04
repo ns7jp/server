@@ -123,7 +123,7 @@ molecule test -s el9
 
 検証専用ホストの場合は、証跡を保存したのちに破棄して構いません。永続ホストとして引き渡す場合は、[10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md)へ進みます。
 
-## 9. フェーズ2: AlmaLinux/Rocky 9への適用（未着手）
+## 9. フェーズ2: AlmaLinux/Rocky 9への適用
 
 手順自体は手順2〜6と同一です。`inventory/foundation.local.yml.example`の`ans-el9-01`をコメントアウトから外し、SSHユーザーを対象OSの既定ユーザー（例: `rocky`）へ変更します。
 
@@ -132,4 +132,6 @@ ansible-playbook -i inventory/foundation.local.yml playbooks/foundation.yml --li
 ansible-playbook -i inventory/foundation.local.yml playbooks/foundation.yml --limit ans-el9-01
 ```
 
-`common` / `docker`両roleは`ansible_os_family == 'RedHat'`の分岐を実装済みで、Moleculeの`el9` scenarioでコンテナ検証していますが、**実VMへ適用した実績はまだありません**。フェーズ2着手時は、この手順書に沿って実行し、結果を日付付きevidenceへ記録してから[試験仕様書](06-test-specification.md)のAFIT-06を更新してください。
+2026-09-04にAlmaLinux 9.7実機（`ans-el9-01`）へ適用し、構築・冪等性・SELinux enforcingを実測`PASS`しました（[結果票](../evidence/2026-09-04-ansible-foundation-el9-build.md)）。実行して初めて、`container_manage_cgroup` SELinux booleanが`docker` role適用前（`container-selinux`未導入時点）だと設定できない欠陥が見つかり、修正済みです（[欠陥台帳](../evidence/defects-found.md)#31）。
+
+ただしこの実測に使ったVMは以前の用途からの再利用環境（Zabbixサーバー等が既に稼働）だったため、「まっさらな新規ホストへの構築」「最小公開（SSHのみ）」の証跡としては、専用の新規VMでの再実施が必要です。role自体の動作・冪等性・OS横断対応の実証としては完了しています。

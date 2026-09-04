@@ -25,7 +25,7 @@
 # enforcing のまま Docker の bind mount を使うと、コンテナからホスト側
 # ディレクトリを読めずに配備が失敗する。compose 側で :z / :Z を付けるか、
 # container_manage_cgroup などの boolean を有効化する必要がある。
-# 2026-09-04にRocky Linux 9実機で判明した実欠陥として、この boolean は
+# 2026-09-04にAlmaLinux 9実機で判明した実欠陥として、この boolean は
 # container-selinux パッケージが提供するポリシーモジュールに属し、
 # common role の実行時点（docker role 適用前）ではそのパッケージがまだ
 # 入っていないホストでは "boolean is not defined in persistent policy" で
