@@ -14,6 +14,8 @@
 
 構築は 2 段階のフェーズに分かれます。フェーズ 1(ホスト単体構築)は「済(手動)」の範囲で monitor-win-01 単体として完結し、フェーズ 2(中央監視統合)は上記「未実装」3 点の解消まで `BLOCKED` として扱います。
 
+> **2026-09-04 追記:** `prometheus.yml.j2` の `blackbox-probe-health` job を `app_blackbox_probe_targets` 変数(`ansible/roles/app/defaults/main.yml`)で汎用化し、IIS の health エンドポイント等を node_exporter targets と同じ「1 行足すだけ」の形で probe 対象へ追加できるようにしました(FR-04)。上記「未実装」3 点(Windows 対応 Ansible role、実ネットワーク接続・Firewall 許可、ログ集約経路)には含まれない別の制約でしたが、コードとしては解消済みです。ただし対象ホスト(monitor-win-01)自体がまだ構築されておらず、実機 windows_exporter/IIS への scrape・probe 成功実績もまだ無いため、`WIT-05` の結果は引き続き `NOT RUN` です(「コードが実装済みであること」と「実機で検証済みであること」は別、[検証証跡台帳](../evidence/README.md)の原則どおり)。詳細は[試験仕様書・結果票](06-test-specification.md)を参照してください。
+
 ## 2. 案件概要
 
 | 項目 | 内容 |
@@ -35,7 +37,7 @@
 | FR-01 | 運用者が WinRM(HTTPS)経由で Windows Server を管理できること | WIT-01 | [構築手順書](05-build-procedure.md)(WinRM HTTPS リスナー設定) |
 | FR-02 | IIS の監視対象サイトが稼働し、health 用エンドポイントを提供すること | WIT-04 | [構築手順書](05-build-procedure.md)(IIS Web-Server 機能) |
 | FR-03 | CPU/memory/disk などのホストメトリクスを windows_exporter 経由で中央 Prometheus が収集できること(フェーズ 2、要 Docker ホスト↔対象ホスト間の実接続・Firewall 許可) | WIT-03 | `ansible/roles/app/defaults/main.yml`(`app_node_exporter_targets`)、`ansible/roles/app/templates/prometheus.yml.j2`、Docker ホストと対象 Windows ホストの実 L3 到達性および windows_exporter 側 Firewall(Docker ホストの実 IP 向けの許可が必要) |
-| FR-04 | IIS サイトの HTTP 到達性を中央の blackbox-exporter で probe できること(フェーズ 2、要テンプレート拡張) | WIT-05 | `ansible/roles/app/templates/prometheus.yml.j2`(`blackbox-probe-health` ジョブの汎用化が必要) |
+| FR-04 | IIS サイトの HTTP 到達性を中央の blackbox-exporter で probe できること(フェーズ 2) | WIT-05 | `ansible/roles/app/templates/prometheus.yml.j2`(`blackbox-probe-health` ジョブを `app_blackbox_probe_targets` で汎用化済み。実機ホストでの probe 成功実績は `NOT RUN`) |
 | FR-05 | Windows Event Log/IIS ログを既存 Loki へ集約し Grafana から検索できること(フェーズ 2、要 Alloy for Windows 導入) | WIT-06 | [詳細設計書](02-detailed-design.md)(Grafana Alloy for Windows は未導入、設計のみ) |
 | FR-06 | サービス停止を検知し、復旧と正常性確認までの時間を記録できること(D-1 相当) | WIT-08 | [構築手順書](05-build-procedure.md)、[試験仕様書・結果票](06-test-specification.md) |
 | FR-07 | 管理端末から Windows Server までの名前解決、経路、待受、HTTP、Firewall を確認できること | WNW-01〜09, WST-01, WST-04 | [ネットワーク実機検証手順](09-network-validation-procedure.md) |

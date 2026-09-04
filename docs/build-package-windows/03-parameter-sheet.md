@@ -2,7 +2,7 @@
 
 値の正本は、フェーズ1(ホスト単体構築)については本パックのPowerShell手順([構築手順書](05-build-procedure.md))、フェーズ2(中央監視統合)については中央側の既存Ansible変数(`ansible/roles/app/defaults/main.yml`の`app_node_exporter_targets`)です。この表はレビューと引き渡し用の索引であり、中央監視host(論理名 monitor-01)側の設計値は[Linux版パラメータシート](../build-package/03-parameter-sheet.md)を正本とします。
 
-「設計値」は本パックの設計文書またはコードから確認できる値、「実績値」は対象ホストでコマンド出力を採録した値です。実績欄の`NOT RUN`を、設計値から推測して埋めません。フェーズ2の項目は[要件定義書](00-requirements.md)に記載の3点の未実装事項が解消するまで`BLOCKED`であり、値が決まっていても実行結果としては数えません。
+「設計値」は本パックの設計文書またはコードから確認できる値、「実績値」は対象ホストでコマンド出力を採録した値です。実績欄の`NOT RUN`を、設計値から推測して埋めません。フェーズ2の項目は[要件定義書](00-requirements.md)に記載の未実装事項が解消するまで`BLOCKED`または`NOT RUN`であり、値が決まっていても実行結果としては数えません。
 
 ## 文書管理
 
@@ -119,12 +119,12 @@ windows_exporterは実機決定時にバージョンとSHA256ハッシュをこ�
 
 ## 監視・ログ
 
-フェーズ2(中央監視統合)は、[要件定義書](00-requirements.md)に記載の3点の未実装事項が解消するまで`BLOCKED`です。値自体は設計として決まっていますが、実行結果としては数えません。
+フェーズ2(中央監視統合)のうち、ログ集約(WIT-06)は[要件定義書](00-requirements.md)に記載の未実装事項(Grafana Alloy for Windows未導入)が解消するまで`BLOCKED`です。windows_exporter scrape(WIT-03)はDockerホスト↔対象ネットワーク間の実L3到達性・windows_exporter側Firewall許可(いずれも`NOT SET`)が確立するまで`BLOCKED`です。blackbox probe(WIT-05)はコード側の制約(`prometheus.yml.j2`のprobe対象汎用化)が解消済みのため、対象ホスト未構築による`NOT RUN`です。値自体は設計として決まっていますが、実行結果としては数えません。
 
 | 項目 | 設定値(設計) | 状態 | 正本 |
 | --- | --- | --- | --- |
 | windows_exporter scrape interval | 中央の既存`linux-node` jobの設定(15秒)を流用予定 | `BLOCKED`(WIT-03。Dockerホスト↔対象ネットワーク間の実接続・windows_exporter側Firewall許可が確立するまで) | `ansible/roles/app/defaults/main.yml`の`app_node_exporter_targets` |
-| blackbox probe interval | 中央の既存blackbox jobの設定(30秒)を流用予定 | `BLOCKED`(WIT-05。`prometheus.yml.j2`のprobe対象汎用化が未実装のため) | [Linux版パラメータシート](../build-package/03-parameter-sheet.md) |
+| blackbox probe interval | 中央の既存blackbox jobの設定(30秒)を流用予定 | `NOT RUN`(WIT-05。`prometheus.yml.j2`の`app_blackbox_probe_targets`によるprobe対象汎用化は実装済み。対象ホスト未構築のため未実施) | [Linux版パラメータシート](../build-package/03-parameter-sheet.md) |
 | ログ集約 | Grafana Alloy for Windows経由で既存Lokiへ集約する設計のみ | `BLOCKED`(WIT-06。Alloy for Windows未導入のため) | [詳細設計書](02-detailed-design.md) |
 | 可用性SLO / latency SLO | Windows対象ホスト個別の数値目標は未設定 | `NOT SET`(フェーズ2有効化後に既存[SLO](../slo.md)へ統合予定) | — |
 

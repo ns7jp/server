@@ -49,6 +49,8 @@ Linux 版が Debian 系 / RHEL 系でツール（apt/dnf、ufw/firewalld 等）�
 
   解消後は、`ansible/roles/app/defaults/main.yml` の `app_node_exporter_targets` 変数へ Windows ホストの address/host/environment を 1 行追加し、中央 host 側で `ansible-playbook site.yml` を再適用するだけで scrape を有効化できます（この変数はもともと「監視サーバー 1 台が N 台の node_exporter を scrape する」ための汎用機構で、`ansible/roles/app/templates/prometheus.yml.j2` が `linux-node` という 1 つの Prometheus job に for ループで target を展開しており、windows_exporter も同じ形（address:port + host label）で追加できるためです）。
 
+  > **2026-09-04 追記（実装済み）:** 上記 3 点とは別に、blackbox probe 対象が汎用化されておらず IIS を追加できないという制約（FR-04、WIT-05）を解消しました。`prometheus.yml.j2` の `blackbox-probe-health` job を `app_blackbox_probe_targets` 変数で汎用化し、node_exporter targets と同じ「1 行足すだけ」の形で IIS の health エンドポイント等を probe 対象へ追加できるようにしています（`ansible/roles/app/defaults/main.yml` 参照）。上記 3 点(Ansible role、実L3到達・Firewall許可、ログ集約経路)には変更ありません。**この時点ではコード実装のみで、実機 Windows Server・IIS に対する probe 成功の実測はまだありません**（対象ホスト monitor-win-01 自体が未構築のため）。`WIT-05` は `NOT RUN` のまま、[試験仕様書・結果票](06-test-specification.md)で実施・記録します。
+
 ### 3.2 構成図
 
 ```mermaid
@@ -79,14 +81,14 @@ flowchart LR
     end
 
     WinExp -.->|"フェーズ2: scrape targets追加\nBLOCKED: 実L3到達・Firewall許可が未検証"| Prom
-    BB -.->|"フェーズ2: HTTP probe\nBLOCKED: prometheus.yml.j2 未対応"| IIS
+    BB -.->|"フェーズ2: HTTP probe (app_blackbox_probe_targets実装済み)\n対象host未構築のためNOT RUN"| IIS
     Alloy -.->|"フェーズ2: ログpush\n未実装（Alloy未導入）"| Loki
 
     classDef future stroke-dasharray: 4 3;
     class Alloy future;
 ```
 
-実線は現時点（フェーズ1）で成立する経路、点線はフェーズ2で構築予定の経路（現状は設計のみで `NOT RUN`/`BLOCKED`）を示します。Windows Defender Firewall のルール自体（windows_exporter・IIS への許可）はフェーズ1の「済（手動）」範囲で設定しますが、中央 Prometheus / blackbox-exporter からの実際の到達は 3.1 に記載した未実装事項が解消するまで成立しません。
+実線は現時点（フェーズ1）で成立する経路、点線はまだ実機での到達・動作が確認できていない経路を示します。WinExp→Promは、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)がいずれも`NOT SET`のため`BLOCKED`のままです。BB→IISはコード(`prometheus.yml.j2`の`app_blackbox_probe_targets`)としては実装済みですが、対象ホスト monitor-win-01 自体が未構築のため `NOT RUN` のまま点線としています。Alloy→Loki は 3.1 に記載のとおり未実装（`BLOCKED`）です。Windows Defender Firewall のルール自体（windows_exporter・IIS への許可）はフェーズ1の「済（手動）」範囲で設定します。
 
 ## 4. 非機能要件
 
@@ -115,7 +117,7 @@ flowchart LR
 本書の受け入れ条件は次のとおりです。
 
 - フェーズ1必須試験（WUT-01, WUT-02, WUT-05, WIT-01, WIT-02, WIT-04, WIT-08, WIT-09, WIT-10, WST-01〜WST-06, WNW-01〜WNW-09）がすべて `PASS` していること。
-- フェーズ2対象試験（WIT-03, WIT-05, WIT-06, WIT-07, WIT-11）は、3.1 に記載した 3 点の未実装事項が解消するまで `BLOCKED` として明記され、理由と解除条件が記録されていること。
+- フェーズ2対象試験のうち、`WIT-03`(host metrics scrape)・`WIT-07`(alert通知)・`WIT-11`(複数ターゲットscrape、いずれもWIT-03の仕組みに依存)・`WIT-06`(ログ集約)は 3.1 に記載した未実装3点(Windows対応Ansible role、Dockerホスト↔対象Windowsホスト間の実L3到達性・windows_exporter側Firewall許可、Grafana Alloy for Windows未導入)が解消するまで `BLOCKED` として明記され、理由と解除条件が記録されていること。`WIT-05`(blackbox probe)は、`prometheus.yml.j2` の `app_blackbox_probe_targets` によるprobe対象汎用化(FR-04)がコードとしては解消済みのため、対象ホスト monitor-win-01 が構築され次第 `NOT RUN` から実施できる状態であることが記録されていること(Ansible Windows role が無いため対象ホスト自体の構築は引き続き手動 PowerShell が前提)。
 - 実行日時、環境、ホストのビルド番号（`winver` または `Get-ComputerInfo` の `OsBuildNumber`）、実行コマンド、実出力、判定が証跡として保存されていること。
 - 未解決事項、秘密値（証明書・パスワード）の受け渡し方法、ロールバック方法が[作業結果・引き渡し報告書](11-work-result-report.md)に記録されていること。
 
