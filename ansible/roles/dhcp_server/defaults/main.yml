@@ -51,4 +51,14 @@ dhcp_server_reservations: []
 # UDP 67 (DHCPサーバーの待受port) は、送信元CIDRではなく dhcp_server_interface
 # （払い出し対象セグメント側interface）で許可範囲を絞る。DHCPDISCOVERの送信元は
 # クライアントがまだIPを持たないため 0.0.0.0 であり、送信元CIDRでは絞れない。
+#
+# 実機確認(2026-09-04、docs/evidence/2026-09-04-dhcp-build-validation.md参照):
+# isc-dhcp-server（dhcpd）はLinux上でinterfaceに直結したraw socket(LPF)経由で
+# DHCPパケットを受信するため、netfilter（iptables/UFW）のINPUT chainを経由
+# しない。つまりこのUFW許可ruleはdhcpdの受信自体を制御していない
+# （実際にiptablesでこのruleより先にDROPしても、dhcpdは変わらず受信・応答した）。
+# udp/67の受信interfaceを実際に絞っているのは/etc/default/isc-dhcp-serverの
+# INTERFACESv4（後述のisc-dhcp-server.j2で dhcp_server_interface から生成）で
+# あり、このUFW ruleは多層防御・意図の明示として維持する（他プロセスや将来の
+# 構成変更に対する保険にはなる）。
 dhcp_server_manage_firewall: true

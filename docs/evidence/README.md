@@ -88,6 +88,7 @@ main `5480662`、common / docker role の el9 scenario ともに成功）。
 | AD DC（`ad-dc01`）の System State 復元演習 | ✅ [2026-09-02](2026-09-02-ad-restore-drill.md)：バックアップ→目印作成→DSRM→`wbadmin systemstaterecovery`→目印消失を確認。復元 **15分29秒**、復旧全体約40分。演習中に DC の強制停止(差分チェーン上の I/O 停止)と、GPO がレジストリ編集を上書きしていた欠陥を発見・解消(LAB-11〜15) |
 | AD DC（`ad-dc01`）の作業結果・引き渡し報告 | ✅ [2026-09-02 SM-AD-001](2026-09-02-work-result-SM-AD-001.md)：計画対実績、試験集計 31/31 PASS + 1 BLOCKED、設計差異10項目、障害10件(LAB-01〜10)、残存リスク、引き渡し物、受領判定。ラボ範囲の引き渡しで、組織環境向けではない |
 | AD DC（`ad-dc01`）の実機ネットワーク検証 ANW-01〜09 | ✅ [2026-09-01〜02](2026-09-01-network-host-validation-ad.md)：手元Hyper-V上のWindows Server 2022評価版VMと、ホストPCを管理端末として **9/9 PASS**。手順書の誤り4件（OU名衝突、pktmon構文、Firewallグループ名のロケール依存、`DefaultInboundAction`の表示）を実機で発見し同じPRで修正。LDAPS(636/3269)が設計と異なり待受した原因も特定。組織DNS・実ドメインメンバー・中央Prometheusからのscrapeは**NOT RUN** |
+| DHCPサーバー（`dhcp-01`相当）の構築・試験 DUT-01〜05 / DIT-01〜09,11 / DST-01,02,04,06 / DNW-01,02,04〜09 | ✅ [2026-09-04](2026-09-04-dhcp-build-validation.md)・[ネットワーク結果票](2026-09-04-network-host-validation-dhcp.md)：AI支援セッションのサンドボックスコンテナ内のnetwork namespaceラボ（[`labs/dhcp-lab/`](../../labs/dhcp-lab/)）で31 ID中 **26 ID PASS**（新規構築・冪等性、DORA実測、固定予約、プール枯渇101台、RENEW(unicast)、再起動後のリース永続化、リース解放、停止復旧RTO≈9秒、バックアップ復元RTO≈24秒、rogue DHCP確認を含む）。DIT-10・DST-03・DST-05・DNW-03はサンドボックス制約で**SKIP-ENV**。実行して初めて3件の欠陥・仕様ギャップを発見（`common` roleの`hwclock`パッケージ欠落、isc-dhcp-serverの300秒lease-timeクランプ、UFWがdhcpdのraw socket受信を実際には制御していない）。**独立した物理／VPSホストでの受け入れは`NOT RUN`** |
 | AlmaLinux / Rocky 9 の Molecule `el9` シナリオ | ✅ [2026-08-25](https://github.com/ns7jp/server/actions/runs/32811100007)：common / docker 両 role の el9 scenario が成功。コンテナ上の検証で、実機ホストへの適用ではない |
 | AlmaLinux / Rocky 9 実機への `site.yml` 適用 | ❌ **NOT RUN**（role は el9 コンテナで検証済み） |
 | B-1 ディスク設計・LVM 拡張演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-1.md)：**5 PASS / 0 FAIL**。初回適用・冪等性・ENOSPC 再現・PV 追加による online 拡張（220M→457M、mount 維持）を実測。安全装置テスト（`storage-guard-test.sh`、7 ケース）は[2026-08-25](https://github.com/ns7jp/server/actions/runs/32816412328)、`full-stack-e2e` の ephemeral VM（device-mapper あり）で `run-full-stack.sh` 内 ID `ST-06` として実行し PASS。証跡本体（`storage-guard-test.log` / `*-B-1-guard.md`）は当該 run の artifact に含まれる |
@@ -243,6 +244,7 @@ repository内で完結する構成commit / 設定rollback rehearsalは採録済�
 | 二セグメント通信障害 | `docs/evidence/YYYY-MM-DD-network-drill.md` |
 | Linux 実ホスト network / UFW | `docs/evidence/YYYY-MM-DD-network-host-validation.md` |
 | AD DC 実ホスト network / Firewall | `docs/evidence/YYYY-MM-DD-network-host-validation-ad.md` |
+| DHCPサーバー実ホスト network / Firewall | `docs/evidence/YYYY-MM-DD-network-host-validation-dhcp.md` |
 | 構成commit / 設定rollback rehearsal | `docs/evidence/YYYY-MM-DD-change-<ID>.md` |
 | 仮説検証を含む一次切り分け | `docs/evidence/YYYY-MM-DD-troubleshooting-<slug>.md` |
 | スクリーンショット | `docs/evidence/screenshots/<kind>_<commit>_<yyyymmdd>.png` |
@@ -258,6 +260,7 @@ repository内で完結する構成commit / 設定rollback rehearsalは採録済�
 | Molecule フル実行 | [templates/molecule.md](templates/molecule.md) |
 | Linux 実ホスト network / UFW | [templates/network-host-validation.md](templates/network-host-validation.md) |
 | AD DC 実ホスト network / Firewall | [templates/network-host-validation-ad.md](templates/network-host-validation-ad.md)（[記入済み例: 2026-09-01](2026-09-01-network-host-validation-ad.md)） |
+| DHCPサーバー実ホスト network / Firewall | [templates/network-host-validation-dhcp.md](templates/network-host-validation-dhcp.md)（[記入済み例: 2026-09-04](2026-09-04-network-host-validation-dhcp.md)） |
 | 仮説 → コマンド → 結果 → 学び | [templates/troubleshooting-worklog.md](templates/troubleshooting-worklog.md)（[記入例](templates/troubleshooting-worklog-example.md)あり） |
 | 作業結果・引き渡し報告 | [../build-package/11-work-result-report.md](../build-package/11-work-result-report.md) |
 | D-1 プロセスダウン | [../drills/logs/TEMPLATE-D-1-process-down.md](../drills/logs/TEMPLATE-D-1-process-down.md) |

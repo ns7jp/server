@@ -7,22 +7,22 @@
 | 項目 | 状態 |
 | --- | --- |
 | 文書パック | 作成済み |
-| 単体・構成試験 DUT-01〜05 | `NOT RUN` |
-| 新規構築・冪等性 DIT-01 | `NOT RUN`（対象host未指定。role自体は`ansible-lint --offline`production profileとAnsible構文チェックがPASS済み） |
-| DORA実機確認 DIT-02 / 固定予約 DIT-03 | `NOT RUN` |
-| プール枯渇 DIT-04 / リース更新 DIT-05 / 再起動後のリース永続化 DIT-06 / リース解放 DIT-07 | `NOT RUN` |
-| オプション配布（gateway・DNS・ドメイン名）DIT-08 | `NOT RUN` |
-| サービス停止復旧 DIT-09 | `NOT RUN` |
-| 監視統合（node_exporter scrape）DIT-10 | `NOT RUN` |
-| バックアップ・復元 DIT-11 | `NOT RUN` |
-| セキュリティ試験 DST-01〜06（rogue DHCP確認 DST-06を含む） | `NOT RUN` |
-| 対象host/管理端末の network DNW-01〜09 | `NOT RUN` |
+| 単体・構成試験 DUT-01〜05 | サンドボックスラボで全件`PASS`（[結果票](../evidence/2026-09-04-dhcp-build-validation.md)）。独立した実ホストでは`NOT RUN` |
+| 新規構築・冪等性 DIT-01 | サンドボックスラボで`PASS`（初回`failed=0`、2回目`changed=0`）。独立した実ホストでは`NOT RUN` |
+| DORA実機確認 DIT-02 / 固定予約 DIT-03 | サンドボックスラボで`PASS`。独立した実ホストでは`NOT RUN` |
+| プール枯渇 DIT-04 / リース更新 DIT-05 / 再起動後のリース永続化 DIT-06 / リース解放 DIT-07 | サンドボックスラボで`PASS`（DIT-05はRENEW/unicastのみ実測、REBIND分岐は未観測。詳細は[結果票](../evidence/2026-09-04-dhcp-build-validation.md)）。独立した実ホストでは`NOT RUN` |
+| オプション配布（gateway・DNS・ドメイン名）DIT-08 | サンドボックスラボで`PASS`。独立した実ホストでは`NOT RUN` |
+| サービス停止復旧 DIT-09 | サンドボックスラボで`PASS`（手動RTO ≈ 9秒）。独立した実ホストでは`NOT RUN` |
+| 監視統合（node_exporter scrape）DIT-10 | サンドボックスに`monitor-01`が無いため`SKIP-ENV`。独立した実ホストでは`NOT RUN` |
+| バックアップ・復元 DIT-11 | サンドボックスラボで`PASS`（RTO ≈ 24秒）。独立した実ホストでは`NOT RUN` |
+| セキュリティ試験 DST-01〜06（rogue DHCP確認 DST-06を含む） | サンドボックスラボでDST-01・02・04・06が`PASS`、DST-03（AppArmor）・DST-05（監査ログ）は`SKIP-ENV`。独立した実ホストでは`NOT RUN` |
+| 対象host/管理端末の network DNW-01〜09 | サンドボックスラボでDNW-03（DNS）以外`PASS`（[ネットワーク結果票](../evidence/2026-09-04-network-host-validation-dhcp.md)）。独立した実ホストでは`NOT RUN` |
 | 構成commit / 設定rollback rehearsal | `NOT RUN`（対象host未指定） |
 | 作業結果報告書 | 原本作成済み。対象ホストの報告は `NOT SET` |
-| 必須試験完了（DUT/DIT/DST/DNW 合計31 ID） | `NOT READY` |
+| 必須試験完了（DUT/DIT/DST/DNW 合計31 ID） | サンドボックスラボで26 ID `PASS` / 4 ID `SKIP-ENV`。独立した実ホストでは`NOT READY` |
 | 受領 | `NOT SET` |
 
-`dhcp_server` roleと`dhcp.yml`playbookが実装済みで静的チェックがPASSしていることは、未指定の引き渡し対象host（`dhcp-01`に相当する実機）を受領可能と判定する材料にはしません。[試験仕様書](06-test-specification.md)を対象hostで実施した日付付き結果票（[記録テンプレート](../evidence/templates/network-host-validation-dhcp.md)を含む）を確認してから、この表を更新します。DST-06（rogue DHCP確認）は[構築手順書](05-build-procedure.md)3.2節の適用前確認と、[ネットワーク実機検証手順](09-network-validation-procedure.md)のDNW-09（構築後の再確認）の両方が揃って初めて完了とみなします。
+`dhcp_server` roleと`dhcp.yml`playbookが実装済みで静的チェックがPASSしていることは、未指定の引き渡し対象host（`dhcp-01`に相当する実機）を受領可能と判定する材料にはしません。サンドボックスラボでの実測（上表）も、**独立した物理／VPSホストでの受け入れの代替にはしません**。[試験仕様書](06-test-specification.md)を対象hostで実施した日付付き結果票（[記録テンプレート](../evidence/templates/network-host-validation-dhcp.md)を含む）を確認してから、この表を更新します。DST-06（rogue DHCP確認）は[構築手順書](05-build-procedure.md)3.2節の適用前確認と、[ネットワーク実機検証手順](09-network-validation-procedure.md)のDNW-09（構築後の再確認）の両方が揃って初めて完了とみなします。
 
 ## 構成と状態
 
