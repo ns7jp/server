@@ -20,7 +20,7 @@
 
 | 区分 | 件数 |
 | --- | --- |
-| 総数 | 29 |
+| 総数 | 30 |
 | うち **偽 PASS**（壊れているのに合格と判定していた） | 6 |
 | うち **証跡が壊れる / 残らない** | 5 |
 | うち **一度も起動・実行できていなかった** | 4 |
@@ -64,6 +64,7 @@
 | 27 | el9 の Molecule scenario が role 本体のタスクへ到達する前（Gathering Facts の時点）で毎回失敗する。`sudo: PAM account management error: Authentication service cannot retrieve authentication info`。**common / docker 両 role で再現し、2 回連続で再現**（flake ではない） | ansible-lint・molecule scenario の構文検査・syntax-check のいずれも捕まえない。実行しないと出ない | 2026-08-25 に `ansible-integration.yml` を el9 で初めて実行 | 対象イメージで動かない | [#98](https://github.com/ns7jp/server-monitor/pull/98) |
 | 28 | RHEL 系で `curl` パッケージのインストールが dnf の依存解決で失敗する。AlmaLinux / Rocky の最小構成イメージが同梱する `curl-minimal` と provides が衝突する（`package curl-minimal ... conflicts with curl ... from baseos`）。common role・docker role の両方で同じ型を踏んでいた | 同上。パッケージの実インストールでしか出ない | 同上（#27 の修正後に到達した次のエラー） | 対象 OS で動かない | [#98](https://github.com/ns7jp/server-monitor/pull/98) |
 | 29 | `sshd -t` によるドロップイン検証が、ホスト鍵が 1 つも無い状態で必ず失敗する（`sshd: no hostkeys available -- exiting`）。`openssh-server` インストール直後の最小構成コンテナでは鍵生成サービスがまだ走っていない | 同上。ホスト鍵が既にある開発環境では再現しない | 同上（#28 の修正後に到達した次のエラー） | 対象 OS で動かない | [#99](https://github.com/ns7jp/server-monitor/pull/99) |
+| 30 | `common` role が新設する管理者アカウント（`common_admin_user`、Ansible自動化基盤構築案件パックでは`ansible-admin`）は、SSH公開鍵だけを登録しパスワードを一切設定しない。一方`common_admin_sudo_nopasswd`の既定値は`false`（sudoにpasswordを要求）のため、既定のままだと**sudoが恒久的に成功しないアカウント**ができる | ansible-lint・`--syntax-check`・sudoersの`visudo -cf`検証はいずれも文法・構文レベルの検査であり、「実際にそのpasswordで認証できるか」という意味論までは検査しない | 2026-09-04、実機VM（Hyper-V上のUbuntu 24.04、論理ホスト名`ans-01`）へ`foundation.yml`を初適用し、作成された`ansible-admin`でsudoを試した | 機能が使えない | [PR](https://github.com/ns7jp/server/pull/146) |
 
 ## この台帳に載せていないもの
 

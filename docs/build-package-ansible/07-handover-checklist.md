@@ -45,7 +45,7 @@
 | 項目 | 内容 | 解消条件 |
 | --- | --- | --- |
 | RHEL系実機構築 | AlmaLinux/Rocky 9への`foundation.yml`適用が未実施 | フェーズ2用VMの用意、[05-build-procedure.md 手順9](05-build-procedure.md#9-フェーズ2-almalinuxrocky-9への適用未着手)の実施 |
-| `foundation.yml`合成後のCI検証 | 現在のCIは各roleのMolecule scenarioを個別に検証しており、`common`+`docker`を組み合わせた`foundation.yml`自体の実コンテナ収束・冪等性は自動検証していない | `.github/workflows/ansible-integration.yml`への追加を検討 |
-| ansible-lint / 完全な--syntax-check | この検証環境では`galaxy.ansible.com`が遮断されており未実施 | GitHub Actions（`.github/workflows/ansible-check.yml`）での実行結果を確認する |
+| `foundation.yml`合成後のCI検証 | 現在のCIは各roleのMolecule scenarioを個別に検証しており、`common`+`docker`を組み合わせた`foundation.yml`自体の実コンテナ収束・冪等性の自動検証はCIに無い。2026-09-04に実VM（Hyper-V）で人手による実測は完了している（[結果票](../evidence/2026-09-04-ansible-foundation-build.md)） | `.github/workflows/ansible-integration.yml`への追加を検討 |
+| Molecule scenario検出（AFUT-04）、経路確認（AFNW-02）、rate limit確認（AFNW-06） | 2026-09-04の実機セッションで未実施のまま残った項目 | 次回セッションで実施 |
 
 これらは引き渡しを妨げる欠陥ではなく、[00-requirements.md](00-requirements.md#5-制約と対象外)に明記した対象外・未実装事項です。引き渡し先が誤って「全機能実装済み」と解釈しないよう、この表をそのまま共有します。

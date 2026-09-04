@@ -20,7 +20,7 @@
 
 | 案件 ID | 対象 | 現在の引き渡し判定 |
 | --- | --- | --- |
-| `SM-ANS-001` | 新規VM 1台（論理ホスト名`ans-01`、Ubuntu Server 24.04 LTS基準）へ`common` + `docker` roleを適用し、以後どの案件でも使い回せるOS+コンテナランタイム基盤を構築する。AlmaLinux/Rocky 9（論理ホスト名`ans-el9-01`）はフェーズ2として同一playbookでの対応を設計 | **`NOT READY`** — 引き渡し対象ホストが未指定で、必須試験が`NOT RUN` |
+| `SM-ANS-001` | 新規VM 1台（論理ホスト名`ans-01`、Ubuntu Server 24.04 LTS基準）へ`common` + `docker` roleを適用し、以後どの案件でも使い回せるOS+コンテナランタイム基盤を構築する。AlmaLinux/Rocky 9（論理ホスト名`ans-el9-01`）はフェーズ2として同一playbookでの対応を設計 | **フェーズ1 主要項目`PASS`（ラボ範囲）** — 2026-09-04に手元Hyper-VのVM 1台で構築・冪等性・セキュリティ設定の大部分を実測`PASS`（[結果票](../evidence/2026-09-04-ansible-foundation-build.md)）。Molecule検出（AFUT-04）と経路確認（AFNW-02）は未実施。フェーズ2（RHEL系実機）は`BLOCKED`（未着手） |
 
 ```mermaid
 flowchart LR
@@ -38,8 +38,8 @@ flowchart LR
 次の3つは、それぞれ別の状態です。ひとまとめにしないでください。
 
 - 文書が「作成済み」であること
-- `foundation.yml`が実行可能なコードとして存在すること（YAML構文はこのリポジトリ内で確認済み）
-- 特定の引き渡し対象ホストで受け入れが完了したこと
+- `foundation.yml`が実行可能なコードとして存在すること
+- 特定の引き渡し対象ホストで受け入れが完了したこと（`ans-01`はフェーズ1主要項目が完了、フェーズ2は未着手）
 
 最終判定は[作業結果・引き渡し報告書](11-work-result-report.md)と[引き渡しチェックリスト](07-handover-checklist.md)を使います。
 
@@ -67,14 +67,14 @@ flowchart LR
 | 詳細設計 | [02-detailed-design.md](02-detailed-design.md) | 作成済み |
 | パラメータ設計 | [03-parameter-sheet.md](03-parameter-sheet.md) | 作成済み |
 | ネットワーク設計 | [04-network-ip-plan.md](04-network-ip-plan.md) | 作成済み |
-| 構築（フェーズ1） | [05-build-procedure.md](05-build-procedure.md) | 手順作成済み。実機結果は証跡台帳で管理 |
-| 試験 | [06-test-specification.md](06-test-specification.md) | 仕様作成済み・未実施欄は`NOT RUN` |
-| 引き渡し | [07-handover-checklist.md](07-handover-checklist.md) | 作成済み |
+| 構築（フェーズ1） | [05-build-procedure.md](05-build-procedure.md) | 2026-09-04にHyper-V VMで通しで実施。実機結果は[構築・試験結果票](../evidence/2026-09-04-ansible-foundation-build.md) |
+| 試験 | [06-test-specification.md](06-test-specification.md) | 原本は`NOT RUN`のまま。実績は[構築・試験結果票](../evidence/2026-09-04-ansible-foundation-build.md)（AFUT/AFIT/AFST大部分PASS、AFUT-04・AFNW-02/06が残る） |
+| 引き渡し | [07-handover-checklist.md](07-handover-checklist.md) | 作成済み。ラボ範囲の項目のみ確認 |
 | 変更・ロールバック | [08-change-rollback-plan.md](08-change-rollback-plan.md) | 計画・記録様式作成済み。実行実績は`NOT RUN` |
-| ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | 手順作成済み。独立した引き渡し対象host/管理端末は`NOT RUN` |
-| 立ち上げ・受け入れ | [10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md) | 恒久ホストを用意してから証跡が出るまでの最短手順 |
-| 作業結果報告 | [11-work-result-report.md](11-work-result-report.md) | 原本作成済み。対象ホストごとの実績は日付付きevidenceへ複製して記録 |
-| 実装コード | [`ansible/playbooks/foundation.yml`](../../ansible/playbooks/foundation.yml)、[`ansible/inventory/group_vars/foundation/main.yml`](../../ansible/inventory/group_vars/foundation/main.yml)、[`ansible/inventory/foundation.local.yml.example`](../../ansible/inventory/foundation.local.yml.example) | 新規作成済み。CIの構文検証対象に追加済み |
+| ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | [結果票](../evidence/2026-09-04-ansible-foundation-build.md) AFNW-01/03/04/05 PASS、02/06はNOT RUN |
+| 立ち上げ・受け入れ | [10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md) | Hyper-V Quick Create（Ubuntu 24.04 gallery image）で実施。再起動後の確認は未実施 |
+| 作業結果報告 | [11-work-result-report.md](11-work-result-report.md) | [2026-09-04 記入済み版](../evidence/2026-09-04-work-result-SM-ANS-001.md)あり |
+| 実装コード | [`ansible/playbooks/foundation.yml`](../../ansible/playbooks/foundation.yml)、[`ansible/inventory/group_vars/foundation/main.yml`](../../ansible/inventory/group_vars/foundation/main.yml)、[`ansible/inventory/foundation.local.yml.example`](../../ansible/inventory/foundation.local.yml.example) | 新規作成済み。CIの構文検証対象に追加済み。実ホストでの構築・冪等性を2026-09-04に実測 |
 
 ## 工程ゲート
 
@@ -84,16 +84,18 @@ flowchart LR
 | --- | --- | --- |
 | G0 要件確定 | 要件ID、対象、対象外、受け入れ条件が合意済み | 文書作成済み。実案件での承認は`NOT SET` |
 | G1 設計確定 | 基本・詳細・パラメータ・ネットワーク設計のレビュー完了 | 文書作成済み。実案件での承認は`NOT SET` |
-| G2（フェーズ1）構築完了 | `ans-01`（Ubuntu）への初回適用が成功し、実績値と差異を記録 | `NOT RUN`（引き渡し対象ホスト未指定） |
+| G2（フェーズ1）構築完了 | `ans-01`（Ubuntu）への初回適用が成功し、実績値と差異を記録 | `PASS`（2026-09-04、Hyper-V VM） |
 | G2（フェーズ2）構築完了 | `ans-el9-01`（AlmaLinux/Rocky 9）への初回適用が成功 | 設計のみ。着手時期は`NOT SET` |
-| G3（フェーズ1）試験完了 | フェーズ1必須試験IDがすべて`PASS` | `NOT READY` |
+| G3（フェーズ1）試験完了 | フェーズ1必須試験IDがすべて`PASS` | 大部分`PASS`。AFUT-04・AFNW-02・AFNW-06が残り`NOT READY` |
 | G3（フェーズ2）試験完了 | `AFIT-06`が`PASS` | `BLOCKED`（G2フェーズ2の着手が前提） |
-| G4 作業完了 | 作業結果報告書に実績、障害、差異、残存リスクを記録 | 原本のみ。実案件報告は`NOT SET` |
-| G5 引き渡し | 受領者、日時、鍵の受け渡し、未解決事項を記録 | `NOT READY` |
+| G4 作業完了 | 作業結果報告書に実績、障害、差異、残存リスクを記録 | `PASS`（[2026-09-04 報告書](../evidence/2026-09-04-work-result-SM-ANS-001.md)） |
+| G5 引き渡し | 受領者、日時、鍵の受け渡し、未解決事項を記録 | ラボ範囲で完了（引き渡し元/先とも本人）。組織環境への引き渡しは`NOT RUN` |
 
 ## 検証環境
 
 基準環境はUbuntu Server 24.04 LTSの単一ホスト（論理ホスト名`ans-01`）です。`common` / `docker`両roleはAlmaLinux/Rocky 9にも対応するコードとして実装済みで、Moleculeの`el9` scenarioでコンテナ検証していますが、実VMでの構築はフェーズ2として区分し、現時点では未着手です。単一ホストの検証構成であり、複数ホストへの同時適用や高可用性は対象外です。
+
+2026-09-04に、Windows上のHyper-V（Quick Create、Ubuntu 24.04.4 LTS gallery image）にVM 1台を立て、同じホストPC上のWSL2をAnsible controllerとしてフェーズ1を実施しました（[結果票](../evidence/2026-09-04-ansible-foundation-build.md)）。VMイメージにnetplan設定が無くDHCPv4が要求されない、`common`roleが作る管理者アカウントに既定のままだとsudoが使えない、という2件の事実を実行して初めて発見し、前者は運用上の回避、後者はコード側の欠陥修正（[欠陥台帳](../evidence/defects-found.md)#30）で対応しました。ホストPCとVMが同一物理機であるため、独立した管理端末や組織DNSからの検証は含みません。
 
 ## 完了の定義
 

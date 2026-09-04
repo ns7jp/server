@@ -22,14 +22,14 @@
 
 | 項目 | 設計値 | 実績値 | 正本 / 確認方法 |
 | --- | --- | --- | --- |
-| inventory hostname | `ans-01` | `NOT RUN` | `ansible/inventory/foundation.local.yml` / `hostnamectl --static` |
-| IPv4 / prefix | 環境ごとに決定 | `NOT RUN` | inventory / `ip -br addr` |
-| default gateway | 環境ごとに決定 | `NOT RUN` | `ip route` |
+| inventory hostname | `ans-01` | `ans-01`（Hyper-V VM名一致。`hostnamectl --static`は未実施） | `ansible/inventory/foundation.local.yml` / `hostnamectl --static` |
+| IPv4 / prefix | 環境ごとに決定 | `192.168.11.95/24`（DHCP割当） | inventory / `ip -br addr` |
+| default gateway | 環境ごとに決定 | `NOT RUN`（`ip route`未実施、AFNW-02） | `ip route` |
 | DNS resolver | 環境ごとに決定 | `NOT RUN` | `resolvectl status` |
-| SSH user | 例は`ubuntu`（Ubuntu）/ `rocky`（Rocky） | `NOT RUN` | local inventory / `id` |
-| SSH port | `22/tcp` | `NOT RUN` | firewall status / `ss -lntup` |
-| 管理者アカウント | `server_monitor_admin_user`（例: `ansible-admin`） | `NOT RUN` | `ansible/inventory/foundation.local.yml` / `id` |
-| timezone | `Asia/Tokyo` | `NOT RUN` | `timedatectl` |
+| SSH user | 例は`ubuntu`（Ubuntu）/ `rocky`（Rocky） | 初期接続`usr722`（Hyper-V Quick Create既定）、以後`ansible-admin`（鍵認証） | local inventory / `id` |
+| SSH port | `22/tcp` | `22/tcp`（IPv4/v6とも`LISTEN`を`ss -lntup`で確認） | firewall status / `ss -lntup` |
+| 管理者アカウント | `server_monitor_admin_user`（例: `ansible-admin`） | `ansible-admin`（鍵認証のみ、sudo NOPASSWD。[欠陥台帳](../evidence/defects-found.md)#30参照） | `ansible/inventory/foundation.local.yml` / `id` |
+| timezone | `Asia/Tokyo` | `NOT RUN`（`timedatectl`未実施） | `timedatectl` |
 
 ## OS
 
@@ -78,22 +78,22 @@
 | --- | --- | --- |
 | root SSHログイン | 禁止 | `ansible/roles/common/tasks/ssh.yml` |
 | password認証 | 禁止（鍵認証のみ） | 同上 |
-| sudo | `common_admin_sudo_nopasswd: false`（既定はpasswordを要求） | `ansible/roles/common/defaults/main.yml` |
+| sudo | role既定は`common_admin_sudo_nopasswd: false`（passwordを要求）。`foundation` groupではVaultを使わずパスワードを渡す手段が無いため`true`（鍵認証のみでsudo可）へ上書き（[欠陥台帳](../evidence/defects-found.md)#30参照） | `ansible/roles/common/defaults/main.yml` / `ansible/inventory/group_vars/foundation/main.yml` |
 | UFW既定 | 着信deny、送信元CIDR未指定時は全送信元へのrate limitのみ | `ansible/roles/common/tasks/firewall-ufw.yml` |
 | 管理元CIDR制限 | `server_monitor_ssh_source_cidr`を設定すると有効化（既定は空 = 制限なし） | `ansible/roles/common/defaults/main.yml` |
 | 許可ポート | `22/tcp`のみ（`server_monitor_allowed_tcp_ports`） | `ansible/inventory/group_vars/foundation/main.yml` |
 
 ## 実機記入欄
 
-下表は引き渡し対象hostごとの記入欄なので、未指定の現時点では`NOT RUN`を維持します。
+下表は引き渡し対象hostごとの記入欄です。`ans-01`（フェーズ1、Hyper-V VM）で実測した値を記入しています。フェーズ2（`ans-el9-01`）は未着手のため`NOT RUN`のままです。
 
 | 項目 | 実測値 | 記録日 | 証跡 |
 | --- | --- | --- | --- |
-| OS / kernel | `NOT RUN` | — | — |
-| OSファミリー（Debian / RHEL） | `NOT RUN` | — | — |
-| firewallの許可範囲（`ufw status verbose` / `firewall-cmd --list-all`） | `NOT RUN` | — | — |
-| SELinuxの状態（`getenforce`） | `NOT RUN` | — | — |
-| Docker / Compose version | `NOT RUN` | — | — |
-| Ansible version | `NOT RUN` | — | — |
-| `sshd -T`の`passwordauthentication` / `permitrootlogin` | `NOT RUN` | — | — |
-| 適用commit SHA | `NOT RUN` | — | — |
+| OS / kernel | Ubuntu 24.04.4 LTS | 2026-09-04 | [構築・試験結果票](../evidence/2026-09-04-ansible-foundation-build.md) |
+| OSファミリー（Debian / RHEL） | Debian | 2026-09-04 | 同上 |
+| firewallの許可範囲（`ufw status verbose`） | `22/tcp`（IPv4/v6）のみ`LIMIT IN Anywhere`、他は`deny` | 2026-09-04 | 同上 |
+| SELinuxの状態（`getenforce`） | `NOT RUN`（フェーズ2、RHEL系のみ対象） | — | — |
+| Docker / Compose version | Docker `29.8.0`（Client/Server） / Compose `v5.5.1` | 2026-09-04 | 同上 |
+| Ansible controller version | ansible-core（`pipx install ansible-core`、WSL2上） | 2026-09-04 | 同上 |
+| `sshd -T`の`passwordauthentication` / `permitrootlogin` | `no` / `no` | 2026-09-04 | 同上 |
+| 適用commit SHA | `44cf16a` | 2026-09-04 | 同上 |
