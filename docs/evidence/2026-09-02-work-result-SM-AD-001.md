@@ -119,8 +119,9 @@
 | System Stateバックアップ / ADごみ箱復元試験(フェーズ1) | PASS | System Stateからの**復元**も2026-09-02午後に実演し PASS([復元演習](2026-09-02-ad-restore-drill.md)、復元15分29秒、復旧全体約40分)。演習中に DC の強制停止(LAB-11)と GPO によるレジストリ上書き(LAB-12)を発見・解消 |
 | host/ADメトリクスscrape(フェーズ2、AIT-09) | BLOCKED | 中央Prometheus hostの用意と`compose.yaml`のnetwork変更 |
 | Windows対応Ansible roleの追加 | NOT READY | 変更なし |
-| 2台目DC追加によるレプリケーション実測 | 実施済み(2026-09-03) | `ad-dc02`を追加し複製遅延17.8秒を実測、FSMO移譲でフォレスト2役割をdc02へ分離([証跡](2026-09-03-ad-second-dc-replication.md))。**dc02のフェーズ1相当設定を完了**(WinRM HTTPS / Firewall / RDP / SMBv1 / windows_exporter 0.31.8 / System Stateバックアップ 27分4秒)し、**GPO化したセキュリティ設定3件の自動継承**も検証済み。役割の奪取(seize)は`NOT RUN` |
+| 2台目DC追加によるレプリケーション実測 | 実施済み(2026-09-03) | `ad-dc02`を追加し複製遅延17.8秒を実測、FSMO移譲でフォレスト2役割をdc02へ分離([証跡](2026-09-03-ad-second-dc-replication.md))。**dc02のフェーズ1相当設定を完了**(WinRM HTTPS / Firewall / RDP / SMBv1 / windows_exporter 0.31.8 / System Stateバックアップ 27分4秒)し、**GPO化したセキュリティ設定3件の自動継承**も検証済み |
 | **DC 1台停止時の可用性試験** | **実施済み(2026-09-03)** | `ad-dc01`を計画停止し`ad-dc02`単独での継続性を実測([証跡](2026-09-03-ad-dc-outage-drill.md))。中核機能(DNS/LDAP/Kerberos/GC)は継続、PDC/RIDマスター固有の操作のみ縮退。復帰後の**ディレクトリ完全収束18分31秒**を実測し、DNS復旧だけでは自然収束しないこと(`repadmin /syncall`が必要)を発見 |
+| **FSMO役割の奪取(seize)** | **実施済み(2026-09-04)** | `ad-dc01`を復旧不能と想定し`ad-dc02`から`-Force`でドメインレベル3役割を奪取、`ntdsutil`でメタデータクリーンアップ([証跡](2026-09-04-ad-fsmo-seize.md))。単一DCでの全機能正常稼働を確認し、`ad-dc01`のVMも削除。基本設計書3.4節の発展課題はすべて実施済み |
 | **GPOの健全性(SYSVOL側の実体)** | 是正済み(2026-09-03) | 09-02のSystem State復元により、Default Domain Policyの`gpt.ini`と`GptTmpl.inf`、および`SYSVOL\domain\scripts`が失われていた。**単一DCでは無症状**(GPOは1件も適用されない状態だが、適用済みのローカルポリシーが残るため)。2台目追加時に発覚し、`gpt.ini`再作成と`scripts`作成で復旧([証跡](2026-09-03-ad-second-dc-replication.md) LAB-19/LAB-20)。復元後の確認手順を[構築手順書](../build-package-ad/05-build-procedure.md)14節に追加 |
 | **セキュリティ設定のGPO化(残り2件)** | 是正済み(2026-09-03) | LAB-12では`LDAPServerIntegrity`のみGPO化していたが、`LdapEnforceChannelBinding`とDSアクセス監査はレジストリ/`auditpol`直編集のままで、**新規DCへ引き継がれない状態**だった。両方をDefault Domain Controllers Policyへ移し、両DCで実効値の一致を確認。[構築手順書](../build-package-ad/05-build-procedure.md)7.1・7.3節を改訂 |
 | monitor-win-01のドメイン参加検証 | NOT RUN | 同上 |

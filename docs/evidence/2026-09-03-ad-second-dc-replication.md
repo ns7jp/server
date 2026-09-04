@@ -368,4 +368,4 @@ LAB-19は、[復元演習の証跡](2026-09-02-ad-restore-drill.md)で`dcdiag`�
 - Hyper-Vチェックポイント: `ad-dc01`に`phase1-hardened`と`before-dc02-promotion`の2世代、`ad-dc02`に`自動チェックポイント`と`before-promotion`の2世代。[LAB-11](2026-09-02-ad-restore-drill.md)の教訓に従い、次の大きな書き込み作業の前に1世代へ統合する
 - `ad-dc02`のフェーズ1相当設定は**すべて完了**(WinRM HTTPSリスナー、Firewall 3プロファイルBlock、AD関連5ルールグループのスコープ限定、RDP無効、SMBv1無効、LDAP署名/チャネルバインディング/DSアクセス監査(GPO経由)、windows_exporter 0.31.8、System Stateバックアップ)。**2台のDCが同等の設定・監視・バックアップを持つ状態**になった
 - `ad-dc02`にバックアップ格納用の`D:`(20GB動的VHDX)を追加済み。DVDドライブは取り外し済み(LAB-21)
-- FSMO役割の**奪取**(`-Force`によるseize)は`NOT RUN`。DCを1台停止した状態での可用性試験は[別途実施し、証跡化済み](2026-09-03-ad-dc-outage-drill.md)
+- FSMO役割の**奪取**(`-Force`によるseize)、DCを1台停止した状態での可用性試験は、いずれも[別途実施し証跡化済み](2026-09-03-ad-dc-outage-drill.md)([奪取の証跡はこちら](2026-09-04-ad-fsmo-seize.md))
