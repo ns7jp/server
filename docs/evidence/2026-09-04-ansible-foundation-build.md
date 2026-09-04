@@ -8,11 +8,11 @@
 
 | 項目 | 値 |
 | --- | --- |
-| 全体状態 | フェーズ1の主要項目が実測`PASS`。AFUT-04（Molecule scenario検出）、AFNW-02（経路確認）、AFNW-06（rate limit任意）、AFIT-06/AFST-06（フェーズ2）は未実施のため、[試験仕様書](../build-package-ansible/06-test-specification.md)の「フェーズ1必須ID全件PASS」には未到達 |
+| 全体状態 | **フェーズ1必須ID（AFUT-01〜05、AFIT-01〜05、AFIT-07、AFST-01〜05）が全件`PASS`**。任意項目のAFNW-06（rate limit）とフェーズ2（AFIT-06/AFST-06）は未実施のまま残る |
 | 実施日時（JST） | 2026-09-04 |
 | 実施者 | ns7jp |
 | 対象環境 / host | `ans-01`（`192.168.11.95/24`、DHCP割当）、Hyper-V VM（Quick Create、Ubuntu 24.04.4 LTS gallery image） |
-| 管理端末 / controller | ホストPC（`DESKTOP-19F10FT`、Windows、Hyper-V）上のWSL2 `Ubuntu-24.04`。`pipx install ansible-core` + `ansible-lint` + `ansible-galaxy collection install -r requirements.yml` |
+| 管理端末 / controller | ホストPC（`DESKTOP-19F10FT`、Windows、Hyper-V）上のWSL2 `Ubuntu-24.04`。`ansible`本体は事前にapt導入済み（`/usr/bin/ansible-playbook`）で、`pipx install ansible-core`は空振りだった（pipxが空のまま）。`ansible-galaxy collection install -r requirements.yml`は「既に導入済み」と応答。Molecule（AFUT-04用）は`pipx install molecule` + `pipx inject molecule ansible-core 'molecule-plugins[docker]' docker`で導入 |
 | 初期ログインユーザー | `usr722`（Quick Create時に設定、password認証で初回接続） |
 | 作成した管理者アカウント | `ansible-admin`（`server_monitor_admin_user`、鍵認証のみ） |
 | commit SHA | `44cf16a`（WSL側で`git pull origin main`を実行した時点のmain HEAD） |
@@ -27,7 +27,7 @@
 | AFUT-01 | YAML構文 | PASS | `python3 -c "import yaml; yaml.safe_load(open(f))"`を`foundation.yml`・`inventory/group_vars/foundation/main.yml`・`inventory/foundation.local.yml.example`へ実行、例外なし（実施: AI支援セッションの作業環境、2026-09-03） |
 | AFUT-02 | ansible-lint | PASS | `pip install ansible`（`ansible-core`ではなくcollection同梱のフル版）で`community.general`等を取得し、`ansible-lint --offline`を実行。`Passed: 0 failure(s), 0 warning(s) in 69 files processed of 76 encountered. Profile 'production' was required, and it passed.`（実施: AI支援セッションの作業環境、`galaxy.ansible.com`がネットワークポリシーで遮断されているため`pip`経由でcollectionを取得。CI本来の`ansible-lint`実行とは別環境） |
 | AFUT-03 | 全playbookの構文チェック | PASS | 上記と同じ環境で`ansible-playbook -i inventory/foundation-test.yml playbooks/foundation.yml --syntax-check`が`playbook: playbooks/foundation.yml`のみで正常終了。WSL側での実適用が成功したことでも間接的に再確認済み |
-| AFUT-04 | Molecule scenario検出 | NOT RUN | WSL側にMolecule + Docker-in-Dockerを未導入。次回実施項目 |
+| AFUT-04 | Molecule scenario検出 | PASS | WSL側に`pipx install molecule` + `pipx inject molecule ansible-core 'molecule-plugins[docker]' docker`を導入（WSLはDockerが別途稼働中を確認済み）。`common`・`docker`両roleで`molecule list`を実行し、`default`と`el9`の両scenarioが検出された（`server-monitor-common`/`-el9`、`server-monitor-docker`/`-el9`） |
 | AFUT-05 | 成果物リンク | PASS | `pytest tests/test_portfolio_artifacts.py -k internal_markdown_links` → `1 passed, 52 deselected`（実施: AI支援セッションの作業環境、2026-09-03） |
 
 ## 構築・結合試験（AFIT）
@@ -41,7 +41,7 @@
 | AFIT-04 | 時刻同期 | PASS | `sudo ss -lntup`で`chronyd`（pid 3050）がNTPポート（`127.0.0.1:323`、`[::1]:323`）で待ち受けていることを確認 |
 | AFIT-05 | 自動更新設定 | PASS | `dpkg -l unattended-upgrades` → `ii unattended-upgrades 2.9.1+nmu4ubuntu1`。`/etc/apt/apt.conf.d/20auto-upgrades` → `APT::Periodic::Update-Package-Lists "1";` / `APT::Periodic::Unattended-Upgrade "1";` |
 | AFIT-06 | RHEL系（フェーズ2）構築 | BLOCKED | 実VM未用意のため未着手（既存の状態を維持） |
-| AFIT-07 | 実ホストnetwork | 一部実施 | 下表AFNW参照。01・03・04・05はPASS、02・06はNOT RUN |
+| AFIT-07 | 実ホストnetwork | PASS | 下表AFNW参照。AFNW-01〜05すべてPASS（AFNW-06は任意項目でNOT RUN） |
 
 ## セキュリティ試験（AFST）
 
@@ -60,7 +60,7 @@
 | ID | 確認対象 | 結果 | 実出力（要点）/ 備考 |
 | --- | --- | --- | --- |
 | AFNW-01 | IP・interface確認 | PASS | `ip -br addr` → `eth0 UP 192.168.11.95/24 ...`（DHCPで取得。当初`eth0`が`DOWN`のままだった原因は後述の欠陥参照） |
-| AFNW-02 | 経路確認 | NOT RUN | `ip route`を明示的に確認していない |
+| AFNW-02 | 経路確認 | PASS | `ip route` → `default via 192.168.11.1 dev eth0 proto dhcp src 192.168.11.95 metric 100`。同一サブネット（`192.168.11.0/24`）と`docker0`（`172.17.0.0/16`、linkdown）の経路も設計どおり |
 | AFNW-03 | 待受確認 | PASS | 上記AFST-03と同じ`ss -lntup`結果 |
 | AFNW-04 | SSH到達性 | PASS | `usr722`（password）・`ansible-admin`（鍵、`ssh -i ~/.ssh/ans01-admin`）双方で到達性を繰り返し確認 |
 | AFNW-05 | firewall許可範囲 | PASS | `sudo ufw status verbose` → `Status: active`、`Default: deny (incoming), allow (outgoing), deny (routed)`、`22/tcp` / `22/tcp (v6)`のみ`LIMIT IN Anywhere` |
@@ -81,7 +81,10 @@
 
 ## 未実施・今後の課題
 
-- AFUT-04（Molecule scenario検出）、AFNW-02（経路確認）、AFNW-06（rate limit任意）
+フェーズ1必須ID（AFUT-01〜05、AFIT-01〜05、AFIT-07、AFST-01〜05）は全件`PASS`した。残るのは次の任意・フェーズ2項目のみ。
+
+- AFNW-06（rate limit発火確認、任意項目。対象ホストへの負荷を伴うため見送り）
+- AFST-07（未対応OSでの安全停止、任意の追加確認）
 - フェーズ2（AlmaLinux/Rocky 9実機、AFIT-06・AFST-06）
 - CI（GitHub Actions）上での`ansible-lint`・`--syntax-check`の実行結果確認（この証跡はpipのcollection取得によるローカル代替。CI本来の実行結果とは別）
 - 再起動後の設定保持確認（[10-host-bringup-and-acceptance.md](../build-package-ansible/10-host-bringup-and-acceptance.md)の範囲）

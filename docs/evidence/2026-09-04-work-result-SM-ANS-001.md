@@ -28,10 +28,12 @@
 
 | 分類 | 件数 | PASS | FAIL | BLOCKED | NOT RUN |
 | --- | --- | --- | --- | --- | --- |
-| AFUT（単体・構成） | 5 | 4 | 0 | 0 | 1（AFUT-04） |
-| AFIT（構築・結合） | 7 | 5 | 0 | 1（AFIT-06） | 1（AFIT-07、AFNW-01/03/04/05はPASS） |
-| AFST（セキュリティ） | 7 | 5 | 0 | 1（AFST-06） | 1（AFST-07） |
-| AFNW（ネットワーク実機検証） | 6 | 4 | 0 | 0 | 2（AFNW-02、AFNW-06） |
+| AFUT（単体・構成） | 5 | 5 | 0 | 0 | 0 |
+| AFIT（構築・結合） | 7 | 6 | 0 | 1（AFIT-06） | 0 |
+| AFST（セキュリティ） | 7 | 5 | 0 | 1（AFST-06） | 1（AFST-07、任意項目） |
+| AFNW（ネットワーク実機検証） | 6 | 5 | 0 | 0 | 1（AFNW-06、任意項目） |
+
+**フェーズ1必須ID（AFUT-01〜05、AFIT-01〜05、AFIT-07、AFST-01〜05）は16/16すべて`PASS`。** 残るBLOCKED/NOT RUNはフェーズ2（AFIT-06・AFST-06）と任意項目（AFST-07・AFNW-06）のみ。
 
 ## 4. 設計との差異
 
@@ -52,13 +54,13 @@
 | --- | --- | --- |
 | AlmaLinux/Rocky 9実機ホストでの構築が未実施 | RHEL系での動作保証がMoleculeのコンテナ検証にとどまる | フェーズ2としてVM用意後に着手 |
 | `foundation.yml`合成後のCI自動検証が無い | role単体は検証されるが、組み合わせた際の実コンテナ収束はこの日付付き証跡（人手実施）に依存 | `ansible-integration.yml`への追加を検討 |
-| AFNW-02（経路）、AFNW-06（rate limit）、AFUT-04（Molecule検出）が未実施 | ネットワーク実機検証とMolecule検証がフェーズ1必須ID全件PASSに未到達 | 次回セッションで実施予定 |
+| AFNW-06（rate limit、任意）が未実施 | rate limit機能自体はUFW/firewalldの設定として確認済みだが、実際の発火は未確認 | 対象ホストへの負荷を許容できる場面で実施 |
 | 再起動後の設定保持は未確認 | 恒久稼働時の挙動が未実証 | [10-host-bringup-and-acceptance.md](../build-package-ansible/10-host-bringup-and-acceptance.md)の手順で別途確認 |
 
 ## 7. 完了判定
 
 | 判定 | 状態 |
 | --- | --- |
-| フェーズ1（Ubuntu）完了 | 主要項目`PASS`。AFUT-04・AFNW-02・AFNW-06が残るため「フェーズ1必須ID全件PASS」の完了条件には未到達 |
+| フェーズ1（Ubuntu）完了 | **`PASS`**。必須ID16/16すべて`PASS`（[結果票](2026-09-04-ansible-foundation-build.md)） |
 | フェーズ2（RHEL系）完了 | `NOT SET`（着手前） |
-| 引き渡し完了 | `NOT SET`（ラボ範囲の実機確認が主目的で、組織環境への引き渡しは対象外） |
+| 引き渡し完了 | ラボ範囲で完了（引き渡し元/先とも本人）。組織環境への引き渡しは`NOT RUN` |

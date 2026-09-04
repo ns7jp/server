@@ -24,7 +24,7 @@
 | --- | --- | --- | --- |
 | inventory hostname | `ans-01` | `ans-01`（Hyper-V VM名一致。`hostnamectl --static`は未実施） | `ansible/inventory/foundation.local.yml` / `hostnamectl --static` |
 | IPv4 / prefix | 環境ごとに決定 | `192.168.11.95/24`（DHCP割当） | inventory / `ip -br addr` |
-| default gateway | 環境ごとに決定 | `NOT RUN`（`ip route`未実施、AFNW-02） | `ip route` |
+| default gateway | 環境ごとに決定 | `192.168.11.1`（`eth0`経由、DHCP） | `ip route` |
 | DNS resolver | 環境ごとに決定 | `NOT RUN` | `resolvectl status` |
 | SSH user | 例は`ubuntu`（Ubuntu）/ `rocky`（Rocky） | 初期接続`usr722`（Hyper-V Quick Create既定）、以後`ansible-admin`（鍵認証） | local inventory / `id` |
 | SSH port | `22/tcp` | `22/tcp`（IPv4/v6とも`LISTEN`を`ss -lntup`で確認） | firewall status / `ss -lntup` |
@@ -94,6 +94,6 @@
 | firewallの許可範囲（`ufw status verbose`） | `22/tcp`（IPv4/v6）のみ`LIMIT IN Anywhere`、他は`deny` | 2026-09-04 | 同上 |
 | SELinuxの状態（`getenforce`） | `NOT RUN`（フェーズ2、RHEL系のみ対象） | — | — |
 | Docker / Compose version | Docker `29.8.0`（Client/Server） / Compose `v5.5.1` | 2026-09-04 | 同上 |
-| Ansible controller version | ansible-core（`pipx install ansible-core`、WSL2上） | 2026-09-04 | 同上 |
+| Ansible controller version | WSL2（Ubuntu-24.04）にapt経由で導入済みの`ansible`（`/usr/bin/ansible-playbook`）。`pipx install ansible-core`は空振り（pipxに何も登録されず）だったため、実際に使われたのはapt版 | 2026-09-04 | 同上 |
 | `sshd -T`の`passwordauthentication` / `permitrootlogin` | `no` / `no` | 2026-09-04 | 同上 |
 | 適用commit SHA | `44cf16a` | 2026-09-04 | 同上 |
