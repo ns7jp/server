@@ -18,7 +18,7 @@
 
 ```bash
 git clone https://github.com/ns7jp/server.git
-cd server-monitor
+cd server
 git rev-parse HEAD
 python3 -m venv .venv
 . .venv/bin/activate
@@ -132,7 +132,7 @@ ssh dhcp-01 "stat -c '%U:%G %a' /etc/dhcp/dhcpd.conf"
 - `dhcpd -t`が構文エラーなしで完了する(exit 0)
 - `isc-dhcp-server`が`enabled`かつ`active (running)`
 - UDP 67がbindされている(interfaceは`dhcp_server_interface`で指定した払い出し対象セグメント側のもの)
-- UFWでUDP 67が`192.168.50.0/24`のみ許可され、他ネットワークへの許可がない
+- UFWでUDP 67の許可がinterface `dhcp_server_interface`（払い出し対象セグメント側）限定で、他ネットワークへの許可がない
 - AppArmorの`usr.sbin.dhcpd`が`enforce`モード
 - `/etc/dhcp/dhcpd.conf`が`root:root`、`644`以下
 
@@ -175,6 +175,34 @@ ssh "$CLIENT_VM" 'resolvectl status || cat /etc/resolv.conf'
 固定IP予約を1件でも登録している場合は、その予約MACを持つクライアントで同じ手順を実行し、常に同一の予約IPが払い出されることを確認します(FR-03、DIT-03)。確認後、クライアント検証VM側のテストリースは`sudo dhclient -r $CLIENT_IF`で明示的に解放し、後始末します(FR-06、DIT-07の入り口にもなる操作です)。
 
 この節の簡易確認とは別に、[試験仕様書](06-test-specification.md)のDUT-01〜05・DIT-01〜11・DST-01〜06と、[ネットワーク実機検証手順](09-network-validation-procedure.md)のDNW-01〜09は、日付付きevidenceへ個別の結果票として記録します。プール枯渇時の挙動(DIT-04)、リース更新(DIT-05)、サービス再起動後のリース永続化(DIT-06)は、6節の障害・復旧試験とあわせて確認する運用にしています。
+
+### node_exporter導入と中央監視統合(済・手動、FR-09、DIT-10、NFR-13)
+
+`dhcp_server` roleにはnode_exporter導入タスクを含めていません([詳細設計書](02-detailed-design.md)配備設計のとおり手動作業です)。DNW-05(待受port)とDIT-10(監視統合)を満たすには、`dhcp-01`側でのnode_exporter導入と、中央監視host(`monitor-01`)側での登録の両方が必要です。
+
+`dhcp-01`側(node_exporterの導入とUFW許可):
+
+```bash
+ssh dhcp-01 'sudo apt-get update && sudo apt-get install -y prometheus-node-exporter'
+ssh dhcp-01 'systemctl is-enabled prometheus-node-exporter; systemctl status prometheus-node-exporter --no-pager'
+MONITOR_IP='192.0.2.10'   # monitor-01の実IPへ置き換える([Linux版パラメータシート](../build-package/03-parameter-sheet.md)参照)
+ssh dhcp-01 "sudo ufw allow proto tcp from $MONITOR_IP to any port 9100"
+ssh dhcp-01 'curl -fsS http://127.0.0.1:9100/metrics | head -n 5'
+```
+
+`monitor-01`側(中央Prometheusへの登録。`dhcp-01`側の作業とは別の権限が必要です):
+
+```bash
+# monitor-01のinventory(例: ansible/inventory/staging.local.yml)のhost varsへ追加する
+#   app_node_exporter_targets:
+#     - address: "192.168.50.5:9100"
+#       host: dhcp-01
+cd ansible
+ansible-playbook -i inventory/staging.local.yml playbooks/site.yml --check --diff
+ansible-playbook -i inventory/staging.local.yml playbooks/site.yml
+```
+
+適用後、Prometheusの`up{host="dhcp-01"}`が`1`になることを確認します(DIT-10)。`dhcp-01`と`monitor-01`が異なるネットワークセグメントにある場合、そのままでは到達できないことがあります。[立ち上げと受け入れ試験](10-host-bringup-and-acceptance.md)の「5. 中央監視統合を試す場合（DIT-10）」を参照してください。
 
 ## 6. 障害・復旧試験(DIT-09、DIT-05、DIT-06)
 

@@ -43,7 +43,7 @@ DHCPデーモンには、Ubuntuのapt packageとして提供される**isc-dhcp-
 | FR-03 | 事前登録したMACアドレスへ、常に同一の固定IP(host reservation)を払い出せること | DIT-03 | [詳細設計書](02-detailed-design.md) |
 | FR-04 | 動的プール枯渇時に新規クライアントへリースを払い出さず、安全に失敗すること(DHCPNAKまたは無応答) | DIT-04 | [詳細設計書](02-detailed-design.md) |
 | FR-05 | クライアントがリース満了前に更新(RENEW/REBIND)でき、サービス再起動後もリースDBの内容が保持されること | DIT-05、DIT-06 | [構築手順書](05-build-procedure.md) |
-| FR-06 | クライアントがDHCPRELEASEで明示的にリースを解放でき、解放後は同一IPを即座に他クライアントへ払い出せること | DIT-07 | [構築手順書](05-build-procedure.md) |
+| FR-06 | クライアントがDHCPRELEASEで明示的にリースを解放でき、解放されたIPがプール内で再割当て可能な状態（`binding state free;`）に遷移すること | DIT-07 | [構築手順書](05-build-procedure.md) |
 | FR-07 | 払い出しにgateway・DNS・ドメイン名のオプションが含まれ、クライアント側で設計値どおりに反映されること | DIT-08 | [パラメータシート](03-parameter-sheet.md) |
 | FR-08 | isc-dhcp-serverサービスの停止を検知し、復旧と正常性確認までの時間を記録できること | DIT-09 | [構築手順書](05-build-procedure.md) |
 | FR-09 | 中央Prometheus(`monitor-01`)が`dhcp-01`のnode_exporterをscrapeできること | DIT-10 | `ansible/roles/app/defaults/main.yml`(`app_node_exporter_targets`) |
@@ -55,7 +55,7 @@ DHCPデーモンには、Ubuntuのapt packageとして提供される**isc-dhcp-
 | --- | --- | --- | --- |
 | NFR-01 | 再現性 | 未構築の対象VMへ`dhcp.yml`を適用し、エラーなく完了すること | DIT-01 |
 | NFR-02 | 冪等性 | `dhcp.yml`の2回目適用が`changed=0`になること | DIT-01(2回目) |
-| NFR-03 | セキュリティ | UFWでUDP 67を`192.168.50.0/24`限定にし、それ以外のネットワークへ非公開とすること | DST-01 |
+| NFR-03 | セキュリティ | UFWでUDP 67の待受を払い出し対象セグメント側interface（`dhcp_server_interface`）限定にし、それ以外のネットワークへ非公開とすること | DST-01 |
 | NFR-04 | セキュリティ | `/etc/dhcp/dhcpd.conf`の所有者・権限が`root:root`かつ`0644`以下であること | DST-02 |
 | NFR-05 | セキュリティ | AppArmorプロファイル`usr.sbin.dhcpd`がenforceモードで有効であること | DST-03 |
 | NFR-06 | セキュリティ | SSHはcommon roleの既定強化(root禁止、パスワード認証禁止)を継承すること | DST-04 |
