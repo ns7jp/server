@@ -67,7 +67,7 @@
 | 30 | `common` role が新設する管理者アカウント（`common_admin_user`、Ansible自動化基盤構築案件パックでは`ansible-admin`）は、SSH公開鍵だけを登録しパスワードを一切設定しない。一方`common_admin_sudo_nopasswd`の既定値は`false`（sudoにpasswordを要求）のため、既定のままだと**sudoが恒久的に成功しないアカウント**ができる | ansible-lint・`--syntax-check`・sudoersの`visudo -cf`検証はいずれも文法・構文レベルの検査であり、「実際にそのpasswordで認証できるか」という意味論までは検査しない | 2026-09-04、実機VM（Hyper-V上のUbuntu 24.04、論理ホスト名`ans-01`）へ`foundation.yml`を初適用し、作成された`ansible-admin`でsudoを試した | 機能が使えない | [PR](https://github.com/ns7jp/server/pull/146) |
 | 31 | Ubuntu 24.04では`hwclock`が`util-linux`パッケージから`util-linux-extra`パッケージへ分離されている。`common`ロール（全パック共通）の`common_os_packages`（Debian系）には`util-linux`しか無く、`community.general.timezone`タスクが`Failed to find required executable "hwclock"`で必ず失敗する | `dhcpd -t`等の構文検査やansible-lintはパッケージの実インストールを行わないため、hwclockバイナリの実在は検査しない | 2026-09-04、network namespaceラボの`dhcp01`（Ubuntu 24.04.4 LTS）へ`common`ロールを含む`dhcp.yml`を初適用し、timezoneタスクで実際に失敗した | 対象OSで動かない | [PR](https://github.com/ns7jp/server/pull/151) |
 | 32 | isc-dhcp-server 4.4.3-P1は`default-lease-time`に300秒以下を指定しても、実際に払い出す`lease-time`（DHCPACKのoption 51）を300秒へ暗黙にクランプする。設定値どおりの短いリース時間が払い出されると期待して短縮すると、実際の値が食い違う | `dhcpd -t`の構文検査は通過し、dhcpd.conf自体も文法上は正しいため、値のクランプは検査に現れない | 2026-09-04、DIT-05（リース更新実測）用に`dhcp_server_default_lease_time`を60秒へ一時変更したところ、DHCPACKの`Lease-Time`optionが実際には300秒だった。値を60/100/299/300/301/500/3600と変えながら実測し300秒がしきい値と確認した | 設定が意図通りに反映されない | [PR](https://github.com/ns7jp/server/pull/151) |
-| 33 | isc-dhcp-serverはLinux上でinterfaceに直結したraw socket（LPF）経由でDHCPパケットを受信するため、netfilter（iptables/UFW）のINPUT chainを経由しない。`dhcp_server`ロールのUFW許可rule（UDP 67をinterface `dhcp_server_interface`限定でACCEPT）は、実際にはdhcpdの受信を制御していない | UFWのrule自体は正しく生成・適用されており（`ufw status verbose`で意図どおりに見える）、静的検査・構文検査のいずれもnetfilterとraw socketの関係までは検証しない | 2026-09-04、DIT-05（RENEW/REBIND実測）のためRENEWを`iptables -I INPUT -i seg0 -p udp --dport 67 -j DROP`で遮断しようとしたが、dhcpdは変わらず受信・応答した。対照実験として同じ形のDROPルールが通常のUDPソケット（`nc`）宛の通信は確実に遮断することを確認し、dhcpd固有の受信経路であることを切り分けた | セキュリティ制御の実効性が説明と異なる | [PR](https://github.com/ns7jp/server/pull/151) |
+| 33 | isc-dhcp-serverはLinux上でinterfaceに直結したraw socket（LPF）経由でDHCPパケットを受信するため、netfilter（iptables/UFW）のINPUT chainを経由しない。`dhcp_server`ロールのUFW許可rule（UDP 67をinterface `dhcp_server_interface`限定でACCEPT）は、実際にはdhcpdの受信を制御していない | UFWのrule自体は正しく生成・適用されており（`ufw status verbose`で意図どおりに見える）、静的検査・構文検査のいずれもnetfilterとraw socketの関係までは検証しない | 2026-09-04、DIT-05（RENEW/REBIND実測）のためRENEWを`iptables -I INPUT -i seg0 -p udp --dport 67 -j DROP`で遮断しようとしたが、dhcpdは変わらず受信・応答した。対照実験として同じ形のDROPルールが通常のUDPソケット（`nc`）宛の通信は確実に遮断することを確認し、dhcpd固有の受信経路であることを切り分けた。さらに`/proc/<dhcpdのpid>/net/udp`と`/proc/<同>/net/packet`を直接確認し、dhcpdがUDPソケット（port 67）と同時にraw AF_PACKETソケット（`SOCK_RAW`）を保持していることを確認。同じDROPルールを適用したままclient01から完全なDORAを送出しても実際にACKまで得られ新規リースが作成されることも確認した（netfilterのDROPカウンタ自体は加算されるが、raw socketがそれより前段でパケットを受け取るため無関係という整合的な説明が付いた） | セキュリティ制御の実効性が説明と異なる | [PR](https://github.com/ns7jp/server/pull/151) |
 
 ## この台帳に載せていないもの
 
@@ -81,7 +81,7 @@
 
 **言えること**: 静的検査（shellcheck / ansible-lint / molecule / 構文検査）を全部通しても、
 「一度も起動できていない」「壊れているのに PASS する」「証跡が残らない」ものは残ります。
-29 件のうち **6 件が偽 PASS** で、テストが無いより悪い状態でした。
+33 件のうち **6 件が偽 PASS** で、テストが無いより悪い状態でした。
 うち 3 件（#27〜29）は 2026-08-25 に el9 の Molecule scenario を初めて実行して
 見つけたもので、いずれも「対象 OS の既定パッケージ・イメージでは動かない」型でした。
 1 件直すと次のエラーが出る、を 3 回繰り返しています。
