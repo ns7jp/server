@@ -81,7 +81,7 @@ flowchart LR
 | G0 要件確定 | 要件ID、対象、対象外、受け入れ条件が合意済み | 文書作成済み。実案件での承認は`NOT SET` |
 | G1 設計確定 | 基本・詳細・パラメータ・ネットワーク設計のレビュー完了 | 文書作成済み。実案件での承認は`NOT SET` |
 | G2(フェーズ1)構築完了 | 初回昇格(`AIT-01`)が成功し、FSMO(`AIT-05`)・DNS(`AIT-03`)が設計どおり確認できること | `PASS`(2026-09-01、ラボVM) |
-| G2(フェーズ2)統合完了 | `app_node_exporter_targets`への`ad-dc01`追加、`monitoring` networkのegress拡張、Windows向けログ集約経路の導入が完了 | 設計のみ。3点とも未実装で着手時期は`NOT SET` |
+| G2(フェーズ2)統合完了 | `app_node_exporter_targets`への`ad-dc01`追加、Dockerホストと`ad-dc01`間の実接続の確立、windows_exporterのFirewall許可(Dockerホストの実IP)、Windows向けログ集約経路の導入が完了 | 設計のみ。3点とも未着手で着手時期は`NOT SET` |
 | G3(フェーズ1)試験完了 | フェーズ1必須31 IDがすべて`PASS` | `PASS`(31/31、2026-09-02) |
 | G3(フェーズ2)試験完了 | `AIT-09`が`PASS` | `BLOCKED`(G2フェーズ2の解消が前提) |
 | G4 作業完了 | 作業結果報告書に実績、障害、差異、残存リスクを記録 | `PASS`([2026-09-02 報告書](../evidence/2026-09-02-work-result-SM-AD-001.md)) |
@@ -98,7 +98,7 @@ flowchart LR
 次をすべて満たした時点で「構築・試験完了」とします。
 
 - フェーズ1の必須試験(`AUT-01`〜`AUT-04`、`AIT-01`〜`AIT-08`、`AIT-10`、`AIT-11`、`AST-01`〜`AST-08`、`ANW-01`〜`ANW-09`、合計31 ID)がすべて`PASS`
-- フェーズ2の必須試験(`AIT-09`)は、[要件定義書](00-requirements.md)に記す「未実装」3点(Windows対応Ansible roleの不在、`monitoring` networkの`internal: true`制約、Windows向けログ集約経路の不在)の解消条件とともに`BLOCKED`として明記されていること
+- フェーズ2の必須試験(`AIT-09`)は、[要件定義書](00-requirements.md)に記す「未実装」3点(Windows対応Ansible roleの不在、Dockerホストと`ad-dc01`間の実接続およびwindows_exporterのFirewall許可(Dockerホストの実IP)の未確立、Windows向けログ集約経路の不在)の解消条件とともに`BLOCKED`として明記されていること
 - DSRM(ディレクトリサービス復元モード)パスワード等の秘密値は、実値をこのリポジトリのどの文書にも記載せず、受け渡し方法(誰が・いつ・どの秘密値台帳経由で受け渡したか)が引き渡し記録に残ること
 - 実行日時、環境、ホストのビルド番号(`winver`または`Get-ComputerInfo`の`OsBuildNumber`)、実行コマンド、実出力、判定が証跡として保存される
 - 未解決事項、ロールバック方法(スナップショット復元を最優先手段とする)が引き渡し記録に残る

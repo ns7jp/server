@@ -1,38 +1,40 @@
 # DHCP実ホスト ネットワーク検証結果票 — 2026-09-04
 
-[実行手順](../build-package-dhcp/09-network-validation-procedure.md)に沿って、[`labs/dhcp-lab/topology.sh`](../../labs/dhcp-lab/topology.sh)と同じ構成のnetwork namespaceラボ（AI支援セッションのサンドボックスコンテナ内）で実施しました。独立した物理／VPSホスト・実VMではありません。範囲の詳細は[本体の証跡ファイル](2026-09-04-dhcp-build-validation.md)冒頭の「この証跡が示す範囲」を参照してください。
+[実行手順](../build-package-dhcp/09-network-validation-procedure.md)に沿って、AI支援セッションのサンドボックスコンテナ上に構築したDHCP環境で実施した結果です。「この証跡が示す範囲」は[構築・試験結果票](2026-09-04-dhcp-build-validation.md)を参照してください（VM/実機ではなく、network namespace + veth + bridgeで模擬した単一コンテナ内の検証です）。
+
+> 別のAI支援セッションが`labs/dhcp-lab/`（隔離されたnetwork namespaceラボ）で独立に実施したネットワーク結果票は[`2026-09-04-network-host-validation-dhcp-netns-lab.md`](2026-09-04-network-host-validation-dhcp-netns-lab.md)を参照してください。
 
 ## 基本情報
 
 | 項目 | 値 |
 | --- | --- |
-| 全体状態 | DNW-01・02・04〜09が`PASS`。DNW-03（`dhcp-01`自身の名前解決）はこのラボにDNS実装が無いため`SKIP-ENV` |
+| 全体状態 | DNW-01/02/04/05/06/08/09が`PASS`。DNW-03が`NOT RUN`、DNW-07が`BLOCKED`（詳細は下記） |
 | 実施日時（JST） | 2026-09-04 |
-| 実施者 | AI支援セッション（ユーザー: net7jp） |
-| 対象環境 / host | `dhcp01`（network namespace、`seg0=192.168.50.5/24`、`mgmt0=10.99.0.30/24`） |
-| 管理端末 | AI支援セッションの作業環境（root network namespace、`mgmt-ctrl=10.99.0.1/24`） |
-| クライアント検証VM | `client01`（network namespace、`seg0`はDHCPで取得） |
-| commit SHA | `ebcae209aac82811bc5fc49291c597c519f7c408` |
-| OS / kernel | Ubuntu 24.04.4 LTS |
-| isc-dhcp-server バージョン | `isc-dhcpd-4.4.3-P1` |
-| 構成図・IP 表の版 | [04-network-ip-plan.md](../build-package-dhcp/04-network-ip-plan.md) |
-| raw log / screenshot | このファイル内に実出力を転記（スクリーンショットは無し。CLI実行環境のため） |
+| 実施者 | ns7jp（AI支援セッション） |
+| 対象環境 / host | サンドボックスコンテナ自身（`dhcp-01`役）。veth `veth-d01`（`192.168.50.5/24`）をbridge `br-dhcp50`経由でクライアント役netnsへ接続 |
+| 管理端末 | 同一コンテナ内（`ansible_connection: local`） |
+| クライアント検証VM | `client01`という別network namespace内のveth `veth-cli`（複数MACアドレスで複数クライアントを模擬） |
+| commit SHA | `27fc7ec8f1cfe41e03466ba859647b0f66b836a0` |
+| OS / kernel | Ubuntu 24.04.4 LTS、kernel `6.18.44-fc-v24` |
+| isc-dhcp-server バージョン | `isc-dhcpd-4.4.3-P1`（`4.4.3-P1-4ubuntu2`） |
+| 構成図・IP 表の版 | [04-network-ip-plan.md](../build-package-dhcp/04-network-ip-plan.md)（本セッション時点のHEAD） |
+| raw log / screenshot | 本ファイル内に実出力を直接記載（tcpdumpのpcapはAI支援セッションの一時ディレクトリのみに存在し、リポジトリへはcommitしていない） |
 
-公開 IP、管理元 IP、MAC address、account ID、秘密値は含まれていません（`192.168.50.0/24`・`10.99.0.0/24`はこのラボ専用のプライベート/検証用アドレス）。
+公開 IP、管理元 IP、MAC address、account ID、秘密値は本パックの設計上扱っていないため、マスク対象はありません。
 
 ## 結果一覧
 
 | ID | 確認対象 | 主コマンド | 期待結果 | 結果 | 証跡位置 |
 | --- | --- | --- | --- | --- | --- |
-| DNW-01 | interface / IP / CIDR | `ip -br link`, `ip -br addr` | 設計値と一致 | PASS | 下記 |
-| DNW-02 | route / gateway | `ip route`, `ip route get` | 想定 gateway / device / source | PASS | 下記 |
-| DNW-03 | DNS（`dhcp-01`自身の名前解決） | `dig`, `getent`, `resolvectl` | 想定 record と resolver | SKIP-ENV | 下記 |
-| DNW-04 | ICMP | `ping` | 方針どおりの疎通または遮断 | PASS | 下記 |
-| DNW-05 | 待受port（UDP 67、TCP 22/9100） | `ss -lunp`, `ss -lntup` | 設計どおりの待受のみ | PASS | 下記 |
-| DNW-06 | DORAのpacket capture | `tcpdump -nn -i <interface> udp port 67 or port 68` | DISCOVER/OFFER/REQUEST/ACKの4パケットを観測 | PASS | 下記 |
-| DNW-07 | host firewall | `ufw status verbose`, `nft` / `iptables` | UDP 67は払い出し対象セグメント限定、他は非公開 | PASS（要注記） | 下記 |
-| DNW-08 | クライアント側end-to-end | クライアントVMで`sudo dhclient -v <interface>` | 設計どおりのプール範囲でリースを取得 | PASS | 下記 |
-| DNW-09 | rogue DHCP非存在 | `sudo nmap --script broadcast-dhcp-discover`相当、または応答元サーバーIPの確認 | 応答するDHCPサーバーが`dhcp-01`のみ | PASS | 下記 |
+| DNW-01 | interface / IP / CIDR | `ip -br addr` | 設計値と一致 | PASS | 本書「DNW-01」 |
+| DNW-02 | route / gateway | `ip route` | 想定 gateway / device / source | PASS | 本書「DNW-02」 |
+| DNW-03 | DNS（`dhcp-01`自身の名前解決） | `dig`, `getent`, `resolvectl` | 想定 record と resolver | NOT RUN | 本書「DNW-03」 |
+| DNW-04 | ICMP | `ping` | 方針どおりの疎通または遮断 | PASS | 本書「DNW-04」 |
+| DNW-05 | 待受port（UDP 67、TCP 22/9100） | `ss -lunp`, `ss -lntup` | 設計どおりの待受のみ | PASS | 本書「DNW-05」 |
+| DNW-06 | DORAのpacket capture | `tcpdump -nn -i <interface> udp port 67 or port 68` | DISCOVER/OFFER/REQUEST/ACKの4パケットを観測 | PASS | 本書「DNW-06」 |
+| DNW-07 | host firewall | `ufw status verbose`, `nft` / `iptables` | UDP 67は払い出し対象セグメント限定、他は非公開 | BLOCKED | 本書「DNW-07」 |
+| DNW-08 | クライアント側end-to-end | クライアントVMで`sudo dhclient -v <interface>` | 設計どおりのプール範囲でリースを取得 | PASS | 本書「DNW-08」 |
+| DNW-09 | rogue DHCP非存在 | 応答元サーバーIPの確認 | 応答するDHCPサーバーが`dhcp-01`のみ | PASS（構築後のみ実施） | 本書「DNW-09」 |
 
 ## 実出力
 
@@ -41,124 +43,109 @@
 仮説・期待値:
 
 ```text
-seg0 が 192.168.50.5/24（払い出し対象セグメント）、mgmt0 が 10.99.0.30/24（管理リンク）
+dhcp-01(役)自身の静的IPは設計値192.168.50.5/24（04-network-ip-plan.md）と一致するはず
 ```
 
 実行コマンド:
 
 ```bash
-ip -br link
-ip -br addr
+ip -br addr show veth-d01
 ```
 
 実出力（要点）:
 
 ```text
-lo        UNKNOWN  00:00:00:00:00:00  <LOOPBACK,UP,LOWER_UP>
-mgmt0@if12 UP       4a:f5:89:be:4d:cd  <BROADCAST,MULTICAST,UP,LOWER_UP>
-seg0@if13  UP       46:84:07:eb:85:b8  <BROADCAST,MULTICAST,UP,LOWER_UP>
-
-lo         UNKNOWN 127.0.0.1/8
-mgmt0@if12 UP      10.99.0.30/24
-seg0@if13  UP      192.168.50.5/24
+veth-d01@veth-d01-br UP             192.168.50.5/24
 ```
 
 判定 / 設計との差:
 
 ```text
-設計値と完全に一致。差異なし。
+設計値192.168.50.5/24と完全一致。差異なし。PASS
 ```
 
 ### DNW-02 route / gateway
 
 ```text
-期待値: 192.168.50.0/24 は seg0 に直結、10.99.0.0/24 は mgmt0 に直結、デフォルトルートは mgmt0 経由
-コマンド: ip route
-実出力:
-  default via 10.99.0.1 dev mgmt0
-  10.99.0.0/24 dev mgmt0 proto kernel scope link src 10.99.0.30
-  192.168.50.0/24 dev seg0 proto kernel scope link src 192.168.50.5
-判定: PASS。設計どおり
+期待値: 払い出し対象セグメント192.168.50.0/24への経路がveth-d01経由で存在する
+コマンド: ip route show dev veth-d01
+実出力: 192.168.50.0/24 proto kernel scope link src 192.168.50.5
+判定: 設計どおり。PASS（このホスト自体はセグメント内固定IPのためdefault gatewayは持たない設計）
 ```
 
 ### DNW-03 DNS
 
 ```text
-期待値: NOT SET（このラボにDNS実装（named等）を用意していないため）
-コマンド: getent hosts dhcp-01
-実出力: 未実施
-判定: SKIP-ENV。DNS実装が存在しないための環境制約であり、不合格ではない
+期待値/コマンド: dig / getent hosts dhcp-01 / resolvectl
+実出力: dig・resolvectlはこのサンドボックスに未導入。getent hosts dhcp-01は空（該当エントリなし）
+判定: NOT RUN。本パックの対象はDHCPの払い出しであり、dhcp-01自身の名前解決はスコープ外の設計（03-parameter-sheet.mdのFQDN欄もNOT SET）。このサンドボックスにDNS統合が無いための制約ではなく、そもそも設計上の対象外である点に注意
 ```
 
 ### DNW-04 ICMP
 
 ```text
-期待値 / FW方針: セグメント内（seg0・mgmt0のリンク内）は疎通する方針
-コマンド: ping -c 3 -W 2 <target>
-packet loss / RTT:
-  管理リンク（root netns → dhcp01 10.99.0.30）: 3 packets transmitted, 3 received, 0% packet loss, rtt min/avg/max/mdev = 0.084/1.296/3.721/1.714 ms
-  払い出しセグメント（dhcp01 → client01 192.168.50.100）: 3 packets transmitted, 3 received, 0% packet loss, rtt min/avg/max/mdev = 0.056/0.171/0.397/0.159 ms
-判定: PASS。設計どおりの疎通を確認
+期待値 / FW方針: セグメント内クライアント⇔dhcp-01間はICMP疎通可能な設計（明示的な遮断方針なし）
+コマンド: ip netns exec client01 ping -c 3 -W 1 192.168.50.5 / ping -c 3 -W 1 192.168.50.153
+packet loss / RTT: どちらの方向も3/3 received、0% packet loss。client→dhcp-01: rtt min/avg/max 0.106/0.438/1.099ms。dhcp-01→client: rtt min/avg/max 0.070/0.167/0.360ms
+判定: PASS
 ```
 
 ### DNW-05 待受port
 
 ```text
-期待する待受構成（UDP67、TCP22/9100）: UDP 67(dhcpd)、TCP 22(sshd)。TCP 9100(node_exporter)は本検証の適用範囲(playbooks/dhcp.yml)に監視roleを含まないため対象外
-コマンド: ss -lntup ; ss -lunp
-実出力:
-  udp UNCONN 0 0 0.0.0.0:67 0.0.0.0:* users:(("dhcpd",pid=12506,fd=7))
-  tcp LISTEN 0 128 0.0.0.0:22 0.0.0.0:* users:(("sshd",pid=3237,fd=3))
-想定外listener: なし
-判定: PASS。TCP 9100が無いのはDIT-10（監視統合）がSKIP-ENVであることと整合し、想定どおり
+期待する待受構成（UDP67、TCP22/9100）: dhcpdがUDP 67のみ全interfaceでLISTEN。TCP 22（SSH）・9100（node_exporter）はcommon/monitoring role未適用のため待受なしが期待どおり
+コマンド: ss -lunp | grep -E ":67|dhcpd" ; ss -lntup | grep -E ":22|:9100"
+実出力: UNCONN 0 0 0.0.0.0:67 0.0.0.0:* users:(("dhcpd",pid=8234,fd=7))。TCP 22/9100のgrep結果は0件（listenなし）
+想定外listener: なし（ss -lntup全体では、このサンドボックスのharness自体が使う127.0.0.1:42357等のローカル専用portのみ。dhcp_server roleの対象外）
+判定: PASS（common/monitoring role未適用の現状の構成として妥当。DST-01/DNW-07のBLOCKEDと合わせて解釈すること）
 ```
 
 ### DNW-06 DORAのpacket capture
 
 ```text
-capture対象host / filter: dhcp01の seg0、udp port 67 or port 68
-DISCOVER観測時刻: 17:33:02.686872
-OFFER観測時刻:    17:33:03.688768
-REQUEST観測時刻:  17:33:03.688992
-ACK観測時刻:      17:33:03.689811
-判定: PASS。4パケットとも実キャプチャで観測（0.0.0.0:68 -> 255.255.255.255:67 のDISCOVER/REQUEST、192.168.50.5:67 -> 192.168.50.100:68 のOFFER/ACK）
+capture対象host / filter: tcpdump -i br-dhcp50 -w dora.pcap udp port 67 or udp port 68
+DISCOVER観測時刻: 2026-09-04 08:51:48.417362 (MAC fe:b8:0b:ac:82:84 → 255.255.255.255)
+OFFER観測時刻: 2026-09-04 08:51:49.419559 (192.168.50.5 → 192.168.50.100、Server-ID 192.168.50.5)
+REQUEST観測時刻: 2026-09-04 08:51:49.420101 (Requested-IP 192.168.50.100)
+ACK観測時刻: 2026-09-04 08:51:49.421141 (Server-ID 192.168.50.5)
+判定: PASS。4パケットとも`tcpdump -v`のDHCP-Message(53)フィールドで種別を確認済み。復元後の新規リース確認（DIT-11相当）でも同型の4パケットDORAを別途観測（09:03:41〜09:03:44、Discover→Offer(192.168.50.153)→Request→ACK）
 ```
 
 ### DNW-07 host firewall
 
 ```text
-UFW status/default: Status: active / Default: deny (incoming), allow (outgoing), disabled (routed)
-許可rule（UDP67の送信元CIDR）: 67/udp on seg0 ALLOW IN Anywhere（interface限定、送信元CIDRでの絞り込みではない。DHCPDISCOVERの送信元は0.0.0.0のためCIDRで絞れない設計）
-上流security group/NACL（該当時）: 該当なし（ラボ内完結のため）
-判定: PASS（要注記）。UFWのrule自体は設計どおりseg0限定でACCEPTになっているが、実機検証（DIT-05）でisc-dhcp-serverがraw socket(LPF)でinterfaceから直接受信しnetfilterのINPUT chainを経由しないことを確認した。実際の受信interface制限は/etc/default/isc-dhcp-serverのINTERFACESv4が担っており、UFWのこのruleはdhcpdの受信自体には効いていない（多層防御・意図の明示としては有効）。詳細は本体の証跡ファイルの「見つかった欠陥」#33を参照
+UFW status/default: ufw status verbose → Status: inactive
+許可rule（UDP67の送信元CIDR）: 未設定（UFW自体が有効化されていない）
+上流security group/NACL（該当時）: 該当なし（単一コンテナ内のためsecurity groupの概念なし）
+判定: BLOCKED。common role未適用（安全上の理由）に加え、dhcp_server role自身のUFW許可タスクもsystemdタスク失敗によりplayが先に停止するため未到達。iptables INPUT chainはdefault ACCEPT(0 packets)で、br-dhcp50向けにこのセッションで追加した最小限のFORWARD ACCEPTルールのみが存在する（Dockerの既存chainには変更なし）
 ```
 
 ### DNW-08 クライアント側end-to-end
 
 ```text
-クライアントVMのinterface: client01 の seg0
-取得したIP: 192.168.50.100（プール範囲 192.168.50.100〜.200 内）
-取得したgateway/DNS/ドメイン名: gateway=192.168.50.1、DNS=192.168.50.1・1.1.1.1、domain=lab.example.test（いずれも設計値と一致）
+クライアントVMのinterface: client01 netns内のveth-cli
+取得したIP: 192.168.50.100（DIT-02のDORA）、192.168.50.20（DIT-03の固定予約）など、複数MACで設計どおりのプール範囲/予約帯から取得
+取得したgateway/DNS/ドメイン名: ip route → default via 192.168.50.1 dev veth-cli（設計値のoption routersと一致）。/etc/resolv.conf → domain lab.example.test / search lab.example.test / nameserver 192.168.50.1 / nameserver 1.1.1.1（設計値のoption domain-name・option domain-name-serversと完全一致）
 判定: PASS
 ```
 
 ### DNW-09 rogue DHCP非存在
 
 ```text
-確認方法: dhcp01でdhcpdが稼働している状態で、client01からscapyで素のDHCPDISCOVERを送出し、応答元IPを確認
-応答したDHCPサーバーのIP一覧: 192.168.50.5（dhcp-01）のみ。1件のDHCPOFFERのみ観測
-判定: PASS。このラボのセグメントには dhcp01 以外のDHCPサーバーが構造上存在しないが、実際にDISCOVERを送出して応答元を確認済み
+確認方法: dhcp-01役のisc-dhcp-serverを一時停止(service isc-dhcp-server stop)した状態で、クライアント役から2回DHCPREQUESTを送出し、応答(OFFER/ACK/NAK)の有無を確認
+応答したDHCPサーバーのIP一覧: なし(0件)。tcpdumpでも0.0.0.0.68 → 255.255.255.255.67のRequestのみが2回記録され、192.168.50.5からの応答も他IPからの応答も一切観測されなかった
+判定: PASS（構築後のみ実施）。本来は構築直前の確認も必要だが、本セッションでは構築後に一時停止して代替確認した。確認後dhcp-01役を復旧
 ```
 
 ## 差異・問題
 
 | Issue | 観測事実 | 影響 | 暫定対応 | 恒久対応 / link |
 | --- | --- | --- | --- | --- |
-| DNW-07 | UFWのUDP67許可ruleはisc-dhcp-serverの受信そのものには効いていない（raw socket受信のためnetfilterを経由しない） | 実害なし（INTERFACESv4が実際のinterface制限を担っている） | `ansible/roles/dhcp_server/defaults/main.yml`のコメントを訂正（本PRに含む） | [欠陥台帳#33](defects-found.md) |
+| bridge越しのDORAブロードキャストが届かない | `net.bridge.bridge-nf-call-iptables=1`により、`br-dhcp50`経由のL2フレームが`FORWARD`チェーンのdefault DROP policyに阻まれていた（別フェーズのDocker関連iptables状態が残存） | 初回のDORA検証がタイムアウトした | `br-dhcp50`を対象にした最小限のACCEPTルールを追加（Dockerの既存chainには非干渉） | サンドボックス固有の事象。role/playbook側の対応は不要 |
+| UFW/AppArmor/journald/SSH hardeningが未検証 | `common` role未適用・実systemd/AppArmor/journald不在 | DST-01/03/04/05、DNW-07が未検証のまま残る | 本証跡では対象外として明示 | VM/実機での正本検証（[README](../build-package-dhcp/README.md)記載）で解消予定 |
 
 ## 終了判定
 
 - 必須: DNW-01〜09
-- DNW-03のみ`SKIP-ENV`（DNS実装が存在しない環境制約）。それ以外の8 IDはすべて`PASS`。
-- `FAIL` / `BLOCKED`は0件。
-- 設計との差（DNW-07のUFW/netfilterに関する注記）は本体の証跡ファイルおよび欠陥台帳へ記録済み。
+- DNW-03（NOT RUN）とDNW-07（BLOCKED）が残るため、「ネットワーク実機検証完了」とはしない
+- DHCPプロトコル動作の実測（DNW-01/02/04/05/06/08/09）は完了。host firewallとDNS名前解決は、`common` role適用済みのVM/実機での正本検証が必要

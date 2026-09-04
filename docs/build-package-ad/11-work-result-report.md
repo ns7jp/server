@@ -4,7 +4,7 @@
 
 初期値の `NOT SET` は情報未確定、`NOT RUN` は未実行、`NOT READY` は完了条件未達です。空欄や `NOT RUN` を `PASS` として集計しません。
 
-本書はフェーズ1(ホスト単体構築)とフェーズ2(中央監視統合)を区別して記載します。フェーズ2は[要件定義書](00-requirements.md)に記載した「未実装」3点(Windows対応Ansible roleが無いこと、`compose.yaml`のmonitoring networkが`internal: true`であること、Windows Event Log/AD監査ログをLokiへ送る経路が無いこと)が解消するまで`BLOCKED`が前提であり、`BLOCKED`のままであること自体はフェーズ1の完了判定を妨げません。
+本書はフェーズ1(ホスト単体構築)とフェーズ2(中央監視統合)を区別して記載します。フェーズ2は[要件定義書](00-requirements.md)に記載した「未実装」3点(Windows対応Ansible roleが無いこと、Dockerホストと`ad-dc01`間の実ネットワーク接続およびwindows_exporterのFirewall許可(Dockerホストの実IP)が確立していないこと、Windows Event Log/AD監査ログをLokiへ送る経路が無いこと)が解消するまで`BLOCKED`が前提であり、`BLOCKED`のままであること自体はフェーズ1の完了判定を妨げません。
 
 本書に対応する記入済みの報告書は[2026-09-02 SM-AD-001 ラボ構築](../evidence/2026-09-02-work-result-SM-AD-001.md)です(手元Hyper-V上のVM 1台に対するフェーズ1の実績。組織環境への引き渡しではありません)。以下の空欄は次の構築作業で複製して使う原本です。
 
@@ -56,7 +56,7 @@ AD版にはLinux版のような単一のcommit SHAで対象ホストの構成全
 | 障害復旧(フェーズ1) | ディレクトリサービス関連サービスの停止復旧演習、検知〜復旧のRTO記録(AIT-08) | `NOT RUN` | NOT RUN | — | — |
 | 実機network検証(フェーズ1) | ANW-01〜09(AIT-10) | `NOT RUN` | NOT RUN | — | — |
 | 再実行安全性(フェーズ1) | 昇格済みDCへ`Install-ADDSForest`相当を誤って再実行する試験(AIT-11) | `NOT RUN` | NOT RUN | — | — |
-| 中央統合(フェーズ2) | `app_node_exporter_targets`へ`ad-dc01`追記、中央`site.yml`再適用、host/ADメトリクスscrape確認(AIT-09) | `NOT RUN` | BLOCKED | — | monitoring networkの`internal: true`制約のためBLOCKED |
+| 中央統合(フェーズ2) | `app_node_exporter_targets`へ`ad-dc01`追記、中央`site.yml`再適用、host/ADメトリクスscrape確認(AIT-09) | `NOT RUN` | BLOCKED | — | Dockerホスト↔`ad-dc01`間の実接続・windows_exporterのFirewall許可が未確立のためBLOCKED |
 | 後処理 | RDP一時許可・検証用OU/ユーザーの削除、最終状態取得 | `NOT RUN` | NOT RUN | — | — |
 
 結果は`PASS / FAIL / BLOCKED / NOT RUN`のいずれかとし、実行コマンド、主要出力、所要時間を日付付きevidenceへ残します。中央統合(フェーズ2)は未実装3点が解消するまで、実施しても前提が揃わず`BLOCKED`になることが設計時点で分かっています。
@@ -106,7 +106,7 @@ AD版にはLinux版のような単一のcommit SHAで対象ホストの構成全
 | 実管理端末 / 内部ネットワーク / Firewall検証(フェーズ1) | NOT RUN | [ネットワーク実機検証手順](09-network-validation-procedure.md)でANW-01〜09を実行 |
 | サービス停止復旧演習・RTO記録(フェーズ1) | NOT RUN | 対象ホストでAIT-08(ディレクトリサービス関連サービスの一時停止、検知〜復旧の時間記録)を実行 |
 | System Stateバックアップ / ADごみ箱復元試験(フェーズ1) | NOT RUN | 対象ホストでAIT-06(System Stateバックアップ取得)、AIT-07(ADごみ箱によるオブジェクト復元)を実行 |
-| host/ADメトリクスscrape(フェーズ2、AIT-09) | BLOCKED | `compose.yaml`の`monitoring` networkが`internal: true`であるため、Prometheusコンテナがサーバー外にある実machine(`ad-dc01`)の`windows_exporter`(既定9182/tcp)へ到達できない。Prometheusサービスを追加の管理用bridge networkにも接続する`compose.yaml`変更が必要(現状未実装) |
+| host/ADメトリクスscrape(フェーズ2、AIT-09) | BLOCKED | Prometheusコンテナは`monitoring`(`internal: true`)に加えて非internalなbridge network`host-access`にも接続されており、`host-access`経由のegress自体はnftablesルール確認済みで機能するため`internal: true`は妨げではない。Dockerホストと`ad-dc01`間の実L3接続(本ラボは全ホストRFC 5737の例示用アドレス`192.0.2.0/24`を使用しており未確立)、およびwindows_exporterのFirewall許可をDockerホストのNAT後の実IPに対して設定することの2点が`NOT SET` |
 | Windows対応Ansible role(`common_windows`等)の追加 | NOT READY | `ansible/roles`配下へWindows対応roleを新設し、フェーズ1の手動PowerShell手順(フォレスト作成・DC昇格を除く)を自動化するかを検討 |
 | 2台目DC追加によるレプリケーション実測 | NOT RUN | [基本設計書](01-basic-design.md)2.4節の発展構成として、`Install-ADDSDomainController`で2台目を追加し`repadmin /replsummary`・`repadmin /showrepl`でレプリケーション状態を確認 |
 | monitor-win-01のドメイン参加検証 | NOT RUN | [Windows版パック](../build-package-windows/01-basic-design.md)の系統B(既存ADに参加させる場合の差分)を、実際に`ad-dc01`を使って統合演習として確認 |

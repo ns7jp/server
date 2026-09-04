@@ -635,7 +635,7 @@ curl -s http://localhost:9090/api/v1/targets | \
 `app_node_exporter_targets`への追加と`site.yml`の再適用自体は正常に完了し、`prometheus.yml`には`wsus-01`のtargetが反映される。しかし次の3点が解消するまで、上記APIの`health`は`unhealthy`または`up=0`のままであり、SIT-09は`BLOCKED`のまま記録する。この3点の理由付けは[Windows版パック](../build-package-windows/05-build-procedure.md)・[AD版パック](../build-package-ad/05-build-procedure.md)と同じ扱いであり、本パック独自の理由には作り替えない。
 
 1. `ansible/roles`配下にWindows対応role(`common_windows`等)が無く、Ansibleでの自動構築ができない。
-2. `compose.yaml`の`monitoring`ネットワークが`internal: true`であり、Prometheusコンテナは同じDockerホストの外にある実マシン(`wsus-01`)の9182/tcpへ到達できない。
+2. Prometheusコンテナは`monitoring`(`internal: true`)に加えて`host-access`(internal指定なしのbridge)にも接続されておりNAT egress自体は持つが、中央監視hostのDockerホストと`wsus-01`を実際に同一ネットワークセグメントへ接続した実績、およびwindows_exporterのFirewall許可先(Dockerホストの実IP)の確定が無い。
 3. Windows Event Log/WSUS同期ログ/IISログを既存Lokiへ送る経路(Grafana Alloy for Windowsの導入等)が無い。
 
 「設定への追加が完了したこと」と「scrapeが成立すること」は別の状態であり、後者を`PASS`と誤記しない。

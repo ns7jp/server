@@ -50,7 +50,7 @@
 - **フェーズ1(ホスト単体構築)**: `wsus-01`のドメイン参加、WSUSロール(WID使用)の導入・構成、GPO「WSUS-Client-Policy」によるクライアント側ターゲティングの設定、`wsus-01`自身をWSUSクライアントとして自己登録・同期・承認・適用まで一巡させる範囲までを含む。windows_exporterのローカル導入までを含む。「設計とする」「手順とする」の範囲で完結し、Windows Server 1台(と既存ADドメイン)だけで検証・完了できる範囲である。
 - **フェーズ2(中央監視統合)**: 中央Prometheusからのscrape、ログ集約、アラート経路。[Windows版パック](../build-package-windows/01-basic-design.md)・[AD版パック](../build-package-ad/01-basic-design.md)と共通の次の3点が解消するまで`BLOCKED`とする。この3点の理由付けは両パックと同じ扱いとし、本パック独自の理由には作り替えない。
   1. `ansible/roles`配下にWindows対応role(`common_windows`等)が無く、Ansibleでの自動構築ができない。
-  2. `compose.yaml`のmonitoring networkは`internal: true`(外部egress不可)であり、Prometheusコンテナは今のままでは同じDockerホストの外にある実マシン(`wsus-01`)のwindows_exporter(既定9182/tcp)へ到達できない。
+  2. Prometheusコンテナは`monitoring`(`internal: true`)に加えて`compose.yaml`の`host-access`(internal指定なしのbridge)にも接続されており、Dockerは`host-access`向けにMASQUERADE(NAT)とFORWARD許可を自動生成するため、`internal: true`自体はDockerホスト外への到達を防ぐ壁ではない(実際にnftablesルールを生成・検証済み)。実際にscrapeを成立させるには、(a)中央監視hostのDockerホスト自体が`wsus-01`の属するネットワークセグメントへ実際に到達できること、(b)windows_exporterのFirewallルールが、`host-access`経由のMASQUERADEで送信元がDockerホストの実IPへ書き換わった後の値を許可対象とすることが必要である。本ラボの各ホストはRFC 5737の例示用アドレス(`192.0.2.0/24`)であり、DockerホストとWindowsホストを実際に同一セグメントへ接続した実績が無いため、これらは`NOT SET`・未検証のままである。
   3. Windows Event Log/IISログを既存Lokiへ送る経路(Grafana Alloy for Windowsの導入、Lokiのpush APIをloopback以外からも安全に受け付けるための認証・network設計)が無い。
 
   解消後は、[Windows版パック](../build-package-windows/05-build-procedure.md)5節と同じ手順で、`ansible/roles/app/defaults/main.yml`の`app_node_exporter_targets`変数へ`wsus-01`のaddress/host/environmentを1行追加し、中央host側で`ansible-playbook site.yml`を再適用するだけでscrapeを有効化できる設計である。
@@ -95,7 +95,7 @@ flowchart LR
         Loki --> Graf
     end
 
-    WinExp -.->|"フェーズ2: scrape targets追加\nBLOCKED: monitoring networkがinternal:true"| Prom
+    WinExp -.->|"フェーズ2: scrape targets追加\nBLOCKED: Dockerホスト↔wsus-01間の実接続・Firewall許可先が未検証"| Prom
 ```
 
 実線は現時点(フェーズ1)で成立する経路、点線はフェーズ2で構築予定の経路(現状は設計のみで`NOT RUN`/`BLOCKED`)を示す。`ad-dc01`・`ad-dc02`は[AD版パック](../build-package-ad/01-basic-design.md)で構築済みの既存ドメインコントローラーであり、本パックによる変更は行わない。`wsus-01`はこの既存ドメインへ新規メンバーサーバーとして参加し、GPO「WSUS-Client-Policy」はドメインコントローラー側(SYSVOL)から配布され、`wsus-01`自身も他の将来のドメインメンバーと同様にこのGPOの適用対象(Servers OU)に含まれる。Windows Defender Firewallのルール自体(WinRM・WSUSコンテンツ・windows_exporterの許可)はフェーズ1の範囲で設定するが、中央Prometheusからの実際の到達は3.1節に記載した未実装事項が解消するまで成立しない。

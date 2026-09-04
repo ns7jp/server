@@ -9,7 +9,7 @@
 - インターネット越しのWindows Defender Firewall(実管理端末からの到達性)
 - フェーズ2(中央監視統合)一式(WIT-03, WIT-05, WIT-06, WIT-07, WIT-11)
 
-**フェーズ1の範囲は、1台の検証用ホストを用意すると大半が一度に埋まります。** これに対してフェーズ2は、検証用ホストの有無に関わらず[要件定義書](00-requirements.md)に記載した「未実装」3点(Windows対応Ansible role、`compose.yaml` の `monitoring` networkの `internal: true` 制約、Grafana Alloy for Windows未導入)が解消しない限り埋まりません。**逆に言えば、検証用ホストが無い限りフェーズ1の項目はどれも埋まりません。**
+**フェーズ1の範囲は、1台の検証用ホストを用意すると大半が一度に埋まります。** これに対してフェーズ2は、検証用ホストの有無に関わらず[要件定義書](00-requirements.md)に記載した3点(Windows対応Ansible role、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)、Grafana Alloy for Windows未導入)が解消しない限り埋まりません。**逆に言えば、検証用ホストが無い限りフェーズ1の項目はどれも埋まりません。**
 
 この文書は、フェーズ1のホストを「用意してから証跡が出るまで」を最短で通すための手順です。フェーズ2の統合手順は[構築手順書](05-build-procedure.md)5節、統合後の判定基準は[試験仕様書](06-test-specification.md)を参照してください。
 
@@ -77,7 +77,7 @@ Get-Service windows_exporter, W3SVC, WinRM | Select-Object Name, Status, StartTy
 
 ### 中央監視への統合(フェーズ2、現時点はBLOCKED)
 
-[構築手順書](05-build-procedure.md)5節(`app_node_exporter_targets` への追記、中央host側の `ansible-playbook site.yml` 再適用)は「済(自動)」の範囲であり、フェーズ1のホスト単体構築とは独立に、中央host側の設定だけなら今すぐ試せます(WUT-02)。ただしscrapeが実際に成功するかどうか(WIT-03)は、[要件定義書](00-requirements.md)の「未実装」3点のうち `compose.yaml` の `monitoring` networkの `internal: true` 制約が解消するまでBLOCKEDです。フェーズ1の受け入れ試験(3節)にはこの統合作業を含めません。
+[構築手順書](05-build-procedure.md)5節(`app_node_exporter_targets` への追記、中央host側の `ansible-playbook site.yml` 再適用)は「済(自動)」の範囲であり、フェーズ1のホスト単体構築とは独立に、中央host側の設定だけなら今すぐ試せます(WUT-02)。ただしscrapeが実際に成功するかどうか(WIT-03)は、[要件定義書](00-requirements.md)の3点のうち、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)が確立するまでBLOCKEDです(`compose.yaml` の `monitoring` network自体の `internal: true` は、Prometheusが同時に接続する `host-access` 経由のegressがあるため、単独の妨げにはなりません)。フェーズ1の受け入れ試験(3節)にはこの統合作業を含めません。
 
 ## 3. 受け入れ試験
 
@@ -180,7 +180,7 @@ Register-ScheduledTask -TaskName "server-monitor-soak" -Action $action -Trigger 
 
 | 項目 | 追加で必要なもの |
 | --- | --- |
-| フェーズ2(中央監視統合)全体(WIT-03, WIT-05, WIT-06, WIT-07, WIT-11) | [要件定義書](00-requirements.md)の「未実装」3点(Windows対応Ansible role、`compose.yaml` の `monitoring` network拡張、Grafana Alloy for Windows導入)の解消 |
+| フェーズ2(中央監視統合)全体(WIT-03, WIT-05, WIT-06, WIT-07, WIT-11) | [要件定義書](00-requirements.md)の3点(Windows対応Ansible role、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)、Grafana Alloy for Windows導入)の解消 |
 | 系統B(ADドメイン参加)の実機検証 | 検証用ADドメイン環境(構築は本パックの対象外) |
 | 自己署名でない実TLS証明書 | 内部CA、または独自ドメインとLet's Encrypt相当の仕組み |
 | 組織DNS / 上流firewall | 実際の組織ネットワーク |

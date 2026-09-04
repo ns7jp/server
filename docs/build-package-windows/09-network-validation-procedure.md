@@ -164,7 +164,7 @@ curl.exe --max-time 5 "http://$TargetIP`:$ExporterPort/metrics"
 - (2)は200(IISは内部/管理ネットワークからの到達を許可する設計)
 - (4)は接続拒否またはtimeout([パラメータシート](03-parameter-sheet.md)のアクセス制御表のとおり、windows_exporterは中央Prometheus hostのIPのみ許可する設計のため)
 
-(4)が接続拒否になることは本設計では`PASS`です。中央Prometheus host自体からのscrape到達性は、`compose.yaml`の`monitoring`network制約が解消するまでフェーズ2`BLOCKED`であり、本項目とは別に[試験仕様書・結果票](06-test-specification.md)のWIT-03で扱います。`curl.exe`の出力に認証headerを含めないでください。
+(4)が接続拒否になることは本設計では`PASS`です。中央Prometheus host自体からのscrape到達性は、Dockerホスト↔対象ネットワーク間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)が確立するまでフェーズ2`BLOCKED`であり、本項目とは別に[試験仕様書・結果票](06-test-specification.md)のWIT-03で扱います。`curl.exe`の出力に認証headerを含めないでください。
 
 ## 10. WNW-07: packet capture
 

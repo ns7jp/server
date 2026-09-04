@@ -109,7 +109,7 @@ OU構造は既定の`CN=Users`・`CN=Computers`コンテナをそのまま使わ
 
 | 項目 | 設定値(設計) | 状態 | 正本 |
 | --- | --- | --- | --- |
-| windows_exporter scrape interval | 中央の既存`linux-node` jobの設定(15秒)を流用予定 | `BLOCKED`(AIT-09。monitoring networkの`internal: true`制約が解消するまで) | `ansible/roles/app/defaults/main.yml`の`app_node_exporter_targets` |
+| windows_exporter scrape interval | 中央の既存`linux-node` jobの設定(15秒)を流用予定 | `BLOCKED`(AIT-09。Dockerホスト↔`ad-dc01`間の実接続・Firewall許可が未確立のため) | `ansible/roles/app/defaults/main.yml`の`app_node_exporter_targets` |
 | ログ集約 | Grafana Alloy for Windows経由で既存Lokiへ集約する設計のみ(AD監査ログ、Directory Serviceイベントログを含む) | `BLOCKED`(Alloy for Windows未導入のため) | [詳細設計書](02-detailed-design.md) |
 | 可用性SLO / latency SLO | `ad-dc01`個別の数値目標は未設定 | `NOT SET`(フェーズ2有効化後に既存[SLO](../slo.md)へ統合予定) | — |
 

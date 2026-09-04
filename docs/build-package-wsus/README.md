@@ -49,7 +49,7 @@ flowchart LR
 
 1. **既存ADドメインへの依存**: 本パックは[AD版パック](../build-package-ad/README.md)(案件ID`SM-AD-001`)が構築した既存ドメイン`corp.example.test`へメンバーサーバーとして参加する構成です。AD版パックが定義した組織単位(OU)構成(`_Tier0-Admins`、`Servers`、`Workstations`、`Employees`、`Groups`、`ServiceAccounts`の6OU)をそのまま利用し、`wsus-01`のコンピューターオブジェクトは既定の`Computers`コンテナではなく`Servers`OUへ配置します。AD版パック未完了の状態では本パックは開始できません。
 2. **「推奨だが対象外」を埋めるパック**: [Windows版パック](../build-package-windows/00-requirements.md)・[AD版パック](../build-package-ad/00-requirements.md)のパラメータシート/基本設計書には、いずれも「自動更新はWindows Updateから直接。実務ではWSUS/グループポリシー経由の集中管理を推奨するが、本パックの基準ではない」という一文があります。本パックは、この欠落を埋める5本目の案件パックです。
-3. **フェーズ1/フェーズ2の2段階に分かれる**: Windows版・AD版パックと同じ考え方で、`wsus-01`単体で検証・完了できる**フェーズ1(ホスト単体構築)**と、中央監視基盤への統合を要する**フェーズ2(中央監視統合)**に分けます。フェーズ2は、Windows対応Ansible roleの不在、`monitoring`ネットワークの`internal: true`制約、Windows向けログ集約経路の不在という「未実装」3点が解消するまで`BLOCKED`です。これはWindows版・AD版パックと全く同じ理由付けです。
+3. **フェーズ1/フェーズ2の2段階に分かれる**: Windows版・AD版パックと同じ考え方で、`wsus-01`単体で検証・完了できる**フェーズ1(ホスト単体構築)**と、中央監視基盤への統合を要する**フェーズ2(中央監視統合)**に分けます。フェーズ2は、Windows対応Ansible roleの不在、中央監視hostのDockerホストと`wsus-01`の実ネットワーク接続・windows_exporterのFirewall許可先の確定が未検証であること、Windows向けログ集約経路の不在という「未実装」3点が解消するまで`BLOCKED`です。これはWindows版・AD版パックと全く同じ理由付けです(2点目は、Prometheusが`compose.yaml`の`host-access`ネットワーク経由でNAT egress自体は既に持つため`monitoring`の`internal: true`単体が壁ではない、という訂正を反映しています)。
 
 ## 最短レビュー順
 
@@ -111,7 +111,7 @@ flowchart LR
 次をすべて満たした時点で「構築・試験完了」とします。
 
 - フェーズ1の必須試験(`SUT-01`〜`05`、`SIT-01`〜`08`、`SST-01`〜`06`、`SNW-01`〜`09`)がすべて`PASS`
-- フェーズ2の必須試験(`SIT-09`)は、[要件定義書](00-requirements.md)に記す「未実装」3点(Windows対応Ansible roleの不在、`monitoring`ネットワークの`internal: true`制約、Windows向けログ集約経路の不在)の解消条件とともに`BLOCKED`として明記されていること
+- フェーズ2の必須試験(`SIT-09`)は、[要件定義書](00-requirements.md)に記す「未実装」3点(Windows対応Ansible roleの不在、Dockerホストと`wsus-01`の実ネットワーク接続・windows_exporterのFirewall許可先の確定が未検証であること、Windows向けログ集約経路の不在)の解消条件とともに`BLOCKED`として明記されていること
 - 実行日時、環境、ホストのビルド番号(`winver`または`Get-ComputerInfo`の`OsBuildNumber`)、実行コマンド、実出力、判定が証跡として保存される
 - 未解決事項、秘密値(ローカルAdministratorパスワード等)の受け渡し方法、ロールバック方法が引き渡し記録に残る
 - 実ホストの名前解決、経路、待受、HTTP疎通、Windows Defender Firewallを確認し、実行出力を保存する

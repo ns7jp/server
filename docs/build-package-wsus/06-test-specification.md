@@ -11,7 +11,7 @@
 > **SIT-09**は、[要件定義書](00-requirements.md)の次の未実装3点が解消するまで`BLOCKED`になることが設計時点で分かっています。[Windows版](../build-package-windows/00-requirements.md)・[AD版](../build-package-ad/00-requirements.md)と同一の理由付けです。
 >
 > 1. Windows対応Ansible role(`common_windows`等)が`ansible/roles`に無い
-> 2. `compose.yaml`の`monitoring`ネットワークが`internal: true`で、Prometheusが`wsus-01`のwindows_exporter(9182/tcp)へ到達できない
+> 2. 中央監視hostのDockerホストと`wsus-01`の実ネットワーク接続、およびwindows_exporter(9182/tcp)のFirewall許可先(Dockerホストの実IP)が未検証(Prometheusは`host-access`ネットワーク経由でNAT egress自体は持つが、実接続とFirewall許可先の確定が無い)
 > 3. Windows Event Log / IISログを既存Lokiへ送る経路(Grafana Alloy for Windows等)が無い
 >
 > `BLOCKED`は失敗ではなく前提条件と解除条件を記録した状態ですが、本書は実行していない空白の原本なので結果欄はなお`NOT RUN`とし、実際に`BLOCKED`と確定した時点で証跡へ記入します。ネットワーク実機検証(SNW-01〜09)の記入様式は[WSUS版ネットワーク結果票テンプレート](../evidence/templates/network-host-validation-wsus.md)です。
@@ -97,6 +97,6 @@ SUT-04・05はフェーズ1全体の前提条件確認として扱います。
 
 - フェーズ1必須ID: `SUT-01`〜`05`、`SIT-01`〜`08`、`SST-01`〜`06`、`SNW-01`〜`09`。フェーズ2必須ID: `SIT-09`(未実装3点の解消後に必須化)。
 - フェーズ1必須IDに`FAIL`・`BLOCKED`・`NOT RUN`が1件でも残る場合、フェーズ1(ホスト単体構築)は完了としません。
-- `SIT-09`は未実装3点(Windows対応Ansible role、`monitoring`ネットワークの外部到達、Windows向けログ集約経路)が解消するまで`BLOCKED`が前提であり、このこと自体はフェーズ1の完了判定に影響しません。解消後も`NOT RUN`のままならフェーズ2(中央監視統合)は完了としません。
+- `SIT-09`は未実装3点(Windows対応Ansible role、Dockerホストと`wsus-01`の実ネットワーク接続・windows_exporterのFirewall許可先の確定、Windows向けログ集約経路)が解消するまで`BLOCKED`が前提であり、このこと自体はフェーズ1の完了判定に影響しません。解消後も`NOT RUN`のままならフェーズ2(中央監視統合)は完了としません。
 - 構築案件全体の完了は、フェーズ1必須試験がすべて`PASS`し、かつフェーズ2が未実装3点の解消条件とともに`BLOCKED`として明記された状態を指します。両方が揃って初めて[作業結果・引き渡し報告書](11-work-result-report.md)へ記載できます。
 - 結果はこの原本を直接上書きせず、日付付きの証跡ファイルへコピーして保存します。命名・記録ルールは[検証証跡台帳](../evidence/README.md)に合わせます。

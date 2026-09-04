@@ -14,7 +14,7 @@
 > フェーズ2(中央監視統合)に属する **AIT-09** は、[要件定義書](00-requirements.md)に記載した次の「未実装」3点が解消するまで、実行しても前提が揃わず`BLOCKED`になることが設計時点で分かっています。
 >
 > 1. `ansible/roles`配下にWindows対応role(`common_windows`等)が無く、Ansibleでの自動構築ができない
-> 2. `compose.yaml`の`monitoring`ネットワークが`internal: true`のため、Prometheusコンテナが同じDockerホスト外にある実machine(`ad-dc01`)のwindows_exporter(既定9182/tcp)へ到達できない
+> 2. Prometheusコンテナは`monitoring`(`internal: true`)に加えて非internalなbridge network`host-access`にも接続されており、`host-access`経由のegress(MASQUERADE/NAT)はnftablesルール確認済みで機能するため、`internal: true`自体は到達を妨げていない。ただしDockerホストと`ad-dc01`の間の実L3接続(本ラボは全ホストRFC 5737の例示用アドレス`192.0.2.0/24`を使用しており未確立)、およびwindows_exporterのFirewall許可をDockerホストのNAT後の実IPに対して設定することの2点がいずれも`NOT SET`のまま残っている
 > 3. Windows Event Log / ADディレクトリサービス監査ログを既存Lokiへ送る経路(Grafana Alloy for Windowsの導入、Lokiのpush APIをloopback以外からも安全に受け付けるための認証・network設計)が無い
 >
 > `BLOCKED`は失敗ではなく、前提条件と解除条件を記録した状態です。ただし本書は実行そのものをしていない空白の原本なので、結果欄はここでもなお`NOT RUN`のままにし、実際に実行して`BLOCKED`と確定した時点で日付付きの証跡へ理由とともに記入します。期待結果欄には、どの未実装点が解除条件になるかをあらかじめ書き添えています。
@@ -68,7 +68,7 @@
 | AIT-06 | System Stateバックアップ取得 | `wbadmin start systemstatebackup` | 正常終了、`wbadmin get versions`に記録される | NOT RUN | — |
 | AIT-07 | ADごみ箱によるオブジェクト復元 | 検証用OUまたはユーザーを`Remove-ADObject`で削除し、`Get-ADObject -IncludeDeletedObjects`で検出後`Restore-ADObject`で復元 | 削除前と同じ属性で復元される | NOT RUN | — |
 | AIT-08 | サービス停止復旧演習 | NTDSまたはDNSサービスを一時停止し検知・復旧・正常化までの時間を記録 | 復旧しRTOが記録される | NOT RUN | — |
-| AIT-09 | host/ADメトリクスscrape(フェーズ2) | 中央PrometheusのTargets画面を確認 | `up{job="linux-node", host="ad-dc01"}=1`。ただし`compose.yaml`の`monitoring` networkが`internal:true`のため現状BLOCKED | NOT RUN | — |
+| AIT-09 | host/ADメトリクスscrape(フェーズ2) | 中央PrometheusのTargets画面を確認 | `up{job="linux-node", host="ad-dc01"}=1`。ただしDockerホスト↔`ad-dc01`間の実接続・windows_exporterのFirewall許可が未確立のため現状BLOCKED | NOT RUN | — |
 | AIT-10 | 実ホストnetwork | ANW-01からANW-09を実行 | 設計どおり | NOT RUN | — |
 | AIT-11 | 再実行安全性 | 既に昇格済みの`ad-dc01`に対して`Install-ADDSForest`相当を誤って再実行する | 既存ドメインを破壊せず、明確なエラーで安全に失敗する | NOT RUN | — |
 | AIT-12(任意) | System State復元演習 | バックアップ取得→目印オブジェクト作成→DSRM起動→`wbadmin start systemstaterecovery`→通常起動 | 目印が消え、バックアップ時点のOU/FSMO/サービスが正常。復元処理と復旧全体の所要時間(RTO)を記録 | NOT RUN | — |
@@ -108,7 +108,7 @@
 - フェーズ2必須ID(未実装3点解消後に必須化): AIT-09
 - フェーズ1の必須IDに`FAIL`または`BLOCKED`が1件でもあれば、フェーズ1(ホスト単体構築)は完了としません。
 - フェーズ1の必須IDに`NOT RUN`が残る場合も、フェーズ1は完了としません。
-- フェーズ2はAIT-09が`BLOCKED`のままであること自体はフェーズ1の完了判定を妨げません。未実装3点(Windows対応Ansible role、`compose.yaml`の`monitoring` networkの外部到達、Windows Event Log / AD監査ログをLokiへ送る経路)が解消するまで`BLOCKED`であることを前提とします。
+- フェーズ2はAIT-09が`BLOCKED`のままであること自体はフェーズ1の完了判定を妨げません。未実装3点(Windows対応Ansible role、Dockerホストと`ad-dc01`間の実ネットワーク接続およびwindows_exporterのFirewall許可(Dockerホストの実IP)、Windows Event Log / AD監査ログをLokiへ送る経路)が解消するまで`BLOCKED`であることを前提とします。
 - 未実装3点の解消後もAIT-09が`NOT RUN`のまま残る場合は、フェーズ2(中央監視統合)は完了としません。
 - 構築案件全体の完了は、フェーズ1必須試験がすべて`PASS`し、かつフェーズ2が未実装3点の解消条件とともに`BLOCKED`として明記されている状態を指します。両方が揃って初めて[作業結果・引き渡し報告書](11-work-result-report.md)へ記載できます。
 - 結果はこの原本を直接上書きせず、日付付きの証跡ファイルへコピーして保存します。命名・記録ルールは[検証証跡台帳](../evidence/README.md)に合わせます。

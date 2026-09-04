@@ -1,91 +1,104 @@
-# DHCPサーバー構築 構築・試験結果票 — 2026-09-04
+# DHCPサーバー 構築・試験結果票 — 2026-09-04
 
-[試験仕様書・結果票](../build-package-dhcp/06-test-specification.md)の原本をコピーし、`ansible/roles/dhcp_server/` + `ansible/playbooks/dhcp.yml`を実際のホストへ適用した結果を記入したものです。原本は`NOT RUN`のまま保持し、実施結果はこの日付付きファイルへ記録します。
+[試験仕様書・結果票](../build-package-dhcp/06-test-specification.md)の原本をコピーし、`dhcp_server` role（`ansible/roles/dhcp_server/`）と実プレイブック（`ansible/playbooks/dhcp.yml`）を、AI支援セッションのサンドボックスコンテナ上へ適用した結果を記入したものです。原本は`NOT RUN`のまま保持し、実施結果はこの日付付きファイルへ記録します。
 
-> **この証跡が示す範囲**: 独立した物理／VPSホストや`dhcp-01`に相当する実VMではなく、**AI支援セッションのサンドボックスコンテナ内にnetwork namespaceで組んだラボ**（[`labs/dhcp-lab/topology.sh`](../../labs/dhcp-lab/topology.sh)と同じ構成、`dhcp01`＝DHCPサーバー役、`client01`＝クライアント役、`mgmt-ctrl`＝管理端末役）に対する実施記録です。SSH・Ansible適用・DORA・固定予約・プール枯渇・RENEW・再起動・停止復旧・バックアップ復元・rogue DHCP確認はすべて実コマンドと実出力で確認していますが、次の点でLinux/AD/Zabbixパックの実機検証と条件が異なります。
->
-> - このサンドボックス自体に`systemd`がPID 1として動いていないため、`isc-dhcp-server`の起動・停止・再起動はすべて手動（`dhcpd`を直接起動・`pkill`で停止）で行いました。Ansible側は`dhcp_server_manage_service: false`（inventory側の一時上書き）で`systemd` unitのenable/startタスクをスキップしています。実運用（`dhcp_server_manage_service`の既定値`true`）ではAnsibleが`systemctl enable --now`相当を実行します。
-> - AppArmor LSMがロードされていないため、DST-03は`SKIP-ENV`です。
-> - `journald`/`rsyslog`のいずれも動いておらず`/dev/log`も存在しないため、`journalctl`によるDST-05（監査ログ）は`SKIP-ENV`です。dhcpdの`log-facility local7`設定自体は構文検査済みです。
-> - `monitor-01`に相当する監視サーバーがこのラボに存在しないため、DIT-10（監視統合）は`SKIP-ENV`です。
-> - DNS実装（named等）を用意していないため、DNW-03（`dhcp-01`自身の名前解決）は`SKIP-ENV`です。
->
-> これらは[Zabbix実機検証](2026-09-04-zabbix-build-validation.md)・[Ansible自動化基盤 実機検証](2026-09-04-ansible-foundation-build.md)と同じ「サンドボックス制約の範囲」であることを明記した上で記録します。DORA・固定予約・プール枯渇・RENEW（unicast）・冪等性・再起動後のリース永続化・リース解放・バックアップ復元・rogue DHCP確認は、いずれも**本物のDHCPプロトコルのやり取り**（`dhclient`、`scapy`で生成した実パケット、`tcpdump`キャプチャ）で確認しており、モック・スタブではありません。
+> **他の同日付証跡との関係**: 同じ2026-09-04に、別のAI支援セッションが独立に本パックの実機検証を行った記録が[`2026-09-04-dhcp-build-validation-netns-lab.md`](2026-09-04-dhcp-build-validation-netns-lab.md)（`labs/routing/`と同じ方式のnetwork namespace + veth隔離ラボ`labs/dhcp-lab/`、`common`ロールも含めて適用、31 ID中27 ID `PASS`）にあります。本ファイルはセッション自身のコンテナをDocker bridge越しに`dhcp-01`役として使う構成（`common` roleは安全上の理由で未適用、31 ID中22 ID `PASS`）です。両者は互いを置き換えるものではなく、異なる構成・スコープでの並行した実測として両方保持しています。
+
+## この証跡が示す範囲（重要）
+
+このパックの[README](../build-package-dhcp/README.md)は「VM/実機での実演を正本とする」と定めています。本証跡はその正本ではなく、VM/実機を用意できないAI支援セッションのサンドボックスコンテナ上で、**Linuxのnetwork namespace + veth pair + 独自bridge**を使ってDHCPのL2ブロードキャストを模擬し、実際に`isc-dhcp-server`（apt版、改変なし）を動かして得た記録です。既存の[二セグメント障害ラボ](../../labs/network-troubleshooting/README.md)が使うDocker bridgeとも異なる、本セッション限定の構成です。
+
+- 使用したコードは**リポジトリの実物**です（`ansible/roles/dhcp_server/tasks/main.yml`・`templates/dhcpd.conf.j2`・`ansible/playbooks/dhcp.yml`を一切改変していません）。役割検証用に、`common` roleを含まない縮小版playbook（このサンドボックスコンテナ自体へSSH hardening・default deny firewallを適用するのは安全上の理由で見送った）と、セッション専用のinventory（`ansible/inventory/sandbox-dhcp.local.yml`、`.gitignore`対象・非commit）だけをこのセッションで作成しました。
+- 得られたDORA・固定予約・プール枯渇・RENEW・バックアップ復元のパケットキャプチャと`dhcpd.leases`の内容は**すべて実測**です。作文・推測による結果はありません。
+- 一方で、このサンドボックスコンテナには**実systemd（PID1）・AppArmor・journald/rsyslogがありません**。該当する試験ID（DUT-04、DST-03、DST-05）は環境起因で`BLOCKED`です。role・playbook自体の欠陥ではありません。
+- `common` role（SSH hardening、UFW既定deny、自動更新）は、このセッションが動いている共有サンドボックスコンテナ自体へ適用するとセッションのSSH/操作性を壊すリスクがあるため、安全上の理由で意図的に適用していません。関連するDST-01、DST-04、DNW-07は`BLOCKED`/`NOT RUN`です。
+- 中央Prometheus（`monitor-01`）はこのサンドボックスに存在しないため、DIT-10は`NOT RUN`です。
+- 複数物理ホスト間の実ネットワーク（別VM・別ハードウェア間）の検証ではありません。単一コンテナ内で分離したnetwork namespace間の通信です。
 
 ## 基本情報
 
 | 項目 | 値 |
 | --- | --- |
-| 全体状態 | **DUT-01〜05、DIT-01〜09・11、DST-01・02・04・06が全件`PASS`**。DIT-10・DST-03・DST-05・DNW-03は環境制約により`SKIP-ENV`（理由は上記「この証跡が示す範囲」参照）。ネットワーク実機検証（DNW-01〜09）は[別紙](2026-09-04-network-host-validation-dhcp.md)に記録 |
+| 全体状態 | DHCP機能面（DUT-01〜03/05、DIT-01〜09/11、DST-02/06、DNW-01/02/04〜06/08/09）は**実測`PASS`**。`common` role相当のセキュリティ強化・監視統合・実systemd/AppArmor/journaldに依存する項目は環境制約で`BLOCKED`/`NOT RUN`（詳細は下表）。22/31が`PASS`、6/31が`BLOCKED`、3/31が`NOT RUN` |
 | 実施日時（JST） | 2026-09-04 |
-| 実施者 | AI支援セッション（ユーザー: net7jp） |
-| 対象環境 / host | `dhcp01`（network namespace、`ansible_host=10.99.0.30`、払い出しセグメント側`seg0=192.168.50.5/24`） |
-| 管理端末 / controller | AI支援セッションの作業環境（rootのnetwork namespace、`mgmt-ctrl=10.99.0.1/24`） |
-| クライアント検証VM | `client01`（network namespace、`seg0`はDHCPで取得。実MAC`06:d4:96:24:e7:91`） |
-| commit SHA | `ebcae209aac82811bc5fc49291c597c519f7c408` |
-| OS / kernel | Ubuntu 24.04.4 LTS（ホストと同一。network namespaceはファイルシステムを共有するため） |
-| isc-dhcp-server バージョン | `isc-dhcpd-4.4.3-P1` |
-| Ansibleバージョン | `ansible-core 2.19.12` |
-| `dhcp_server_interface`（実機値） | `seg0` |
+| 実施者 | ns7jp（AI支援セッション） |
+| 対象環境 / host | AI支援セッションのサンドボックスコンテナ自身を`dhcp-01`役として使用。払い出し対象セグメント`192.168.50.0/24`はbridge `br-dhcp50` + veth `veth-d01`（dhcpd側、`192.168.50.5/24`）+ veth `veth-cli`（`client01`という別network namespace内のクライアント役、`fe:b8:0b:ac:82:84`ほか複数MACで模擬） |
+| 管理端末 / controller | 同一コンテナ内（`ansible_connection: local`、`ansible_python_interpreter: /usr/bin/python3.12`。理由は下記「サンドボックス固有の対応」） |
+| commit SHA | `27fc7ec8f1cfe41e03466ba859647b0f66b836a0` |
+| OS / kernel | Ubuntu 24.04.4 LTS（noble）、kernel `6.18.44-fc-v24` |
+| isc-dhcp-serverバージョン | `isc-dhcpd-4.4.3-P1`（apt: `isc-dhcp-server 4.4.3-P1-4ubuntu2`、`noble/universe`） |
 
-秘密値・公開IPは含まれていません（`192.168.50.0/24`・`10.99.0.0/24`はいずれもこのラボ専用のプライベート/検証用アドレス）。
+秘密値は扱っていません（本パックの設計どおり）。
+
+### サンドボックス固有の対応（環境の制約であり、role/playbookの欠陥ではない）
+
+- **非blocking IO**: `ansible-playbook`実行時に`Ansible requires blocking IO on stdin/stdout/stderr`で失敗する。fd 0/1/2の`O_NONBLOCK`を解除するラッパースクリプトを噛ませて回避（このセッションの作業環境のみの対応、role・playbook側の変更なし）。
+- **python3-apt**: `/usr/bin/python3`（3.11）には`apt_pkg`拡張が存在せず、`Could not import the python3-apt module`で失敗する。`ansible_python_interpreter: /usr/bin/python3.12`をinventoryで明示指定して回避。
+- **systemd不在**: `systemctl status`が`System has not been booted with systemd as init system`を返す（PID1はharnessの`process_api`）。`ansible.builtin.systemd`タスク（`Enable and start isc-dhcp-server`）は毎回`Service is in unknown state`で失敗する。これはこのサンドボックス環境の制約であり、実VM/実機では発生しない。DORA実演のためだけに、Ansibleの管理外でSysV互換の`service isc-dhcp-server start/stop/status/restart`を手動実行した（この操作は明示的に開示する）。
 
 ## 単体・構成試験（DUT）
 
-| ID | 試験 | 結果 | 実出力（要点）/ 備考 |
+| ID | 確認対象 | 結果 | 実出力（要点）/ 備考 |
 | --- | --- | --- | --- |
-| DUT-01 | dhcpd.conf構文検査 | PASS | `dhcpd -t -cf /etc/dhcp/dhcpd.conf` → exit 0（Ansible適用の`validate:`でも毎回通過） |
-| DUT-02 | Ansible構文チェック | PASS | `ansible-playbook -i inventory/staging.dhcp.local.yml playbooks/dhcp.yml --syntax-check` → `playbook: playbooks/dhcp.yml`のみで正常終了 |
-| DUT-03 | ansible-lint | PASS | `ansible-lint --offline`（`ansible/`直下、`.ansible-lint`のprofile: productionが既定） → `Passed: 0 failure(s), 0 warning(s) in 78 files processed of 86 encountered. Profile 'production' was required, and it passed.` |
-| DUT-04 | systemdユニット有効化 | PASS（要注記） | `systemctl is-enabled isc-dhcp-server` → `enabled`。ただしこの結果は**Ansibleの「Enable and start」タスクではなく、`isc-dhcp-server` debパッケージのpostinst（`deb-systemd-helper`）が導入時に既定でenableした結果**（今回`dhcp_server_manage_service: false`でAnsible側のenable/startタスク自体はスキップしている）。`dhcp_server_manage_service: true`（既定値）の環境では、Ansibleの`ansible.builtin.systemd: enabled: true`タスク自体もこの状態を明示的に保証する |
+| DUT-01 | dhcpd.conf構文検査 | PASS | `dhcpd -t -cf /etc/dhcp/dhcpd.conf` → `Config file: /etc/dhcp/dhcpd.conf` / `Database file: ...` / `PID file: ...`のみ出力、`EXIT: 0`。設計値どおりの最終状態（プール`192.168.50.100-200`、lease時間`43200`/`86400`）で確認 |
+| DUT-02 | Ansible構文チェック | PASS | `ansible-playbook -i inventory/sandbox-dhcp.local.yml playbooks/dhcp.yml --syntax-check`（実リポジトリの`ansible/playbooks/dhcp.yml`、`common`→`dhcp_server`の2play構成そのもの）→ `playbook: playbooks/dhcp.yml`のみ出力、`EXIT: 0` |
+| DUT-03 | ansible-lint | PASS | `ansible-lint --offline --profile production ansible/playbooks/dhcp.yml ansible/roles/dhcp_server` → `Passed: 0 failure(s), 0 warning(s) in 8 files processed of 8 encountered. Profile 'production' was required, and it passed.`（参考: `ansible/`全体を対象にした非scoped実行では他role（docker/monitoring/nginxのmolecule verify）由来の21件が出るが、`dhcp`を含む行はゼロだった） |
+| DUT-04 | systemdユニット有効化 | BLOCKED | `systemctl is-enabled isc-dhcp-server`はサンドボックスに実systemdが無いため実行不能（`System has not been booted with systemd as init system`）。環境制約であり、role側の`ansible.builtin.systemd enabled: true`宣言自体は`tasks/main.yml`に存在する |
 | DUT-05 | 成果物リンク | PASS | `pytest tests/test_portfolio_artifacts.py -k internal_markdown_links` → `1 passed, 52 deselected` |
 
 ## 構築・結合試験（DIT）
 
-| ID | 試験 | 結果 | 実出力（要点）/ 備考 |
+| ID | 確認対象 | 結果 | 実出力（要点）/ 備考 |
 | --- | --- | --- | --- |
-| DIT-01 | 新規構築・冪等性 | PASS | `dhcp.yml`初回適用: `ok=46 changed=16 failed=0 skipped=16`（`isc-dhcp-server`は事前に未導入の状態から実施し、真の新規導入を確認）。直後の2回目適用: `ok=46 changed=0 failed=0 skipped=14` |
-| DIT-02 | DORA実測 | PASS | `client01`で`dhclient -v seg0`実行。`tcpdump -i seg0 udp port 67 or 68`で4パケット（DISCOVER→OFFER→REQUEST→ACK）を実キャプチャ。取得IP`192.168.50.100`（プール範囲内）、`dhclient`ログに`DHCPOFFER of 192.168.50.100 from 192.168.50.5`〜`bound to 192.168.50.100`を記録 |
-| DIT-03 | 固定予約 | PASS | `client01`の実MAC（`06:d4:96:24:e7:91`）を`dhcp_server_reservations`へ登録し再適用（`changed=1`、dhcpd.conf中の`host client01-fixed { hardware ethernet ...; fixed-address 192.168.50.50; }`を確認）。再起動後に`dhclient`実行 → `192.168.50.50`（プール範囲外の固定IP）を取得。独立した2回目の試行（`scapy`での再DORA）でも同じく`192.168.50.50`を取得し、「常に」同一IPになることを2回にわたり確認した |
-| DIT-04 | プール枯渇 | PASS | `scapy`でMACアドレスを変えた103台分のDISCOVER→REQUEST→ACKを送出するスクリプトを実行。プール（`192.168.50.100`〜`.200`、101個）ちょうど101台目まで正常にACKを取得し、102台目（`i=101`）はDHCPOFFERが一切返らない（無応答）ことを確認。dhcpdのログにも`Wrote 1 leases to leases file`等、枯渇後の内部状態変化が記録された |
-| DIT-05 | リース更新 | PASS（REBIND分岐は未観測、理由は備考） | `dhcp_server_default_lease_time`を一時的に310秒へ変更（**実機確認: isc-dhcp-server 4.4.3-P1は300秒以下を指定しても実際の払い出しを300秒へ暗黙にクランプするため、301秒以上を使う必要があった**。詳細は下記「見つかった欠陥」参照）。`client01`で`dhclient -v seg0`（foreground）を起動し続け、T1到達ごとに**unicast**のDHCPREQUEST→DHCPACK（`192.168.50.50.68 > 192.168.50.5.67`、broadcastではなく相手を指定したunicast）で自動更新されることを、`tcpdump`のキャプチャと`dhclient.leases`のrenew/rebind/expire予測値の両方で複数回（別々の観測セッションを合わせて計5回のunicast RENEW成功）にわたり確認した。REBIND（T2、broadcast）を強制するため`iptables -I INPUT -i seg0 -p udp --dport 67 -j DROP`でRENEWを意図的に遮断しようと試みたが、**dhcpdはinterfaceに直結したraw socket(LPF)で受信するためnetfilterのINPUT chainを経由せず、このDROPルールはdhcpdの受信に一切影響しなかった**。この主張は次の3点で裏付けた。（1）対照実験として同じ形のDROPルールが通常のUDPソケット（`nc`）宛の通信は確実に遮断すること（受信内容が空、DROPカウンタが加算）を確認。（2）`/proc/<dhcpdのpid>/net`配下を直接確認し、dhcpdが`/proc/net/udp`のUDPソケット（local port `0043`=67）に加えて`/proc/net/packet`にraw AF_PACKETソケット（type 3 = `SOCK_RAW`）も同時に保持していることを確認した——これがnetfilterのL3フックより前段（L2）でDHCPパケットを受け取れる直接の根拠である。（3）同じDROPルールを`udp/67`へかけた状態で`client01`から完全なDORAを送出したところ、**dhcpdは実際にACKまで返し新規リース（`binding state active`）が作成された**。このときnetfilterのDROPカウンタ自体は加算された（従来経路としてはパケットを見て「捨てた」と数えている）が、それより前段のraw socketが既に独立してコピーを受け取っていたためdhcpdの応答自体には影響しなかった、という整合的な説明になる（カウンタが増えるのにdhcpdが応答する、という一見矛盾する挙動の理由）。REBINDへ遷移する状況（RENEWを実際に失敗させる）は本ラボでは再現できなかった。これは試験の失敗ではなく、dhcpdの受信経路そのものに関する重要な実機発見であり、「見つかった欠陥」に記録した |
-| DIT-06 | 再起動後のリース永続化 | PASS | 動的リース1件（`192.168.50.104`、`hardware ethernet 02:00:00:aa:bb:04`）を作成し、再起動前のリース内容（`starts`/`ends`/`binding state active`/`hardware ethernet`）をログへ保存。`dhcpd`を`kill -TERM`→手動再起動。再起動後も同一の`starts`/`ends`/`hardware ethernet`を持つリースエントリが保持されていることを、保存した前後のスナップショットを突き合わせて確認（`tstp`行が追加されるのみ） |
-| DIT-07 | リース解放 | PASS | 上記リースの解放前スナップショット（`binding state active`）を保存した上で、`scapy`でDHCPRELEASEを送出。解放後のスナップショットが`binding state free`へ遷移していることを、保存した前後のログを突き合わせて確認。journalへの記録確認は`SKIP-ENV`（このサンドボックスに`journald`/`rsyslog`が無いため。DST-05と同一理由） |
-| DIT-08 | オプション配布 | PASS | DIT-02のDORA後、`client01`の`ip route`→`default via 192.168.50.1 dev seg0`、`/etc/resolv.conf`→`domain lab.example.test` / `search lab.example.test` / `nameserver 192.168.50.1` / `nameserver 1.1.1.1`。いずれも設計値（[パラメータシート](../build-package-dhcp/03-parameter-sheet.md)）と一致 |
-| DIT-09 | サービス停止復旧 | PASS | `dhcpd`を`pkill -9`で停止（`ss -lunp`でUDP 67の待受消失を確認）→手動で再起動→`client01`から**完全なDORA**（DISCOVER→OFFER→REQUEST→ACK、`scapy`で全4段階を実施）を送出しACKを取得したことを、`dhcpd.leases`に新規`lease 192.168.50.101 { ... binding state active; hardware ethernet 02:00:00:aa:bb:01; }`が追加されたことで確認。停止時刻`09:27:46`UTC、復旧（新規リース確定）確認時刻`09:27:57`UTC、**RTO ≈ 11秒**（手動検知・手動復旧。自動監視によるRTOではない。DIT-10がSKIP-ENVのため自動アラートは前提にできない）。※初回実施時はDISCOVER→OFFERのみのスクリプトを誤って使い「ACK取得」と記録していたが、アドバーサリアル検証でリースファイルに新規エントリが無いことから指摘を受け、完全なDORAスクリプトで再実施し直した |
-| DIT-10 | 監視統合 | SKIP-ENV | このラボに`monitor-01`（Prometheus/Grafana監視サーバー）が存在しないため未実施。`ansible/playbooks/dhcp.yml`自体はnode_exporterを含まない設計（[05-build-procedure.md](../build-package-dhcp/05-build-procedure.md)参照、監視統合は別途`site.yml`側の責務） |
-| DIT-11 | バックアップ・復元 | PASS | `dhcpd.conf`・`dhcpd.leases`をバックアップ（`09:28:06`UTC）→`dhcpd.leases`を破損データで上書き→`08-change-rollback-plan.md`の手順どおり`systemctl stop`相当→バックアップから復元→`dhcpd -t`で構文確認（exit 0）→復元後の`dhcpd.leases`のmd5sumがバックアップ取得時と完全一致することを確認→再起動→`client01`から**完全なDORA**を送出しACKを取得したことを、`dhcpd.leases`に新規`lease 192.168.50.102 { ... binding state active; hardware ethernet 02:00:00:aa:bb:02; }`が追加されたことで確認（`09:28:22`UTC）。**RTO（バックアップ完了〜復元後DORA正常化）≈ 16秒**。※DIT-09と同じ理由で、DISCOVER→OFFERのみの簡易確認から完全なDORA確認へ差し替えて再実施した |
+| DIT-01 | 新規構築・冪等性 | BLOCKED（非systemdタスクは実測`PASS`相当） | 初回適用: `ok=6 changed=3 failed=1`（`Enable and start isc-dhcp-server`タスクのみ、DUT-04と同じ理由で失敗）。2回目適用: `ok=6 changed=0 failed=1`（systemdタスク以外の6タスクすべてが`changed=0`で冪等性を確認）。設計値どおりの最終状態への再適用でも同じパターンを再現（`ok=6 changed=1 failed=1`→`ok=6 changed=0 failed=1`）。期待結果「1回目`failed=0`」は環境制約により未達だが、それ以外の全タスク（OS判定・入力検証・パッケージ導入・`dhcpd.conf`テンプレート化と`dhcpd -t`によるvalidate・interfaceバインド）は実測で成功かつ冪等 |
+| DIT-02 | DORA実測 | PASS | `client01` netns（MAC `fe:b8:0b:ac:82:84`）で`dhclient -v veth-cli`実行。`tcpdump -v`で4パケットを観測: `Discover`→`Offer`(Server-ID `192.168.50.5`)→`Request`(Requested-IP `192.168.50.100`)→`ACK`。取得IP`192.168.50.100`は設計プール範囲`192.168.50.100-200`内 |
+| DIT-03 | 固定予約 | PASS | inventoryへ`dhcp_server_reservations`で`fe:b8:0b:ac:82:84`→`192.168.50.20`を登録し再適用。同MACでの`dhclient`実行で`Discover`(Requested-IP `192.168.50.100`のヒント付き)→`Offer`→`Request`(Requested-IP `192.168.50.20`)→`ACK`(Server-ID `192.168.50.5`)を観測。クライアント側が動的プールのIPをヒントに出しても、サーバーは`host`ブロックの固定予約`192.168.50.20`を優先して払い出した |
+| DIT-04 | プール枯渇 | PASS | 検証用に`range`を`192.168.50.150-151`（2アドレス）へ一時縮小。3台の異なるMACで順次要求し2アドレスを使い切った後、4台目（MAC `02:00:00:00:00:14`）が要求すると`DHCPDISCOVER`を3回再送（interval 3, 3, 7秒）するも`DHCPOFFER`が一切来ず、`timeout 8`が`EXIT: 124`で強制終了。新規リースが払い出されないことを確認。試験後、プール範囲を設計値`192.168.50.100-200`へ復元し再適用済み |
+| DIT-05 | リース更新 | PASS | 検証用に`dhcp_server_default_lease_time: 20` / `max_lease_time: 40`（秒）を一時適用。初回DORA後、T1相当（約20秒後）に`192.168.50.152.68 → 192.168.50.5.67`のunicast `DHCPREQUEST`→`DHCPACK`の2パケットのみを観測（新たな`Discover`/`Offer`を介さない）。以後20秒弱の周期で同じunicast RENEWパターンを2回観測。試験後、lease時間を設計値`43200`/`86400`へ復元し再適用済み |
+| DIT-06 | サービス再起動後のリース永続化 | PASS | `service isc-dhcp-server restart`前後で`dhcpd.leases`内の対象リース（`hardware ethernet 02:00:00:00:00:21`、IP `192.168.50.152`、`starts`/`ends`時刻）の内容が保持されていることを確認。dhcpd起動時に`tstp`行追加と`server-duid`書き出しでファイル自体のmd5は変わるが、bindingの実体は不変 |
+| DIT-07 | リース解放 | PASS | daemonモードの`dhclient veth-cli`（MAC `02:00:00:00:00:77`）でIP`192.168.50.154`を取得後、`dhclient -r veth-cli`を実行。解放後の`dhcpd.leases`で該当エントリが`binding state active` → `binding state free;`へ遷移していることを確認（`rewind binding state`行が消え、`ends`が解放時刻に短縮） |
+| DIT-08 | オプション配布 | PASS | クライアント役netns内`ip route` → `default via 192.168.50.1 dev veth-cli`（設計値の`option routers`と一致）。`cat /etc/resolv.conf`（dhclient-scriptが書き込み） → `domain lab.example.test` / `search lab.example.test` / `nameserver 192.168.50.1` / `nameserver 1.1.1.1`（設計値の`option domain-name`・`option domain-name-servers`と完全一致） |
+| DIT-09 | サービス停止復旧 | PASS | `service isc-dhcp-server stop`後`status`が`dhcpd is not running.`（exit 3）を確認。即座に手動`service isc-dhcp-server start`で復旧、`status`が`dhcpd is running.`に復帰。起動コマンドのみのRTO実測値: 約2.06秒（検知は`status`確認で代替、自動検知・自動復旧の仕組みは本パックの対象外） |
+| DIT-10 | 監視統合 | NOT RUN | 中央Prometheus（`monitor-01`）がこのサンドボックスに存在しないため未実施 |
+| DIT-11 | バックアップ・復元 | PASS | `dhcpd.conf`・`dhcpd.leases`をバックアップ後、`dhcpd.conf`を`"BROKEN"`一行に、`dhcpd.leases`を削除して意図的に破壊。`dhcpd -t -cf`が`semicolon expected`相当のエラーでexit 1になることを確認（構文検査が実際に機能している証拠）。バックアップから復元し`dhcpd -t -cf`がexit 0、`service isc-dhcp-server start`が成功。復元直後に新規MAC（`02:00:00:00:00:99`）で`dhclient -v -1`を実行し、まず古いリース情報に対する`DHCPREQUEST`→`DHCPNAK`（サーバーが復元後の状態と矛盾する要求を正しく拒否）、続けて`Discover`→`Offer`(`192.168.50.153`)→`Request`→`ACK`のフルDORAで新規リースが正常に払い出されることを確認。RTO実測（バックアップ〜復元完了、手動操作込み）: 約3.12秒 |
 
 ## セキュリティ試験（DST）
 
-| ID | 試験 | 結果 | 実出力（要点）/ 備考 |
+| ID | 確認対象 | 結果 | 実出力（要点）/ 備考 |
 | --- | --- | --- | --- |
-| DST-01 | UFW | PASS | `ufw status verbose` → `Default: deny (incoming), allow (outgoing)`、`67/udp on seg0 ALLOW IN Anywhere`（`seg0`限定）、`22/tcp LIMIT IN Anywhere`。他ネットワークへの許可なし。※実際の受信制御は`INTERFACESv4`が担っている点はDIT-05の備考および「見つかった欠陥」参照 |
+| DST-01 | UFW | BLOCKED | `ufw status verbose` → `Status: inactive`。`common` roleを意図的に未適用（安全上の理由）のため、また`dhcp_server` role自身のUFW許可タスクもsystemdタスク失敗により未到達（play全体が該当タスクの前で`fatal`になるため）。role実装自体の欠陥ではない |
 | DST-02 | ファイル権限 | PASS | `stat -c '%U:%G %a' /etc/dhcp/dhcpd.conf` → `root:root 644` |
-| DST-03 | AppArmor | SKIP-ENV | このサンドボックスにAppArmor LSMがロードされていない（`aa-status`実行不可）。既知の環境制約（Linux/AD/Zabbixパックの実機検証と同様） |
-| DST-04 | SSH hardening | PASS | `sshd -T \| grep -E 'permitrootlogin\|passwordauthentication'` → `permitrootlogin no`、`passwordauthentication no` |
-| DST-05 | 監査ログ | SKIP-ENV | `journald`/`rsyslog`のいずれも動作しておらず`/dev/log`も存在しないため`journalctl`が使えない。dhcpd自体は`log-facility local7`で構成済み（構文検査PASS）だが、受け皿となるsyslogデーモンがこのサンドボックスに無いため送出先での記録確認はできない |
-| DST-06 | rogue DHCP確認（構築直前相当） | PASS | `dhcpd`を一旦停止した状態で（1）`nmap --script broadcast-dhcp-discover -e seg0 -Pn -n -v 192.168.50.5`を`-v`（verbose）付きで実行し、`NSE: Script Pre-scanning` → `Completed NSE ... 10.03s elapsed`（broadcast-dhcp-discoverスクリプトが実際に約10秒のbroadcast待受を行い完走したことをログで確認）→ `Pre-scan script results`セクション自体が一切出力されない（＝応答したDHCPサーバーが無い）、（2）`scapy`で素のDISCOVERを送出しログへ`NO OFFER`を保存。2方式とも実行ログを保存した上で「応答するDHCPサーバーが1台もない」ことを確認。**初回実施時はnmap側の実行が2回失敗（対象未指定、`-e seg0`がclient01にIPが無く解決できない等）しており、成功した1回もverboseログを保存していなかったため事後にアドバーサリアル検証で指摘を受け、client01のseg0へ一時IP（`192.168.50.199/24`、試験後に削除）を付与した上でverboseログ付きで再実施した**。※本来は初回`dhcp.yml`適用前に実施するタイミングの試験だが、本ラボでは`dhcpd`停止状態を作って事後的に再現した（[試験仕様書](../build-package-dhcp/06-test-specification.md)のDST-06節が要求するタイミングとは異なることを明記する） |
+| DST-03 | AppArmor | BLOCKED | このサンドボックスのkernelにAppArmorが公開されておらず`aa-status`が使用不能。環境制約 |
+| DST-04 | SSH hardening | NOT RUN | `common` roleを意図的に未適用のため（このセッションが動くコンテナ自体へSSH hardeningを適用する安全上のリスクを避けた） |
+| DST-05 | 監査ログ | BLOCKED | このサンドボックスにjournald/rsyslogが動作しておらず`journalctl`が使用不能。環境制約 |
+| DST-06 | rogue DHCP確認 | PASS（構築後のみ実施） | 本来は構築直前に実施する項目だが、本セッションでは構築後に`dhcp-01`役を一時停止し、セグメント上に他の応答DHCPサーバーが存在しないことを確認する形で代替実施した（構築直前の確認は本セッションの作業順序上未実施）。`service isc-dhcp-server stop`後、クライアント役から`DHCPDISCOVER`相当の`DHCPREQUEST`を2回送信し、`DHCPOFFER`/`DHCPACK`/`DHCPNAK`いずれも一切観測されないことを確認（応答するDHCPサーバーがゼロ）。確認後`dhcp-01`役を復旧 |
 
-ネットワーク実機検証（DNW-01〜09）は[別紙](2026-09-04-network-host-validation-dhcp.md)に記録した。
+## ネットワーク実機検証（DNW）
 
-## 見つかった欠陥
+集計はDNWのみ抜粋。詳細な実出力・判定根拠は[ネットワーク実機検証結果票](2026-09-04-network-host-validation-dhcp.md)を参照してください。
 
-実行して初めて見つかった実装上の欠陥・仕様理解のギャップが3件あります。詳細は[欠陥台帳](defects-found.md)（#31〜#33）を参照してください。
-
-1. **`common`ロールの欠陥（#31）**: Ubuntu 24.04では`hwclock`が`util-linux`パッケージから`util-linux-extra`パッケージへ分離されており、`common_os_packages`（Debian系）に`util-linux`しか無かったため、`community.general.timezone`タスクが`Failed to find required executable "hwclock"`で失敗した。全パック共通の`common`ロールに影響する欠陥で、`ansible/roles/common/vars/Debian.yml`へ`util-linux-extra`を追加して修正済み（本PRに含む）。
-2. **isc-dhcp-serverの仕様（#32）**: `default-lease-time`に300秒以下を指定しても、実際に払い出す`lease-time`（DHCPACKのoption 51）を300秒へ暗黙にクランプする。`dhcpd -t`の構文検査は通過するため設定ミスとして気づきにくい。値を60→100→299→300→301→500→3600と変えながら実測し、300秒がしきい値であることを確認した。`ansible/roles/dhcp_server/defaults/main.yml`の`dhcp_server_default_lease_time`にコメントで注記済み（本PRに含む）。
-3. **UFWがdhcpdの受信を実際には制御していない（#33）**: isc-dhcp-serverはLinux上でinterfaceに直結したraw socket（LPF）経由でDHCPパケットを受信するため、netfilter（iptables/UFW）のINPUT chainを経由しない。`iptables -I INPUT`でUDP 67宛を明示的にDROPしても、dhcpdは変わらず受信・応答した（対照実験として、通常のUDPソケット宛の通信は同じ形のDROPルールで確実に遮断されることを確認済み）。実際にinterfaceを絞っているのは`/etc/default/isc-dhcp-server`の`INTERFACESv4`であり、UFWのallow ruleはdhcpdの受信自体には効いていない。セキュリティ上の実害は無い（`INTERFACESv4`が正しく機能している限りinterface制限は保たれる）が、「UFWがinterfaceを絞っている」という説明はdhcpdについては不正確なため、`ansible/roles/dhcp_server/defaults/main.yml`のコメントを訂正した（本PRに含む）。
+| ID | 確認対象 | 結果 |
+| --- | --- | --- |
+| DNW-01 | interface / IP / CIDR | PASS |
+| DNW-02 | route / gateway | PASS |
+| DNW-03 | DNS（`dhcp-01`自身の名前解決） | NOT RUN |
+| DNW-04 | ICMP疎通 | PASS |
+| DNW-05 | 待受port | PASS |
+| DNW-06 | DORAのpacket capture | PASS |
+| DNW-07 | UFWとkernel rule | BLOCKED |
+| DNW-08 | クライアント側end-to-end | PASS |
+| DNW-09 | rogue DHCP非存在の実機確認 | PASS（構築後のみ実施） |
 
 ## 見つかった構築上のつまずき（欠陥ではないが記録する事実）
 
-- **サンドボックス自身の`eth0`が`192.0.2.0/24`（RFC 5737 TEST-NET-1）を使用しており**、ラボの管理リンクに同じ帯域を使うと衝突して疎通しなくなった。パラメータシート等の記入例が使う`192.0.2.0/24`はあくまで文書上のプレースホルダであり、本ラボの管理リンクは`10.99.0.0/24`という別帯域を使うことで回避した（[topology.sh](../../labs/dhcp-lab/topology.sh)のコメント参照）。
-- **手動起動した`dhcpd`をkillした直後にpidfileを消さずに再起動しようとすると失敗する**。このサンドボックスのPID 1（Firecracker系のinit）がreparentされたzombieプロセスを即座にreapしないことがあり、`dhcpd`が「既に起動中」と誤認して起動を拒否する。`/run/dhcpd.pid`を明示的に削除してから再起動することで回避した。`dhcp_server_manage_service: true`（既定）でsystemd管理下にある実運用環境では発生しない、このサンドボックス固有の制約。
-- `dhcp01`のnetwork namespaceは既定でインターネット疎通が無く（プライベートなveth linkしか持たないため）、`common`ロールのパッケージインストールが`Temporary failure resolving 'archive.ubuntu.com'`で失敗した。`sysctl net.ipv4.ip_forward=1` + `iptables -t nat -A POSTROUTING -s 10.99.0.0/24 -o eth0 -j MASQUERADE` + `dhcp01`側のdefault route追加でNAT越しの疎通を確立し、実際のパッケージインストールを本物のapt経由で完走させた（ICMP（ping）はサンドボックスの外側ネットワークポリシーで遮断されているが、TCP/DNS/HTTPは正常に機能する）。
+- 独自bridge（`br-dhcp50`）を経由するブロードキャストが、`veth-d01`（dhcpd側）まで届かない事象が最初に発生した。原因は`net.bridge.bridge-nf-call-iptables=1`により、bridge越しのL2フレームがiptablesの`FORWARD`チェーンで評価される設定になっており、このセッションより前の別フェーズで残っていたDocker関連のiptables状態の影響で、`FORWARD`チェーンのdefault policy（DROP）に阻まれていたため。`br-dhcp50`自体を対象にした最小限の`ACCEPT`ルール（`-i br-dhcp50`/`-o br-dhcp50`）を追加して解決（Dockerの既存chainには触れていない）。このbridgeの挙動では、`FORWARD`チェーンが個別のveth sub-portではなくbridge master device単位でパケットを評価する
+- 初回のDORA検証時、`timeout 15`付きで起動した`dhcpd -d`のデバッグプロセスが検証コマンド実行前にタイムアウトで終了しており、dhcpdが応答しなかった。`service isc-dhcp-server start`（タイムアウトなし、永続起動）に切り替えて解決
+- DIT-04のプール枯渇試験は、初回試行でクライアントごとに`dhclient -r`で即座にリースを解放していたため、プールが常に空いてしまい枯渇を再現できなかった。解放せずに異なるMACで連続要求する方式に変更して再現した
 
 ## 未実施・今後の課題
 
-- DIT-10（監視統合）: `monitor-01`が無いため`SKIP-ENV`。将来、Linux/ADパックと同様に監視サーバーを用意できた時点で実施する。
-- DST-03（AppArmor）・DST-05（監査ログ）: このサンドボックスの環境制約による`SKIP-ENV`。実VM/実ホスト（systemd + AppArmor + journald/rsyslogが揃う環境）で再実施すればPASSする見込み。
-- DIT-05のREBIND（T2、broadcast）分岐: 上記のとおりdhcpdのraw socket受信によりRENEW遮断を再現できず未観測。異なる手段（dhcpd自体のプロセスを一時停止する等、ただし停止するとRENEW/REBINDどちらも試行不能になるため要検討）での再現は今後の課題。
-- 独立した物理／VPSホストでの再実施（本証跡はAI支援セッションのサンドボックス内netnsラボでの実施であり、Linux/ADパックのような独立ホストでの検証ではない）。
+- **DUT-04、DST-03、DST-05**: 実systemd・AppArmor・journald/rsyslogがこのサンドボックスに無いため`BLOCKED`。VM/実機での再検証が必要
+- **DST-01、DST-04、DNW-07**: `common` role未適用（安全上の理由）のため`NOT RUN`/`BLOCKED`。VM/実機で`common`→`dhcp_server`の完全な2play構成を適用すれば解消できる見込み
+- **DIT-10**: 中央Prometheus統合は`monitor-01`が存在する環境でのみ検証可能
+- **本来の正本（VM/実機でのDORA実演）は未実施のまま**。本証跡はそれを代替するものではなく、DHCPプロトコル動作とAnsible roleの機能面をコード変更なしで実測した追加証跡という位置づけ
+- 複数物理ホスト・複数VM間の実ネットワークでの検証（同一コンテナ内のnetwork namespace分離ではない、本来の意味での2ホスト間通信）は未実施

@@ -44,7 +44,7 @@ Linux 版が Debian 系 / RHEL 系でツール（apt/dnf、ufw/firewalld 等）�
 - **フェーズ1（ホスト単体構築）**: OS 初期設定、WinRM、Firewall、IIS、windows_exporter 導入、バックアップ、単体での network 実機検証まで。「済（手動）」の範囲で完結し、Windows Server 1 台だけで検証・完了できます。
 - **フェーズ2（中央監視統合）**: 中央 Prometheus からの scrape、blackbox probe、ログ集約、アラート経路。次の 3 点が解消するまで `BLOCKED` です。
   1. `ansible/roles` 配下に Windows 対応 role（`common_windows` 等）が無く、Ansible での自動構築ができない。
-  2. `compose.yaml` の monitoring network は `internal: true`（外部 egress 不可）であり、Prometheus コンテナは今のままでは同じ Docker ホストの外にある実マシン（Windows Server）の windows_exporter（既定 9182/tcp）へ到達できません。到達させるには、たとえば Prometheus サービスだけを internal ではない追加の管理用 bridge network（例: `remote-targets` のような名前）にも接続する `compose.yaml` 変更が必要ですが、これは未実装です。現状の job 名 `linux-node` へ Windows を混ぜること自体、名前が実態と合わなくなる点も残存課題として明記します。
+  2. Prometheus コンテナは `compose.yaml` 上で `monitoring`（`internal: true`）だけでなく `host-access`（`internal: true` を付けない通常の bridge network）にも接続されています。nftables ルールを実機で確認したところ、`host-access` 側には MASQUERADE と `DOCKER-FORWARD` chain での accept が生成されており、`monitoring` の `internal: true` 単体が Docker ホスト外への egress を塞いでいるわけではありません。実際に scrape を成立させるうえで未確立なのは、(a) 中央監視host（`monitor-01`）の Docker ホスト自身と Windows Server が稼働するネットワークセグメントとの実 L3 到達性（本ラボの各ホストは RFC 5737 の例示用アドレス `192.0.2.0/24` を使っており、実ネットワーク上での到達は一度も検証されていません）、(b) windows_exporter 側 Firewall ルールが、`host-access` の MASQUERADE により Windows Server から見える送信元が Prometheus コンテナの内部アドレスではなく Docker ホスト自身の実 IP になる点を踏まえて許可設定されているか、の 2 点であり、いずれも `NOT SET` です。現状の job 名 `linux-node` へ Windows を混ぜること自体、名前が実態と合わなくなる点も残存課題として明記します。
   3. Windows Event Log / IIS ログを既存 Loki へ送る経路（Grafana Alloy for Windows の導入、Loki の push API を loopback 以外からも安全に受け付けるための認証・network 設計）が無い。
 
   解消後は、`ansible/roles/app/defaults/main.yml` の `app_node_exporter_targets` 変数へ Windows ホストの address/host/environment を 1 行追加し、中央 host 側で `ansible-playbook site.yml` を再適用するだけで scrape を有効化できます（この変数はもともと「監視サーバー 1 台が N 台の node_exporter を scrape する」ための汎用機構で、`ansible/roles/app/templates/prometheus.yml.j2` が `linux-node` という 1 つの Prometheus job に for ループで target を展開しており、windows_exporter も同じ形（address:port + host label）で追加できるためです）。
@@ -78,7 +78,7 @@ flowchart LR
         Loki --> Graf
     end
 
-    WinExp -.->|"フェーズ2: scrape targets追加\nBLOCKED: monitoring networkがinternal:true"| Prom
+    WinExp -.->|"フェーズ2: scrape targets追加\nBLOCKED: 実L3到達・Firewall許可が未検証"| Prom
     BB -.->|"フェーズ2: HTTP probe\nBLOCKED: prometheus.yml.j2 未対応"| IIS
     Alloy -.->|"フェーズ2: ログpush\n未実装（Alloy未導入）"| Loki
 

@@ -121,7 +121,7 @@ flowchart LR
 > フェーズ1は`wsus-01`のドメイン参加からWSUSロール導入、GPOによるクライアント側
 > ターゲティング設定、`wsus-01`自身をWSUSクライアントとして自己登録・同期・承認・適用
 > まで一巡させる範囲（windows_exporterのローカル導入を含む）です。フェーズ2は、Windows
-> 対応Ansible role・`compose.yaml`の`monitoring`ネットワーク（`internal: true`）・Windows
+> 対応Ansible role・Dockerホストと`wsus-01`の実ネットワーク接続やFirewall許可先の未確定・Windows
 > 向けログ集約経路という3点が解消するまで`BLOCKED`の範囲で、
 > [Windows版](../build-package-windows/00-requirements.md)・
 > [AD版](../build-package-ad/00-requirements.md)と全く同じ理由付けです。
@@ -340,8 +340,9 @@ WSUS版だけに出てくる言葉の順に並べます。
    中央監視統合の範囲で、3点の未実装事項解消まで`BLOCKED`
 4. 複数クライアントでの大規模検証、WSUS通信のHTTPS化、系統B（外部SQL Server）への
    移行、レプリカ/ダウンストリーム構成、SSRS連携など（3つ挙げられれば十分）
-5. `compose.yaml`の`monitoring`ネットワークが`internal: true`のため、Prometheusが
-   同じDockerホストの外にある`wsus-01`のwindows_exporterへ到達できないため
+5. Prometheusは`monitoring`（`internal: true`）に加えて`host-access`（internal指定なしのbridge）にも
+   接続されておりNAT egress自体は持つが、Dockerホストと`wsus-01`を実際に同一ネットワークセグメントへ
+   接続した実績、およびwindows_exporterのFirewall許可先（Dockerホストの実IP）の確定が無いため
 6. OUはAD側でGPOの配布先を決め、コンピューターグループはWSUSコンソール専用で承認・
    配布の単位を決める。名前（`Servers`）を意図的に揃えて連携させている
 7. Windows版・AD版パックには「自動更新はWindows Updateから直接。実務ではWSUS/
@@ -368,8 +369,9 @@ WSUS版だけに出てくる言葉の順に並べます。
 データベース方式は[WID]を採用し、外部SQL Serverを使う系統Bは差分のみ記載して対象外と
 しました。構築は[フェーズ1（ホスト単体構築）]と[フェーズ2（中央監視統合）]の2段階に
 分け、フェーズ1はwsus-01自身を[自己登録・同期・承認・適用まで一巡]させる範囲で完結
-します。フェーズ2は[Windows対応Ansible roleの不在、monitoringネットワークの
-internal:true制約、Windows向けログ集約経路の不在]の3点が解消するまで[BLOCKED]です。
+します。フェーズ2は[Windows対応Ansible roleの不在、Dockerホストとwsus-01の実ネットワーク接続や
+windows_exporterのFirewall許可先が未確定であること、Windows向けログ集約経路の不在]の
+3点が解消するまで[BLOCKED]です。
 GPOの自動更新ポリシーは[オプション3（自動ダウンロードを行い、インストールの通知を
 行う）]を選び、無人再起動によるサービス影響を避けました。自動承認ルールも
 [スケジュール化はせず手動実行にとどめる]ことで意図しない自動配布を避けています。
