@@ -23,7 +23,9 @@ ansible-galaxy collection install -r requirements.yml
 
 `common` / `docker`両roleは`community.general`と`ansible.posix`のモジュールを使います（`requirements.yml`参照）。controller側にcollectionが無いと、`--syntax-check`の時点でモジュール解決に失敗します。
 
-> **この検証環境での制約**: 本セッションの実行環境は`galaxy.ansible.com`へのネットワークアクセスがポリシーで遮断されており、`ansible-galaxy collection install`を実行できませんでした。そのため本パックの新規ファイル（`foundation.yml`、`inventory/group_vars/foundation/main.yml`、`inventory/foundation.local.yml.example`）は、Pythonの`yaml.safe_load`によるYAML構文確認と`yamllint`のみをこのセッションで実施しています。collectionを要する`ansible-lint --offline`とフルの`--syntax-check`はGitHub Actions（`.github/workflows/ansible-check.yml`）側で実行されます。この境界は[試験仕様書](06-test-specification.md)のAFUT-01/02に記録しています。
+> **この検証環境での制約**: AI支援セッションの作業環境は`galaxy.ansible.com`へのネットワークアクセスがポリシーで遮断されており、`ansible-galaxy collection install`を実行できませんでした。代わりに`pip install ansible`（`ansible-core`ではなくcollection同梱のフル版）を使うことで、`galaxy.ansible.com`に頼らず`community.general`等を取得でき、`ansible-lint --offline`（0 failure、production profile）と`--syntax-check`の両方をその環境で確認できました。ただしこれはCI本来の実行環境とは異なるため、GitHub Actions（`.github/workflows/ansible-check.yml`）側の実行結果も別途確認してください。この境界は[試験仕様書](06-test-specification.md)のAFUT-01/02に記録しています。
+>
+> **実VMでの実行**: 2026-09-04に、Windows上のHyper-V VM（Ubuntu 24.04.4 LTS）とWSL2上のAnsible controller（`pipx install ansible-core`）を使い、本手順を通しで実施しました。結果は[構築・試験結果票](../evidence/2026-09-04-ansible-foundation-build.md)を参照してください。Hyper-V Quick Createのgallery imageは`/etc/netplan/`設定が無い状態で起動したため、手動でnetplan設定を追加する手順が必要でした（案件パックの欠陥ではなくVMイメージ側の初期状態です）。
 
 ## 2. inventoryを準備する
 
