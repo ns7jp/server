@@ -1,0 +1,18 @@
+{
+  "example_note": "架空入力。実環境の合格や学習者の理解を示しません。fictional: は存在する証跡への参照ではありません。",
+  "task_id": "LAB-FICTIONAL-001",
+  "mode": "lab",
+  "revision": "fictional-revision-1",
+  "elapsed_minutes": 35,
+  "budget_minutes": 45,
+  "rechecks_without_change": 2,
+  "attempts_without_new_hypothesis": 0,
+  "critical_risk": false,
+  "new_evidence": false,
+  "gates": {
+    "security": { "status": "PASS", "revision": "fictional-revision-1", "evidence_ref": "fictional:security-record" },
+    "functional": { "status": "PASS", "revision": "fictional-revision-1", "evidence_ref": "fictional:functional-record" },
+    "recovery": { "status": "PASS", "revision": "fictional-revision-1", "evidence_ref": "fictional:recovery-record" },
+    "handover": { "status": "PASS", "revision": "fictional-revision-1", "evidence_ref": "fictional:self-explanation-record" }
+  }
+}

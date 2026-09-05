@@ -76,6 +76,7 @@ flowchart LR
 | 読みたいこと | 開く文書 |
 | --- | --- |
 | 最初の実習を進める | [初心者向け学習ガイド](docs/beginner-learning-guide.md) |
+| 確認を繰り返しすぎず安全に作業を閉じる | [手放して進める運用キット](docs/work-completion/README.md)（詳細設計・記録テンプレート・判定サンプル） |
 | 次の学習範囲を決める | [一本道ラーニングパス](docs/learning-path.md)（Level 0〜5 と選択式 Level 6） |
 | 知らない言葉を調べる | [サーバー構築キーワード集](docs/server-building-keywords.md) |
 | コマンド・結果・説明を記録する | [初心者実習記録テンプレート](docs/evidence/templates/beginner-practice-record.md) |

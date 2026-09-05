@@ -1,0 +1,18 @@
+{
+  "example_note": "架空入力。予算超過でもインシデントの連携が優先されることを示す例です。",
+  "task_id": "INC-FICTIONAL-001",
+  "mode": "incident",
+  "revision": "fictional-revision-3",
+  "elapsed_minutes": 70,
+  "budget_minutes": 45,
+  "rechecks_without_change": 3,
+  "attempts_without_new_hypothesis": 2,
+  "critical_risk": true,
+  "new_evidence": true,
+  "gates": {
+    "security": { "status": "NOT_RUN" },
+    "functional": { "status": "FAIL", "revision": "fictional-revision-3", "evidence_ref": "fictional:failed-check" },
+    "recovery": { "status": "NOT_RUN" },
+    "handover": { "status": "NOT_RUN" }
+  }
+}

@@ -1,0 +1,32 @@
+name: Work completion check
+
+on:
+  pull_request:
+    paths:
+      - "docs/work-completion/**"
+      - ".github/workflows/work-completion.yml"
+  push:
+    branches: [main]
+    paths:
+      - "docs/work-completion/**"
+      - ".github/workflows/work-completion.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  work-completion-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Test the read-only work assessment
+        run: node --test docs/work-completion/automation/gate.test.mjs
