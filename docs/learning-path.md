@@ -4,6 +4,20 @@
 > **ゴール**: コマンドをコピーするだけでなく、構成、確認方法、失敗時の戻し方を自分の言葉で説明する
 > **安全境界**: 破棄できる Linux VM を使い、実行していない結果は必ず `NOT RUN` と記録する
 
+## 最初の実習から始める
+
+初めて開いた方は [初心者向け学習ガイド](beginner-learning-guide.md)を 1 本だけ開き、
+app + nginx の最小起動 → 応答と認証の確認 → 計画停止・再開 → 説明まで進めます。
+このページは、その実習と後続の Level 0〜5 の対応を確認するための全体地図です。
+最初の実習だけで全レベルを修了したことにはしません。
+
+| ガイドの範囲 | このページの対応 |
+| --- | --- |
+| 準備・Step 1〜2 | Level 0〜1 |
+| Step 3〜5（2 サービスの起動、確認、手動再開、説明） | Level 2 の入口 |
+| Step 6（監視全体を起動し、数値・画面・ログを確認） | Level 2〜3 |
+| Ansible 適用・D-1 | 後続の Level 4〜5 |
+
 ## まずレベルを選ぶ
 
 **必修は Level 0〜5 です。Level 6 は選択です。**
@@ -33,12 +47,13 @@ Level 0〜4 だけでは、構成を作って確認するところまでしか�
 **Linux VM も Git も触ったことがない場合は、ここから始めてください。**
 すでに破棄できる Ubuntu VM を用意済みで `git clone` も済んでいる場合はこの節を読み飛ばして構いません。
 
-1. **検証環境を用意する**（いずれか1つ）
-   - **Windows PC しかない場合**: PowerShell を管理者として開き `wsl --install` を実行し、
-     再起動後に Ubuntu を既定ディストリビューションにする（Microsoft公式のWSL2導入手順に従う）。
-   - VirtualBox または Hyper-V に Ubuntu 24.04 の VM を新規作成する。
-   - クラウドの無料枠（AWS/GCPなど）で Ubuntu 24.04 インスタンスを起動する。
-     ただし課金設定には注意すること（[AWSコスト計画](cost-report.md)参照）。
+1. **専用の検証環境を用意する**
+   - Windows 上の Hyper-V または VirtualBox で Ubuntu 24.04 の VM を新規作成し、
+     再作成方法を用意します。VM の準備がまだなら、この段階で止めて構いません。
+   - WSL2 を使う場合は [Microsoft 公式 WSL 導入手順](https://learn.microsoft.com/windows/wsl/install)
+     を確認し、学習専用の Ubuntu を使います。既存の仕事用ディストリビューションは使いません。
+     WSL2 内の Linux と Windows 本体の観測範囲は異なります。
+   - 初回の入門にクラウドは不要です。AWS は Level 6 の選択課題へ分けます。
 2. **このリポジトリを取得する**
 
    ```bash
@@ -75,12 +90,12 @@ Level 0〜4 だけでは、構成を作って確認するところまでしか�
 
   </details>
 
-- **次へ進む条件**: FAIL を放置せず、理由を学習記録に書いた。
+- **次へ進む条件**: 実施する課題の必須条件にある FAIL を解消し、WARN の影響を学習記録に書いた。解消できなければ BLOCKED と記録する。
 
 ## Level 1 — 最小のアプリを試験する
 
 - **目的**: サーバーアプリと自動テストの関係を知る。
-- **前提**: Level 0 完了、Python 3.9以上。
+- **前提**: Level 0 完了、Python 3.11 または Ubuntu 24.04 標準の 3.12。
 - **操作**: [初心者向け学習ガイド「小さく確認する」](beginner-learning-guide.md#2-小さく確認する)。
 - **期待結果**: compile と pytest の終了コードが0になる。
 - **なぜ**: `/healthz` は「プロセスが応答できるか」だけを最小限の情報で返す。
@@ -90,7 +105,7 @@ Level 0〜4 だけでは、構成を作って確認するところまでしか�
   <details>
   <summary>解答例</summary>
 
-  言えない。pytestが検証するのはPythonアプリのロジックだけであり、Linuxホスト、
+  言えない。pytestにはPythonアプリや文書・設定の整合検査が含まれるが、Linuxホスト、
   Docker、Ansible、AWSの動作確認をしたことにはならない。それぞれ別のLevelで
   個別に確認する。
 
@@ -113,9 +128,9 @@ Level 0〜4 だけでは、構成を作って確認するところまでしか�
 ## Level 3 — 観測経路を説明する
 
 - **目的**: metrics、logs、dashboard、alertの役割を分ける。
-- **前提**: Level 2 完了。
-- **操作**: [構成図](architecture.md)を開き、Prometheus target、Grafana dashboard、
-  Loki logを順に確認する。
+- **前提**: Level 2 の最小構成を確認済み。
+- **操作**: [ガイド Step 6](beginner-learning-guide.md#6-次の実習監視を追加する)で監視全体を起動し、
+  Prometheus target、Grafana dashboard、Loki log を順に確認する。
 - **期待結果**: 「収集元 → 保存先 → 表示先 → 通知先」を紙またはMermaidで再現できる。
 - **確認問題**: Grafanaが停止してもPrometheusの時系列は直ちに消えるか。コンテナ内
   `psutil` とhost全体のnode-exporterは何が違うか。
@@ -125,8 +140,8 @@ Level 0〜4 だけでは、構成を作って確認するところまでしか�
 
   消えない。Grafanaは可視化するだけで、収集・保存はPrometheusが担う。Grafanaが
   停止していてもPrometheusが収集済みの時系列データはそのまま残る。コンテナ内
-  `psutil` はアプリコンテナ自身の値、node-exporterはLinuxホスト全体の値であり、
-  この2つを混同すると障害の切り分けを誤る。
+  `psutil` はコンテナから見える値で、指標によってはホスト側の値を含む。
+  全指標をコンテナ使用量と決め付けず、Linuxホスト全体はnode-exporter側で確認する。
 
   </details>
 
@@ -183,6 +198,9 @@ AWSのコードが存在しても、実アカウントでの `terraform apply / 
 
 ## 共通の学習記録
 
+個別実習は [初心者実習記録テンプレート](evidence/templates/beginner-practice-record.md)をコピーして使えます。
+下記はレベル全体の振り返り用です。
+
 ```text
 日付 / commit SHA / 実行者:
 環境（OS、VM/VPS/CI、tool version）:
@@ -217,7 +235,7 @@ Level 0〜6を横断して、今どこまで終えたかを一望するための
 ## 修了チェック
 
 - [ ] 必修Level 0〜5（Level 4までの構築・確認と、Level 5の障害対応）を順に完了した
-- [ ] PASSだけでなくFAILまたはBLOCKEDの一次記録を1件残した
+- [ ] 正常時・障害時・復旧後の一次記録を残した。想定外の失敗がなければ「なし」と書き、FAILやBLOCKEDを創作していない
 - [ ] 秘密値や実IPをリポジトリへcommitしていない
 - [ ] 実行環境とcommit SHAを証跡に残した
 - [ ] 未実施を `NOT RUN` と説明できる

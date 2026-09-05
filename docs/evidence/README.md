@@ -3,7 +3,22 @@
 このディレクトリは、設計資料や構成コードが存在することと、実環境で確認した結果を
 混同しないための台帳である。実行していない検証を成功実績として記載しない。
 
-## 要約（2026-08-27 更新）
+## 最初に読む：証跡の範囲（2026-09-05 整理）
+
+この台帳は、日付付きの実測を追加してきた索引です。「実装済み」「記録された環境で検証済み」
+「自分が実行・習得済み」を同じ意味で使いません。過去の PASS は当該環境・commit の結果です。
+
+| 確認したいこと | 対応する証跡と限界 |
+| --- | --- |
+| Linux の監視全体を自動構築・復旧・復元できたか | [2026-08-22 E2E](2026-08-22-full-stack-e2e.md)。当該 commit の使い捨て Ubuntu runner 上の結果で、最新差分・永続環境の実測ではない |
+| 手元 VM に Ansible で基盤を構築したか | [2026-09-04 Ubuntu](2026-09-04-ansible-foundation-build.md)と[AlmaLinux](2026-09-04-ansible-foundation-el9-build.md)。`foundation.yml` の `common` / `docker` role が対象。監視全体の `site.yml` は別 |
+| AlmaLinux は新規・最小公開で検証したか | 上の AlmaLinux 記録は再利用 VM。role 適用・冪等性を確認したが、新規構築・最小公開の受け入れ証跡には未到達 |
+| AD・DHCP 等の個別案件を確認したい | 下表の各日付付き結果票で環境・対象 ID・未実施を確認。主ラボの実績と合算しない |
+| 自分も同じことができるか | [初心者実習](../beginner-learning-guide.md)を実行し、[自分用の記録](templates/beginner-practice-record.md)に実結果を残して確認する |
+
+この 2026-09-05 の整理は文書の案内更新です。新しい Linux / Docker / Ansible 実機試験を実施した記録ではありません。
+
+## 既存検証の要約（基点 2026-08-27、追加結果は下表）
 
 2026-08-27、現行 `main` の `b97ccbc30b6c57cbf13bc283bdf0ffbbb4313083` を基点とする
 作業ツリーで、[Windows ローカル静的・単体検証](2026-08-27-local-static-validation.md)を実施しました。
@@ -52,11 +67,12 @@ device-mapperあり）上で実測しています
 main `774d71c`）。IDは`06-test-specification.md`の公式番号体系とは別に、
 `run-full-stack.sh`内で完結する固有IDです。
 
-CI が検査しているのは構文と静的テストまでです（`python-check.yml` の `bash -n` と
-pytest、`backup-verify.yml` の shellcheck 3 本）。**`labs/` と `scripts/labs/` には
-shellcheck が掛かっておらず、安全装置の実行テストと B-1〜B-4 は CI では走りません。**
+現在の `python-check.yml` は追跡済み shell script 全体の `bash -n` と shellcheck、pytest 等を定義しています。
+安全装置の実行テスト ST-06 は上記の Full-stack E2E に記録があります。
+B-1〜B-4 の各演習実測は下表の環境で行ったもので、これらの静的検査と区別します。
 
-AlmaLinux 実機への `site.yml` 適用は `NOT RUN` です。
+AlmaLinux VM の `foundation.yml` 適用は 2026-09-04 に記録済みですが、
+監視全体の `site.yml` 適用は別の範囲で `NOT RUN` です。
 
 **Molecule `el9` シナリオは 2026-08-25 に実行証跡を採録しました**
 （[run #14](https://github.com/ns7jp/server/actions/runs/32811100007)、
