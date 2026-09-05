@@ -1,0 +1,18 @@
+{
+  "example_note": "架空入力。復旧確認が未実施で、新しい事実のない同一確認を 2 回繰り返した想定です。",
+  "task_id": "LAB-FICTIONAL-002",
+  "mode": "lab",
+  "revision": "fictional-revision-2",
+  "elapsed_minutes": 30,
+  "budget_minutes": 45,
+  "rechecks_without_change": 2,
+  "attempts_without_new_hypothesis": 0,
+  "critical_risk": false,
+  "new_evidence": false,
+  "gates": {
+    "security": { "status": "PASS", "revision": "fictional-revision-2", "evidence_ref": "fictional:security-record" },
+    "functional": { "status": "PASS", "revision": "fictional-revision-2", "evidence_ref": "fictional:functional-record" },
+    "recovery": { "status": "NOT_RUN", "revision": "", "evidence_ref": "" },
+    "handover": { "status": "NOT_RUN", "revision": "", "evidence_ref": "" }
+  }
+}
