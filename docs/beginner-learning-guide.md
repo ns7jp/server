@@ -1,6 +1,6 @@
 # 初心者向け学習ガイド
 
-[入口へ戻る](../README.md) / [全体の学習計画](learning-path.md) / [用語を調べる](server-building-keywords.md)
+[入口へ戻る](../README.md) / [全体の学習計画](learning-path.md) / [やさしい用語集](server-basics-glossary/README.md) / [用語を調べる](server-building-keywords.md)
 
 **最初のゴールは、2 つのサービスを起動し、「応答できる」「認証で守られている」「停止して戻せる」を自分の記録で説明することです。**
 教材のリポジトリ名は `server` です。設定内の `server-monitor` はアプリ・監視ジョブの名称、`server-monitor-lab` は Compose のプロジェクト名として使っています。
