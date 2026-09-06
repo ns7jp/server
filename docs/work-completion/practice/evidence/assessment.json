@@ -1,0 +1,28 @@
+{
+  "assessed_at": "2026-09-06T05:02:21.361Z",
+  "schema_version": "1.0",
+  "assessment_only": true,
+  "approval": "NOT_GRANTED",
+  "service_action": "NONE",
+  "task_id": "PR156-DOCUMENT-HANDOFF-20260906",
+  "input_valid": true,
+  "validation_errors": [],
+  "thresholds": {
+    "rechecks": 2,
+    "attempts": 2
+  },
+  "limits": [
+    "自己申告された入力を整理する参考判定です。変更・デプロイ・終了を承認しません。",
+    "証跡参照の存在・内容・真実性、現在の実環境、安全性、復旧能力は検証しません。",
+    "lab の handover は自己説明の記録で構いませんが、本番のレビューや引継ぎの代替にはなりません。",
+    "Git・ネットワーク・サーバー操作・削除・コミット・通知・スケジュール登録は行いません。",
+    "反復 2 回の閾値と予算は試行用です。実測して調整し、終了コードをデプロイ許可に流用しないでください。"
+  ],
+  "unmet_gates": [],
+  "result": "READY_TO_CLOSE",
+  "reasons": [
+    "必須 4 ゲートの申告が PASS または根拠付き NA で、対象 revision と一致しています。",
+    "未反映の新しい証拠はないと申告されています。"
+  ],
+  "next_action": "人が証跡と適用範囲を確認し、必要な責任者の承認・引継ぎを経て終了を記録してください。新しい事実がなければ同じ確認を繰り返さず、改善案は次の作業に分離してください。"
+}
