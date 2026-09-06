@@ -120,12 +120,15 @@ fi
 # 2. systemd failed units
 section "systemd failed units"
 if command -v systemctl >/dev/null 2>&1; then
-  FAILED=$(systemctl --failed --no-legend 2>/dev/null || true)
-  if [[ -n "$FAILED" ]]; then
-    echo "$FAILED"
-    log_issue "failed unit あり（上記参照）"
+  if FAILED=$(systemctl --failed --no-legend --no-pager 2>/dev/null); then
+    if [[ -n "$FAILED" ]]; then
+      echo "$FAILED"
+      log_issue "failed unit あり（上記参照）"
+    else
+      log_ok "failed unit なし"
+    fi
   else
-    log_ok "failed unit なし"
+    log_issue "systemctlからfailed unitを取得できない（systemdの稼働状態と権限を確認）"
   fi
 else
   log_skip "systemctl が見つからない（systemd 未使用の環境）"
@@ -134,12 +137,17 @@ fi
 # 3. 直近24時間のエラーログ件数
 section "journalctl エラーログ件数（過去24時間、priority=err以上）"
 if command -v journalctl >/dev/null 2>&1; then
-  ERR_COUNT=$(journalctl -p err --since "-24 hours" --no-pager 2>/dev/null | grep -c . || true)
-  printf 'エラーログ件数: %s\n' "$ERR_COUNT"
-  if [[ "$ERR_COUNT" -gt 0 ]]; then
-    log_issue "エラーログが ${ERR_COUNT} 件検出された。詳細は journalctl -p err --since '-24 hours' を確認"
+  # quietで空結果の案内を抑え、JSONの1行を1エントリとして数える。
+  if ERR_COUNT=$(journalctl -p err --since "-24 hours" --no-pager --quiet --output=json 2>/dev/null \
+    | awk 'END { print NR }'); then
+    printf 'エラーログ件数: %s\n' "$ERR_COUNT"
+    if [[ "$ERR_COUNT" -gt 0 ]]; then
+      log_issue "エラーログが ${ERR_COUNT} 件検出された。詳細は journalctl -p err --since '-24 hours' を確認"
+    else
+      log_ok "エラーログなし"
+    fi
   else
-    log_ok "エラーログなし"
+    log_issue "journalctlからエラーログを取得できない（journalの状態と参照権限を確認）"
   fi
 else
   log_skip "journalctl が見つからない（systemd 未使用の環境）"
