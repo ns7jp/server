@@ -1,0 +1,44 @@
+{
+  "scope": "PR #156の完了状況と利用可能な入口の確認。サーバーの現行稼働確認ではない。",
+  "pr": {
+    "url": "https://github.com/ns7jp/server/pull/156",
+    "state": "closed",
+    "merged": true,
+    "merged_at": "2026-09-05T13:31:35Z",
+    "head_sha": "01e862784798661e486eb9414b6d7c672e44a341",
+    "merge_commit_sha": "f06548391c91366925a166b89f275a62fa3fdf63"
+  },
+  "ci": [
+    {
+      "id": 33969003972,
+      "name": "Work completion check",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ns7jp/server/actions/runs/33969003972"
+    },
+    {
+      "id": 33969004022,
+      "name": "Security scan",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ns7jp/server/actions/runs/33969004022"
+    },
+    {
+      "id": 33969004107,
+      "name": "Python check",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ns7jp/server/actions/runs/33969004107"
+    }
+  ],
+  "entry": {
+    "url": "https://github.com/ns7jp/server/blob/main/docs/work-completion/README.md",
+    "blob_sha": "ce43354f96ac9c28a590a7d2f2fc1907250e6a1c",
+    "read": true,
+    "matches_pr_copy": true
+  },
+  "actor": "AI assistant",
+  "user_practice": "UNCONFIRMED",
+  "benefit": "UNMEASURED",
+  "observed_on": "2026-09-06"
+}

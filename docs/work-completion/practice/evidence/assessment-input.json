@@ -1,0 +1,37 @@
+{
+  "task_id": "PR156-DOCUMENT-HANDOFF-20260906",
+  "mode": "lab",
+  "revision": "01e862784798661e486eb9414b6d7c672e44a341",
+  "elapsed_minutes": 0,
+  "budget_minutes": 45,
+  "rechecks_without_change": 0,
+  "attempts_without_new_hypothesis": 0,
+  "critical_risk": false,
+  "new_evidence": false,
+  "gates": {
+    "security": {
+      "status": "PASS",
+      "revision": "01e862784798661e486eb9414b6d7c672e44a341",
+      "evidence_ref": "https://github.com/ns7jp/server/actions/runs/33969004022"
+    },
+    "functional": {
+      "status": "PASS",
+      "revision": "01e862784798661e486eb9414b6d7c672e44a341",
+      "evidence_ref": "https://github.com/ns7jp/server/actions/runs/33969003972"
+    },
+    "recovery": {
+      "status": "NA",
+      "revision": "01e862784798661e486eb9414b6d7c672e44a341",
+      "evidence_ref": "https://github.com/ns7jp/server/pull/156",
+      "rationale": "Scope is the already completed documentation PR handoff. No new deployment or data mutation is performed; server restoration is outside this assessment. The PR documents how to revert its document and workflow additions."
+    },
+    "handover": {
+      "status": "PASS",
+      "revision": "01e862784798661e486eb9414b6d7c672e44a341",
+      "evidence_ref": "https://github.com/ns7jp/server/blob/main/docs/work-completion/README.md"
+    }
+  },
+  "scope": "Documentation availability and original PR checks only; not recipient acceptance, current production health, or psychological efficacy.",
+  "elapsed_definition": "Zero at this one-shot evaluator invocation; not total assistant-turn time or user practice duration.",
+  "counter_definition": "No extra repetition within this one-shot evaluation; not a measure of user checking behavior."
+}
