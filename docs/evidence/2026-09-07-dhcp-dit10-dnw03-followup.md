@@ -2,7 +2,7 @@
 
 [2026-09-04の結果票](2026-09-04-dhcp-build-validation-netns-lab.md)・[同ネットワーク結果票](2026-09-04-network-host-validation-dhcp-netns-lab.md)では、DIT-10（監視統合）とDNW-03（`dhcp-01`自身の名前解決）を「このラボに`monitor-01`・DNS実装が存在しないため`SKIP-ENV`」と記録していました。2026-09-04時点のこの判定自体は事実であり、上書きしません。本ファイルは、同じ`labs/dhcp-lab/`のnetnsラボを（同一セッション内で）再構築したうえで、この2件を実際に構築・実測し直した追加記録です。
 
-> **この証跡が示す範囲**: 2026-09-04と同じくAI支援セッションのサンドボックスコンテナ内のnetwork namespaceラボです。独立した物理／VPSホストではありません。監視サーバー（`monitor-01`相当）とDNSサーバーは、いずれも本セッションがこのラボの管理端末役netns（root netns、`mgmt-ctrl=10.99.0.1/24`）へ実際にインストールした本物のPrometheus・dnsmasqであり、モック・スタブではありません。ただし恒久的な監視基盤・組織DNSではなく、この検証のためだけに一時的に構築したものです。
+> **この証跡が示す範囲**: 2026-09-04と同じくAI支援セッションのサンドボックスコンテナ内のnetwork namespaceラボです。独立した物理／VPSホストではありません。監視サーバー（`monitor-01`相当）とDNSサーバーは、いずれも本セッションがこのラボの管理端末役netns（root netns、`mgmt-ctrl=10.99.0.1/24`）へ実際にインストールした本物のPrometheus・dnsmasqであり、モック・スタブではありません。ただし恒久的な監視基盤・組織DNSではなく、この検証のためだけに一時的に構築したものです。**本ファイルで実際に実測したのはDIT-10・DNW-03の2 IDのみです**。ラボの再構築（`dhcp.yml`の再適用含む）自体は行いましたが、[2026-09-04の結果票](2026-09-04-dhcp-build-validation-netns-lab.md)がPASSとした残り27 IDをこの新しいcommit（下記）で改めて実測し直してはいません。[11-work-result-report.md](../build-package-dhcp/11-work-result-report.md)が明記するとおり別commitの結果は合算しないため、本ファイルの2 IDと2026-09-04の27 IDを足した「29/31」という単一の合計値としては扱いません。
 
 ## 基本情報
 
@@ -10,6 +10,7 @@
 | --- | --- |
 | 実施日時（JST） | 2026-09-07 |
 | 実施者 | AI支援セッション（ユーザー: net7jp） |
+| commit SHA | `0974872ce5f8c47adfd440bd8a91ae97c35a0887`（[2026-09-04の結果票](2026-09-04-dhcp-build-validation-netns-lab.md)の`ebcae209`とは別commit。ラボを再構築した時点のリポジトリ状態） |
 | 対象環境 / host | `dhcp01`（network namespace、`seg0=192.168.50.5/24`、`mgmt0=10.99.0.30/24`） |
 | 監視端末（`monitor-01`相当） | root netns（`mgmt-ctrl=10.99.0.1/24`）上に`prometheus`パッケージ（`2.45.3+ds-2ubuntu0.3`）を導入し一時起動 |
 | DNSサーバー | 同じroot netns上に`dnsmasq`パッケージ（`2.91-0ubuntu0.24.04.1`）を導入し一時起動 |
@@ -88,7 +89,7 @@ $ dig @10.99.0.1 dhcp-01.lab.example.test +short   # 管理端末側
 
 ## 全体状態への反映
 
-[2026-09-04の結果票](2026-09-04-dhcp-build-validation-netns-lab.md)の31 ID中、本追補によりPASSは27→**29**、SKIP-ENVは4→**2**（`DST-03`のAppArmor、`DST-05`の監査ログのみ残存。理由は元の結果票のとおり、このサンドボックスにAppArmor LSM・journald/rsyslogが無い恒久的な環境制約で、今回も再確認し変わっていない）。
+[2026-09-04の結果票](2026-09-04-dhcp-build-validation-netns-lab.md)（commit `ebcae209`）は31 ID中27 ID `PASS` / 4 ID `SKIP-ENV`のままです。本ファイル（commit `0974872`、別commit）は、そのうちDIT-10・DNW-03の2 IDについて、再構築した同じ種類のnetnsラボで`SKIP-ENV`から`PASS`へ切り替わることを実測した記録です。この2 IDは元の結果票の27 IDとは異なるcommitでの実測のため合算せず、「29/31」という単一の合計値では表現しません。残る`SKIP-ENV`は`DST-03`（AppArmor）・`DST-05`（監査ログ）の2 IDで、理由は元の結果票のとおりこのサンドボックスにAppArmor LSM・journald/rsyslogが無い恒久的な環境制約であり、今回も再確認し変わっていません。
 
 ## 見つかった構築上のつまずき（欠陥ではないが記録する事実）
 
