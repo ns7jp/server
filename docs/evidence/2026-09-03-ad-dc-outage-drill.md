@@ -199,5 +199,5 @@ Uptimeから逆算した起動完了時刻: **18:31:07**(18:58:32時点でUptime
 
 - 試験用ユーザー(`avail-test-before`、`avail-test-during`)は削除済み
 - 両DCとも`repadmin /replsummary`失敗0/5、`dcdiag /q`(残留ログ除き)健全
-- dc02の時刻同期元がPDCエミュレーター(dc01)ではなくHyper-Vホスト(`VMTP`)である点は未是正。次の課題として記録
+- dc02の時刻同期元がPDCエミュレーター(dc01)ではなくHyper-Vホスト(`VMTP`)である点を指摘。**この時点ではdc02はまだPDCエミュレーターではなかった**。[2026-09-04のFSMO奪取](2026-09-04-ad-fsmo-seize.md)でdc02自身がPDCエミュレーターになったため前提が変わり、[2026-09-07に構成を明示化する形で是正済み](2026-09-07-ad-dc02-time-sync-fix.md)
 - FSMO役割の**奪取**(`-Force`によるseize)は[2026-09-04に実施し証跡化済み](2026-09-04-ad-fsmo-seize.md)。実際のハードウェア障害(電源断)を模した試験は`NOT RUN`
