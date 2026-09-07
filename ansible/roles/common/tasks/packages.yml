@@ -7,6 +7,23 @@
     cache_valid_time: 3600
   when: ansible_os_family == 'Debian'
 
+# Ubuntu 24.04(noble)以降、util-linuxパッケージからhwclockが分離され
+# universeのutil-linux-extraへ移動した。22.04(jammy)にはutil-linux-extra
+# というパッケージ自体が存在せず(archive上に無い)、jammyではutil-linux
+# 自体が/sbin/hwclockを含む。以前はutil-linux-extraをcommon_os_packagesへ
+# 無条件で入れており、24.04実機でのhwclock欠落は直ったが、jammyの
+# Molecule scenario(CI)が「No package matching 'util-linux-extra' is
+# available」で必ず失敗する状態になっていた(2026-09-07、
+# ansible-integration.ymlをworkflow_dispatchで実行し発覚。common role・
+# foundation.ymlの両方でjammy上のcommon role適用そのものが壊れていた)。
+- name: Ensure hwclock is available on Ubuntu 24.04+ (Debian family)
+  ansible.builtin.apt:
+    name: util-linux-extra
+    state: present
+  when:
+    - ansible_os_family == 'Debian'
+    - ansible_distribution_version is version('24.04', '>=')
+
 # AlmaLinux / Rocky の最小構成には EPEL が無く、jq などが標準リポジトリに
 # 入らない版がある。base リポジトリで足りる場合でも EPEL の有無で
 # 結果が変わらないよう、パッケージ導入前に明示的に用意する。

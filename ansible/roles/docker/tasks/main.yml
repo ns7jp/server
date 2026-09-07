@@ -51,6 +51,17 @@
 # "boolean is not defined in persistent policy" で失敗する
 # （2026-09-04、AlmaLinux 9実機で確認した実欠陥。以前は common role の
 # selinux.yml 側にあったが、パッケージの導入順序と矛盾していたため移した）。
+#
+# common_selinux_applied is defined を主条件にしているのは、docker role
+# だけを単独で使う場面（common role がplayに含まれない）を確実に弾くため。
+# 以前は common_manage_selinux | default(true) を使っており、common role
+# が一度も実行されていないと変数自体が未定義になって default(true) が
+# 常に勝ち、この task が実行されてしまっていた。python3-libselinux は
+# common role（RedHat.yml）が導入するため、common role 抜きでは
+# 「Failed to import the required Python library (libselinux-python)」で
+# 必ず失敗する（2026-09-07、docker role単独のel9 Molecule scenarioを
+# ansible-integration.ymlで実行し発覚。foundation.yml のように common →
+# docker の順で実行する場合は影響しない）。
 - name: Ensure the container SELinux boolean is enabled
   ansible.posix.seboolean:
     name: container_manage_cgroup
@@ -58,7 +69,7 @@
     persistent: true
   when:
     - ansible_os_family == 'RedHat'
-    - common_manage_selinux | default(true) | bool
+    - common_selinux_applied is defined
     - common_selinux_state | default('enforcing') == 'enforcing'
     - not (common_selinux_applied.reboot_required | default(false))
 

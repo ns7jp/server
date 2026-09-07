@@ -95,6 +95,31 @@ def test_both_families_provide_the_same_first_triage_tooling():
         assert f"- {shared}\n" in redhat, shared
 
 
+def test_hwclock_package_is_gated_to_the_ubuntu_version_that_actually_has_it():
+    """util-linux-extraはUbuntu 24.04(noble)以降にしか存在しないパッケージ。
+
+    22.04(jammy)ではutil-linux自体が/sbin/hwclockを含んでおり、
+    util-linux-extraというパッケージ自体がarchiveに無い。以前は
+    common_os_packagesへutil-linux-extraを無条件で入れており、24.04実機
+    でのhwclock欠落は直ったが、jammyでは"No package matching
+    'util-linux-extra' is available"で必ず失敗する状態になっていた
+    （2026-09-07、ansible-integration.ymlをworkflow_dispatchで実行し発覚。
+    common role・foundation.ymlの両方でjammy上のcommon role適用そのものが
+    壊れていた）。
+    """
+    debian = read("ansible", "roles", "common", "vars", "Debian.yml")
+    packages = read("ansible", "roles", "common", "tasks", "packages.yml")
+
+    assert "util-linux-extra" not in debian
+    assert "- util-linux\n" in debian
+
+    idx = packages.index("Ensure hwclock is available on Ubuntu 24.04+")
+    block = packages[idx:idx + 400]
+    assert "name: util-linux-extra" in block
+    assert "ansible_os_family == 'Debian'" in block
+    assert "ansible_distribution_version is version('24.04', '>=')" in block
+
+
 def test_firewalld_rate_limit_is_installed_before_the_open_ssh_rule_is_removed():
     """順序が逆だと、SSH を閉じてから代わりの経路を作ることになる。"""
     firewalld = read("ansible", "roles", "common", "tasks", "firewall-firewalld.yml")
@@ -1202,6 +1227,29 @@ def test_selinux_boolean_waits_for_pending_reboot():
     assert "Ensure the container SELinux boolean is enabled" not in selinux, (
         "boolean 設定が docker role へ移った後も common role 側に残っている"
     )
+
+
+def test_docker_selinux_boolean_requires_common_role_to_have_actually_run():
+    """docker roleを単独で使う場面(common roleがplayに無い)を確実に弾く。
+
+    以前は when 条件が common_manage_selinux | default(true) を使っており、
+    common role が一度も実行されていないと変数自体が未定義になって
+    default(true) が常に勝ち、container_manage_cgroup boolean の task が
+    実行されてしまっていた。python3-libselinux は common role
+    （RedHat.yml）が導入するため、common role 抜きでは
+    "Failed to import the required Python library (libselinux-python)" で
+    必ず失敗する（2026-09-07、docker role単独のel9 Molecule scenarioを
+    ansible-integration.ymlで実行し発覚）。
+
+    common_selinux_applied は common role の selinux.yml がSELinux状態を
+    実際に適用した場合にのみ register されるため、これを主条件にすれば
+    common role 抜きでは確実に skip される。
+    """
+    docker_tasks = read("ansible", "roles", "docker", "tasks", "main.yml")
+    idx = docker_tasks.index("Ensure the container SELinux boolean is enabled")
+    block = docker_tasks[idx:idx + 600]
+    assert "common_selinux_applied is defined" in block
+    assert "common_manage_selinux | default(true)" not in block
 
 
 def test_prometheus_config_is_templated_per_environment():
