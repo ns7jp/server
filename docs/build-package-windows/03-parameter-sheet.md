@@ -12,7 +12,7 @@
 | 対象環境 | 検証(基準)。引き渡し時に実環境名へ置換 |
 | 対象ホスト | `monitor-win-01`(論理名)。実FQDN / IPは`NOT SET` |
 | 中央監視host(既存、変更なし) | `monitor-01`(論理名)。詳細は[Linux版パラメータシート](../build-package/03-parameter-sheet.md)を参照 |
-| 設定値の正本(フェーズ1) | 本パックのPowerShell手順([構築手順書](05-build-procedure.md))。Ansible role化はされておらず「済(手動)」の範囲 |
+| 設定値の正本(フェーズ1) | 本パックのPowerShell手順([構築手順書](05-build-procedure.md))。`ansible/roles/common_windows`としてAnsible role化はされているが実機Windows Serverへの実行実績がゼロ件のため、引き続き「済(手動)」の範囲を正本とする |
 | 設定値の正本(フェーズ2) | `ansible/roles/app/defaults/main.yml`の`app_node_exporter_targets`変数(「済(自動)」で追加できる唯一の項目)。その他のフェーズ2項目は「未実装」 |
 | 実績値の正本 | 対象ホストごとの日付付きevidence |
 | 適用手順書バージョン / commit SHA | `NOT SET` — branch名ではなく本リポジトリの40桁commit SHAを記録 |

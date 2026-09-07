@@ -11,7 +11,7 @@
 | フェーズ1: サービス停止復旧演習 WIT-08（D-1相当） | `NOT RUN` |
 | フェーズ1: backup restore WIT-09 | `NOT RUN` |
 | フェーズ1: セキュリティ試験 WST-01〜06 | `NOT RUN` |
-| フェーズ1: 構成commit相当の記録 / 設定rollback rehearsal | `NOT RUN`（対象host未指定。Ansible role非対応のため[変更・ロールバック計画兼記録票](08-change-rollback-plan.md)の手動手順で実施） |
+| フェーズ1: 構成commit相当の記録 / 設定rollback rehearsal | `NOT RUN`（対象host未指定。Windows対応Ansible role(`ansible/roles/common_windows`)はコードは存在するが実機実行実績ゼロ件のため[変更・ロールバック計画兼記録票](08-change-rollback-plan.md)の手動手順で実施） |
 | フェーズ2: host metrics scrape WIT-03 | `BLOCKED`（Dockerホスト↔対象ネットワーク間の実L3到達性、およびwindows_exporter側Firewall許可(Dockerホストの実IP向け)が確立するまで解除不可。[試験仕様書・結果票](06-test-specification.md)参照） |
 | フェーズ2: blackbox probe WIT-05 | `BLOCKED`（`ansible/roles/app/templates/prometheus.yml.j2` のprobe対象汎用化が未実装のため） |
 | フェーズ2: ログ集約 WIT-06 | `BLOCKED`（Grafana Alloy for Windows未導入のため） |

@@ -48,8 +48,8 @@ flowchart LR
 本パックは `docs/build-package/` の構成・文体・厳格さを踏襲しますが、対象が Windows Server であることに由来する次の3点が異なります。
 
 1. **単一ホスト完結ではなく2ホスト構成**: Linux版(`SM-LAB-001`)は監視スタックと監視対象アプリが同一VM上で完結する単一ホスト構成です。本パック(`SM-WIN-001`)は、既存の中央Linux監視host(論理名 `monitor-01`。詳細は[../build-package/03-parameter-sheet.md](../build-package/03-parameter-sheet.md))と、新規のWindows監視対象host(論理名 `monitor-win-01`)の2ホスト構成です。中央側の監視スタックは変更せず、既存基盤の監視対象ホストを1台追加する形を取ります。
-2. **Ansible自動化roleが無く、手動PowerShell手順が中心**: Linux版は `ansible/playbooks/site.yml` によるほぼ全自動の構築です。本パックにはWindows対応role(`common_windows` 等)が無いため、OS初期設定・Firewall・IIS・windows_exporter導入・バックアップ設定は、本パックのPowerShell手順による「済(手動)」が中心になります。唯一の自動化経路は、中央host側の `ansible/roles/app/defaults/main.yml` の `app_node_exporter_targets` へWindowsホストのaddress/host/environmentを1行追加し `site.yml` を再適用する「済(自動)」だけです。この扱いの定義は各文書で共通して使います。
-3. **フェーズ1/フェーズ2の2段階に分かれる**: Linux版は構築から試験まで単一フェーズで完結します。本パックは、Windows Server 1台だけで検証・完了できる**フェーズ1(ホスト単体構築)**と、中央監視基盤への統合を要する**フェーズ2(中央監視統合)**に分けます。フェーズ2は、Windows対応Ansible roleの不在、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)が未確立であること、Windows向けログ集約経路の不在という3点が解消するまで `BLOCKED` です。
+2. **Ansible role化はされたが実機実行実績が無く、手動PowerShell手順が中心**: Linux版は `ansible/playbooks/site.yml` によるほぼ全自動の構築です。本パックには`ansible/roles/common_windows`としてWindows対応roleのコードは追加されていますが、実機Windows Serverへの実行実績がゼロ件(Molecule等のCI検証も無し)のため、OS初期設定・Firewall・IIS・windows_exporter導入・バックアップ設定は、本パックのPowerShell手順による「済(手動)」が引き続き中心になります。対象ホストの初回コンピューター名設定・WinRM HTTPSリスナー有効化は、WinRM経由のAnsibleでは接続できない新規VMに対する作業であるため、このroleでも自動化できず引き続きコンソールからの手動作業が前提です。唯一の自動化経路は、中央host側の `ansible/roles/app/defaults/main.yml` の `app_node_exporter_targets` へWindowsホストのaddress/host/environmentを1行追加し `site.yml` を再適用する「済(自動)」だけです。この扱いの定義は各文書で共通して使います。
+3. **フェーズ1/フェーズ2の2段階に分かれる**: Linux版は構築から試験まで単一フェーズで完結します。本パックは、Windows Server 1台だけで検証・完了できる**フェーズ1(ホスト単体構築)**と、中央監視基盤への統合を要する**フェーズ2(中央監視統合)**に分けます。フェーズ2は、Windows対応Ansible role(`ansible/roles/common_windows`)の実機実行実績がゼロ件であること、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)が未確立であること、Windows向けログ集約経路の不在という3点が解消するまで `BLOCKED` です。
 
 ## 最短レビュー順
 
@@ -111,7 +111,7 @@ flowchart LR
 次をすべて満たした時点で「構築・試験完了」とします。
 
 - フェーズ1の必須試験(`WUT-01`, `WUT-02`, `WUT-05`, `WIT-01`, `WIT-02`, `WIT-04`, `WIT-08`, `WIT-09`, `WIT-10`, `WST-01`〜`WST-06`, `WNW-01`〜`WNW-09`)がすべて `PASS`
-- フェーズ2の必須試験(`WIT-03`, `WIT-05`, `WIT-06`, `WIT-07`, `WIT-11`)は、[基本設計書](01-basic-design.md)に記す3点(Windows対応Ansible roleの不在、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)が未確立であること、Windows向けログ集約経路の不在)の解消条件とともに `BLOCKED` として明記されていること
+- フェーズ2の必須試験(`WIT-03`, `WIT-05`, `WIT-06`, `WIT-07`, `WIT-11`)は、[基本設計書](01-basic-design.md)に記す3点(Windows対応Ansible roleの実機実行実績がゼロ件であること、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)が未確立であること、Windows向けログ集約経路の不在)の解消条件とともに `BLOCKED` として明記されていること
 - 実行日時、環境、ホストのビルド番号(`winver` または `Get-ComputerInfo` の `OsBuildNumber`)、実行コマンド、実出力、判定が証跡として保存される
 - 未解決事項、秘密値(証明書・パスワード)の受け渡し方法、ロールバック方法が引き渡し記録に残る
 - 実ホストの名前解決、経路、待受、HTTP疎通、Windows Defender Firewall を確認し、実行出力を保存する

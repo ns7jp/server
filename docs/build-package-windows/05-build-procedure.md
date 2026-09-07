@@ -2,7 +2,7 @@
 
 本書は、[要件定義書](00-requirements.md)・[基本設計書](01-basic-design.md)・[詳細設計書](02-detailed-design.md)・[パラメータシート](03-parameter-sheet.md)を受けて、monitor-win-01(Windows Server 2022 Standard、Desktop Experience基準)をフェーズ1(ホスト単体構築)の範囲で構築する手順を示します。系統A(ワークグループ)を既定とし、系統B(ADドメイン参加)との差分がある箇所はその都度明記します。
 
-Ansible role化された自動構築経路(`ansible/roles/common`相当のWindows対応role)は存在しません。本書の手順はすべて「済(手動)」であり、対象ホスト上またはWinRM経由でPowerShellを実行して進めます。0〜4節・6〜9節は対象ホスト(monitor-win-01)側の作業、5節のみ中央監視host(monitor-01)側の作業です。5節の`app_node_exporter_targets`変数への追加と`site.yml`再適用だけは「済(自動)」の既存Ansible機能であり、他の節とは性質が異なる点に注意してください。
+Windows対応のAnsible role(`ansible/roles/common_windows`)はコードとして追加されていますが、実機Windows Serverに対して一度も実行されておらず(WinRMを話せるテスト対象がこの開発環境に無いためMolecule等のCI検証もありません)、Ansibleでの自動構築はまだ実証できていません。したがって本書の手順は引き続きすべて「済(手動)」を正本として扱い、対象ホスト上またはWinRM経由でPowerShellを実行して進めます。特に0〜2節(コンピューター名設定・WinRM HTTPSリスナー有効化)は、WinRM経由のAnsibleがそもそもWinRM未有効化の新規VMには接続できない(鶏と卵の関係)ため、`ansible/roles/common_windows`が実機で動くようになった後もこのroleでは自動化できず、引き続きハイパーバイザーのコンソールから直接ログオンして行う手動作業です。このroleが対象とするのはWinRM HTTPSが既に到達可能になった後の3〜4節相当の範囲(Firewall締め、IIS導入、windows_exporter導入、バックアップ設定)の一部に限られます。0〜4節・6〜9節は対象ホスト(monitor-win-01)側の作業、5節のみ中央監視host(monitor-01)側の作業です。5節の`app_node_exporter_targets`変数への追加と`site.yml`再適用だけは「済(自動)」の既存Ansible機能であり、他の節とは性質が異なる点に注意してください。
 
 フェーズ2(中央監視統合の残り、すなわちwindows_exporterのscrape・blackbox probe・ログ集約)は、[要件定義書](00-requirements.md)に記載の3点の未実装事項が解消するまで`BLOCKED`です。本書はフェーズ2の設計や解除条件そのものは扱わず、[基本設計書](01-basic-design.md)・[詳細設計書](02-detailed-design.md)・[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)を正本とします。
 
@@ -11,7 +11,7 @@ Ansible role化された自動構築経路(`ansible/roles/common`相当のWindow
 - 対象: monitor-win-01(Windows Server 2022 Standard、Desktop Experience基準)検証用VM 1台
 - 対象VMの初回作業はWinRMがまだ有効化されていないため、ハイパーバイザーのVMコンソール(またはローカルコンソール)から直接ログオンして行います。WinRM HTTPS経由の管理は2節で有効化した後にのみ成立します
 - 対象IPアドレス(例示: `192.0.2.30`)、例示FQDN(`monitor-win.example.test`)、管理端末IP(例示: `192.0.2.40`)、作業時間帯、ロールバック条件(VM/ハイパーバイザーのスナップショット取得タイミング)を記録済み
-- 本パックはAnsible role化されていないため、Linux版のような対象commit SHA固定によるコード配備管理はありません。ただし、本パック文書側の版(このリポジトリの`git rev-parse HEAD`)は事後の突合のため記録しておきます
+- `ansible/roles/common_windows`はコードとして存在しますが実機Windows Serverへの実行実績がゼロ件のため、Linux版のような対象commit SHA固定によるコード配備管理の実績はまだありません。ただし、本パック文書側の版(このリポジトリの`git rev-parse HEAD`)は事後の突合のため記録しておきます
 - 実値の秘密情報(証明書秘密鍵、ローカルAdministratorの新しいパスワード等)をIssue、PR、端末ログへ貼りません
 - [要件定義書](00-requirements.md)と[変更・ロールバック計画](08-change-rollback-plan.md)の対象環境、Go / No-Go条件を確認済み
 - 本書はフェーズ1(ホスト単体構築)の範囲のみを扱うこと、5節の中央側コマンドを実行してもフェーズ2のscrapeは`compose.yaml`の`monitoring`ネットワークの制約が解消するまで成立しないことを再確認済み
@@ -362,7 +362,7 @@ curl.exe -s -o NUL -w "%{http_code}`n" http://localhost/healthz.html
 
 ## 8. ロールバック
 
-Windows対応Ansible roleが無いため、Linux版のようなcommit SHA基準の再配備によるロールバックは使えません。[変更・ロールバック計画](08-change-rollback-plan.md)および[詳細設計書](02-detailed-design.md)「バックアップ・ロールバック」節に定義した優先順位に従います。
+Windows対応Ansible role(`ansible/roles/common_windows`)はコードとしては存在しますが実機Windows Serverへの実行実績がゼロ件のため、Linux版のようなcommit SHA基準の再配備によるロールバックはまだ使えません。[変更・ロールバック計画](08-change-rollback-plan.md)および[詳細設計書](02-detailed-design.md)「バックアップ・ロールバック」節に定義した優先順位に従います。
 
 1. **最優先: VM/ハイパーバイザーのスナップショット復元。**
 
