@@ -14,7 +14,7 @@
 | フェーズ1: 構成commit相当の記録 / 設定rollback rehearsal | `NOT RUN`（対象host未指定。Windows対応Ansible role(`ansible/roles/common_windows`)はコードは存在するが実機実行実績ゼロ件のため[変更・ロールバック計画兼記録票](08-change-rollback-plan.md)の手動手順で実施） |
 | フェーズ2: host metrics scrape WIT-03 | `BLOCKED`（Dockerホスト↔対象ネットワーク間の実L3到達性、およびwindows_exporter側Firewall許可(Dockerホストの実IP向け)が確立するまで解除不可。[試験仕様書・結果票](06-test-specification.md)参照） |
 | フェーズ2: blackbox probe WIT-05 | `BLOCKED`（`ansible/roles/app/templates/prometheus.yml.j2` のprobe対象汎用化が未実装のため） |
-| フェーズ2: ログ集約 WIT-06 | `BLOCKED`（Grafana Alloy for Windows未導入のため） |
+| フェーズ2: ログ集約 WIT-06 | `BLOCKED`（Windows側(`ansible/roles/common_windows`のAlloy導入タスク・設定テンプレート)はコード追加済みだが、中央側(Lokiのpush API公開・認証設計)には未着手のため、経路全体としては引き続き無い状態） |
 | フェーズ2: alert通知 WIT-07 | `BLOCKED`（WIT-03が前提のためBLOCKED） |
 | フェーズ2: 複数ターゲットscrape WIT-11 | `BLOCKED`（WIT-03解消後に有効） |
 | 作業結果報告書 | 原本作成済み。対象ホストの報告は `NOT SET` |

@@ -119,7 +119,7 @@ flowchart LR
 本書の受け入れ条件は次のとおりです。
 
 - フェーズ1必須試験（WUT-01, WUT-02, WUT-05, WIT-01, WIT-02, WIT-04, WIT-08, WIT-09, WIT-10, WST-01〜WST-06, WNW-01〜WNW-09）がすべて `PASS` していること。
-- フェーズ2対象試験のうち、`WIT-03`(host metrics scrape)・`WIT-07`(alert通知)・`WIT-11`(複数ターゲットscrape、いずれもWIT-03の仕組みに依存)・`WIT-06`(ログ集約)は 3.1 に記載した未実装3点(Windows対応Ansible roleの実機実行実績、Dockerホスト↔対象Windowsホスト間の実L3到達性・windows_exporter側Firewall許可、Grafana Alloy for Windows未導入)が解消するまで `BLOCKED` として明記され、理由と解除条件が記録されていること。`WIT-05`(blackbox probe)は、`prometheus.yml.j2` の `app_blackbox_probe_targets` によるprobe対象汎用化(FR-04)がコードとしては解消済みのため、対象ホスト monitor-win-01 が構築され次第 `NOT RUN` から実施できる状態であることが記録されていること(`ansible/roles/common_windows` はコードとして存在するが実機実行実績が無いため、対象ホスト自体の構築は引き続き手動 PowerShell が前提)。
+- フェーズ2対象試験のうち、`WIT-03`(host metrics scrape)・`WIT-07`(alert通知)・`WIT-11`(複数ターゲットscrape、いずれもWIT-03の仕組みに依存)・`WIT-06`(ログ集約)は 3.1 に記載した未実装3点(Windows対応Ansible roleの実機実行実績、Dockerホスト↔対象Windowsホスト間の実L3到達性・windows_exporter側Firewall許可、Grafana Alloy for Windows経路。Windows側の導入タスク・設定テンプレートはコード追加済みだが中央Loki側のpush API公開・認証設計は未着手)が解消するまで `BLOCKED` として明記され、理由と解除条件が記録されていること。`WIT-05`(blackbox probe)は、`prometheus.yml.j2` の `app_blackbox_probe_targets` によるprobe対象汎用化(FR-04)がコードとしては解消済みのため、対象ホスト monitor-win-01 が構築され次第 `NOT RUN` から実施できる状態であることが記録されていること(`ansible/roles/common_windows` はコードとして存在するが実機実行実績が無いため、対象ホスト自体の構築は引き続き手動 PowerShell が前提)。
 - 実行日時、環境、ホストのビルド番号（`winver` または `Get-ComputerInfo` の `OsBuildNumber`）、実行コマンド、実出力、判定が証跡として保存されていること。
 - 未解決事項、秘密値（証明書・パスワード）の受け渡し方法、ロールバック方法が[作業結果・引き渡し報告書](11-work-result-report.md)に記録されていること。
 
