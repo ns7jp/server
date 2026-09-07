@@ -23,6 +23,8 @@ Linux版は単一ホスト完結の構成であり、Compose networkの管理UI�
 
 上記2点が解消するまで、Windows Server側でwindows_exporterの9182/tcpをFirewallで許可していても、中央Prometheusからのscrapeは成立しません。フェーズ1で行うFirewall許可設定(WST-04)と、フェーズ2で成立するscrape経路(WIT-03)は別の状態であることを、証跡の記録時に混同しないでください。
 
+> **2026-09-07 追記:** 上記(a)の実L3到達性の未確立は、windows_exporter scrape(WIT-03)だけでなく、Dockerホストと対象Windowsホスト間で通信する他の経路にも共通して影響します。ログ集約(WIT-06)については、Windows側(Grafana Alloy for Windows)・中央側(`compose.loki-push.yaml.example`が追加する専用の`loki-push-proxy`。既定`LOKI_PUSH_PORT=3101`、Bearer token認証と送信元IP許可リストは`deploy/nginx/loki-push.conf.example`で実装済み)ともコードとして追加済みですが、Alloyがこの専用ポートへ到達するにも上記(a)と同じ実L3到達性が必要です。したがって`WIT-06`は「経路が無い」ことによる`BLOCKED`ではなく、`WIT-03`と同じ「実L3到達性が未確立」による`BLOCKED`として扱います(blackbox probe: WIT-05、およびこれらに連鎖するWIT-07/WIT-11も同様です)。`loki-push-proxy`のBearer token認証・送信元IP許可リストは実L3到達性とは別の認証レイヤーであり、実機Windows Server・実機Lokiへの実行実績はまだゼロ件のため、実L3到達性の確立後にあらためて実機で確認します。
+
 ## 2. 複数ホスト構成の考慮
 
 Linux版には二セグメント障害ラボ(`labs/network-troubleshooting`)があり、frontend/backendの2つのDocker networkにまたがる障害を注入して、DNS・経路・所属ネットワークの順に切り分けを演習できます。Windows/Linux混在のネットワーク障害を注入・体験するラボは、本リポジトリには現時点でまだありません。正直に申し上げると、Docker networkの操作だけでは、実machine(Windows Server)側のNIC到達性・Firewallプロファイル・ドメイン参加の有無までは模擬できないため、既存ラボをそのまま拡張しても同等の演習にはならないという制約があります。将来ラボを用意する場合は、この制約を踏まえた別設計が必要です。

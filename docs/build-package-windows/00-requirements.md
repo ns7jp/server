@@ -10,15 +10,21 @@
 | --- | --- |
 | 済(自動) | 既存の Ansible 機能で今すぐ実行できるもの。`ansible/roles/app/defaults/main.yml` の `app_node_exporter_targets` 変数へ Windows ホストを 1 行追加し、中央 host 側で `site.yml` を再適用する経路のみが該当します |
 | 済(手動) | Ansible 化はされていないが、本パックの PowerShell 手順で今すぐ実施できるもの(OS 設定、Firewall、IIS、windows_exporter 導入、バックアップ等) |
-| 未実装 | 本パックは設計のみを示しており、コードが無いもの(Windows Event Log/IIS ログを Loki へ送る経路)。あわせて、Docker ホストと対象 Windows ホストの実ネットワーク接続、および windows_exporter の Firewall 許可(Docker ホストの実 IP 向け)も未確立(`NOT SET`)であり、これはコード未実装ではなく実機での接続・許可設定が未検証という意味で、他の1点と合わせて計3点がフェーズ 2 を `BLOCKED` にしています(Windows 対応 Ansible role は `ansible/roles/common_windows` としてコード自体は追加済みですが、実機 Windows Server に対する実行実績がゼロ件のため、依然として3点目として数えます。下記2026-09-07追記参照) |
+| 未実装 | 本パックが設計・コードを揃えている範囲では、現時点でコードが無いものはありません(Windows Event Log/IIS ログを Loki へ送る経路も、Windows 側・中央側の双方をコードとして追加済み。下記2026-09-07追記参照)。フェーズ 2 を塞いでいるのは「コードが無いこと」ではなく次の2点です。(1) Docker ホストと対象 Windows ホストの実ネットワーク接続、および windows_exporter の Firewall 許可(Docker ホストの実 IP 向け)が未確立(`NOT SET`)。これは実機での接続・許可設定が未検証という意味で、WIT-03/05/06/07/11 に共通する制約です。(2) Windows 対応 Ansible role(`ansible/roles/common_windows`)はコードとしては追加済みですが、実機 Windows Server に対する実行実績がゼロ件です |
 
-構築は 2 段階のフェーズに分かれます。フェーズ 1(ホスト単体構築)は「済(手動)」の範囲で monitor-win-01 単体として完結し、フェーズ 2(中央監視統合)は上記「未実装」3 点の解消まで `BLOCKED` として扱います。
+構築は 2 段階のフェーズに分かれます。フェーズ 1(ホスト単体構築)は「済(手動)」の範囲で monitor-win-01 単体として完結し、フェーズ 2(中央監視統合)は上記2点の解消まで `BLOCKED` として扱います。
 
 > **2026-09-04 追記:** `prometheus.yml.j2` の `blackbox-probe-health` job を `app_blackbox_probe_targets` 変数(`ansible/roles/app/defaults/main.yml`)で汎用化し、IIS の health エンドポイント等を node_exporter targets と同じ「1 行足すだけ」の形で probe 対象へ追加できるようにしました(FR-04)。上記「未実装」3 点(Windows 対応 Ansible role、実ネットワーク接続・Firewall 許可、ログ集約経路)には含まれない別の制約でしたが、コードとしては解消済みです。ただし対象ホスト(monitor-win-01)自体がまだ構築されておらず、実機 windows_exporter/IIS への scrape・probe 成功実績もまだ無いため、`WIT-05` の結果は引き続き `NOT RUN` です(「コードが実装済みであること」と「実機で検証済みであること」は別、[検証証跡台帳](../evidence/README.md)の原則どおり)。詳細は[試験仕様書・結果票](06-test-specification.md)を参照してください。
 >
 > **2026-09-07 追記:** ログ集約経路(FR-05、WIT-06)のうち、Grafana Alloy for Windows側(Windows Event Log/IISログの収集設定、`config.windows.alloy.j2`)とその導入タスク(`ansible/roles/common_windows/tasks/log_collection.yml`)をコードとして追加しました。ダウンロードURL・SHA256・中央LokiのpushエンドポイントURLがいずれも`NOT SET`の間はタスク一式を安全にskipする作りです。**ただし中央側の課題(Lokiのpush APIをloopback以外からも安全に受け付けるための認証・network設計)には一切着手していません。** これは`compose.yaml`のネットワーク構成・認証方式に関わる別の設計判断であり、本追記時点でも未解決です。したがって「ログ集約経路が無い」という制約は解消されておらず、Windows側の受け皿だけが用意された状態です。`WIT-06`は引き続き`BLOCKED`のままとします。
 >
-> **2026-09-07 追記:** Windows 対応 Ansible role のスキャフォールドを `ansible/roles/common_windows` として追加しました(Firewall ルール、IIS 導入、windows_exporter 導入・ハッシュ検証、Windows Server Backup 登録を対象)。`ansible/playbooks/site.yml` に `windows` inventory group 向けの play を追加し、既存の `staging.yml`/`ci.yml`(`windows` group 未定義)には一切影響しないことを `--syntax-check` で確認済みです。ただし次の制約が残ります。(1) 対象ホストの初回コンピューター名設定・WinRM HTTPS リスナー有効化は WinRM 経由の Ansible では実行できず、引き続きハイパーバイザーのコンソールから手動で行う必要があります(05-build-procedure.md 0〜2節)。(2) このロールは実機 Windows Server に対して一度も実行されておらず、WinRM を話せるテスト対象がこの開発環境に無いため Molecule 等の CI 検証もありません。したがって「Windows 対応 Ansible role が無い」という制約は「コードは存在するが実機実行実績ゼロ件」に変わっただけで、フェーズ2を塞ぐ3点のうちの1点として引き続き扱います。`WIT-01`/`WIT-02` の Ansible 経由での実施実績は `NOT RUN` のままです。
+> **2026-09-07 追記:** Windows 対応 Ansible role のスキャフォールドを `ansible/roles/common_windows` として追加しました(Firewall ルール、IIS 導入、windows_exporter 導入・ハッシュ検証、Windows Server Backup 登録を対象)。`ansible/playbooks/site.yml` に `windows` inventory group 向けの play を追加し、既存の `staging.yml`/`ci.yml`(`windows` group 未定義)には一切影響しないことを `--syntax-check` で確認済みです。ただし次の制約が残ります。(1) 対象ホストの初回コンピューター名設定・WinRM HTTPS リスナー有効化は WinRM 経由の Ansible では実行できず、引き続きハイパーバイザーのコンソールから手動で行う必要があります(05-build-procedure.md 0〜2節)。(2) このロールは実機 Windows Server に対して一度も実行されておらず、WinRM を話せるテスト対象がこの開発環境に無いため Molecule 等の CI 検証もありません。したがって「Windows 対応 Ansible role が無い」という制約は「コードは存在するが実機実行実績ゼロ件」に変わっただけです。`WIT-01`/`WIT-02` の Ansible 経由での実施実績は `NOT RUN` のままです。
+>
+> **2026-09-07 追記(中央Loki側のネットワーク・認証設計):** ログ集約経路(FR-05、WIT-06)を塞いでいたもう一方の課題、「Lokiのpush APIをloopback以外からも安全に受け付けるための認証・network設計が無い」を解消しました。`compose.loki-push.yaml.example`(opt-inオーバーレイ)が、既存の`nginx`サービスとは独立した専用の`loki-push-proxy`コンテナを追加し、`deploy/nginx/loki-push.conf.example`(コピー先: `deploy/nginx/loki-push.conf`、`.gitignore`対象)が専用ポート(既定3101)でBearer token認証と送信元IP許可リスト(`allow`/`deny`)の両方を行ったうえで`loki:3100/loki/api/v1/push`へ中継します。認証なし・許可IPなしの既定状態では401/403で拒否されることを実際にnginxプロセスを起動して確認済みです(下記「検証」参照)。既存の`compose.yaml`・`nginx`サービス・`ansible/roles/app`は一切変更していません。
+>
+> これにより、ログ集約経路はWindows側(`ansible/roles/common_windows`、2026-09-07先の追記参照)・中央側(本追記)の両方がコードとして揃いました。**ただし実機Windows Server・実機Lokiに対する実行実績はゼロ件です。** また、この経路が実際に機能するには、Docker ホストと対象 Windows ホストの実ネットワーク接続(上記「未実装」欄の(1))が別途確立している必要があります。したがって`WIT-06`は「ログ集約経路が無い」ことによる`BLOCKED`ではなく、`WIT-03`と同じ「実ネットワーク接続が未確立」による`BLOCKED`として扱いを改めます(詳細は[試験仕様書・結果票](06-test-specification.md)参照)。
+>
+> **同日訂正:** 上記(2026-09-04追記)で`WIT-05`(blackbox probe)を「対象ホスト構築後に`NOT RUN`から実施できる」とだけ記載していましたが、`WIT-05`もPrometheus/blackbox-exporterから対象Windowsホストへ到達する経路(`WIT-03`と同じ方向)を使うため、実際には`WIT-03`と同じ実ネットワーク接続の未確立にも影響されます。対象ホスト構築だけでなく、実ネットワーク接続の確立も揃って初めて実施可能になる点を訂正します。
 
 ## 2. 案件概要
 
@@ -32,7 +38,7 @@
 | 中央監視基盤 | 既存 Linux host(論理名 monitor-01、[パラメータシート](../build-package/03-parameter-sheet.md)参照)を変更せず、Windows ホストからのメトリクス収集・ログ集約先として拡張する対象 |
 | 提供機能 | IIS 監視対象サイトの稼働、windows_exporter によるホストメトリクス収集(フェーズ 2)、IIS 到達性の blackbox probe(フェーズ 2)、Windows Event Log/IIS ログの集約(フェーズ 2)、バックアップと復旧手順 |
 | 引き渡し単位 | 設計書、パラメータシート、構築手順、試験結果、作業結果報告、既存の運用・変更手順([運用手順](../runbooks/README.md)、[変更管理](../change-management.md))への追記差分 |
-| 完了判定 | フェーズ 1 の必須試験がすべて `PASS` し、フェーズ 2 は未実装 3 点の解消条件とともに `BLOCKED` として明記され、計画対実績・差異・未解決事項・残存リスクが作業結果報告と受領記録に記載済み |
+| 完了判定 | フェーズ 1 の必須試験がすべて `PASS` し、フェーズ 2 は残り2点(Ansible role実機実行実績、実ネットワーク接続・Firewall許可)の解消条件とともに `BLOCKED` として明記され、計画対実績・差異・未解決事項・残存リスクが作業結果報告と受領記録に記載済み |
 
 ## 3. 機能要件
 
@@ -42,7 +48,7 @@
 | FR-02 | IIS の監視対象サイトが稼働し、health 用エンドポイントを提供すること | WIT-04 | [構築手順書](05-build-procedure.md)(IIS Web-Server 機能) |
 | FR-03 | CPU/memory/disk などのホストメトリクスを windows_exporter 経由で中央 Prometheus が収集できること(フェーズ 2、要 Docker ホスト↔対象ホスト間の実接続・Firewall 許可) | WIT-03 | `ansible/roles/app/defaults/main.yml`(`app_node_exporter_targets`)、`ansible/roles/app/templates/prometheus.yml.j2`、Docker ホストと対象 Windows ホストの実 L3 到達性および windows_exporter 側 Firewall(Docker ホストの実 IP 向けの許可が必要) |
 | FR-04 | IIS サイトの HTTP 到達性を中央の blackbox-exporter で probe できること(フェーズ 2) | WIT-05 | `ansible/roles/app/templates/prometheus.yml.j2`(`blackbox-probe-health` ジョブを `app_blackbox_probe_targets` で汎用化済み。実機ホストでの probe 成功実績は `NOT RUN`) |
-| FR-05 | Windows Event Log/IIS ログを既存 Loki へ集約し Grafana から検索できること(フェーズ 2、要 Alloy for Windows 導入) | WIT-06 | [詳細設計書](02-detailed-design.md)(`ansible/roles/common_windows` に Grafana Alloy for Windows 導入タスクと設定テンプレートをコードとして追加済み。ただし中央 Loki の push API 公開・認証設計は未着手で、ダウンロード URL/SHA256/push エンドポイントを `NOT SET` にして安全側で skip する作りのため、実質的には未導入のまま) |
+| FR-05 | Windows Event Log/IIS ログを既存 Loki へ集約し Grafana から検索できること(フェーズ 2) | WIT-06 | [詳細設計書](02-detailed-design.md)(Windows側は`ansible/roles/common_windows`のAlloy導入タスク・設定テンプレート、中央側は`compose.loki-push.yaml.example`+`deploy/nginx/loki-push.conf.example`(専用ポート・Bearer token認証・送信元IP許可)で、両側ともコードとしては完成。実機Windows Server・実機Lokiへの実行実績はゼロ件で、Dockerホスト↔対象Windowsホスト間の実ネットワーク接続の確立が別途必要) |
 | FR-06 | サービス停止を検知し、復旧と正常性確認までの時間を記録できること(D-1 相当) | WIT-08 | [構築手順書](05-build-procedure.md)、[試験仕様書・結果票](06-test-specification.md) |
 | FR-07 | 管理端末から Windows Server までの名前解決、経路、待受、HTTP、Firewall を確認できること | WNW-01〜09, WST-01, WST-04 | [ネットワーク実機検証手順](09-network-validation-procedure.md) |
 
@@ -73,7 +79,7 @@
 - 複数の Windows Server ホストによる冗長構成・負荷分散・フェイルオーバーは対象外です。監視対象ホストは monitor-win-01 の 1 台です。
 - Windows Server 2022 Server Core は構成の対応を検討する課題ですが、本案件の基準 VM は Desktop Experience です。Server Core での実測は個別の証跡が必要です。
 - クラウド(Azure/AWS 等)の Windows Server インスタンスでの構築は[立ち上げ環境の選択肢](10-host-bringup-and-acceptance.md)に示す選択肢の一つに過ぎず、`apply`/`destroy` 相当の実行証跡がない限り本案件の構築実績には含めません。
-- フェーズ 2(中央監視統合)に必要な 3 点(Windows 対応 Ansible role の実機実行実績、Docker ホストと対象 Windows ホストの実ネットワーク接続および windows_exporter の Firewall 許可(Docker ホストの実 IP 向け)、Windows 向けログ集約経路)は「対象外」ではなく「解消条件付きの `BLOCKED`」として扱います。本案件の範囲には含まれますが、現時点では実行できません。
+- フェーズ 2(中央監視統合)に必要な残り2点(Windows 対応 Ansible role の実機実行実績、Docker ホストと対象 Windows ホストの実ネットワーク接続および windows_exporter の Firewall 許可(Docker ホストの実 IP 向け))は「対象外」ではなく「解消条件付きの `BLOCKED`」として扱います。本案件の範囲には含まれますが、現時点では実行できません(Windows 向けログ集約経路はWindows側・中央側ともコード追加済みです。2026-09-07追記参照)。
 
 ## 6. 前提条件
 

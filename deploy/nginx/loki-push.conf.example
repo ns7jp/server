@@ -1,0 +1,46 @@
+# コピー先: deploy/nginx/loki-push.conf(.gitignore対象、実際の値を記入して使う)。
+# docs/build-package-windows のログ集約経路(FR-05)向け。Windows対象ホストの
+# Grafana Alloy(ansible/roles/common_windows)からのpushだけを、専用ポートで
+# 受け付けるための最小構成nginx。loki-push-proxyコンテナ専用のconfであり、
+# 既存のdeploy/nginx/local.conf(公開Webエントリ)とは完全に分離している。
+#
+# 既定のまま(token未変更・allow未設定)では、認証(token不一致で401)と
+# ネットワーク(allow無しでdeny all、実質到達不可)の両方で拒否される。
+# 実際に使う場合は下記2箇所を実機値に置き換える。
+#   1. $loki_push_expected_auth: `openssl rand -hex 32` 等で生成したtokenに
+#      置き換え、ansible/roles/common_windows の
+#      common_windows_loki_push_bearer_token_file が指すファイルへ同じ値を書く
+#      (docs/build-package-windows/00-requirements.mdの秘密値台帳の運用に従う)
+#   2. allow行: 対象Windowsホストの実IP(Docker実行host自身からNAT/proxy等を
+#      経由する場合はその送信元IP)に置き換える
+# deploy/nginx/local.conf と同じ理由でresolver+変数を使う: loki-push-proxyが
+# lokiより先に起動すると、起動時に一度だけhostnameを解決する書き方では
+# 「host not found in upstream」でnginx自体が起動に失敗し、Compose起動順に
+# 依存した無限クラッシュループになる(local.confのコメント・実機確認済み事象と同じ)。
+resolver 127.0.0.11 valid=10s ipv6=off;
+
+server {
+    listen 3101;
+    server_name _;
+    server_tokens off;
+
+    location = /loki/api/v1/push {
+        set $loki_push_expected_auth "Bearer __REPLACE_WITH_REAL_TOKEN__";
+        if ($http_authorization != $loki_push_expected_auth) {
+            return 401;
+        }
+
+        allow 192.0.2.30;  # 例示: RFC 5737の例示用アドレス。実機の対象ホストIPへ置き換える
+        deny all;
+
+        set $loki_upstream loki:3100;
+        proxy_pass http://$loki_upstream/loki/api/v1/push;
+        proxy_set_header Host $host;
+        proxy_http_version 1.1;
+        client_max_body_size 10m;
+    }
+
+    location / {
+        return 404;
+    }
+}

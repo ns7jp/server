@@ -4,7 +4,7 @@
 
 Windows対応のAnsible role(`ansible/roles/common_windows`)はコードとして追加されていますが、実機Windows Serverに対して一度も実行されておらず(WinRMを話せるテスト対象がこの開発環境に無いためMolecule等のCI検証もありません)、Ansibleでの自動構築はまだ実証できていません。したがって本書の手順は引き続きすべて「済(手動)」を正本として扱い、対象ホスト上またはWinRM経由でPowerShellを実行して進めます。特に0〜2節(コンピューター名設定・WinRM HTTPSリスナー有効化)は、WinRM経由のAnsibleがそもそもWinRM未有効化の新規VMには接続できない(鶏と卵の関係)ため、`ansible/roles/common_windows`が実機で動くようになった後もこのroleでは自動化できず、引き続きハイパーバイザーのコンソールから直接ログオンして行う手動作業です。このroleが対象とするのはWinRM HTTPSが既に到達可能になった後の3〜4節相当の範囲(Firewall締め、IIS導入、windows_exporter導入、バックアップ設定)の一部に限られます。0〜4節・6〜9節は対象ホスト(monitor-win-01)側の作業、5節のみ中央監視host(monitor-01)側の作業です。5節の`app_node_exporter_targets`変数への追加と`site.yml`再適用だけは「済(自動)」の既存Ansible機能であり、他の節とは性質が異なる点に注意してください。
 
-フェーズ2(中央監視統合の残り、すなわちwindows_exporterのscrape・blackbox probe・ログ集約)は、[要件定義書](00-requirements.md)に記載の3点の未実装事項が解消するまで`BLOCKED`です。本書はフェーズ2の設計や解除条件そのものは扱わず、[基本設計書](01-basic-design.md)・[詳細設計書](02-detailed-design.md)・[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)を正本とします。
+フェーズ2(中央監視統合の残り、すなわちwindows_exporterのscrape・blackbox probe・ログ集約)は、[要件定義書](00-requirements.md)に記載の2点の未実装事項が解消するまで`BLOCKED`です。ログ集約経路(WIT-06)はWindows側・中央側ともコードとしては追加済みですが、実機Windows Server・実機Lokiへの実行実績はゼロ件で、`WIT-03`と同じ実L3到達性の未確立が理由で引き続き`BLOCKED`です。本書はフェーズ2の設計や解除条件そのものは扱わず、[基本設計書](01-basic-design.md)・[詳細設計書](02-detailed-design.md)・[ネットワーク設計・IPアドレス表](04-network-ip-plan.md)を正本とします。
 
 ## 0. 作業前確認
 
@@ -403,4 +403,4 @@ Remove-Item C:\temp\monitor-win-01-winrm.cer -ErrorAction SilentlyContinue
 - 未解決事項をIssue化します
 - [作業結果・引き渡し報告書](11-work-result-report.md)を日付付きevidenceへ複製し、フェーズ1・フェーズ2を区別したうえで、計画対実績、実行時間、対象ホストのビルド番号、設計差異、障害、残存リスクを記入します
 - 報告書の試験集計と個別結果票の件数が一致することを確認します
-- [引き渡しチェックリスト](07-handover-checklist.md)を確認し、フェーズ1必須試験に`NOT RUN` / `BLOCKED`が残る場合は受領可にしません。フェーズ2(WIT-03, WIT-05, WIT-06, WIT-07, WIT-11)は、[要件定義書](00-requirements.md)に記載の3点の未実装事項が解消するまで`BLOCKED`として明記し、理由と解除条件を残します
+- [引き渡しチェックリスト](07-handover-checklist.md)を確認し、フェーズ1必須試験に`NOT RUN` / `BLOCKED`が残る場合は受領可にしません。フェーズ2(WIT-03, WIT-05, WIT-06, WIT-07, WIT-11)は、[要件定義書](00-requirements.md)に記載の2点の未実装事項が解消するまで`BLOCKED`として明記し、理由と解除条件を残します(WIT-06はコード追加済みですが、`WIT-03`と同じ実L3到達性の未確立により引き続き`BLOCKED`です)
