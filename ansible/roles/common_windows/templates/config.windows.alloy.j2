@@ -1,0 +1,68 @@
+// Ansible-managed Grafana Alloy for Windows configuration. Do not edit on the host.
+// deploy/alloy/config.alloy(Linux版)と対になる、Windows Event Log/IISログ用の設定。
+logging {
+  level = "info"
+}
+
+loki.source.windowsevent "application" {
+  eventlog_name = "Application"
+  use_incoming_timestamp = true
+  forward_to = [loki.process.windowsevent.receiver]
+}
+
+loki.source.windowsevent "system" {
+  eventlog_name = "System"
+  use_incoming_timestamp = true
+  forward_to = [loki.process.windowsevent.receiver]
+}
+
+loki.process "windowsevent" {
+  stage.labels {
+    values = {
+      channel = "",
+      level   = "",
+    }
+  }
+
+  forward_to = [loki.write.central.receiver]
+}
+
+local.file_match "iis" {
+  path_targets = [{
+    __address__ = "localhost",
+    __path__    = "{{ common_windows_iis_log_dir }}/**/*.log",
+    job         = "iis",
+    host        = "{{ inventory_hostname }}",
+  }]
+}
+
+loki.source.file "iis" {
+  targets    = local.file_match.iis.targets
+  forward_to = [loki.process.iis.receiver]
+}
+
+// IIS既定のW3C拡張ログ形式(date time c-ip cs-method cs-uri-stem sc-status ...)から
+// 可変位置のsc-statusのみ抽出する簡易正規表現。フィールド構成をカスタマイズしている
+// 場合は要調整。
+loki.process "iis" {
+  stage.regex {
+    expression = "^(?:\\S+\\s+){7}(?P<status>\\d{3})\\s"
+  }
+
+  stage.labels {
+    values = {
+      status = "",
+    }
+  }
+
+  forward_to = [loki.write.central.receiver]
+}
+
+loki.write "central" {
+  endpoint {
+    url = "{{ common_windows_loki_push_url }}"
+{% if common_windows_loki_push_bearer_token_file %}
+    bearer_token_file = "{{ common_windows_loki_push_bearer_token_file }}"
+{% endif %}
+  }
+}

@@ -16,6 +16,8 @@
 
 > **2026-09-04 追記:** `prometheus.yml.j2` の `blackbox-probe-health` job を `app_blackbox_probe_targets` 変数(`ansible/roles/app/defaults/main.yml`)で汎用化し、IIS の health エンドポイント等を node_exporter targets と同じ「1 行足すだけ」の形で probe 対象へ追加できるようにしました(FR-04)。上記「未実装」3 点(Windows 対応 Ansible role、実ネットワーク接続・Firewall 許可、ログ集約経路)には含まれない別の制約でしたが、コードとしては解消済みです。ただし対象ホスト(monitor-win-01)自体がまだ構築されておらず、実機 windows_exporter/IIS への scrape・probe 成功実績もまだ無いため、`WIT-05` の結果は引き続き `NOT RUN` です(「コードが実装済みであること」と「実機で検証済みであること」は別、[検証証跡台帳](../evidence/README.md)の原則どおり)。詳細は[試験仕様書・結果票](06-test-specification.md)を参照してください。
 >
+> **2026-09-07 追記:** ログ集約経路(FR-05、WIT-06)のうち、Grafana Alloy for Windows側(Windows Event Log/IISログの収集設定、`config.windows.alloy.j2`)とその導入タスク(`ansible/roles/common_windows/tasks/log_collection.yml`)をコードとして追加しました。ダウンロードURL・SHA256・中央LokiのpushエンドポイントURLがいずれも`NOT SET`の間はタスク一式を安全にskipする作りです。**ただし中央側の課題(Lokiのpush APIをloopback以外からも安全に受け付けるための認証・network設計)には一切着手していません。** これは`compose.yaml`のネットワーク構成・認証方式に関わる別の設計判断であり、本追記時点でも未解決です。したがって「ログ集約経路が無い」という制約は解消されておらず、Windows側の受け皿だけが用意された状態です。`WIT-06`は引き続き`BLOCKED`のままとします。
+>
 > **2026-09-07 追記:** Windows 対応 Ansible role のスキャフォールドを `ansible/roles/common_windows` として追加しました(Firewall ルール、IIS 導入、windows_exporter 導入・ハッシュ検証、Windows Server Backup 登録を対象)。`ansible/playbooks/site.yml` に `windows` inventory group 向けの play を追加し、既存の `staging.yml`/`ci.yml`(`windows` group 未定義)には一切影響しないことを `--syntax-check` で確認済みです。ただし次の制約が残ります。(1) 対象ホストの初回コンピューター名設定・WinRM HTTPS リスナー有効化は WinRM 経由の Ansible では実行できず、引き続きハイパーバイザーのコンソールから手動で行う必要があります(05-build-procedure.md 0〜2節)。(2) このロールは実機 Windows Server に対して一度も実行されておらず、WinRM を話せるテスト対象がこの開発環境に無いため Molecule 等の CI 検証もありません。したがって「Windows 対応 Ansible role が無い」という制約は「コードは存在するが実機実行実績ゼロ件」に変わっただけで、フェーズ2を塞ぐ3点のうちの1点として引き続き扱います。`WIT-01`/`WIT-02` の Ansible 経由での実施実績は `NOT RUN` のままです。
 
 ## 2. 案件概要
@@ -40,7 +42,7 @@
 | FR-02 | IIS の監視対象サイトが稼働し、health 用エンドポイントを提供すること | WIT-04 | [構築手順書](05-build-procedure.md)(IIS Web-Server 機能) |
 | FR-03 | CPU/memory/disk などのホストメトリクスを windows_exporter 経由で中央 Prometheus が収集できること(フェーズ 2、要 Docker ホスト↔対象ホスト間の実接続・Firewall 許可) | WIT-03 | `ansible/roles/app/defaults/main.yml`(`app_node_exporter_targets`)、`ansible/roles/app/templates/prometheus.yml.j2`、Docker ホストと対象 Windows ホストの実 L3 到達性および windows_exporter 側 Firewall(Docker ホストの実 IP 向けの許可が必要) |
 | FR-04 | IIS サイトの HTTP 到達性を中央の blackbox-exporter で probe できること(フェーズ 2) | WIT-05 | `ansible/roles/app/templates/prometheus.yml.j2`(`blackbox-probe-health` ジョブを `app_blackbox_probe_targets` で汎用化済み。実機ホストでの probe 成功実績は `NOT RUN`) |
-| FR-05 | Windows Event Log/IIS ログを既存 Loki へ集約し Grafana から検索できること(フェーズ 2、要 Alloy for Windows 導入) | WIT-06 | [詳細設計書](02-detailed-design.md)(Grafana Alloy for Windows は未導入、設計のみ) |
+| FR-05 | Windows Event Log/IIS ログを既存 Loki へ集約し Grafana から検索できること(フェーズ 2、要 Alloy for Windows 導入) | WIT-06 | [詳細設計書](02-detailed-design.md)(`ansible/roles/common_windows` に Grafana Alloy for Windows 導入タスクと設定テンプレートをコードとして追加済み。ただし中央 Loki の push API 公開・認証設計は未着手で、ダウンロード URL/SHA256/push エンドポイントを `NOT SET` にして安全側で skip する作りのため、実質的には未導入のまま) |
 | FR-06 | サービス停止を検知し、復旧と正常性確認までの時間を記録できること(D-1 相当) | WIT-08 | [構築手順書](05-build-procedure.md)、[試験仕様書・結果票](06-test-specification.md) |
 | FR-07 | 管理端末から Windows Server までの名前解決、経路、待受、HTTP、Firewall を確認できること | WNW-01〜09, WST-01, WST-04 | [ネットワーク実機検証手順](09-network-validation-procedure.md) |
 

@@ -124,7 +124,9 @@ Gate（ゲート）や証跡の意味は[5. 現場用語ブリッジ](#5-現場�
 > 3 点とは、Windows 対応 Ansible role（`ansible/roles/common_windows` としてコードは追加済みだが
 > 実機 Windows Server への実行実績がゼロ件）・Docker ホストと対象 Windows ホストの実ネットワーク接続
 > および windows_exporter の Firewall 許可（許可先を Docker ホストの本当の IP アドレスに
-> しないと、実は届きません）・Windows 向けログ集約経路です。
+> しないと、実は届きません）・Windows 向けログ集約経路（Windows 側の Alloy 導入タスク・設定
+> テンプレートはコード追加済みですが、中央側の Loki push API 公開・認証設計には未着手のため、
+> 経路全体としては引き続き無い状態）です。
 >
 > 一方この章の「5フェーズ（決める→描く→作る・変える→確かめる→渡す）」は、
 > **12 文書を読む順番を覚えるための、この初心者ガイドだけの言葉**です。
@@ -438,7 +440,9 @@ Windows Server を初めて構築する人が、専門用語を専門用語の�
 ゼロ件のため引き続き [PowerShell による手動手順] で完結します。フェーズ2は
 [Windows対応Ansible roleの実機実行実績がゼロ件であること、Dockerホストと対象
 Windowsホストの実ネットワーク接続およびwindows_exporterのFirewall許可の未確立、
-Windows向けログ集約経路の不在] という3点が解消するまで [BLOCKED] として
+Windows向けログ集約経路の不在(Windows側のAlloy導入タスク・設定テンプレートは
+コード追加済みだが、中央側のLoki push API公開・認証設計には未着手のため経路
+全体としては引き続き無い状態)] という3点が解消するまで [BLOCKED] として
 明記しています。
 
 試験仕様書は [コマンドと期待結果を先に決めた合否判定の基準] であり、
