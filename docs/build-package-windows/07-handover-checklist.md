@@ -13,25 +13,25 @@
 | フェーズ1: セキュリティ試験 WST-01〜06 | `NOT RUN` |
 | フェーズ1: 構成commit相当の記録 / 設定rollback rehearsal | `NOT RUN`（対象host未指定。Windows対応Ansible role(`ansible/roles/common_windows`)はコードは存在するが実機実行実績ゼロ件のため[変更・ロールバック計画兼記録票](08-change-rollback-plan.md)の手動手順で実施） |
 | フェーズ2: host metrics scrape WIT-03 | `BLOCKED`（Dockerホスト↔対象ネットワーク間の実L3到達性、およびwindows_exporter側Firewall許可(Dockerホストの実IP向け)が確立するまで解除不可。[試験仕様書・結果票](06-test-specification.md)参照） |
-| フェーズ2: blackbox probe WIT-05 | `BLOCKED`（`ansible/roles/app/templates/prometheus.yml.j2` のprobe対象汎用化が未実装のため） |
-| フェーズ2: ログ集約 WIT-06 | `BLOCKED`（Windows側(`ansible/roles/common_windows`のAlloy導入タスク・設定テンプレート)はコード追加済みだが、中央側(Lokiのpush API公開・認証設計)には未着手のため、経路全体としては引き続き無い状態） |
+| フェーズ2: blackbox probe WIT-05 | `BLOCKED`（`prometheus.yml.j2`のprobe対象汎用化はコード実装済みだが、対象ホスト未構築に加え、WIT-03と同じDockerホスト↔対象ネットワーク間の実L3到達性が未確立のため） |
+| フェーズ2: ログ集約 WIT-06 | `BLOCKED`（Windows側(`ansible/roles/common_windows`のAlloy導入タスク・設定テンプレート)・中央側(`compose.loki-push.yaml.example`+`deploy/nginx/loki-push.conf.example`)ともコード追加済みだが実機Windows Server・実機Lokiへの実行実績はゼロ件で、WIT-03と同じ実L3到達性が未確立のため） |
 | フェーズ2: alert通知 WIT-07 | `BLOCKED`（WIT-03が前提のためBLOCKED） |
 | フェーズ2: 複数ターゲットscrape WIT-11 | `BLOCKED`（WIT-03解消後に有効） |
 | 作業結果報告書 | 原本作成済み。対象ホストの報告は `NOT SET` |
 | 必須試験完了（フェーズ1） | `NOT READY` |
-| 必須試験完了（フェーズ2） | `BLOCKED`（[要件定義書](00-requirements.md)記載の「未実装」3点の解消が前提） |
+| 必須試験完了（フェーズ2） | `BLOCKED`（[要件定義書](00-requirements.md)記載の「未実装」2点の解消が前提） |
 | 受領 | `NOT SET` |
 
 文書が存在するだけでは、未指定の引き渡し対象host（monitor-win-01に相当する実機）を受領可能と判定しません。[試験仕様書・結果票](06-test-specification.md)を対象hostで実施した日付付き結果票を確認してから更新します。
 
-フェーズ2の行は、未実装3点が解消されるまで恒久的に `BLOCKED` です。前提が揃っていないことを理由に安易に `PASS` や `NOT RUN` へ書き換えないでください。`BLOCKED` のままであること自体は、フェーズ1（ホスト単体構築）の受領判定を妨げません。
+フェーズ2の行は、未実装2点が解消されるまで恒久的に `BLOCKED` です。前提が揃っていないことを理由に安易に `PASS` や `NOT RUN` へ書き換えないでください。`BLOCKED` のままであること自体は、フェーズ1（ホスト単体構築）の受領判定を妨げません。
 
 ## 構成と状態
 
 - [ ] 対象ホスト（monitor-win-01）、環境名、Windows Serverのビルド番号（`winver` または `Get-ComputerInfo` の `OsBuildNumber`）を記録した
 - [ ] [基本設計書](01-basic-design.md)の構成図と[パラメータシート](03-parameter-sheet.md)を実機値へ更新した
 - [ ] フェーズ1の必須試験がすべて `PASS` した（フェーズ2は[試験仕様書・結果票](06-test-specification.md)の終了判定に従い `BLOCKED` のまま明記する）
-- [ ] 未解決Issue、制約、残存リスク（「未実装」3点、windows_exporterサービスアカウントの最小権限化(WST-03)を含む）を説明した
+- [ ] 未解決Issue、制約、残存リスク（「未実装」2点、windows_exporterサービスアカウントの最小権限化(WST-03)を含む）を説明した
 - [ ] 監視対象（IIS検証用サイト、windows_exporterによるhost metrics）、閾値、通知先、対応時間帯を説明した（フェーズ2区間はBLOCKEDである旨を併記する）
 - [ ] [作業結果・引き渡し報告書](11-work-result-report.md)を日付付きevidenceへ複製し、計画対実績と試験集計を記入した
 

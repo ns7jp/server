@@ -9,7 +9,7 @@
 - インターネット越しのWindows Defender Firewall(実管理端末からの到達性)
 - フェーズ2(中央監視統合)一式(WIT-03, WIT-05, WIT-06, WIT-07, WIT-11)
 
-**フェーズ1の範囲は、1台の検証用ホストを用意すると大半が一度に埋まります。** これに対してフェーズ2は、検証用ホストの有無に関わらず[要件定義書](00-requirements.md)に記載した3点(Windows対応Ansible roleの実機実行実績がゼロ件であること、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)、Windows Event Log/IISログを既存Lokiへ送る経路。Windows側(Alloy導入タスク・設定テンプレート)はコード追加済みだが中央側(Lokiのpush API公開・認証設計)は未着手のため引き続き無い状態)が解消しない限り埋まりません。**逆に言えば、検証用ホストが無い限りフェーズ1の項目はどれも埋まりません。**
+**フェーズ1の範囲は、1台の検証用ホストを用意すると大半が一度に埋まります。** これに対してフェーズ2は、検証用ホストの有無に関わらず[要件定義書](00-requirements.md)に記載した2点(Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)、Windows対応Ansible roleの実機実行実績がゼロ件であること)が解消しない限り埋まりません。Windows Event Log/IISログを既存Lokiへ送る経路は、Windows側(Alloy導入タスク・設定テンプレート)・中央側(`compose.loki-push.yaml.example`+`deploy/nginx/loki-push.conf.example`)ともコード追加済みですが、実機Windows Server・実機Lokiへの実行実績はゼロ件で、上記の実L3到達性が確立するまで(WIT-03と同じ理由で)`BLOCKED`のままです。**逆に言えば、検証用ホストが無い限りフェーズ1の項目はどれも埋まりません。**
 
 この文書は、フェーズ1のホストを「用意してから証跡が出るまで」を最短で通すための手順です。フェーズ2の統合手順は[構築手順書](05-build-procedure.md)5節、統合後の判定基準は[試験仕様書](06-test-specification.md)を参照してください。
 
@@ -77,7 +77,7 @@ Get-Service windows_exporter, W3SVC, WinRM | Select-Object Name, Status, StartTy
 
 ### 中央監視への統合(フェーズ2、現時点はBLOCKED)
 
-[構築手順書](05-build-procedure.md)5節(`app_node_exporter_targets` への追記、中央host側の `ansible-playbook site.yml` 再適用)は「済(自動)」の範囲であり、フェーズ1のホスト単体構築とは独立に、中央host側の設定だけなら今すぐ試せます(WUT-02)。ただしscrapeが実際に成功するかどうか(WIT-03)は、[要件定義書](00-requirements.md)の3点のうち、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)が確立するまでBLOCKEDです(`compose.yaml` の `monitoring` network自体の `internal: true` は、Prometheusが同時に接続する `host-access` 経由のegressがあるため、単独の妨げにはなりません)。フェーズ1の受け入れ試験(3節)にはこの統合作業を含めません。
+[構築手順書](05-build-procedure.md)5節(`app_node_exporter_targets` への追記、中央host側の `ansible-playbook site.yml` 再適用)は「済(自動)」の範囲であり、フェーズ1のホスト単体構築とは独立に、中央host側の設定だけなら今すぐ試せます(WUT-02)。ただしscrapeが実際に成功するかどうか(WIT-03)は、[要件定義書](00-requirements.md)の2点のうち、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)が確立するまでBLOCKEDです(`compose.yaml` の `monitoring` network自体の `internal: true` は、Prometheusが同時に接続する `host-access` 経由のegressがあるため、単独の妨げにはなりません)。フェーズ1の受け入れ試験(3節)にはこの統合作業を含めません。
 
 ## 3. 受け入れ試験
 
@@ -180,7 +180,7 @@ Register-ScheduledTask -TaskName "server-monitor-soak" -Action $action -Trigger 
 
 | 項目 | 追加で必要なもの |
 | --- | --- |
-| フェーズ2(中央監視統合)全体(WIT-03, WIT-05, WIT-06, WIT-07, WIT-11) | [要件定義書](00-requirements.md)の3点(Windows対応Ansible roleの実機実行実績がゼロ件であること、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)、Windows Event Log/IISログを既存Lokiへ送る経路。Windows側はコード追加済みだが中央側のLoki push API公開・認証設計が未着手)の解消 |
+| フェーズ2(中央監視統合)全体(WIT-03, WIT-05, WIT-06, WIT-07, WIT-11) | [要件定義書](00-requirements.md)の2点(Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)、Windows対応Ansible roleの実機実行実績がゼロ件であること)の解消。Windows Event Log/IISログを既存Lokiへ送る経路はWindows側・中央側ともコード追加済みだが実機実行実績はゼロ件で、上記の実L3到達性が解消するまでWIT-03と同じ理由でBLOCKED |
 | 系統B(ADドメイン参加)の実機検証 | 検証用ADドメイン環境(構築は本パックの対象外) |
 | 自己署名でない実TLS証明書 | 内部CA、または独自ドメインとLet's Encrypt相当の仕組み |
 | 組織DNS / 上流firewall | 実際の組織ネットワーク |
@@ -188,4 +188,4 @@ Register-ScheduledTask -TaskName "server-monitor-soak" -Action $action -Trigger 
 | クラウドの実費・従量課金の実績 | クラウドアカウントと予算アラートの設定 |
 | 物理層(L1) | スイッチ、ケーブル、VLAN対応機器 |
 
-**フェーズ1のホスト1台では埋まらないものを、埋まったことにしないでください。** フェーズ2は、恒久ホストをいくら用意しても「未実装」3点の解消なしには埋まりません。
+**フェーズ1のホスト1台では埋まらないものを、埋まったことにしないでください。** フェーズ2は、恒久ホストをいくら用意しても「未実装」2点の解消なしには埋まりません。

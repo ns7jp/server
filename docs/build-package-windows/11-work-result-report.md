@@ -4,7 +4,7 @@
 
 初期値の `NOT SET` は情報未確定、`NOT RUN` は未実行、`NOT READY` は完了条件未達です。空欄や `NOT RUN` を `PASS` として集計しません。
 
-本書はフェーズ1(ホスト単体構築)とフェーズ2(中央監視統合)を区別して記載します。フェーズ2は[要件定義書](00-requirements.md)に記載した3点(Windows対応Ansible roleの実機実行実績がゼロ件であること、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)が未確立であること、Windows Event Log/IISログを既存Lokiへ送る経路が無いこと。Windows側(Alloy導入タスク・設定テンプレート)はコード追加済みだが中央側(Lokiのpush API公開・認証設計)は未着手のため引き続き無い状態)が解消するまで`BLOCKED`が前提であり、`BLOCKED`のままであること自体はフェーズ1の完了判定を妨げません。
+本書はフェーズ1(ホスト単体構築)とフェーズ2(中央監視統合)を区別して記載します。フェーズ2は[要件定義書](00-requirements.md)に記載した2点(Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)が未確立であること、Windows対応Ansible roleの実機実行実績がゼロ件であること)が解消するまで`BLOCKED`が前提であり、`BLOCKED`のままであること自体はフェーズ1の完了判定を妨げません。Windows Event Log/IISログを既存Lokiへ送る経路(WIT-06)は、Windows側(Alloy導入タスク・設定テンプレート)・中央側(`compose.loki-push.yaml.example`+`deploy/nginx/loki-push.conf.example`)ともコード追加済みですが、実機Windows Server・実機Lokiへの実行実績はゼロ件で、上記の実L3到達性が確立するまでWIT-03と同じ理由で`BLOCKED`です。
 
 `monitor-win-01`に相当する実ホストの構築そのものがまだ行われていないため、本書に対応する日付付きevidenceは現時点で1件もありません。以下の空欄は次の構築作業で複製して使う原本であり、実ホストでの作業結果は現在も`NOT RUN`です。
 
@@ -50,11 +50,11 @@ Windows版にはLinux版のような単一のcommit SHAで対象ホストの構�
 | 冪等性(フェーズ1) | 同一手順2回目実行、サービス再作成・Firewallルール重複なし(WIT-02) | `NOT RUN` | NOT RUN | — | — |
 | 構築後確認(フェーズ1) | IIS site health、windows_exporter稼働、Firewall、WinRM listener | `NOT RUN` | NOT RUN | — | — |
 | 実機network検証(フェーズ1) | WNW-01〜09(WIT-10) | `NOT RUN` | NOT RUN | — | — |
-| 中央統合(フェーズ2) | `app_node_exporter_targets`追記、中央`site.yml`再適用、scrape/probe/ログ確認 | `NOT RUN` | BLOCKED | — | 未実装3点が未解消のためBLOCKED |
+| 中央統合(フェーズ2) | `app_node_exporter_targets`追記、中央`site.yml`再適用、scrape/probe/ログ確認 | `NOT RUN` | BLOCKED | — | 未実装2点が未解消のためBLOCKED |
 | 障害復旧 | サービス停止復旧演習(WIT-08、D-1相当)、必要に応じてロールバック/復元 | `NOT RUN` | NOT RUN | — | — |
 | 後処理 | RDP一時許可・試験データ削除、最終状態取得 | `NOT RUN` | NOT RUN | — | — |
 
-結果は`PASS / FAIL / BLOCKED / NOT RUN`のいずれかとし、実行コマンド、主要出力、所要時間を日付付きevidenceへ残します。中央統合(フェーズ2)は未実装3点が解消するまで、実施しても前提が揃わず`BLOCKED`になることが設計時点で分かっています。
+結果は`PASS / FAIL / BLOCKED / NOT RUN`のいずれかとし、実行コマンド、主要出力、所要時間を日付付きevidenceへ残します。中央統合(フェーズ2)は未実装2点が解消するまで、実施しても前提が揃わず`BLOCKED`になることが設計時点で分かっています。
 
 ## 4. 試験集計
 
@@ -66,7 +66,7 @@ Windows版にはLinux版のような単一のcommit SHAで対象ホストの構�
 | ネットワーク実機検証(WNW) | `NOT SET` | 0 | 0 | 0 | `NOT SET` | `NOT SET` |
 | 合計 | `NOT SET` | 0 | 0 | 0 | `NOT SET` | [試験仕様書・結果票](06-test-specification.md) |
 
-集計値は個別結果票(ネットワーク実機検証は[Windows版ネットワーク結果票テンプレート](../evidence/templates/network-host-validation-windows.md))から転記し、合計が一致することを確認します。対象ホストが違う結果や、別の変更前状態識別子の結果を合算しません。フェーズ2に属するWIT-03、WIT-05、WIT-06、WIT-07、WIT-11は、未実装3点が解消するまで`BLOCKED`が前提であり、`BLOCKED`件数が残っていること自体はフェーズ1の集計の妥当性を損ないません。
+集計値は個別結果票(ネットワーク実機検証は[Windows版ネットワーク結果票テンプレート](../evidence/templates/network-host-validation-windows.md))から転記し、合計が一致することを確認します。対象ホストが違う結果や、別の変更前状態識別子の結果を合算しません。フェーズ2に属するWIT-03、WIT-05、WIT-06、WIT-07、WIT-11は、未実装2点が解消するまで`BLOCKED`が前提であり、`BLOCKED`件数が残っていること自体はフェーズ1の集計の妥当性を損ないません。
 
 ## 5. 設計値と実績値の差異
 
