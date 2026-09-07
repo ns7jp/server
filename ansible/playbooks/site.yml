@@ -22,3 +22,12 @@
 
 - name: Verify monitoring stack is healthy
   ansible.builtin.import_playbook: verify.yml
+
+# docs/build-package-windows/ 向け。`windows`グループが未定義または空の
+# inventoryでは対象hostが0件のため、既存のLinux host一式には一切影響しない。
+# WinRM(HTTPS)が既に到達可能であることが前提(05-build-procedure.md 0〜2節)。
+- name: Configure Windows monitored hosts (docs/build-package-windows)
+  hosts: windows
+  gather_facts: true
+  roles:
+    - role: common_windows

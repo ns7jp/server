@@ -1,0 +1,61 @@
+---
+# Windows Defender FirewallはDefault Inbound Block前提(OS既定)。ここでは
+# 明示的な許可ruleの追加と、RDPの無効化のみを行う(NFR-04, NFR-06, WST-04)。
+
+# RDPグループの一括disableに対応する専用moduleが無いため、既存グループ名で
+# 対象を絞ったshellコマンドを使う。既にdisableなら`Where Enabled`で0件と
+# なりchangedにならない(冪等)。
+- name: Check for enabled RDP firewall rules
+  ansible.windows.win_shell: >-
+    (Get-NetFirewallRule -DisplayGroup "リモート デスクトップ" -Enabled True
+    -ErrorAction SilentlyContinue | Measure-Object).Count
+  changed_when: false
+  register: common_windows_rdp_enabled_count
+
+- name: Disable RDP firewall rules (NFR-04, 既定Disable)
+  ansible.windows.win_shell: >-
+    Get-NetFirewallRule -DisplayGroup "リモート デスクトップ" |
+    Disable-NetFirewallRule
+  when: (common_windows_rdp_enabled_count.stdout | trim | int) > 0
+
+- name: Allow WinRM(HTTPS) from the management source
+  community.windows.win_firewall_rule:
+    name: WinRM-HTTPS-MgmtOnly
+    localport: 5986
+    protocol: tcp
+    direction: in
+    action: allow
+    remoteip: "{{ common_windows_mgmt_cidr }}"
+    profiles: any
+    state: present
+    enabled: true
+  when: common_windows_mgmt_cidr | length > 0
+
+- name: Allow IIS(HTTP/HTTPS) from the internal/management network
+  community.windows.win_firewall_rule:
+    name: "IIS-{{ item.proto }}-Internal"
+    localport: "{{ item.port }}"
+    protocol: tcp
+    direction: in
+    action: allow
+    remoteip: "{{ common_windows_iis_source_cidr }}"
+    profiles: any
+    state: present
+    enabled: true
+  loop:
+    - { port: 80, proto: HTTP }
+    - { port: 443, proto: HTTPS }
+  when: common_windows_iis_source_cidr | length > 0
+
+- name: Allow windows_exporter from the central Prometheus host only
+  community.windows.win_firewall_rule:
+    name: WindowsExporter-Prometheus-Only
+    localport: "{{ common_windows_exporter_port }}"
+    protocol: tcp
+    direction: in
+    action: allow
+    remoteip: "{{ common_windows_prometheus_source_ip }}"
+    profiles: any
+    state: present
+    enabled: true
+  when: common_windows_prometheus_source_ip | length > 0

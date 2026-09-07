@@ -1,0 +1,39 @@
+---
+# docs/build-package-windows/03-parameter-sheet.md の設計値に対応する変数。
+# 実機値(IP・CIDR・SHA256等)はこのリポジトリではなく、inventoryのhost_vars/
+# group_varsか、秘密値台帳へ記録する。ここでの既定値はすべて安全側(空/最小)。
+
+common_windows_timezone: "Tokyo Standard Time"
+
+# WinRM(5986/tcp)を許可する送信元。空のままだと許可ルールを作らず、
+# 既存のwinrm quickconfig生成ルールに任せる(締め付けは行われない)。
+common_windows_mgmt_cidr: ""
+
+# IIS(80/443)を許可する内部・管理ネットワークの範囲。空なら制限しない。
+common_windows_iis_source_cidr: ""
+
+# windows_exporter(9182)を許可する、中央Prometheus hostの実IP。
+# host-accessのMASQUERADEによりWindows側から見える送信元はDockerホスト自身の
+# 実IPになる点に注意(docs/build-package-windows/04-network-ip-plan.md参照)。
+# 空のままだと許可ルールを作らない(=windows_exporterへの到達経路が無い)。
+common_windows_prometheus_source_ip: ""
+
+common_windows_exporter_port: 9182
+# GitHub Releasesで確認したバージョンとSHA256を明示的に渡す。空のままでは
+# 導入タスクをskipし、ハッシュ未検証でのインストールを行わない。
+common_windows_exporter_version: ""
+common_windows_exporter_sha256: ""
+common_windows_exporter_collectors: "cpu,cs,logical_disk,net,os,service,system,iis"
+common_windows_exporter_install_dir: 'C:\Program Files\windows_exporter'
+
+common_windows_iis_features:
+  - Web-Server
+  - Web-Common-Http
+  - Web-Mgmt-Console
+common_windows_iis_healthcheck_path: 'C:\inetpub\wwwroot\healthz.html'
+common_windows_iis_healthcheck_content: "OK"
+
+# Windows Server Backup。バックアップ格納先ボリュームは環境ごとに決まるため
+# 既定値は空(未設定時はバックアップ登録タスクをskipする)。
+common_windows_backup_target_volume: ""
+common_windows_backup_schedule_time: "03:30"

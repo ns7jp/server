@@ -43,7 +43,7 @@ Linux 版が Debian 系 / RHEL 系でツール（apt/dnf、ufw/firewalld 等）�
 
 - **フェーズ1（ホスト単体構築）**: OS 初期設定、WinRM、Firewall、IIS、windows_exporter 導入、バックアップ、単体での network 実機検証まで。「済（手動）」の範囲で完結し、Windows Server 1 台だけで検証・完了できます。
 - **フェーズ2（中央監視統合）**: 中央 Prometheus からの scrape、blackbox probe、ログ集約、アラート経路。次の 3 点が解消するまで `BLOCKED` です。
-  1. `ansible/roles` 配下に Windows 対応 role（`common_windows` 等）が無く、Ansible での自動構築ができない。
+  1. `ansible/roles/common_windows` として Windows 対応 role のコードは追加済みですが、実機 Windows Server に対して一度も実行されておらず(WinRM を話せるテスト対象がこの開発環境に無いため Molecule 等の CI 検証も無い)、Ansible での自動構築が実証できていない。対象ホストの初回コンピューター名設定・WinRM HTTPS リスナー有効化は、WinRM 経由の Ansible では実行できず引き続きコンソールからの手動作業が前提です(05-build-procedure.md 0〜2節)。
   2. Prometheus コンテナは `compose.yaml` 上で `monitoring`（`internal: true`）だけでなく `host-access`（`internal: true` を付けない通常の bridge network）にも接続されています。nftables ルールを実機で確認したところ、`host-access` 側には MASQUERADE と `DOCKER-FORWARD` chain での accept が生成されており、`monitoring` の `internal: true` 単体が Docker ホスト外への egress を塞いでいるわけではありません。実際に scrape を成立させるうえで未確立なのは、(a) 中央監視host（`monitor-01`）の Docker ホスト自身と Windows Server が稼働するネットワークセグメントとの実 L3 到達性（本ラボの各ホストは RFC 5737 の例示用アドレス `192.0.2.0/24` を使っており、実ネットワーク上での到達は一度も検証されていません）、(b) windows_exporter 側 Firewall ルールが、`host-access` の MASQUERADE により Windows Server から見える送信元が Prometheus コンテナの内部アドレスではなく Docker ホスト自身の実 IP になる点を踏まえて許可設定されているか、の 2 点であり、いずれも `NOT SET` です。現状の job 名 `linux-node` へ Windows を混ぜること自体、名前が実態と合わなくなる点も残存課題として明記します。
   3. Windows Event Log / IIS ログを既存 Loki へ送る経路（Grafana Alloy for Windows の導入、Loki の push API を loopback 以外からも安全に受け付けるための認証・network 設計）が無い。
 
@@ -117,7 +117,7 @@ flowchart LR
 本書の受け入れ条件は次のとおりです。
 
 - フェーズ1必須試験（WUT-01, WUT-02, WUT-05, WIT-01, WIT-02, WIT-04, WIT-08, WIT-09, WIT-10, WST-01〜WST-06, WNW-01〜WNW-09）がすべて `PASS` していること。
-- フェーズ2対象試験のうち、`WIT-03`(host metrics scrape)・`WIT-07`(alert通知)・`WIT-11`(複数ターゲットscrape、いずれもWIT-03の仕組みに依存)・`WIT-06`(ログ集約)は 3.1 に記載した未実装3点(Windows対応Ansible role、Dockerホスト↔対象Windowsホスト間の実L3到達性・windows_exporter側Firewall許可、Grafana Alloy for Windows未導入)が解消するまで `BLOCKED` として明記され、理由と解除条件が記録されていること。`WIT-05`(blackbox probe)は、`prometheus.yml.j2` の `app_blackbox_probe_targets` によるprobe対象汎用化(FR-04)がコードとしては解消済みのため、対象ホスト monitor-win-01 が構築され次第 `NOT RUN` から実施できる状態であることが記録されていること(Ansible Windows role が無いため対象ホスト自体の構築は引き続き手動 PowerShell が前提)。
+- フェーズ2対象試験のうち、`WIT-03`(host metrics scrape)・`WIT-07`(alert通知)・`WIT-11`(複数ターゲットscrape、いずれもWIT-03の仕組みに依存)・`WIT-06`(ログ集約)は 3.1 に記載した未実装3点(Windows対応Ansible roleの実機実行実績、Dockerホスト↔対象Windowsホスト間の実L3到達性・windows_exporter側Firewall許可、Grafana Alloy for Windows未導入)が解消するまで `BLOCKED` として明記され、理由と解除条件が記録されていること。`WIT-05`(blackbox probe)は、`prometheus.yml.j2` の `app_blackbox_probe_targets` によるprobe対象汎用化(FR-04)がコードとしては解消済みのため、対象ホスト monitor-win-01 が構築され次第 `NOT RUN` から実施できる状態であることが記録されていること(`ansible/roles/common_windows` はコードとして存在するが実機実行実績が無いため、対象ホスト自体の構築は引き続き手動 PowerShell が前提)。
 - 実行日時、環境、ホストのビルド番号（`winver` または `Get-ComputerInfo` の `OsBuildNumber`）、実行コマンド、実出力、判定が証跡として保存されていること。
 - 未解決事項、秘密値（証明書・パスワード）の受け渡し方法、ロールバック方法が[作業結果・引き渡し報告書](11-work-result-report.md)に記録されていること。
 

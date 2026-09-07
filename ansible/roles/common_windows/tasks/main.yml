@@ -1,0 +1,31 @@
+---
+# docs/build-package-windows/05-build-procedure.md の0〜2節(コンピューター名、
+# WinRM HTTPSリスナーの有効化)は、対象ホストへのリモート接続経路がまだ無い
+# 状態から行う作業であり、Ansible(WinRMベース)では実行できない。必ず
+# ハイパーバイザーのコンソールから直接ログオンして先に済ませておくこと。
+# このroleは、WinRM HTTPSが既に到達可能になった後の3〜4節(Firewall締め、
+# IIS導入、windows_exporter導入)を対象とする。バックアップ設定(4.3節)も含む。
+- name: Refuse an unsupported OS family before any host mutation
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == 'Windows'
+    fail_msg: >-
+      This role targets Windows Server only
+      (got {{ ansible_os_family | default('unknown') }}). No mutation has been made.
+
+- name: Configure timezone
+  ansible.windows.win_timezone:
+    timezone: "{{ common_windows_timezone }}"
+
+- name: Configure Windows Defender Firewall
+  ansible.builtin.include_tasks: firewall.yml
+
+- name: Configure IIS and the health check site
+  ansible.builtin.include_tasks: iis.yml
+
+- name: Install and configure windows_exporter
+  ansible.builtin.include_tasks: windows_exporter.yml
+
+- name: Configure Windows Server Backup
+  ansible.builtin.include_tasks: backup.yml
+  when: common_windows_backup_target_volume | length > 0

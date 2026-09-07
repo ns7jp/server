@@ -1,0 +1,26 @@
+---
+# 実host用にはこのfileをstaging.windows.local.ymlへcopyして編集する。
+# staging.windows.local.ymlはansible/.gitignore対象で、実IPやWinRM資格情報を
+# commitしない。SM-WIN-001（docs/build-package-windows/）専用のinventoryで、
+# 既存のstaging.local.yml（監視host `monitor`グループ）とは独立している。
+#
+# 前提: WinRM(HTTPS)は既に到達可能であること(05-build-procedure.md 0〜2節を
+# ハイパーバイザーのコンソールから先に実施済み)。ansible/roles/common_windows
+# はWinRM経由でのみ動作し、初回のWinRM有効化そのものは自動化していない。
+all:
+  children:
+    windows:
+      hosts:
+        monitor-win-01:
+          ansible_host: 192.0.2.30
+          ansible_connection: winrm
+          ansible_winrm_transport: certificate
+          ansible_port: 5986
+          ansible_winrm_server_cert_validation: validate
+          # 実機決定時にNOT SETを埋める(03-parameter-sheet.md参照)。
+          common_windows_mgmt_cidr: "192.0.2.40/32"
+          common_windows_iis_source_cidr: "192.0.2.40/32"
+          common_windows_prometheus_source_ip: ""  # 中央hostのNAT後の実IP(NOT SET)
+          common_windows_exporter_version: ""      # GitHub Releasesで確認したバージョン(NOT SET)
+          common_windows_exporter_sha256: ""        # 上記バージョンの公開SHA256(NOT SET)
+          common_windows_backup_target_volume: ""  # バックアップ格納先ボリューム(NOT SET)

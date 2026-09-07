@@ -8,3 +8,10 @@ collections:
     version: ">=3.10.0,<5.0.0"
   - name: ansible.posix
     version: ">=1.5.0,<2.0.0"
+  # docs/build-package-windows 向け(ansible/roles/common_windows)。
+  # win_timezone, win_feature, win_get_url, win_package, win_service, win_shell 等。
+  - name: ansible.windows
+    version: ">=2.0.0,<3.0.0"
+  # win_firewall_rule はansible.windowsではなくこちらに含まれる。
+  - name: community.windows
+    version: ">=2.0.0,<3.0.0"
