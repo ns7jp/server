@@ -1,0 +1,55 @@
+---
+# playbooks/foundation.yml が実行する common → docker の組み合わせを、
+# 1つのコンテナ上で通しで検証する scenario（Ubuntu 系）。
+#
+# roles/common・roles/docker それぞれの scenario は自role の converge / verify
+# しか持たず、common role が作るアプリ用アカウントを docker role がそのまま
+# 使う場面（roles/docker/molecule/*/prepare.yml で手動再現していた前提）を
+# role をまたいで自動検証していなかった
+# （docs/build-package-ansible/07-handover-checklist.md の未解決事項）。
+#
+# collections は CI / 構築手順書側で `ansible-galaxy collection install -r
+# ansible/requirements.yml` により導入する。molecule の galaxy dependency は
+# roles を `role-file`、collections を `requirements-file` という別々のキーで
+# 探し、いずれも scenario ディレクトリ基準で解決するため、ここから
+# ../../requirements.yml を指す指定は実際には読まれていなかった（他 scenario
+# と同じ既知の制約）。
+driver:
+  name: docker
+platforms:
+  - name: ansible-foundation-default
+    image: geerlingguy/docker-ubuntu2204-ansible:latest
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    # molecule の docker driver は既定で
+    #   bash -c "while true; do sleep 10000; done"
+    # を command に流し込み、イメージの CMD を上書きする。指定しないと
+    # systemd が PID 1 にならず、privileged / cgroupns_mode / cgroup mount を
+    # 揃えても service モジュールと timedatectl が一切動作しない。
+    command: /lib/systemd/systemd
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      stdout_callback: ansible.builtin.default
+      callback_result_format: yaml
+  inventory:
+    group_vars:
+      all:
+        # inventory/group_vars/foundation/main.yml と同じ値。案件非依存の
+        # 下地ホスト（foundation group）を再現する。
+        server_monitor_user: svc-baseline
+        server_monitor_group: svc-baseline
+        server_monitor_install_dir: /opt/ansible-foundation
+        server_monitor_allowed_tcp_ports:
+          - 22
+        # docker daemon の起動には入れ子のコンテナランタイム構成が要るため
+        # 行わない。verify.yml は binary / compose plugin の導入までを確認して
+        # おり、daemon の稼働を前提にしていないため検証範囲は落ちない
+        # （roles/docker/molecule/default と同じ理由）。
+        docker_manage_service: false
+verifier:
+  name: ansible

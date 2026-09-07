@@ -1,0 +1,51 @@
+---
+# foundation-default と同じ組み合わせ（common → docker）を RHEL 系
+# （AlmaLinux / Rocky 9）で検証する scenario。
+#
+# 重要な制約: コンテナ内では kernel の SELinux 状態を実際には変更できない
+# （roles/common/molecule/el9 と同じ既知の制約）。そのためこの scenario は
+# common_manage_selinux: false で common role 側の SELinux 変更を止めており、
+# docker role が追加した container_manage_cgroup boolean のタスク
+# （defects-found.md #31、common role 実行時点では container-selinux が
+# 未導入だったため実機で失敗した defect の修正）もこの条件で skip される。
+# つまりこの CI はロール間の一般的な結合（アカウント引き継ぎ・パッケージ
+# 導入・sshd hardening の維持）は検証するが、#31 自体の再発防止は実機
+# （docs/evidence/2026-09-04-ansible-foundation-el9-build.md）でのみ担保する。
+#
+# image は MOLECULE_EL_IMAGE で差し替えられる。既定は systemd を PID 1 で
+# 起動できる Rocky Linux 9 の Ansible 用イメージ。
+driver:
+  name: docker
+platforms:
+  - name: ansible-foundation-el9
+    image: ${MOLECULE_EL_IMAGE:-geerlingguy/docker-rockylinux9-ansible:latest}
+    pre_build_image: true
+    privileged: true
+    cgroupns_mode: host
+    # default scenario と同じ理由で systemd を PID 1 にする。
+    command: /usr/sbin/init
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      stdout_callback: ansible.builtin.default
+      callback_result_format: yaml
+  inventory:
+    group_vars:
+      all:
+        # inventory/group_vars/foundation/main.yml と同じ値。
+        server_monitor_user: svc-baseline
+        server_monitor_group: svc-baseline
+        server_monitor_install_dir: /opt/ansible-foundation
+        server_monitor_allowed_tcp_ports:
+          - 22
+        # コンテナ内では kernel の SELinux 状態を変更できないため、
+        # package 導入と設定内容の検証までを対象にする。
+        # 実 VM では既定の true のまま enforcing を維持する。
+        common_manage_selinux: false
+        # default scenario と同じ理由で、入れ子の docker daemon は起動しない。
+        docker_manage_service: false
+verifier:
+  name: ansible

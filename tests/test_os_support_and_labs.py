@@ -1423,3 +1423,50 @@ def test_ssh_host_keys_are_generated_before_validation():
     validate_idx = ssh_tasks.index("validate: /usr/sbin/sshd -t -f %s")
     assert keygen_idx < validate_idx
     assert "creates: /etc/ssh/ssh_host_rsa_key" in ssh_tasks
+
+
+def test_foundation_combined_molecule_scenarios_exist_and_run_in_ci():
+    """roles/common・roles/docker それぞれのMolecule scenarioは自roleの
+
+    converge / verifyしか持たず、common roleが作るアプリ用アカウントを
+    docker roleがそのまま使えるかというrole間の結合はCIで自動検証していな
+    かった（docs/build-package-ansible/07-handover-checklist.mdの未解決
+    事項）。ansible/molecule/foundation-* がplaybooks/foundation.ymlと同じ
+    common → dockerの組み合わせを1コンテナで検証するscenario。
+    """
+    for scenario in ("foundation-default", "foundation-el9"):
+        scenario_dir = ROOT / "ansible" / "molecule" / scenario
+        assert (scenario_dir / "molecule.yml").exists(), scenario
+        converge = (scenario_dir / "converge.yml").read_text(encoding="utf-8")
+        verify = (scenario_dir / "verify.yml").read_text(encoding="utf-8")
+
+        # common roleが作ったアカウントをdocker roleがそのまま扱えることの
+        # 検証なので、必ずこの順で両方のroleを実行する。
+        common_idx = converge.index("- role: common")
+        docker_idx = converge.index("- role: docker")
+        assert common_idx < docker_idx, scenario
+
+        assert "'docker' not in app_account_groups.stdout.split()" in verify, scenario
+        assert "docker --version" in verify, scenario
+
+    # el9はcommon roleのel9 scenarioと同じPAM問題を踏むため become: false、
+    # コンテナ内ではkernelのSELinux状態を変更できないため
+    # common_manage_selinux: false で defects-found.md #31 のtask自体は
+    # skipする（実機での再現・修正確認は evidence 側の責務のまま）。
+    el9_molecule = read("ansible", "molecule", "foundation-el9", "molecule.yml")
+    el9_converge = read("ansible", "molecule", "foundation-el9", "converge.yml")
+    el9_verify = read("ansible", "molecule", "foundation-el9", "verify.yml")
+    assert "common_manage_selinux: false" in el9_molecule
+    assert "become: false" in el9_converge
+    assert "become: true" not in el9_converge
+    assert "become: false" in el9_verify
+    assert "ansible_os_family == 'RedHat'" in el9_verify
+
+    check_workflow = read(".github", "workflows", "ansible-check.yml")
+    assert "molecule-foundation:" in check_workflow
+    assert "working-directory: ansible\n" in check_workflow
+
+    integration_workflow = read(".github", "workflows", "ansible-integration.yml")
+    assert "molecule-test-foundation:" in integration_workflow
+    assert "foundation-default" in integration_workflow
+    assert "foundation-el9" in integration_workflow

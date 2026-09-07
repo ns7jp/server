@@ -1,0 +1,60 @@
+---
+- name: Verify foundation outcomes on RHEL family (common + docker interaction)
+  hosts: all
+  become: false
+  gather_facts: true
+  tasks:
+    - name: Assert the role detected the RedHat family
+      ansible.builtin.assert:
+        that:
+          - ansible_os_family == 'RedHat'
+        fail_msg: >-
+          This scenario must run on a RHEL-family image. Got
+          {{ ansible_os_family }}.
+
+    - name: Read the application account's supplementary groups
+      ansible.builtin.command: id -Gn "{{ server_monitor_user }}"
+      register: app_account_groups
+      changed_when: false
+
+    - name: Assert the account common role created is not in the docker group
+      ansible.builtin.assert:
+        that:
+          - "'docker' not in app_account_groups.stdout.split()"
+        fail_msg: >-
+          The account common role creates for {{ server_monitor_user }} must
+          not gain docker group membership just because the docker role ran
+          in the same play.
+
+    - name: Check the install directory common role created
+      ansible.builtin.stat:
+        path: "{{ server_monitor_install_dir }}"
+      register: install_dir
+
+    - name: Assert the install directory survived the docker role run
+      ansible.builtin.assert:
+        that:
+          - install_dir.stat.exists
+          - install_dir.stat.isdir
+          - install_dir.stat.pw_name == server_monitor_user
+
+    - name: Check that the Docker CLI and Compose plugin are installed
+      ansible.builtin.command: "{{ item }}"
+      loop:
+        - docker --version
+        - docker compose version
+      changed_when: false
+
+    - name: Read the effective sshd configuration
+      ansible.builtin.command:
+        argv:
+          - /usr/sbin/sshd
+          - -T
+      register: sshd_effective
+      changed_when: false
+
+    - name: Assert common role's sshd hardening survived the docker role run
+      ansible.builtin.assert:
+        that:
+          - "'permitrootlogin no' in (sshd_effective.stdout | lower)"
+          - "'passwordauthentication no' in (sshd_effective.stdout | lower)"
