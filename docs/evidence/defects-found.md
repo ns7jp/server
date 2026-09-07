@@ -69,6 +69,8 @@
 | 32 | Ubuntu 24.04では`hwclock`が`util-linux`パッケージから`util-linux-extra`パッケージへ分離されている。`common`ロール（全パック共通）の`common_os_packages`（Debian系）には`util-linux`しか無く、`community.general.timezone`タスクが`Failed to find required executable "hwclock"`で必ず失敗する | `dhcpd -t`等の構文検査やansible-lintはパッケージの実インストールを行わないため、hwclockバイナリの実在は検査しない | 2026-09-04、network namespaceラボの`dhcp01`（Ubuntu 24.04.4 LTS）へ`common`ロールを含む`dhcp.yml`を初適用し、timezoneタスクで実際に失敗した | 対象OSで動かない | [PR](https://github.com/ns7jp/server/pull/151) |
 | 33 | isc-dhcp-server 4.4.3-P1は`default-lease-time`に300秒以下を指定しても、実際に払い出す`lease-time`（DHCPACKのoption 51）を300秒へ暗黙にクランプする。設定値どおりの短いリース時間が払い出されると期待して短縮すると、実際の値が食い違う | `dhcpd -t`の構文検査は通過し、dhcpd.conf自体も文法上は正しいため、値のクランプは検査に現れない | 2026-09-04、DIT-05（リース更新実測）用に`dhcp_server_default_lease_time`を60秒へ一時変更したところ、DHCPACKの`Lease-Time`optionが実際には300秒だった。値を60/100/299/300/301/500/3600と変えながら実測し300秒がしきい値と確認した | 設定が意図通りに反映されない | [PR](https://github.com/ns7jp/server/pull/151) |
 | 34 | isc-dhcp-serverはLinux上でinterfaceに直結したraw socket（LPF）経由でDHCPパケットを受信するため、netfilter（iptables/UFW）のINPUT chainを経由しない。`dhcp_server`ロールのUFW許可rule（UDP 67をinterface `dhcp_server_interface`限定でACCEPT）は、実際にはdhcpdの受信を制御していない | UFWのrule自体は正しく生成・適用されており（`ufw status verbose`で意図どおりに見える）、静的検査・構文検査のいずれもnetfilterとraw socketの関係までは検証しない | 2026-09-04、DIT-05（RENEW/REBIND実測）のためRENEWを`iptables -I INPUT -i seg0 -p udp --dport 67 -j DROP`で遮断しようとしたが、dhcpdは変わらず受信・応答した。対照実験として同じ形のDROPルールが通常のUDPソケット（`nc`）宛の通信は確実に遮断することを確認し、dhcpd固有の受信経路であることを切り分けた。さらに`/proc/<dhcpdのpid>/net/udp`と`/proc/<同>/net/packet`を直接確認し、dhcpdがUDPソケット（port 67）と同時にraw AF_PACKETソケット（`SOCK_RAW`）を保持していることを確認。同じDROPルールを適用したままclient01から完全なDORAを送出しても実際にACKまで得られ新規リースが作成されることも確認した（netfilterのDROPカウンタ自体は加算されるが、raw socketがそれより前段でパケットを受け取るため無関係という整合的な説明が付いた） | セキュリティ制御の実効性が説明と異なる | [PR](https://github.com/ns7jp/server/pull/151) |
+| 35 | #32の修正（`common_os_packages`へ`util-linux-extra`を無条件追加）が、別のOSバージョンを壊していた。`util-linux-extra`はUbuntu 24.04(noble)以降にしか存在しないパッケージで、22.04(jammy)には無い（jammyでは`util-linux`本体が`/sbin/hwclock`を含む）。そのため**`common` role適用がjammy上では「No package matching 'util-linux-extra' is available」で必ず失敗する**状態になっていた | ansible-lintと`--syntax-check`はパッケージ名の存在をOSバージョンごとに検証しない。CIのMolecule "default" scenario（`geerlingguy/docker-ubuntu2204-ansible`、jammy）の**フルlifecycle**（`molecule test`）は`ansible-integration.yml`がworkflow_dispatch限定のため、#32の修正後は一度も実行されていなかった | 2026-09-07、[SM-ANS-001](../build-package-ansible/README.md)のfoundation合成scenario追加作業の一環で`ansible-integration.yml`を初めて実行し、`molecule (common / default)`が発覚 | 対象OSで動かない | [PR](https://github.com/ns7jp/server/pull/161) |
+| 36 | #31の修正（`container_manage_cgroup` SELinux booleanのtaskを`common` roleから`docker` roleへ移動）が、`docker` role単独実行（`common` roleがplayに無い）という別の使い方を壊していた。`when`条件が`common_manage_selinux \| default(true)`だったため、`common` role未実行で変数自体が未定義だと`default(true)`が常に勝ってtaskが実行され、`python3-libselinux`（`common` roleのRedHat.ymlが導入）が無いホストでは**「Failed to import the required Python library (libselinux-python)」で必ず失敗する** | ansible-lintと`--syntax-check`はJinjaの`default`フィルタが「変数が本当に定義されているか」の意味論までは検証しない。CIのMolecule `docker / el9`の**フルlifecycle**も#31の修正後は一度も実行されていなかった（#35と同じ理由） | 2026-09-07、#35と同じ`ansible-integration.yml`実行で`molecule (docker / el9)`が発覚 | 実行条件の誤り | [PR](https://github.com/ns7jp/server/pull/161) |
 
 ## この台帳に載せていないもの
 
@@ -82,10 +84,16 @@
 
 **言えること**: 静的検査（shellcheck / ansible-lint / molecule / 構文検査）を全部通しても、
 「一度も起動できていない」「壊れているのに PASS する」「証跡が残らない」ものは残ります。
-34 件のうち **6 件が偽 PASS** で、テストが無いより悪い状態でした。
+36 件のうち **6 件が偽 PASS** で、テストが無いより悪い状態でした。
 うち 3 件（#27〜29）は 2026-08-25 に el9 の Molecule scenario を初めて実行して
 見つけたもので、いずれも「対象 OS の既定パッケージ・イメージでは動かない」型でした。
 1 件直すと次のエラーが出る、を 3 回繰り返しています。
+さらに #35・#36 は、Molecule の**フルlifecycle**（`molecule test`、実コンテナの
+create→converge→idempotence→verify）を回す`ansible-integration.yml`が
+`workflow_dispatch`限定で自動実行されないため、#31・#32 の修正がそれぞれ
+別のOS/使い方を壊したまま2週間近く誰にも気付かれず`main`に残っていたことを
+示しています。「構文検査・scenario検出だけの自動CI」と「フルlifecycleは手動」
+という構成自体の弱点です。
 
 **言えないこと**: これは学習ラボでの件数であり、本番システムの品質指標ではありません。
 また、そもそも自分（と AI 支援）が書いたコードの欠陥なので、
