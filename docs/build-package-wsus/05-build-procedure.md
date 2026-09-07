@@ -14,6 +14,7 @@ Windows対応Ansible role(`ansible/roles/common`相当のもの)は存在しな�
 - ドメイン参加操作に使うアカウントが、常用アカウントではなくドメイン参加権限を持つ適切な権限のアカウントであること([AD版パック](../build-package-ad/03-parameter-sheet.md)のTier0の考え方を踏襲)。
 - 本パックはAnsible role化されていないため、Linux版のような対象commit SHA固定によるコード配備管理は無い。ただし、本パック文書側の版(このリポジトリの`git rev-parse HEAD`)は事後の突合のため記録しておく。
 - 実値の秘密情報(ローカルAdministratorの新しいパスワード、ドメイン参加アカウントの資格情報等)をIssue、PR、端末ログへ貼らない。
+- **本書のコードブロックを`.ps1`ファイルへ保存して実行する場合は、BOM付きUTF-8で保存する。** PowerShell 5.1は、BOMの無いUTF-8ファイルをシステムのANSIコードページ(ja-JP環境ではShift-JIS)として読む。この誤解釈により日本語コメント中のバイト列が文字列リテラルの境界を壊し、後続の行がコマンドとして解釈されて`CommandNotFoundException`になることがある。PowerShell 7系では既定がUTF-8のため再現しない。
 - [要件定義書](00-requirements.md)と[変更・ロールバック計画](08-change-rollback-plan.md)の対象環境、Go / No-Go条件を確認済みであること。
 - 本書はフェーズ1(ホスト単体構築)の範囲のみを扱うこと、10節の中央側コマンドを実行してもフェーズ2のscrapeは`compose.yaml`の`monitoring`ネットワークの制約が解消するまで成立しないことを再確認済み。
 
@@ -264,6 +265,7 @@ Get-ItemProperty "IIS:\AppPools\WsusPool" -Name processModel.idleTimeout, queueL
 
 ```powershell
 # バージョンは実機決定時にGitHub Releasesで確認して固定する(現時点でNOT SET)
+# 2026-09-07の実機では 0.31.8 を使用した(docs/evidence/2026-09-07-wsus-build-validation.md)
 $version = "<NOT SET: 実機決定時にGitHub Releasesで確認するバージョン番号>"
 $msiUrl  = "https://github.com/prometheus-community/windows_exporter/releases/download/v$version/windows_exporter-$version-amd64.msi"
 $msiPath = "C:\temp\windows_exporter.msi"
@@ -278,9 +280,23 @@ if ($actualHash -ne $expectedHash) {
     throw "windows_exporter MSIのハッシュが一致しません。expected=$expectedHash actual=$actualHash"
 }
 
-# WSUS管理サイトがIIS上で動くため、iisコレクターを追加で有効化する
+# WSUS管理サイトがIIS上で動くため、iisコレクターを追加で有効化する。
+# コレクター名はバージョンによって変わる。0.25以降で `cs` は廃止され、`system` と `memory` に
+# 分割されている。廃止された名前を渡すとインストーラは成功するがサービスが起動せず、
+# イベントログ(Application、ソース windows_exporter、ID 102)に
+# `couldn't enable collectors err="unknown collector cs"` が記録される。
+# 導入前に `windows_exporter.exe --help` の `--collectors.enabled` 既定値で有効な名前を確認すること。
 Start-Process msiexec.exe -ArgumentList `
-  "/i `"$msiPath`" ENABLED_COLLECTORS=cpu,cs,logical_disk,net,os,service,iis /qn" -Wait
+  "/i `"$msiPath`" ENABLED_COLLECTORS=cpu,system,memory,logical_disk,net,os,service,iis /qn" -Wait
+
+# サービスが実際に起動したことを確認する(インストーラの成功だけでは不十分)
+Get-Service windows_exporter | Select-Object Name, Status, StartType
+if ((Get-Service windows_exporter).Status -ne "Running") {
+    Get-WinEvent -LogName Application -MaxEvents 20 |
+      Where-Object ProviderName -like "*windows_exporter*" |
+      Select-Object TimeCreated, Id, LevelDisplayName, Message
+    throw "windows_exporterが起動していない。コレクター名を確認すること"
+}
 
 Get-Service windows_exporter
 Get-CimInstance Win32_Service -Filter "Name='windows_exporter'" | Select-Object Name, StartName, State, PathName
@@ -302,6 +318,36 @@ if (-not (Get-NetFirewallRule -DisplayName "WSUS-Content-InternalOnly" -ErrorAct
       -Protocol TCP -LocalPort 8530 -Action Allow `
       -RemoteAddress "<NOT SET: 環境ごとに決定する内部ネットワークCIDR>" -Profile Any
 }
+
+# WSUSロールの導入時に、8530/tcpと8531/tcpを RemoteAddress=Any で許可するルールが
+# 自動生成される。3節のWinRM quickconfigルールと同じ考え方で、これを無効化して
+# 上記の限定ルールへ一本化しないと、SST-01・SST-04の「内部ネットワークCIDR限定」を満たせない。
+# 8531(HTTPS)は本パックでは対象外のため、限定ルールも作らず全面的に閉じる。
+Get-NetFirewallRule -Direction Inbound -Enabled True -ErrorAction SilentlyContinue |
+  ForEach-Object {
+      $portFilter = $_ | Get-NetFirewallPortFilter
+      $addrFilter = $_ | Get-NetFirewallAddressFilter
+      $isRoleRule = ($portFilter.LocalPort -in @("8530", "8531")) -and
+                    ($addrFilter.RemoteAddress -eq "Any") -and
+                    ($_.DisplayName -ne "WSUS-Content-InternalOnly")
+      if ($isRoleRule) {
+          "無効化: $($_.DisplayName) (LocalPort=$($portFilter.LocalPort))"
+          Disable-NetFirewallRule -Name $_.Name
+      }
+  }
+
+# 設計対象ポートについて、有効な受信許可ルールが限定ルールだけになったことを確認する(SST-01)
+Get-NetFirewallRule -Direction Inbound -Action Allow -Enabled True | ForEach-Object {
+    $portFilter = $_ | Get-NetFirewallPortFilter
+    if ($portFilter.LocalPort -in @("5986", "8530", "8531", "9182", "3389")) {
+        $addrFilter = $_ | Get-NetFirewallAddressFilter
+        [pscustomobject]@{
+            DisplayName   = $_.DisplayName
+            Port          = $portFilter.LocalPort
+            RemoteAddress = ($addrFilter.RemoteAddress -join ",")
+        }
+    }
+} | Format-Table -AutoSize
 ```
 
 `windows_exporter`は既定`LocalSystem`アカウントで動作する。最小権限化は継続課題として記録し、本手順では是正しない。バージョン・SHA256の実測値は[パラメータシート](03-parameter-sheet.md)の実機記入欄へ記録する。
@@ -353,27 +399,52 @@ $config.Save()
 
 画面「製品の選択」に相当する設定。ラボで検証する製品に絞り、無制限に同期しない。
 
-```powershell
-$allProducts = Get-WsusProduct -UpdateServer $wsus
-$targetProducts = $allProducts | Where-Object { $_.Product.Title -in @("Windows Server 2022", "Windows 11") }
-Set-WsusProduct -UpdateServer $wsus -Product $targetProducts
+**Windows Server 2022の更新プログラムは、WSUSのカタログ上では`Microsoft Server operating system-21H2`という製品名で提供される。** 「Windows Server 2022」というタイトルの製品カテゴリは存在しないため、その文字列で絞り込むと該当0件のまま静かに進み、同期対象にサーバーの更新が1件も入らない。`Set-WsusProduct`・`Set-WsusClassification`に`-UpdateServer`パラメーターは無く、対象はパイプラインで渡す。
 
-Get-WsusProduct -UpdateServer $wsus | Where-Object Selected -eq $true |
-  Select-Object -ExpandProperty Product | Select-Object Title
+```powershell
+# 実際のカタログにある製品名を先に確認する(バージョンにより表記が変わる)
+Get-WsusProduct | Where-Object { $_.Product.Title -match "server operating system|Windows 11" } |
+  Select-Object -ExpandProperty Product | Select-Object Title | Sort-Object Title
+
+$targetProductTitles = @("Microsoft Server operating system-21H2", "Windows 11")
+$targetProducts = Get-WsusProduct | Where-Object { $_.Product.Title -in $targetProductTitles }
+if ($targetProducts.Count -ne $targetProductTitles.Count) {
+    throw "製品が全て見つからない。実際のカタログ上の製品名を確認すること(見つかった数: $($targetProducts.Count))"
+}
+$targetProducts | Set-WsusProduct
+
+# 選択結果はサブスクリプション側から読む
+$wsus.GetSubscription().GetUpdateCategories() | Select-Object Title, Id
 ```
 
 画面「分類の選択」に相当する設定。ドライバー同期はコンテンツが肥大化しやすく、サーバー用途では基本的に不要なため除外する。
 
-```powershell
-$allClass = Get-WsusClassification -UpdateServer $wsus
-$targetClass = $allClass | Where-Object {
-    $_.Classification.Title -in @("Critical Updates", "Security Updates", "Updates", "Update Rollups")
-}
-Set-WsusClassification -UpdateServer $wsus -Classification $targetClass
+**分類のタイトルはOSのロケールに依存する。** ja-JP環境では`Critical Updates`が`重要な更新`、`Security Updates`が`セキュリティ問題の修正プログラム`、`Updates`が`更新`、`Update Rollups`が`修正プログラム集`になるため、英語のタイトル文字列で絞り込むと該当0件になる。分類のGUIDはロケールに依存しないので、GUIDで指定する。
 
-Get-WsusClassification -UpdateServer $wsus | Where-Object Selected -eq $true |
-  Select-Object -ExpandProperty Classification | Select-Object Title
+```powershell
+# Critical Updates / Security Updates / Updates / Update Rollups の固定GUID
+$targetClassIds = @(
+    "e6cf1350-c01b-414d-a61f-263d14d133b4",  # Critical Updates  / 重要な更新
+    "0fa1201d-4330-4fa8-8ae9-b877473b6441",  # Security Updates  / セキュリティ問題の修正プログラム
+    "cd5ffd1e-e932-4e3a-bf74-18bf0b1bbd83",  # Updates           / 更新
+    "28bc880e-0592-4cbf-8f95-c79b17911d5f"   # Update Rollups    / 修正プログラム集
+)
+$targetClass = Get-WsusClassification | Where-Object { $targetClassIds -contains $_.Classification.Id.Guid }
+if ($targetClass.Count -ne $targetClassIds.Count) {
+    throw "分類が全て見つからない(見つかった数: $($targetClass.Count))"
+}
+$targetClass | Set-WsusClassification
+
+# 既定で有効になっている「定義更新プログラム(Definition Updates)」は本パックの対象外である。
+# Defenderの定義は1日に複数回公開されるためコンテンツストアが急速に肥大化する。明示的に解除する。
+Get-WsusClassification |
+  Where-Object { $_.Classification.Id.Guid -eq "e0789628-ce08-4437-be74-2495b842f43b" } |
+  Set-WsusClassification -Disable
+
+$wsus.GetSubscription().GetUpdateClassifications() | Select-Object Title, Id
 ```
+
+製品・分類とも、`Set-Wsus*`の実行後は必ず`GetSubscription()`側から選択結果を読み戻して確認する。既定で有効な項目(親カテゴリ`Windows`、分類`定義更新プログラム`)が残っていることがあり、そのまま同期すると想定外の量のメタデータを取得する。
 
 画面「同期スケジュール」に相当する設定。毎日01:00(Asia/Tokyo)の自動同期とする。
 
@@ -392,6 +463,24 @@ $subscription.SynchronizeAutomaticallyTimeOfDay
 ## 7. GPOの作成とクライアント側ターゲティング
 
 設定項目はグループポリシー管理エディターの管理用テンプレート内、Windows Update関連ノードにある項目である。バージョンによってノードの階層が変わることがあるため、正確なメニュー階層は断定せず、設定「項目名」とその実体であるレジストリ値で示す。
+
+### 7.0 WSUSサーバー側のターゲティング方式の切り替え(GPO作成前に必須)
+
+GPO側で「クライアント側ターゲティングを有効にする」を設定しても、**WSUSサーバー側の割り当て方式が既定の「サーバー側ターゲティング」(`TargetingMode = Server`)のままでは、クライアントが送る対象グループ名は無視される。** この場合クライアントは`割り当てられていないコンピューター`へ入り、FR-04(GPOによるクライアント側ターゲティング)が成立しない。GPOを作る前にサーバー側を切り替える。
+
+```powershell
+Import-Module UpdateServices
+$wsus = Get-WsusServer -Name "wsus-01" -PortNumber 8530
+$config = $wsus.GetConfiguration()
+
+$config.TargetingMode    # 既定は Server
+$config.TargetingMode = [Microsoft.UpdateServices.Administration.TargetingMode]::Client
+$config.Save()
+
+$wsus.GetConfiguration().TargetingMode   # Client であることを確認
+```
+
+この設定はWSUSコンソールの「オプション」→「コンピューター」で「グループ ポリシーまたはコンピューターのレジストリ設定を使用する」を選ぶ操作に相当する。
 
 ```powershell
 # GroupPolicyモジュール(New-GPO/New-GPLink/Set-GPRegistryValue)は2.1節のRSAT-AD-PowerShellには
@@ -488,21 +577,43 @@ if (-not $rule) {
     $rule = $wsus.CreateInstallApprovalRule($ruleName)
 }
 
-$classifications = $wsus.GetUpdateClassifications() |
-  Where-Object { $_.Title -in @("Critical Updates", "Security Updates") }
-$products = $wsus.GetUpdateCategories() | Where-Object { $_.Title -eq "Windows Server 2022" }
+# 6節と同じ理由で、分類はロケール非依存のGUID、製品はカタログ上の実際のタイトルで指定する。
+# 英語タイトル("Critical Updates"等)や"Windows Server 2022"では ja-JP 環境で0件になり、
+# 絞り込みが空のままルールが保存されてしまう(Save()はエラーにならない)
+$ruleClassIds = @(
+    "e6cf1350-c01b-414d-a61f-263d14d133b4",  # Critical Updates / 重要な更新
+    "0fa1201d-4330-4fa8-8ae9-b877473b6441"   # Security Updates / セキュリティ問題の修正プログラム
+)
+$classifications = $wsus.GetUpdateClassifications() | Where-Object { $ruleClassIds -contains $_.Id.Guid }
+$products = $wsus.GetUpdateCategories() | Where-Object { $_.Title -eq "Microsoft Server operating system-21H2" }
+if ($classifications.Count -eq 0 -or $products.Count -eq 0) {
+    throw "承認ルールの分類または製品が0件。GUID・製品名を確認すること"
+}
 
-$rule.SetUpdateClassifications($classifications)
-$rule.SetCategories($products)
-$rule.SetComputerTargetGroups(@($pilotGroup))
+# Set系メソッドは配列ではなく専用のCollection型を要求する
+$classificationCollection = New-Object Microsoft.UpdateServices.Administration.UpdateClassificationCollection
+$classifications | ForEach-Object { $classificationCollection.Add($_) | Out-Null }
+$categoryCollection = New-Object Microsoft.UpdateServices.Administration.UpdateCategoryCollection
+$products | ForEach-Object { $categoryCollection.Add($_) | Out-Null }
+$groupCollection = New-Object Microsoft.UpdateServices.Administration.ComputerTargetGroupCollection
+$groupCollection.Add($pilotGroup) | Out-Null
 
-# スケジュール化しない安全側の判断として、ルール自体はEnabled=falseのまま保存し、
-# 実行は9節でApplyRule()による手動実行にとどめる
+$rule.SetUpdateClassifications($classificationCollection)
+$rule.SetCategories($categoryCollection)
+$rule.SetComputerTargetGroups($groupCollection)
 $rule.Enabled = $false
 $rule.Save()
 
-$wsus.GetInstallApprovalRules() | Select-Object Name, Enabled
+# 保存内容を読み戻して確認する。分類・製品が空のまま保存されていても
+# Save() はエラーにならないため、読み戻さないと絞り込みの欠落に気づけない
+$saved = $wsus.GetInstallApprovalRules() | Where-Object { $_.Name -eq $ruleName }
+"Enabled : $($saved.Enabled)"
+"分類    : " + (($saved.GetUpdateClassifications() | ForEach-Object Title) -join " | ")
+"製品    : " + (($saved.GetCategories() | ForEach-Object Title) -join " | ")
+"グループ: " + (($saved.GetComputerTargetGroups() | ForEach-Object Name) -join " | ")
 ```
+
+`Enabled = $false`は「同期のたびに自動で承認しない」という安全側の設定である。ただし**`Enabled = $false`のルールは`ApplyRule()`でも実行できず、`この承認規則は、有効でないため適用できません。`で拒否される。** 9節で手動実行する際は、実行の直前だけ有効化し、実行後ただちに無効へ戻す(9節参照)。「平時は無効、手動実行時のみ一時的に有効」という運用でこの制約を回避する。
 
 それ以外の更新プログラムは手動承認とする(手順は9節で扱う)。
 
@@ -578,16 +689,102 @@ try {
 $pilotGroup.GetComputerTargets() | Select-Object FullDomainName
 ```
 
-Pilotグループ向けの自動承認ルール(8節)を手動実行し、対象更新を承認する。
+### 9.1 承認前の容量見積もりと中断手段の準備(必須)
+
+**承認はコンテンツのダウンロードを即座に開始させる操作である。** 「更新プログラムをこのサーバーに保存する」を有効(6節)にしているため、承認した更新のバイナリがすべてコンテンツストアへ取得される。承認件数を読み違えると数百GB規模のダウンロードが始まり、ディスクを枯渇させて同じホスト上の他システムまで巻き込む。
+
+2026-09-07の実機では、分類・製品・グループを絞り込んだはずの承認ルールの`ApplyRule()`が**同期済み557件のうち555件を承認し、約345GBのダウンロードを開始した**([結果票](../evidence/2026-09-07-wsus-build-validation.md)のSIT-06)。ルールの絞り込みが`ApplyRule()`の承認範囲を限定する保証は無いものとして扱う。
+
+承認の前に、必ず次の3つを準備する。
 
 ```powershell
-$rule = $wsus.GetInstallApprovalRules() | Where-Object Name -eq "Critical and Security Updates - Pilot Auto-Approve"
-$rule.ApplyRule()
+# (1) 承認前の基準値を記録する
+$wsus.GetStatus() | Select-Object UpdateCount, ApprovedUpdateCount, NotApprovedUpdateCount, DeclinedUpdateCount
+$before = $wsus.GetContentDownloadProgress()
+"承認前 TotalBytesToDownload: {0:n1} MB" -f ($before.TotalBytesToDownload / 1MB)
 
-# それ以外の更新は手動承認の例
-Get-WsusUpdate -UpdateServer $wsus -Classification Critical, Security -Approval Unapproved |
-  Select-Object -First 5 -Property Title, Id |
-  ForEach-Object { Approve-WsusUpdate -UpdateServer $wsus -Update $_.Id -Action Install -TargetGroupName "Pilot" }
+# (2) コンテンツストアの空き容量と、許容できるダウンロード量の上限を決めておく
+Get-Volume -DriveLetter D | Select-Object DriveLetter, @{n="FreeGB";e={[math]::Round($_.SizeRemaining/1GB,1)}}
+# ハイパーバイザー上のVMの場合は、ホスト側の物理空き容量も確認する
+# (可変容量VHDXはゲストの空き容量とホストの空き容量が一致しない)
+
+# (3) 中断手段を確認しておく。承認済みのダウンロードは WsusService の停止で止まる
+Get-Service WsusService, BITS | Select-Object Name, Status
+```
+
+### 9.2 自動承認ルールの手動実行(SIT-06)
+
+8節のとおりルールは`Enabled = $false`で保存されているため、`ApplyRule()`は直接は実行できない。実行の直前だけ有効化し、実行後ただちに無効へ戻す。
+
+```powershell
+$ruleName = "Critical and Security Updates - Pilot Auto-Approve"
+$rule = $wsus.GetInstallApprovalRules() | Where-Object Name -eq $ruleName
+
+# 実行の直前だけ有効化する
+$rule.Enabled = $true
+$rule.Save()
+
+$approved = $rule.ApplyRule()
+"ApplyRule() 承認件数: $(($approved | Measure-Object).Count)"
+
+# ただちに無効へ戻す(無人承認を避ける設計を維持する)
+$rule = $wsus.GetInstallApprovalRules() | Where-Object Name -eq $ruleName
+$rule.Enabled = $false
+$rule.Save()
+```
+
+**実行直後に、承認件数とダウンロード見積もりを必ず確認する。**
+
+```powershell
+$after = $wsus.GetContentDownloadProgress()
+$status = $wsus.GetStatus()
+"承認済み件数         : $($status.ApprovedUpdateCount) / $($status.UpdateCount)"
+"TotalBytesToDownload : {0:n1} MB" -f ($after.TotalBytesToDownload / 1MB)
+```
+
+見積もりが許容量を超えている場合は、**ためらわずダウンロードを止める。**
+
+```powershell
+# ダウンロードを即座に中断する
+Stop-Service WsusService -Force
+Stop-Service BITS -Force
+
+# 意図しない承認を拒否して承認範囲を戻す(拒否した更新のコンテンツは配信対象から外れる)
+$scope = New-Object Microsoft.UpdateServices.Administration.UpdateScope
+$scope.ApprovedStates = [Microsoft.UpdateServices.Administration.ApprovedStates]::LatestRevisionApproved
+foreach ($u in $wsus.GetUpdates($scope)) {
+    if ($u.Title -notmatch "<承認したい更新を識別する条件>") { $u.Decline() }
+}
+
+Start-Service WsusService
+
+# 拒否済み更新の取得済みコンテンツを削除して容量を回収する
+Invoke-WsusServerCleanup -UpdateServer $wsus -CleanupUnneededContentFiles
+```
+
+`Stop-Service WsusService`の後もBITSのジョブが残ることがある。ジョブの所有者が`NetworkService`のため、管理者セッションからの`Remove-BitsTransfer`や`bitsadmin /reset /allusers`では破棄できない場合がある。`BITS`サービス自体を停止すれば転送は止まるので、容量保全を優先する場面ではサービス停止で対処する。
+
+### 9.3 個別の手動承認
+
+自動承認ルールの対象外(分類が異なる等)の更新は、対象を明示して個別に承認する。ここでも承認前後で`GetContentDownloadProgress()`を確認する。
+
+```powershell
+$pilotGroup = $wsus.GetComputerTargetGroups() | Where-Object { $_.Name -eq "Pilot" }
+
+# 承認候補の容量を事前に把握する
+$candidates = $wsus.GetUpdates() |
+  Where-Object { $_.Title -match "<対象を識別する条件>" -and -not $_.IsDeclined -and -not $_.IsSuperseded }
+foreach ($u in $candidates) {
+    $mb = 0
+    try { $mb = [math]::Round((($u.GetInstallableItems() | ForEach-Object { $_.Files } |
+        Measure-Object -Property TotalBytes -Sum).Sum) / 1MB, 0) } catch {}
+    "{0,6} MB | {1} | {2}" -f $mb, $u.UpdateClassificationTitle, $u.Title
+}
+
+# 内容と容量を確認したうえで承認する
+foreach ($u in $candidates) {
+    $u.Approve([Microsoft.UpdateServices.Administration.UpdateApprovalAction]::Install, $pilotGroup) | Out-Null
+}
 ```
 
 `wsus-01`側で更新プログラムのダウンロード・インストールを進め、適用結果を確認する(SIT-05)。
@@ -752,6 +949,52 @@ Restore-GPO -BackupId "<Backup-GPOの出力から得たID>" -Path "C:\Backup\gpo
 3. **データ破損時: SUSDB・コンテンツストアからの復元。**
 
 SUSDB(WID)は、WIDのローカル名前付きパイプ(`\\.\pipe\MICROSOFT##WID`)経由でのバックアップ復元、または対象ホスト全体をWindows Server Backupでシステム状態含めて復元する方式のいずれかを設計として示す(実機で選定)。コンテンツストア(`D:\WSUS\WSUSContent`)は、フォルダー全体のバックアップから復元する。
+
+**WID単体構成には`sqlcmd.exe`が同梱されない。** WIDはMicrosoft製品専用の制限付きSQL Serverインスタンスであり、SQL Serverのクライアントツールは付属しない。別途SQL Serverのツールを導入しない限り、`sqlcmd`を前提とした手順は実行できない。標準機能だけで完結させるには、.NETの`System.Data.SqlClient`から名前付きパイプへ直接接続する。
+
+```powershell
+$conn = "Server=np:\\.\pipe\MICROSOFT##WID\tsql\query;Database=master;Integrated Security=True;Connect Timeout=60"
+
+function Invoke-WidNonQuery {
+    param([string]$Sql, [int]$Timeout = 900)
+    $cn = New-Object System.Data.SqlClient.SqlConnection($conn)
+    $cn.Open()
+    $cmd = $cn.CreateCommand(); $cmd.CommandTimeout = $Timeout; $cmd.CommandText = $Sql
+    $cmd.ExecuteNonQuery() | Out-Null
+    $cn.Close()
+}
+
+# バックアップ。BACKUP はWIDサービスアカウントの権限で書き込むため、出力先に権限が要る
+New-Item -Path C:\Backup -ItemType Directory -Force | Out-Null
+icacls.exe C:\Backup /grant '"NT SERVICE\MSSQL$MICROSOFT##WID":(OI)(CI)F' /T
+$bak = "C:\Backup\SUSDB-$(Get-Date -Format yyyyMMdd-HHmm).bak"
+Invoke-WidNonQuery "BACKUP DATABASE SUSDB TO DISK = N'$bak' WITH INIT, NAME = N'SUSDB full'"
+
+# 取得したバックアップセットが復元可能であることを確認する
+Invoke-WidNonQuery "RESTORE VERIFYONLY FROM DISK = N'$bak'"
+
+# 復元。WSUSサービスとIISを止め、単一ユーザーモードにしてから WITH REPLACE で戻す
+Stop-Service WsusService -Force
+Stop-Service W3SVC -Force
+Invoke-WidNonQuery "ALTER DATABASE SUSDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE" 300
+Invoke-WidNonQuery "RESTORE DATABASE SUSDB FROM DISK = N'$bak' WITH REPLACE, RECOVERY"
+Invoke-WidNonQuery "ALTER DATABASE SUSDB SET MULTI_USER" 300
+Start-Service W3SVC
+Start-Service WsusService
+```
+
+**WIDは別名データベースへの復元を受け付けない。** `RESTORE DATABASE SUSDB_RestoreTest FROM DISK = ...`のように名前を変えて復元しようとすると、データファイルの書き出しまで進んだうえで`データベース '...' のスキーマの検証が失敗しました`で異常終了する。WIDが許可するデータベース名がMicrosoft製品のものに限られるためである。したがって「本番とは別のデータベースへ復元して中身を突き合わせる」という検証方法はWIDでは成立せず、上記のとおり`SUSDB`自身へ`WITH REPLACE`で戻す方式を採る(系統B・外部SQL Serverであれば別インスタンスへの復元が可能)。
+
+復元後は、テーブル数や主要テーブルの行数を復元前後で突き合わせ、WSUSのAPIとクライアントWebサービスが応答することまで確認する。
+
+```powershell
+Import-Module UpdateServices
+$wsus = Get-WsusServer -Name "wsus-01" -PortNumber 8530
+$wsus.GetStatus() | Select-Object UpdateCount, ApprovedUpdateCount, ComputerTargetCount
+(Invoke-WebRequest "http://127.0.0.1:8530/ClientWebService/client.asmx" -UseBasicParsing).StatusCode
+```
+
+コンテンツストアをWindows Server Backupから戻す場合は次のとおり。
 
 ```powershell
 wbadmin get versions
