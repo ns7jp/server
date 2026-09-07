@@ -1,0 +1,28 @@
+# docs/build-package-windows のログ集約経路(FR-05)向けopt-inオーバーレイ。
+# `docker compose -f compose.yaml -f compose.loki-push.yaml.example up` のように
+# 明示的に指定したときだけ有効になり、既定のcompose.yamlには一切影響しない。
+#
+# 既存のnginxサービス(公開Webエントリ)は変更せず、Loki pushだけを受け付ける
+# 専用の最小nginxコンテナを追加する(monitoringネットワークの露出範囲を
+# 公開nginxまで広げないため)。deploy/nginx/loki-push.conf.exampleを
+# deploy/nginx/loki-push.conf(.gitignore対象)へコピーし、token/allow行を
+# 実機値へ置き換えてから使うこと。
+services:
+  loki-push-proxy:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - loki
+    ports:
+      - "${LOKI_PUSH_BIND_ADDRESS:-127.0.0.1}:${LOKI_PUSH_PORT:-3101}:3101"
+    volumes:
+      - ./deploy/nginx/loki-push.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - monitoring
+      - host-access
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+    security_opt:
+      - no-new-privileges:true
