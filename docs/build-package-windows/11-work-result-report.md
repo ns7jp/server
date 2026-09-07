@@ -102,8 +102,8 @@ Windows版にはLinux版のような単一のcommit SHAで対象ホストの構�
 | バックアップ復元試験(フェーズ1) | NOT RUN | 別ボリューム/別ホストへの復元でWIT-09を実行 |
 | windows_exporterサービスアカウントの最小権限化 | NOT READY | 現状LocalSystemでの運用実績を積んだうえで、最小権限アカウントへの移行方針を検討・適用 |
 | host metrics scrape(フェーズ2、WIT-03) | BLOCKED | Prometheusコンテナは`monitoring`(`internal: true`)に加え`host-access`(internal指定なしのbridge、nftables実機検証でMASQUERADE/`DOCKER-FORWARD` acceptを確認済み)にも接続されており egress自体は塞がれていないが、(a)Dockerホストとサーバー外にある実machine(Windows Server)のネットワークセグメント間の実L3到達性、(b)`windows_exporter`(既定9182/tcp)側Firewallが実際の送信元(`host-access`のMASQUERADEによりDockerホスト自身の実IPとして見える)を許可しているか、の2点が未確立(`NOT SET`)。あわせてjob名`linux-node`にWindowsを混ぜること自体、名前が実態と合わなくなる点も未解消 |
-| blackbox probe(フェーズ2、WIT-05) | BLOCKED | `ansible/roles/app/templates/prometheus.yml.j2`のprobe対象がLinux側の想定で汎用化されておらず、IISサイトをprobe対象へ追加する仕組みが無い(現状未実装) |
-| ログ集約(フェーズ2、WIT-06) | BLOCKED | Windows Event Log / IISログを既存Lokiへ送る経路(Grafana Alloy for Windowsの導入、Lokiのpush APIをloopback以外からも安全に受け付けるための認証・network設計)が無い。Windows側(`ansible/roles/common_windows`のAlloy導入タスク・設定テンプレート)はコードとして追加済みだが、中央側(Lokiのpush API公開・認証設計)には未着手のため、経路全体としては引き続き無い状態 |
+| blackbox probe(フェーズ2、WIT-05) | BLOCKED | `ansible/roles/app/templates/prometheus.yml.j2`のprobe対象汎用化(`app_blackbox_probe_targets`)はコードとして解消済みだが、対象ホスト未構築に加えWIT-03と同じDockerホスト↔対象ネットワーク間の実L3到達性が未確立のため(同日訂正: 従来は対象ホスト未構築のみを理由としていた) |
+| ログ集約(フェーズ2、WIT-06) | BLOCKED | Windows Event Log / IISログを既存Lokiへ送る経路(Grafana Alloy for Windowsの導入、Lokiのpush APIを安全に受け付けるための認証・network設計)は、Windows側(`ansible/roles/common_windows`のAlloy導入タスク・設定テンプレート)・中央側(`compose.loki-push.yaml.example`+`deploy/nginx/loki-push.conf.example`。専用ポート・Bearer token認証・送信元IP許可リスト)ともコードとして追加済み。ただし実機Windows Server・実機Lokiへの実行実績はゼロ件で、WIT-03と同じDockerホスト↔対象ネットワーク間の実L3到達性が未確立のため引き続きBLOCKED |
 | alert通知(フェーズ2、WIT-07) | BLOCKED | WIT-03(host metrics scrape)の解消が前提のため連鎖してBLOCKED |
 | 複数ターゲットscrape(フェーズ2、WIT-11) | BLOCKED | WIT-03の解消後、`app_node_exporter_targets`の汎用性の実演として有効化 |
 | Windows対応Ansible role(`ansible/roles/common_windows`)の実機検証 | NOT RUN | コードは追加済み(Firewall、IIS、windows_exporter、バックアップ導入を対象)だが実機Windows Serverへの実行実績がゼロ件(Molecule等のCI検証も無し)。WinRMを話せる検証用ホストを用意し、実機での`ansible-playbook`実行結果をevidenceへ記録 |
@@ -127,7 +127,7 @@ Windows版にはLinux版のような単一のcommit SHAで対象ホストの構�
 
 - [ ] フェーズ1の必須試験がすべて`PASS`で、結果票と集計が一致する
 - [ ] フェーズ1に`FAIL` / `BLOCKED` / 必須の`NOT RUN`が残っていない
-- [ ] フェーズ2が「未実装」3点の解消条件とともに`BLOCKED`として明記されている
+- [ ] フェーズ2が「未実装」2点の解消条件とともに`BLOCKED`として明記されている
 - [ ] 設計差異、障害、残存リスク、未解決Issueを説明した
 - [ ] RDP一時許可、一時設定、テストデータを撤去し、最終状態を採録した
 - [ ] ロールバックまたは復元の開始条件と連絡先を共有した
@@ -136,7 +136,7 @@ Windows版にはLinux版のような単一のcommit SHAで対象ホストの構�
 | 判定 | 値 |
 | --- | --- |
 | 作業完了(フェーズ1) | `NOT READY` |
-| 作業完了(フェーズ2) | `BLOCKED`(未実装3点の解消が前提) |
+| 作業完了(フェーズ2) | `BLOCKED`(未実装2点の解消が前提) |
 | 引き渡し可否 | `NOT READY` |
 | 判定理由 | 必須試験と受領情報が未記入 |
 | 引き渡し日時 | `NOT SET` |
