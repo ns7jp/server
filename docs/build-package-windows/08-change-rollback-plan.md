@@ -4,7 +4,7 @@
 
 一般的な変更区分と PR 運用は [`docs/change-management.md`](../change-management.md)を正本とします。本書はこの構築案件(案件ID `SM-WIN-001`、対象ホスト `monitor-win-01`)で「どの状態からどの状態へ変更し、どの条件で戻したか」を引き渡せる形で記録する案件固有の計画兼結果票です。
 
-Linux版([`08-change-rollback-plan.md`](../build-package/08-change-rollback-plan.md))はGitのcommit SHAを基準にAnsibleで再配備するロールバックですが、Windows対応Ansible role(`common_windows`等)がまだ存在しない(`ansible/roles`配下に無い)ため、本書は次の優先順位を正本とします。詳細は[詳細設計書](02-detailed-design.md)「バックアップ・ロールバック」節にも定義しています。
+Linux版([`08-change-rollback-plan.md`](../build-package/08-change-rollback-plan.md))はGitのcommit SHAを基準にAnsibleで再配備するロールバックですが、Windows対応Ansible role(`ansible/roles/common_windows`)はコードとしては追加済みであるものの実機Windows Serverへの実行実績がゼロ件(Molecule等のCI検証も無し)のため、Ansible基準の再配備によるロールバックはまだ実証できていません。本書は次の優先順位を正本とします。詳細は[詳細設計書](02-detailed-design.md)「バックアップ・ロールバック」節にも定義しています。
 
 1. **最優先**: VM/ハイパーバイザーのスナップショット復元(Hyper-Vの`Checkpoint-VM`/`Restore-VMCheckpoint`、VMware等)
 2. スナップショットが無い場合: 変更前に取得したFirewallルール・レジストリ該当キー・IIS設定の個別エクスポートの復元
@@ -128,7 +128,7 @@ ansible-playbook -i inventory/staging.local.yml playbooks/site.yml
 
 ## 6. 設定のロールバック
 
-Windows対応Ansible roleが無いため、Linux版のような単一コマンドでの再配備はできません。次の優先順位で戻し、各手段のあとに構築後確認([試験仕様書](06-test-specification.md)の影響範囲)を再実行します。
+Windows対応Ansible role(`ansible/roles/common_windows`)はコードとしては存在しますが実機実行実績がゼロ件のため、Linux版のような単一コマンドでの再配備はまだできません。次の優先順位で戻し、各手段のあとに構築後確認([試験仕様書](06-test-specification.md)の影響範囲)を再実行します。
 
 1. **最優先: VM/ハイパーバイザーのスナップショット復元。** 3節のGo / No-Go確認時点で取得済みのスナップショットを前提とします。ロールバック開始時点で新規に取得することはできません。
 

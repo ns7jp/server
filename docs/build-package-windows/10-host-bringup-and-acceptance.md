@@ -9,7 +9,7 @@
 - インターネット越しのWindows Defender Firewall(実管理端末からの到達性)
 - フェーズ2(中央監視統合)一式(WIT-03, WIT-05, WIT-06, WIT-07, WIT-11)
 
-**フェーズ1の範囲は、1台の検証用ホストを用意すると大半が一度に埋まります。** これに対してフェーズ2は、検証用ホストの有無に関わらず[要件定義書](00-requirements.md)に記載した3点(Windows対応Ansible role、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)、Grafana Alloy for Windows未導入)が解消しない限り埋まりません。**逆に言えば、検証用ホストが無い限りフェーズ1の項目はどれも埋まりません。**
+**フェーズ1の範囲は、1台の検証用ホストを用意すると大半が一度に埋まります。** これに対してフェーズ2は、検証用ホストの有無に関わらず[要件定義書](00-requirements.md)に記載した3点(Windows対応Ansible roleの実機実行実績がゼロ件であること、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)、Grafana Alloy for Windows未導入)が解消しない限り埋まりません。**逆に言えば、検証用ホストが無い限りフェーズ1の項目はどれも埋まりません。**
 
 この文書は、フェーズ1のホストを「用意してから証跡が出るまで」を最短で通すための手順です。フェーズ2の統合手順は[構築手順書](05-build-procedure.md)5節、統合後の判定基準は[試験仕様書](06-test-specification.md)を参照してください。
 
@@ -47,7 +47,7 @@ OSは[基本設計書](01-basic-design.md)のとおり **Windows Server 2022 Sta
 
 ## 2. 構築
 
-[構築手順書](05-build-procedure.md)をそのまま実行します。Windows対応Ansible roleは存在しないため(要件定義書「未実装」参照)、ここは**すべて「済(手動)」のPowerShell実行**であり、`site.yml` のような自動化された経路ではありません。1節で決めた系統(A/B)に応じて、証明書・Firewallプロファイル・時刻同期先の各手順を読み替えます。
+[構築手順書](05-build-procedure.md)をそのまま実行します。Windows対応Ansible role(`ansible/roles/common_windows`)はコードとしては追加されていますが、実機Windows Serverへの実行実績がゼロ件のため(要件定義書「未実装」参照)、ここは**すべて「済(手動)」のPowerShell実行**であり、`site.yml` のような自動化された経路ではありません。1節で決めた系統(A/B)に応じて、証明書・Firewallプロファイル・時刻同期先の各手順を読み替えます。
 
 ```powershell
 # 対象ホストのビルド番号を先に記録する(証跡の必須項目)
@@ -180,7 +180,7 @@ Register-ScheduledTask -TaskName "server-monitor-soak" -Action $action -Trigger 
 
 | 項目 | 追加で必要なもの |
 | --- | --- |
-| フェーズ2(中央監視統合)全体(WIT-03, WIT-05, WIT-06, WIT-07, WIT-11) | [要件定義書](00-requirements.md)の3点(Windows対応Ansible role、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)、Grafana Alloy for Windows導入)の解消 |
+| フェーズ2(中央監視統合)全体(WIT-03, WIT-05, WIT-06, WIT-07, WIT-11) | [要件定義書](00-requirements.md)の3点(Windows対応Ansible roleの実機実行実績がゼロ件であること、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)、Grafana Alloy for Windows導入)の解消 |
 | 系統B(ADドメイン参加)の実機検証 | 検証用ADドメイン環境(構築は本パックの対象外) |
 | 自己署名でない実TLS証明書 | 内部CA、または独自ドメインとLet's Encrypt相当の仕組み |
 | 組織DNS / 上流firewall | 実際の組織ネットワーク |

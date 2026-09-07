@@ -121,7 +121,8 @@ Gate（ゲート）や証跡の意味は[5. 現場用語ブリッジ](#5-現場�
 > あちらは**構築作業そのものを 2 段階に分ける区切り**です。
 > フェーズ1は `monitor-win-01` 単体で完結する「済（手動）」の範囲です。
 > フェーズ2は 3 点の未解消事項が解消するまで `BLOCKED` の範囲です。
-> 3 点とは、Windows 対応 Ansible role・Docker ホストと対象 Windows ホストの実ネットワーク接続
+> 3 点とは、Windows 対応 Ansible role（`ansible/roles/common_windows` としてコードは追加済みだが
+> 実機 Windows Server への実行実績がゼロ件）・Docker ホストと対象 Windows ホストの実ネットワーク接続
 > および windows_exporter の Firewall 許可（許可先を Docker ホストの本当の IP アドレスに
 > しないと、実は届きません）・Windows 向けログ集約経路です。
 >
@@ -433,8 +434,9 @@ Windows Server を初めて構築する人が、専門用語を専門用語の�
 監視対象として追加登録する案件です。
 
 構築は [フェーズ1（ホスト単体構築）] と [フェーズ2（中央監視統合）] の2段階に
-分けており、フェーズ1は Ansible 化されていない [PowerShell による手動手順] で
-完結します。フェーズ2は [Windows対応Ansible roleの不在、Dockerホストと対象
+分けており、フェーズ1は Ansible role のコードは追加済みだが実機実行実績が
+ゼロ件のため引き続き [PowerShell による手動手順] で完結します。フェーズ2は
+[Windows対応Ansible roleの実機実行実績がゼロ件であること、Dockerホストと対象
 Windowsホストの実ネットワーク接続およびwindows_exporterのFirewall許可の未確立、
 Windows向けログ集約経路の不在] という3点が解消するまで [BLOCKED] として
 明記しています。
@@ -458,7 +460,7 @@ Windows向けログ集約経路の不在] という3点が解消するまで [BL
 | このパックは実案件の実績 | `SM-WIN-001` は、現場と同じ形式で作った練習用の文書一式であり、実機で構築した実績ではありません。[06 試験仕様書](06-test-specification.md)の結果欄はすべて `NOT RUN` のままです |
 | 番号順（00→11）が読む順 | 番号は作られた順です。初めて読むときは「[6. 読む順とかかる時間の目安](#6-読む順とかかる時間の目安)」の順番を推奨します |
 | フェーズ2が `BLOCKED` なのは `compose.yaml` の `monitoring` ネットワークが `internal: true` だから | それは正確ではありません。Prometheus コンテナは `internal: true` の付かない `host-access` ネットワークにも接続されており、実機の nftables ルールを確認すると外へ出ていく経路（NAT）はすでに存在します。実際にまだ確立していないのは、Docker ホストと Windows Server の実ネットワーク接続、および windows_exporter の Firewall が Docker ホストの本当の IP アドレスを許可しているかの 2 点で、どちらも `NOT SET` です |
-| Windows版もLinux版と同じくAnsibleで全自動構築される | Windows対応のAnsible roleは未実装のため、本パックの構築手順（05）はほぼ全て「済（手動）」のPowerShell手順です。唯一の「済（自動）」は中央host側の`app_node_exporter_targets`への1行追加だけです |
+| Windows版もLinux版と同じくAnsibleで全自動構築される | `ansible/roles/common_windows`としてWindows対応roleのコードは追加されていますが、実機Windows Serverへの実行実績がゼロ件（Molecule等のCI検証も無し）のため、本パックの構築手順（05）は引き続きほぼ全て「済（手動）」のPowerShell手順です。唯一の「済（自動）」は中央host側の`app_node_exporter_targets`への1行追加だけです |
 
 ## 次に読む文書
 

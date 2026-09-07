@@ -1,0 +1,22 @@
+---
+# Windows Server Backupにはansible.windows/community.windowsの専用moduleが
+# 無いため、PowerShellを直接実行する。Set-WBPolicyは現在のpolicyを丸ごと
+# 置き換える設計であり、同じ入力で2回実行しても結果状態は同じになる想定だが、
+# 「変更なし」を検出するchanged_whenは実装していない(=常にchangedと報告する)。
+# WIT-02(冪等性)の実機確認では、この点を「サービス再作成やFirewallルール
+# 重複のような不要な副作用が無いこと」で判定し、Ansibleのchanged表示とは
+# 区別すること。
+- name: Install Windows Server Backup feature
+  ansible.windows.win_feature:
+    name: Windows-Server-Backup
+    state: present
+
+- name: Register the daily backup policy (03:30 Asia/Tokyo既定、保持はストレージ容量依存のローテーション)
+  ansible.windows.win_shell: |
+    $policy = New-WBPolicy
+    $target = New-WBBackupTarget -VolumePath "{{ common_windows_backup_target_volume }}"
+    Add-WBBackupTarget -Policy $policy -Target $target
+    Add-WBFileSpec -Policy $policy -FileSpec (New-WBFileSpec -FileSpec "C:\inetpub")
+    Set-WBSchedule -Policy $policy -Schedule "{{ common_windows_backup_schedule_time }}"
+    Set-WBPolicy -Policy $policy
+  changed_when: true

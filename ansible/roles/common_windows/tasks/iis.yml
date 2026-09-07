@@ -1,0 +1,16 @@
+---
+- name: Install IIS Web-Server features
+  ansible.windows.win_feature:
+    name: "{{ common_windows_iis_features }}"
+    state: present
+    include_management_tools: true
+  register: common_windows_iis_install
+
+- name: Reboot if the IIS feature install requires it
+  ansible.windows.win_reboot:
+  when: common_windows_iis_install.reboot_required | default(false)
+
+- name: Publish the health check endpoint (WIT-04)
+  ansible.windows.win_copy:
+    content: "{{ common_windows_iis_healthcheck_content }}"
+    dest: "{{ common_windows_iis_healthcheck_path }}"

@@ -27,7 +27,7 @@
 | 作業結果 | `NOT READY` |
 | 関連 Issue / PR | `NOT SET` |
 
-Windows版にはLinux版のような単一のcommit SHAで対象ホストの構成全体を再現する手段がありません(Windows対応Ansible roleが`ansible/roles`配下に無いため)。そのため対象ホストの状態識別子はチェックポイント名または`OsBuildNumber`で記録し、中央側(`monitor-01`)への変更だけを既存のGit/Ansible基準のcommit SHAで記録します。両者を混同しないでください。
+Windows版にはLinux版のような単一のcommit SHAで対象ホストの構成全体を再現する手段がまだありません(Windows対応Ansible role`ansible/roles/common_windows`はコードとしては存在しますが、実機Windows Serverへの実行実績がゼロ件のため)。そのため対象ホストの状態識別子はチェックポイント名または`OsBuildNumber`で記録し、中央側(`monitor-01`)への変更だけを既存のGit/Ansible基準のcommit SHAで記録します。両者を混同しないでください。
 
 ## 2. 作業前判定
 
@@ -106,7 +106,7 @@ Windows版にはLinux版のような単一のcommit SHAで対象ホストの構�
 | ログ集約(フェーズ2、WIT-06) | BLOCKED | Windows Event Log / IISログを既存Lokiへ送る経路(Grafana Alloy for Windowsの導入、Lokiのpush APIをloopback以外からも安全に受け付けるための認証・network設計)が無い(現状未実装) |
 | alert通知(フェーズ2、WIT-07) | BLOCKED | WIT-03(host metrics scrape)の解消が前提のため連鎖してBLOCKED |
 | 複数ターゲットscrape(フェーズ2、WIT-11) | BLOCKED | WIT-03の解消後、`app_node_exporter_targets`の汎用性の実演として有効化 |
-| Windows対応Ansible role(`common_windows`等)の追加 | NOT READY | `ansible/roles`配下へWindows対応roleを新設し、フェーズ1の手動PowerShell手順を自動化するかを検討 |
+| Windows対応Ansible role(`ansible/roles/common_windows`)の実機検証 | NOT RUN | コードは追加済み(Firewall、IIS、windows_exporter、バックアップ導入を対象)だが実機Windows Serverへの実行実績がゼロ件(Molecule等のCI検証も無し)。WinRMを話せる検証用ホストを用意し、実機での`ansible-playbook`実行結果をevidenceへ記録 |
 | ADドメイン参加(系統B)での実機検証 | NOT RUN | 既存ADドメインを用意し、系統Bの差分([要件定義書](00-requirements.md)/[基本設計書](01-basic-design.md)参照)を実機で確認 |
 
 ## 8. 引き渡し物

@@ -1,0 +1,45 @@
+---
+# バージョン・SHA256が未設定(実機決定前)の間は、ハッシュ未検証でのインストールを
+# 避けるため何もしない(WUT-03: ハッシュ検証を経ない導入は行わない)。
+- name: Skip windows_exporter install until version and SHA256 are set
+  ansible.builtin.debug:
+    msg: >-
+      common_windows_exporter_version/common_windows_exporter_sha256 が未設定のため、
+      windows_exporter の導入をskipします。NOT SET のまま実機決定を待ちます。
+  when: >-
+    common_windows_exporter_version | length == 0
+    or common_windows_exporter_sha256 | length == 0
+
+- name: Manage windows_exporter (version and SHA256 provided)
+  when: >-
+    common_windows_exporter_version | length > 0
+    and common_windows_exporter_sha256 | length > 0
+  block:
+    - name: Download windows_exporter MSI with hash verification (WUT-03)
+      ansible.windows.win_get_url:
+        url: >-
+          {{ common_windows_exporter_release_base }}/v{{ common_windows_exporter_version
+          }}/windows_exporter-{{ common_windows_exporter_version }}-amd64.msi
+        dest: 'C:\Windows\Temp\windows_exporter.msi'
+        checksum: "{{ common_windows_exporter_sha256 }}"
+        checksum_algorithm: sha256
+      vars:
+        common_windows_exporter_release_base: >-
+          https://github.com/prometheus-community/windows_exporter/releases/download
+
+    - name: Install windows_exporter with the configured collectors
+      ansible.windows.win_package:
+        path: 'C:\Windows\Temp\windows_exporter.msi'
+        arguments: "ENABLED_COLLECTORS={{ common_windows_exporter_collectors }}"
+        state: present
+
+    - name: Ensure the windows_exporter service is running
+      ansible.windows.win_service:
+        name: windows_exporter
+        state: started
+        start_mode: auto
+
+    - name: Remove the downloaded installer
+      ansible.windows.win_file:
+        path: 'C:\Windows\Temp\windows_exporter.msi'
+        state: absent

@@ -22,7 +22,7 @@
 > に記載した次の「未実装」3点が解消するまで、実行しても前提が揃わず `BLOCKED` になることが
 > 設計時点で分かっています。
 >
-> 1. `ansible/roles` 配下にWindows対応role(`common_windows`等)が無く、Ansibleでの自動構築ができない
+> 1. `ansible/roles/common_windows` としてWindows対応roleのコードは追加済みだが、実機Windows Serverに対して一度も実行されておらず(Molecule等のCI検証も無い)、Ansibleでの自動構築が実証できていない
 > 2. Prometheusコンテナは `monitoring`(`internal: true`)に加え `host-access`(internal指定なしの
 >    bridge)にも接続されており、nftables実機検証でMASQUERADE/`DOCKER-FORWARD` acceptを確認済みの
 >    ため、`internal: true` 単体は外部egressを塞いでいない。未確立なのは、Dockerホストと対象
@@ -141,7 +141,7 @@ WNW-09には、Linux版のNW-09との非対称性があります。Linux版は�
 - フェーズ2必須ID: WIT-03, WIT-05, WIT-06, WIT-07, WIT-11(「未実装」3点の解消後に必須化。ただしWIT-05はprobe対象汎用化のコード実装が完了しており、対象ホスト構築後は先行して`NOT RUN`から実施できます)
 - フェーズ1の必須IDに `FAIL` または `BLOCKED` が1件でもあれば、フェーズ1(ホスト単体構築)は完了としません。
 - フェーズ1の必須IDに `NOT RUN` が残る場合も、フェーズ1は完了としません。
-- フェーズ2必須IDのうちWIT-03/06/07/11は、未解消の3点(Windows対応Ansible role、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)、Windows Event Log / IISログをLokiへ送る経路)が解消するまで `BLOCKED` であることを前提とします。`BLOCKED` のままであること自体はフェーズ1の完了判定には影響しません。WIT-05はprobe対象汎用化のコード側の制約が解消済みのため、`BLOCKED`ではなく通常の`NOT RUN`として扱い、対象ホスト構築後に実施します。
+- フェーズ2必須IDのうちWIT-03/06/07/11は、未解消の3点(Windows対応Ansible roleの実機実行実績、Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)、Windows Event Log / IISログをLokiへ送る経路)が解消するまで `BLOCKED` であることを前提とします。`BLOCKED` のままであること自体はフェーズ1の完了判定には影響しません。WIT-05はprobe対象汎用化のコード側の制約が解消済みのため、`BLOCKED`ではなく通常の`NOT RUN`として扱い、対象ホスト構築後に実施します。
 - 未実装3点の解消後もWIT-03/06/07/11が `NOT RUN` のまま残る場合、また対象ホスト構築後もWIT-05が `NOT RUN` のまま残る場合は、フェーズ2(中央監視統合)は完了としません。
 - 構築案件全体の完了は、フェーズ1の必須試験がすべて `PASS` し、かつフェーズ2必須IDがすべて `PASS`(WIT-03/06/07/11は、未実装3点の解消条件とともに `BLOCKED` として明記されている状態も許容)である状態を指します。揃って初めて[作業結果・引き渡し報告書](11-work-result-report.md)へ記載できます。
 - 結果はこの原本を直接上書きせず、日付付きの証跡ファイルへコピーして保存します。命名・記録ルールは[検証証跡台帳](../evidence/README.md)に合わせます。

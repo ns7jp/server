@@ -10,11 +10,13 @@
 | --- | --- |
 | 済(自動) | 既存の Ansible 機能で今すぐ実行できるもの。`ansible/roles/app/defaults/main.yml` の `app_node_exporter_targets` 変数へ Windows ホストを 1 行追加し、中央 host 側で `site.yml` を再適用する経路のみが該当します |
 | 済(手動) | Ansible 化はされていないが、本パックの PowerShell 手順で今すぐ実施できるもの(OS 設定、Firewall、IIS、windows_exporter 導入、バックアップ等) |
-| 未実装 | 本パックは設計のみを示しており、コードが無いもの(Windows 対応 Ansible role、Windows Event Log/IIS ログを Loki へ送る経路)。あわせて、Docker ホストと対象 Windows ホストの実ネットワーク接続、および windows_exporter の Firewall 許可(Docker ホストの実 IP 向け)も未確立(`NOT SET`)であり、これはコード未実装ではなく実機での接続・許可設定が未検証という意味で、他の2点と合わせて計3点がフェーズ 2 を `BLOCKED` にしています |
+| 未実装 | 本パックは設計のみを示しており、コードが無いもの(Windows Event Log/IIS ログを Loki へ送る経路)。あわせて、Docker ホストと対象 Windows ホストの実ネットワーク接続、および windows_exporter の Firewall 許可(Docker ホストの実 IP 向け)も未確立(`NOT SET`)であり、これはコード未実装ではなく実機での接続・許可設定が未検証という意味で、他の1点と合わせて計3点がフェーズ 2 を `BLOCKED` にしています(Windows 対応 Ansible role は `ansible/roles/common_windows` としてコード自体は追加済みですが、実機 Windows Server に対する実行実績がゼロ件のため、依然として3点目として数えます。下記2026-09-07追記参照) |
 
 構築は 2 段階のフェーズに分かれます。フェーズ 1(ホスト単体構築)は「済(手動)」の範囲で monitor-win-01 単体として完結し、フェーズ 2(中央監視統合)は上記「未実装」3 点の解消まで `BLOCKED` として扱います。
 
 > **2026-09-04 追記:** `prometheus.yml.j2` の `blackbox-probe-health` job を `app_blackbox_probe_targets` 変数(`ansible/roles/app/defaults/main.yml`)で汎用化し、IIS の health エンドポイント等を node_exporter targets と同じ「1 行足すだけ」の形で probe 対象へ追加できるようにしました(FR-04)。上記「未実装」3 点(Windows 対応 Ansible role、実ネットワーク接続・Firewall 許可、ログ集約経路)には含まれない別の制約でしたが、コードとしては解消済みです。ただし対象ホスト(monitor-win-01)自体がまだ構築されておらず、実機 windows_exporter/IIS への scrape・probe 成功実績もまだ無いため、`WIT-05` の結果は引き続き `NOT RUN` です(「コードが実装済みであること」と「実機で検証済みであること」は別、[検証証跡台帳](../evidence/README.md)の原則どおり)。詳細は[試験仕様書・結果票](06-test-specification.md)を参照してください。
+>
+> **2026-09-07 追記:** Windows 対応 Ansible role のスキャフォールドを `ansible/roles/common_windows` として追加しました(Firewall ルール、IIS 導入、windows_exporter 導入・ハッシュ検証、Windows Server Backup 登録を対象)。`ansible/playbooks/site.yml` に `windows` inventory group 向けの play を追加し、既存の `staging.yml`/`ci.yml`(`windows` group 未定義)には一切影響しないことを `--syntax-check` で確認済みです。ただし次の制約が残ります。(1) 対象ホストの初回コンピューター名設定・WinRM HTTPS リスナー有効化は WinRM 経由の Ansible では実行できず、引き続きハイパーバイザーのコンソールから手動で行う必要があります(05-build-procedure.md 0〜2節)。(2) このロールは実機 Windows Server に対して一度も実行されておらず、WinRM を話せるテスト対象がこの開発環境に無いため Molecule 等の CI 検証もありません。したがって「Windows 対応 Ansible role が無い」という制約は「コードは存在するが実機実行実績ゼロ件」に変わっただけで、フェーズ2を塞ぐ3点のうちの1点として引き続き扱います。`WIT-01`/`WIT-02` の Ansible 経由での実施実績は `NOT RUN` のままです。
 
 ## 2. 案件概要
 
@@ -24,7 +26,7 @@
 | 利用者 | Windows Server を構築・運用する担当者(既存 Linux 監視基盤の運用者と共通) |
 | 対象環境 | Windows Server 2022 Standard(Desktop Experience 基準)、検証用 VM 1 台、論理ホスト名 monitor-win-01 |
 | 監視対象アプリ | IIS(Web サーバー機能)で公開する検証用サイト。Linux 版における Nginx + Flask アプリの「監視される側」に相当 |
-| 構築方式 | フェーズ 1 は本パックの PowerShell 手順による手動構築(Windows 対応 Ansible role は未実装)。フェーズ 2 は中央監視 host 側の既存 Ansible 機能(`app_node_exporter_targets`)への 1 行追加のみ「済(自動)」 |
+| 構築方式 | フェーズ 1 は本パックの PowerShell 手順による手動構築が正本(`ansible/roles/common_windows` としてAnsible role のコードはあるが実機実行実績ゼロ件のため、自動構築の実証はまだできていない)。フェーズ 2 は中央監視 host 側の既存 Ansible 機能(`app_node_exporter_targets`)への 1 行追加のみ「済(自動)」 |
 | 中央監視基盤 | 既存 Linux host(論理名 monitor-01、[パラメータシート](../build-package/03-parameter-sheet.md)参照)を変更せず、Windows ホストからのメトリクス収集・ログ集約先として拡張する対象 |
 | 提供機能 | IIS 監視対象サイトの稼働、windows_exporter によるホストメトリクス収集(フェーズ 2)、IIS 到達性の blackbox probe(フェーズ 2)、Windows Event Log/IIS ログの集約(フェーズ 2)、バックアップと復旧手順 |
 | 引き渡し単位 | 設計書、パラメータシート、構築手順、試験結果、作業結果報告、既存の運用・変更手順([運用手順](../runbooks/README.md)、[変更管理](../change-management.md))への追記差分 |
@@ -69,7 +71,7 @@
 - 複数の Windows Server ホストによる冗長構成・負荷分散・フェイルオーバーは対象外です。監視対象ホストは monitor-win-01 の 1 台です。
 - Windows Server 2022 Server Core は構成の対応を検討する課題ですが、本案件の基準 VM は Desktop Experience です。Server Core での実測は個別の証跡が必要です。
 - クラウド(Azure/AWS 等)の Windows Server インスタンスでの構築は[立ち上げ環境の選択肢](10-host-bringup-and-acceptance.md)に示す選択肢の一つに過ぎず、`apply`/`destroy` 相当の実行証跡がない限り本案件の構築実績には含めません。
-- フェーズ 2(中央監視統合)に必要な 3 点(Windows 対応 Ansible role、Docker ホストと対象 Windows ホストの実ネットワーク接続および windows_exporter の Firewall 許可(Docker ホストの実 IP 向け)、Windows 向けログ集約経路)は「対象外」ではなく「解消条件付きの `BLOCKED`」として扱います。本案件の範囲には含まれますが、現時点では実行できません。
+- フェーズ 2(中央監視統合)に必要な 3 点(Windows 対応 Ansible role の実機実行実績、Docker ホストと対象 Windows ホストの実ネットワーク接続および windows_exporter の Firewall 許可(Docker ホストの実 IP 向け)、Windows 向けログ集約経路)は「対象外」ではなく「解消条件付きの `BLOCKED`」として扱います。本案件の範囲には含まれますが、現時点では実行できません。
 
 ## 6. 前提条件
 

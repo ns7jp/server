@@ -1,6 +1,6 @@
 # 詳細設計書
 
-本書は[基本設計書](01-basic-design.md)を受けて、monitor-win-01(Windows Server 2022 Standard、Desktop Experience基準)側のコンポーネント構成・配備手順・アクセス制御・ログ監視・バックアップ/ロールバックを定義します。中央監視host(論理名 monitor-01)側の構成は変更しません。フェーズ1(ホスト単体構築)とフェーズ2(中央監視統合)の区分は[要件定義書](00-requirements.md)のとおりで、フェーズ2は「未実装」3点が解消するまで`BLOCKED`です。
+本書は[基本設計書](01-basic-design.md)を受けて、monitor-win-01(Windows Server 2022 Standard、Desktop Experience基準)側のコンポーネント構成・配備手順・アクセス制御・ログ監視・バックアップ/ロールバックを定義します。中央監視host(論理名 monitor-01)側の構成は変更しません。フェーズ1(ホスト単体構築)とフェーズ2(中央監視統合)の区分は[要件定義書](00-requirements.md)のとおりで、フェーズ2は「未実装」3点(うち1点目は`ansible/roles/common_windows`としてコードは追加済みだが実機Windows Serverへの実行実績がゼロ件という状態)が解消するまで`BLOCKED`です。
 
 ## コンポーネント設計
 
@@ -18,7 +18,7 @@
 
 ## 配備設計
 
-フェーズ1はAnsible role化されていないため、[構築手順書](05-build-procedure.md)のPowerShell手順による「済(手動)」が中心です。系統A(ワークグループ)/系統B(ADドメイン参加)の差分は[基本設計書](01-basic-design.md)および[パラメータシート](03-parameter-sheet.md)を正本とし、本書では手順の位置づけのみ示します。
+フェーズ1は、`ansible/roles/common_windows`としてAnsible role化はされているものの実機Windows Serverへの実行実績がゼロ件(Molecule等のCI検証も無し)のため、[構築手順書](05-build-procedure.md)のPowerShell手順による「済(手動)」が引き続き正本です。対象ホストの初回コンピューター名設定・WinRM HTTPSリスナー有効化は、WinRM経由のAnsibleでは接続できない新規VMに対する作業であるためこのroleでは自動化できず、コンソールからの手動作業が前提のままです(05-build-procedure.md 0〜2節)。系統A(ワークグループ)/系統B(ADドメイン参加)の差分は[基本設計書](01-basic-design.md)および[パラメータシート](03-parameter-sheet.md)を正本とし、本書では手順の位置づけのみ示します。
 
 1. **OS初期設定(済・手動)**: コンピューター名(monitor-win-01相当)、timezone(Asia/Tokyo)、ローカルAdministratorの既定名からの変更、PowerShell 7.4系の追加導入、Windows Updateの設定を行います。系統Aはローカルアカウント運用、系統Bは既存ADドメインへの参加が前提です(ADドメイン自体の構築は対象外)。
 2. **Firewall設定(済・手動)**: Windows Defender FirewallをDefault Inbound Blockで確認し、WinRM(5986/tcp、管理元CIDR限定)、IIS(80/443/tcp、内部/管理ネットワークのみ)、windows_exporter(9182/tcp、中央Prometheus hostのIPのみ)を個別に許可します。RDP(3389/tcp)は既定Disableのままとします。WinRM HTTPSリスナー用証明書もこの段階で作成・バインドします。
@@ -63,7 +63,7 @@ WinRM/IIS/windows_exporterのFirewallルールは、許可送信元を管理元C
 - Windows Server Backup機能(`wbadmin`)を導入し、IISサイトの内容・設定(`web.config`等)、Firewallルールのエクスポート(`netsh advfirewall export`)、windows_exporterのサービス定義をバックアップ対象とします。
 - スケジュールは毎日03:30(Asia/Tokyo)、Task Schedulerに登録します。保持世代は14日(Linux版の`backup_retention_days`と同じ値)です。
 - 復元試験(WIT-09)は別ボリューム/別ホストへ復元し、内容が一致することを確認する試験です。バックアップの日次取得設定そのものとは別に管理し、現時点でWIT-09は`NOT RUN`です([検証証跡台帳](../evidence/README.md)参照)。
-- Windows対応Ansible roleが無いため、構成変更のロールバックは優先順位順に次の手段を使います。
+- Windows対応Ansible role(`ansible/roles/common_windows`)はコードとして存在しますが、実機Windows Serverへの実行実績がゼロ件で自動ロールバック経路としての実証もまだ無いため、構成変更のロールバックは優先順位順に次の手段を使います。
   1. VM/ハイパーバイザーのスナップショット復元(Hyper-Vの`Checkpoint-VM`/`Restore-VMCheckpoint`、VMware等)を最優先の手段とします。取得タイミングは変更直前です。
   2. スナップショットが無い場合は、変更前に取得したFirewallルールのエクスポート(`netsh advfirewall export`)、レジストリの該当キーのエクスポート、IIS設定のエクスポート(`appcmd add backup`)を個別に戻します。
   3. データ破損時はWindows Server Backupからの復元(上記バックアップ設計を参照)を使用します。
