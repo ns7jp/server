@@ -63,6 +63,7 @@
 | 「イントラネット Microsoft 更新サービスの場所を指定する」 | 有効。検出サービスの場所・統計サーバーの場所の両方に`http://wsus-01.corp.example.test:8530`を設定 | `NOT RUN` | 同上 |
 | 「クライアント側ターゲティングを有効にする」 | 有効。対象グループ名`Servers`。WSUSコンソール側で作成するコンピューターグループ名と一致させる必要がある | `NOT RUN` | 同上 |
 | 自動更新の検出頻度 | 既定値のまま変更しない | — | — |
+| WSUSサーバー側の割り当て方式(`TargetingMode`) | `Client`(クライアント側ターゲティング)。**既定は`Server`であり、そのままではGPOの`TargetGroupEnabled`/`TargetGroup`が無視され、クライアントは`割り当てられていないコンピューター`へ入る。** GPO作成前にサーバー側を切り替える | `NOT RUN` | `(Get-WsusServer).GetConfiguration().TargetingMode` |
 | GPO適用の即時反映コマンド | `gpupdate /force` | `NOT RUN` | 対象ホスト |
 | GPO適用状況の確認コマンド | `gpresult /r /scope computer`(または`/h`でHTMLレポート出力) | `NOT RUN` | 対象ホスト |
 | GPO適用確認ログ | イベントログ「グループポリシー操作ログ」(`Microsoft-Windows-GroupPolicy/Operational`) | `NOT RUN` | `Get-WinEvent -LogName "Microsoft-Windows-GroupPolicy/Operational"` |
@@ -131,7 +132,7 @@
 | WSUSロール(UpdateServices) | OS付属機能。個別のversion pinningは行わない | 本節 |
 | WID(Windows Internal Database) | OS付属機能。バージョンはOSに付随 | 本節 |
 | IIS(WSUS管理サイトのホスト) | OS付属Web-Server機能 | 本節 |
-| windows_exporter | `NOT SET`(実機決定時にGitHub ReleasesのMSIとそのSHA256を記録して固定する。[Windows版パック](../build-package-windows/03-parameter-sheet.md)・[AD版パック](../build-package-ad/03-parameter-sheet.md)と同じ考え方) | 「実機記入欄」参照 |
+| windows_exporter | `NOT SET`(実機決定時にGitHub ReleasesのMSIとそのSHA256を記録して固定する。[Windows版パック](../build-package-windows/03-parameter-sheet.md)・[AD版パック](../build-package-ad/03-parameter-sheet.md)と同じ考え方)。**有効化するコレクター名はバージョンにより変わる。** 0.25以降で`cs`は廃止され`system`・`memory`へ分割された。導入前に`windows_exporter.exe --help`で有効な名前を確認する | 「実機記入欄」参照 |
 | Windows Server Backup | OS付属機能(`wbadmin`) | 「バックアップ設計」節 |
 | WSUSコンソール用レポート表示ランタイム | `NOT SET`(Windows Server 2016以降のWSUSコンソールでレポート機能を使うには、別途レポート表示用ランタイムの追加インストールが必要になる場合がある。NFR-08) | [構築手順書](05-build-procedure.md) |
 
@@ -142,8 +143,8 @@
 | アップストリームサーバー | このWSUSサーバーが最初かつ唯一のWSUSサーバーであるため、レプリカ/ダウンストリーム構成は取らず、Microsoft Updateを直接の同期元とする(スタンドアロン/ルート) | [基本設計書](01-basic-design.md) |
 | プロキシ | ラボでは直接接続とし、プロキシ経由の設定は対象外 | 同上 |
 | 同期対象言語 | 英語・日本語のみ(不要な言語は同期しない。コンテンツストア容量を抑えるための判断) | WSUSコンソール「オプション」→「更新プログラムファイルと言語」 |
-| 同期対象製品 | Windows Server 2022、Windows 11のみ(ラボで検証する製品に絞り、無制限に同期しない) | WSUSコンソール「オプション」→「製品と分類」 |
-| 同期対象分類 | Critical Updates、Security Updates、Updates、Update Rollupsのみ。Drivers・Feature Packs等は除外(ドライバー同期はコンテンツが肥大化しやすく、サーバー用途では基本的に不要) | 同上 |
+| 同期対象製品 | Windows Server 2022、Windows 11のみ(ラボで検証する製品に絞り、無制限に同期しない)。**WSUSカタログ上のWindows Server 2022の製品名は`Microsoft Server operating system-21H2`であり、「Windows Server 2022」というタイトルの製品は存在しない。** 親カテゴリ`Windows`が既定で有効なことがあるため解除する | WSUSコンソール「オプション」→「製品と分類」 |
+| 同期対象分類 | Critical Updates、Security Updates、Updates、Update Rollupsのみ。Drivers・Feature Packs等は除外(ドライバー同期はコンテンツが肥大化しやすく、サーバー用途では基本的に不要)。既定で有効な**Definition Updates(定義更新プログラム)は明示的に解除する**(Defenderの定義は1日複数回公開されコンテンツが急速に肥大化するため)。**分類のタイトルはOSロケールに依存するため、指定はGUIDで行う**(Critical=`e6cf1350-c01b-414d-a61f-263d14d133b4`、Security=`0fa1201d-4330-4fa8-8ae9-b877473b6441`、Updates=`cd5ffd1e-e932-4e3a-bf74-18bf0b1bbd83`、Rollups=`28bc880e-0592-4cbf-8f95-c79b17911d5f`) | 同上 |
 | 同期スケジュール | 毎日01:00(Asia/Tokyo)の自動同期 | WSUSコンソール「オプション」→「同期スケジュール」 |
 | 初回同期の所要時間 | 選択した製品・分類のメタデータ取得だけでも相応の時間がかかる。具体的な所要時間は断定しない | [構築手順書](05-build-procedure.md) |
 
@@ -159,7 +160,8 @@ ADの組織単位(OU)と、WSUSコンソール内の「コンピューターグ�
 | 自動承認ルールの条件 | 分類がCritical UpdatesまたはSecurity Updates | `NOT RUN` | 同上 |
 | 自動承認ルールの対象製品 | Windows Server 2022 | `NOT RUN` | 同上 |
 | 自動承認ルールの対象グループ | `Pilot` | `NOT RUN` | 同上 |
-| 自動承認ルールのスケジュール化 | **有効化しない**。手動実行にとどめる。無人承認による意図しない適用を避ける安全側の判断 | `NOT RUN` | 同上 |
+| 自動承認ルールのスケジュール化 | **有効化しない**(`Enabled = false`)。手動実行にとどめる。無人承認による意図しない適用を避ける安全側の判断。ただし**`Enabled = false`のルールは`ApplyRule()`でも実行できない**ため、手動実行の直前だけ有効化し実行後ただちに無効へ戻す運用とする | `NOT RUN` | 同上 |
+| 承認前のダウンロード量見積もり | **必須**。承認はコンテンツ取得を即座に開始させるため、`GetContentDownloadProgress().TotalBytesToDownload`で承認前後を比較し、許容量を超える場合は`Stop-Service WsusService`で中断する | `NOT RUN` | [構築手順書](05-build-procedure.md)9.1節 |
 | それ以外の更新プログラム | 手動承認 | `NOT RUN` | WSUSコンソール「更新プログラム」ノード |
 
 ## 監視・ログ
@@ -177,7 +179,7 @@ ADの組織単位(OU)と、WSUSコンソール内の「コンピューターグ�
 
 | 項目 | 設定値 | 正本 |
 | --- | --- | --- |
-| バックアップ対象(1) SUSDB(WID) | WIDのローカル名前付きパイプ経由でのバックアップ、または対象ホスト全体をWindows Server Backupでシステム状態含めて取得する方式のいずれかを設計として示し、実機で選定する | [詳細設計書](02-detailed-design.md) |
+| バックアップ対象(1) SUSDB(WID) | WIDのローカル名前付きパイプ経由でのバックアップ、または対象ホスト全体をWindows Server Backupでシステム状態含めて取得する方式のいずれかを設計として示し、実機で選定する。**WID単体構成には`sqlcmd.exe`が同梱されない**ため、名前付きパイプ経由の場合は.NET `System.Data.SqlClient`から`np:\.\pipe\MICROSOFT##WID	sql\query`へ接続する。**WIDは別名データベースへの復元をスキーマ検証で拒否する**ため、復元検証は`SUSDB`自身への`WITH REPLACE`で行う | [詳細設計書](02-detailed-design.md) |
 | バックアップ対象(2) コンテンツストア | フォルダー全体(`D:\WSUS\WSUSContent`) | 同上 |
 | バックアップ対象(3) IIS構成 | WSUS管理サイトの構成一式 | 同上 |
 | クリーンアップウィザード相当コマンドレット | `Invoke-WsusServerCleanup` | [構築手順書](05-build-procedure.md) |
