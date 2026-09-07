@@ -2,6 +2,8 @@
 
 [実行手順](../build-package-dhcp/09-network-validation-procedure.md)に沿って、[`labs/dhcp-lab/topology.sh`](../../labs/dhcp-lab/topology.sh)と同じ構成のnetwork namespaceラボ（AI支援セッションのサンドボックスコンテナ内）で実施しました。独立した物理／VPSホスト・実VMではありません。範囲の詳細は[本体の証跡ファイル](2026-09-04-dhcp-build-validation-netns-lab.md)冒頭の「この証跡が示す範囲」を参照してください。
 
+> **その後の追補**: 2026-09-07に、本ファイルが`SKIP-ENV`としていたDNW-03（`dhcp-01`自身の名前解決）を実際に構築・実測しPASSへ切り替えました。詳細は[2026-09-07追補](2026-09-07-dhcp-dit10-dnw03-followup.md)を参照してください。
+
 ## 基本情報
 
 | 項目 | 値 |

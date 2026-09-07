@@ -3,6 +3,8 @@
 [試験仕様書・結果票](../build-package-dhcp/06-test-specification.md)の原本をコピーし、`ansible/roles/dhcp_server/` + `ansible/playbooks/dhcp.yml`を実際のホストへ適用した結果を記入したものです。原本は`NOT RUN`のまま保持し、実施結果はこの日付付きファイルへ記録します。
 
 > **他の同日付証跡との関係**: 同じ2026-09-04に、別のAI支援セッションが独立に本パックの実機検証を行った記録が[`2026-09-04-dhcp-build-validation.md`](2026-09-04-dhcp-build-validation.md)（Docker bridge越しにセッション自身のコンテナを`dhcp-01`役として使う構成、`common` roleは安全上の理由で未適用、31 ID中22 ID `PASS`）にあります。本ファイル（`-netns-lab`）は、`labs/routing/`と同じ方式でnetwork namespace + vethの隔離ラボ（`labs/dhcp-lab/`）を別途組み、`common`ロールも含めて適用した、もう一つの独立した実機検証記録です（31 ID中27 ID `PASS`）。両者は互いを置き換えるものではなく、異なる構成・スコープでの並行した実測として両方保持しています。
+>
+> **その後の追補**: 2026-09-07に、本ファイルが`SKIP-ENV`としていたDIT-10（監視統合）・DNW-03（`dhcp-01`自身の名前解決）を、同じnetnsラボを再構築したうえで実際に構築・実測しPASSへ切り替えました。詳細は[2026-09-07追補](2026-09-07-dhcp-dit10-dnw03-followup.md)を参照してください。本ファイル自体（2026-09-04時点の判定）は当時の事実として上書きしていません。
 
 > **この証跡が示す範囲**: 独立した物理／VPSホストや`dhcp-01`に相当する実VMではなく、**AI支援セッションのサンドボックスコンテナ内にnetwork namespaceで組んだラボ**（[`labs/dhcp-lab/topology.sh`](../../labs/dhcp-lab/topology.sh)と同じ構成、`dhcp01`＝DHCPサーバー役、`client01`＝クライアント役、`mgmt-ctrl`＝管理端末役）に対する実施記録です。SSH・Ansible適用・DORA・固定予約・プール枯渇・RENEW・再起動・停止復旧・バックアップ復元・rogue DHCP確認はすべて実コマンドと実出力で確認していますが、次の点でLinux/AD/Zabbixパックの実機検証と条件が異なります。
 >
