@@ -99,6 +99,8 @@ flowchart LR
   **FSMO役割の奪取(seize)も2026-09-04に実施済み(ラボ範囲)**です([証跡](../evidence/2026-09-04-ad-fsmo-seize.md))。`ad-dc01`が復旧不能になったと想定し、`ad-dc02`から`-Force`でドメインレベル3役割を強制奪取、`ntdsutil`のメタデータクリーンアップで`ad-dc01`をADから完全に除去しました。単一DC(`ad-dc02`)でDC・GC・DNS・KDCの全機能が正常に稼働することを確認し、`ad-dc01`のVM自体も削除しています。これにより、本節に記載した発展課題(2台目DC追加・可用性試験・FSMO奪取)はすべて実施済みとなりました。
 
   FSMO奪取の副次的な影響として、**`ad-dc02`がPDCエミュレーターになったにもかかわらずWindows Time Serviceの構成が追従していなかった点も2026-09-07に是正済み**です([証跡](../evidence/2026-09-07-ad-dc02-time-sync-fix.md))。奪取(seize)は役割の付け替えのみで、依存する周辺サービスの構成までは自動的に追従しないことを実測で確認しています。
+
+  windows_exporterサービスアカウントの最小権限化(3.4節・7節で継続課題としていた項目)も**2026-09-07に実施済み**です([証跡](../evidence/2026-09-07-ad-windows-exporter-least-privilege.md))。DCにはローカルSAMが無いため、既定`LocalSystem`からgMSA(`CORP\svc-winexp$`)+`Performance Monitor Users`メンバーシップへ移行しました。
 - **RODC(読み取り専用ドメインコントローラー)**: 支店やDMZ相当の環境を想定し、パスワードキャッシュポリシーを制限したRODCを追加する。
 - **monitor-win-01のドメイン参加**: [Windows版パック](../build-package-windows/01-basic-design.md)の系統Bとして言及されている「既存ADに参加させる場合の差分」を、実際に`ad-dc01`を使って検証する統合演習。
 - **Tier分離の実装**: NFR-08で言及したTier0の考え方を、特権アクセスワークステーション(PAW)や管理用ジャンプホストの導入まで含めて実装する。

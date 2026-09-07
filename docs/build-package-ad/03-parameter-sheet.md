@@ -59,7 +59,7 @@
 | ローカルAdministrator名 | 既定名(`Administrator`)から変更して運用。実際の名称は秘密値台帳で管理(このリポジトリには記載しない)。ラボでは昇格後にドメインAdministrator(RID 500)を改名(2026-09-02)。DSRM用アカウント名は`Administrator`のまま | 既定名のまま残すと自動化された総当たり攻撃の的になりやすいため | 昇格前: `Rename-LocalUser`、昇格後: `Set-ADUser` + `Rename-ADObject` |
 | ドメイン管理者アカウント | `Administrator`(フォレスト作成時に自動作成される既定のドメイン管理者)。日常運用には別途委任された権限を持つアカウントを使い、`Domain Admins`常用は避ける | Tier0(NFR-08)の考え方 | `Get-ADUser` |
 | `Domain Admins`グループのメンバー | フォレスト作成直後は`Administrator`のみ。以後もメンバーを最小限に保つ | 特権グループの肥大化を防ぐため | `Get-ADGroupMember "Domain Admins"` |
-| windows_exporterサービス実行アカウント | 既定`LocalSystem` | MSIインストーラーの既定のまま。最小権限化はAST-07相当の継続課題として記録 | `Get-CimInstance Win32_Service`の`StartName` |
+| windows_exporterサービス実行アカウント | MSIインストーラーの既定は`LocalSystem`。gMSA(`CORP\svc-winexp$`)+`Performance Monitor Users`メンバーシップへの最小権限化を推奨(2026-09-07に`ad-dc02`で実施・検証済み) | DCにはローカルSAMが無く、通常のローカルサービスアカウントは使えないため。AST-07相当 | `Get-CimInstance Win32_Service`の`StartName`。[証跡](../evidence/2026-09-07-ad-windows-exporter-least-privilege.md) |
 | RDPログオン許可ユーザー | 既定Disableのため対象なし。一時有効化時のみ管理元アカウントを許可 | RDPは既定Disable(NFR-04) | `Get-LocalGroupMember "Remote Desktop Users"` |
 
 ## OU・グループポリシー設計
@@ -100,7 +100,7 @@ OU構造は既定の`CN=Users`・`CN=Computers`コンテナをそのまま使わ
 | インストール方式 | GitHub Releasesの署名付きMSI。導入前に`Get-FileHash`と公開SHA256の一致を確認(AUT-01相当の構築前チェック) | [構築手順書](05-build-procedure.md) |
 | バージョン | `NOT SET`(実機決定時にGitHub Releasesの署名付きMSIとそのSHA256を記録して固定する。[Windows版パック](../build-package-windows/03-parameter-sheet.md)と同じ考え方) | 「実機記入欄」参照 |
 | 有効化collector | `--collectors.enabled=ad,dns,cpu,logical_disk,net,os,service,system`([Windows版パック](../build-package-windows/03-parameter-sheet.md)の`cs`・`iis`の代わりに、AD DS向けの`ad`・`dns`を有効化する点が差分) | [構築手順書](05-build-procedure.md) |
-| 実行アカウント | 既定`LocalSystem`(最小権限化は継続課題) | 「ユーザー・グループ・権限」節参照 |
+| 実行アカウント | MSIインストーラーの既定は`LocalSystem`。gMSA(`CORP\svc-winexp$`)への最小権限化を推奨(2026-09-07に`ad-dc02`で実施・検証済み) | 「ユーザー・グループ・権限」節参照 |
 | listen | `0.0.0.0:9182`(Windows Defender Firewallで中央Prometheus hostのIPのみ許可、認証なし) | Windows Defender Firewallルール |
 
 ## 監視・ログ
@@ -165,7 +165,7 @@ Windows Defender FirewallでAD DS役割を導入すると、自動的にルー�
 | ディスク構成(`Get-Volume` / `Get-Disk`) | C: 30GB(OS)、D: 20GB(`Backup`、System State用に追加。設計の60GB単一構成とは異なる) | 2026-09-01 | 同上 |
 | Windows Defender Firewallの許可範囲(`Get-NetFirewallRule`) | AD DS関連5グループ=`192.0.2.0/24`、`WinRM-HTTPS-MgmtOnly`=`192.0.2.40`、RDP=Disable、windows_exporter許可ルールなし | 2026-09-02 | 同上(ANW-08) |
 | FSMO役割保持者(`netdom query fsmo`) | 5役割すべて`ad-dc01.corp.example.test` | 2026-09-01 | 同上(AIT-05) |
-| windows_exporter version / SHA256 | `0.31.8` / `0aadce6afb20182b678bfca9e8f2e8464ef48c469b28b4cf02e99d82158f5d40`(amd64.msi、公式`sha256sums.txt`と一致)。実行アカウント`LocalSystem`。中央Prometheus host未決定のためFirewall許可ルールは未作成。`ad-dc02`にも同一バージョンを導入済み(2026-09-03、`windows_ad_*`/`windows_dns_*` 167行、9182/tcp Listen) | 2026-09-02 | 同上(ANW-05)、[2台目DC追加](../evidence/2026-09-03-ad-second-dc-replication.md)7節 |
+| windows_exporter version / SHA256 | `0.31.8` / `0aadce6afb20182b678bfca9e8f2e8464ef48c469b28b4cf02e99d82158f5d40`(amd64.msi、公式`sha256sums.txt`と一致)。導入時点の実行アカウントは`LocalSystem`。中央Prometheus host未決定のためFirewall許可ルールは未作成。`ad-dc02`にも同一バージョンを導入済み(2026-09-03、`windows_ad_*`/`windows_dns_*` 167行、9182/tcp Listen)。**`ad-dc02`(現在唯一のDC)の実行アカウントは2026-09-07にgMSA`CORP\svc-winexp$`へ移行済み** | 2026-09-02 | 同上(ANW-05)、[2台目DC追加](../evidence/2026-09-03-ad-second-dc-replication.md)7節、[最小権限化](../evidence/2026-09-07-ad-windows-exporter-least-privilege.md) |
 | PowerShell version(`$PSVersionTable`) | `5.1.20348.558`(対象host、組込)。7.4系の追加導入は未実施 | 2026-09-02 | 同上 |
 | 適用手順書バージョン / commit SHA | 実機検証時点の手順書は初版(`6c2d1cecf21e57e296d5790e77c6ebb5d820f628`)。本記入欄と同じPRで手順書側の誤りを修正済み | 2026-09-02 | 同上「差異・問題」 |
 | System Stateバックアップの所要時間 | `ad-dc01`: 24分45秒(約8GB、D:へ)。`ad-dc02`: 27分4秒。並行負荷がある場合は63分48秒まで伸びた実測あり | 2026-09-02 / 2026-09-03 | [復元演習](../evidence/2026-09-02-ad-restore-drill.md)、[2台目DC追加](../evidence/2026-09-03-ad-second-dc-replication.md)7・9節 |
