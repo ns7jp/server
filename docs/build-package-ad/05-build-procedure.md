@@ -454,7 +454,30 @@ New-NetFirewallRule -DisplayName "WindowsExporter-Prometheus-Only" -Direction In
   -RemoteAddress "<NOT SET: 中央Prometheus hostのIPアドレス>" -Profile Any
 ```
 
-`windows_exporter`は既定`LocalSystem`アカウントで動作します。最小権限化はAST-07相当の継続課題として記録し、本手順では是正しません。上記のバージョン・SHA256・実行アカウントの実測値は[パラメータシート](03-parameter-sheet.md)の実機記入欄へ記録します。
+`windows_exporter`は既定`LocalSystem`アカウントで動作します。上記のバージョン・SHA256・実行アカウントの実測値は[パラメータシート](03-parameter-sheet.md)の実機記入欄へ記録します。
+
+> **最小権限化(gMSA、AST-07相当)**: `LocalSystem`のままでも動作しますが、最小権限化にはgMSA(グループ管理サービスアカウント)を使います。DCにはローカルSAMが無いため、通常のローカルサービスアカウントは作れません。
+>
+> ```powershell
+> # KDS root key(本番は自然な複製待ちで約10時間かかる。ラボでは -EffectiveTime を過去にして即時反映)
+> Add-KdsRootKey -EffectiveTime ((Get-Date).AddHours(-10))
+>
+> New-ADServiceAccount -Name svc-winexp -DNSHostName svc-winexp.corp.example.test `
+>   -PrincipalsAllowedToRetrieveManagedPassword "<対象DCのコンピューターアカウント>$"
+> Install-ADServiceAccount -Identity svc-winexp
+> Test-ADServiceAccount -Identity svc-winexp
+>
+> # BUILTIN\Performance Monitor Users への追加は Add-LocalGroupMember では失敗する(DCにはローカルSAMが無く、
+> # LocalAccounts モジュールはBUILTINグループを扱えない)。SID解決 + net localgroup を使う
+> (New-Object System.Security.Principal.SecurityIdentifier("S-1-5-32-558")).Translate([System.Security.Principal.NTAccount]).Value
+> net localgroup "Performance Monitor Users" "<NetBIOSドメイン名>\svc-winexp$" /add
+>
+> # sc.exe の password="" (空文字列)はPowerShellが引数ごと消してしまうため、--% (stop-parsing)が必須
+> sc.exe --% config windows_exporter obj= "<NetBIOSドメイン名>\svc-winexp$" password= ""
+> Restart-Service windows_exporter
+> ```
+>
+> 手順の全詳細と、実機でつまずいた2点(`LocalAccounts`モジュールの制約、`sc.exe`の空文字列引数)は[最小権限化の証跡](../evidence/2026-09-07-ad-windows-exporter-least-privilege.md)を参照してください。
 
 Firewallルールでこの送信元IPを許可していても、この時点で中央Prometheusからのscrapeが成立するとは限りません。Prometheusコンテナ自体は`monitoring`(`internal: true`)に加えて非internalなbridge network`host-access`にも接続されており、`host-access`経由でDockerホストのnetwork interfaceを介したegress(MASQUERADE/NAT)は機能する(nftablesルール確認済み)ため、`internal: true`自体が到達を妨げているわけではありません。ただし、Dockerホストと`ad-dc01`の間の実L3接続(本ラボは全ホストRFC 5737の例示用アドレス`192.0.2.0/24`を使用しており未確立)、および上記Firewallルールの`RemoteAddress`をDockerホストのNAT後の実IP(コンテナ内部IPではない)に正しく設定することの2点が未確立なため、この節で確認できるのは「対象ホスト上でwindows_exporterサービスが起動し、ローカルから`/metrics`が200で返り、`ad`・`dns`collectorのメトリクスが出力される」ことまでであり、中央Prometheusからのscrape成立(AIT-09)はフェーズ2まで`BLOCKED`のままです。
 
