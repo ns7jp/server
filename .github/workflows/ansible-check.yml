@@ -115,3 +115,47 @@ jobs:
             ansible-playbook "${scenario}/verify.yml" --syntax-check
             echo "::endgroup::"
           done
+
+  molecule-foundation:
+    # common role単体・docker role単体のscenario（上のmoleculeジョブ）は、
+    # それぞれ自roleのconverge / verifyしか持たない。foundation.ymlが実行する
+    # common → dockerの組み合わせ自体はここまでCIで検証していなかった
+    # （docs/build-package-ansible/07-handover-checklist.mdの未解決事項）。
+    # ansible/molecule/foundation-*がその組み合わせ用scenarioで、
+    # ロール個別のディレクトリに属さないためmatrixを分けている。
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible + Molecule
+        run: |
+          python -m pip install --upgrade pip
+          pip install 'ansible' 'molecule' 'molecule-plugins[docker]' 'docker'
+
+      - name: Show installed versions
+        run: |
+          ansible --version
+          molecule --version
+
+      - name: Molecule scenarios are detected
+        working-directory: ansible
+        run: molecule list
+
+      - name: Validate molecule converge / verify playbooks parse
+        working-directory: ansible
+        env:
+          ANSIBLE_ROLES_PATH: ${{ github.workspace }}/ansible/roles
+        run: |
+          for scenario in molecule/*/; do
+            scenario="${scenario%/}"
+            echo "::group::${scenario}"
+            ansible-playbook "${scenario}/converge.yml" --syntax-check
+            ansible-playbook "${scenario}/verify.yml" --syntax-check
+            echo "::endgroup::"
+          done

@@ -64,3 +64,47 @@ jobs:
           ANSIBLE_ROLES_PATH: ${{ github.workspace }}/ansible/roles
           ANSIBLE_FORCE_COLOR: "1"
         run: molecule test -s ${{ matrix.scenario }}
+
+  molecule-test-foundation:
+    # playbooks/foundation.yml が実行するcommon → dockerの組み合わせを、
+    # 上のmolecule-testとは別に実コンテナのcreate → converge → idempotence →
+    # verify → destroyで検証する。ansible/molecule/foundation-*は特定の
+    # roleディレクトリに属さないためmatrixを分けている。
+    name: Molecule test (foundation / ${{ matrix.scenario }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario:
+          - foundation-default
+          - foundation-el9
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install Ansible and Molecule
+        run: |
+          python -m pip install --upgrade pip
+          pip install 'ansible' 'molecule' 'molecule-plugins[docker]' 'docker'
+
+      - name: Show installed versions
+        run: |
+          python --version
+          ansible --version
+          molecule --version
+          ansible-galaxy collection list
+
+      - name: Install required collections
+        run: ansible-galaxy collection install -r ansible/requirements.yml
+
+      - name: Run full Molecule lifecycle
+        working-directory: ansible
+        env:
+          ANSIBLE_ROLES_PATH: ${{ github.workspace }}/ansible/roles
+          ANSIBLE_FORCE_COLOR: "1"
+        run: molecule test -s ${{ matrix.scenario }}
