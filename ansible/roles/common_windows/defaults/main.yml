@@ -37,3 +37,29 @@ common_windows_iis_healthcheck_content: "OK"
 # 既定値は空(未設定時はバックアップ登録タスクをskipする)。
 common_windows_backup_target_volume: ""
 common_windows_backup_schedule_time: "03:30"
+
+# Grafana Alloy for Windows(FR-05、ログ集約経路)。中央Lokiのpush APIは
+# 現状compose.yamlで127.0.0.1のみにbindされており、Windows実機からの到達性・
+# 認証設計がNOT SET(docs/build-package-windows/00-requirements.md参照)。
+# その解消を待たず設定・導入手順だけを先行して用意するが、以下が空のままでは
+# 導入タスクをskipする(未検証のダウンロードURLを推測で埋めない)。
+# ダウンロードURLはGitHub Releases(https://github.com/grafana/alloy/releases)
+# の実機決定時点でのWindows向けasset名を確認して明示的に渡すこと
+# (windows_exporterと異なり本パックではasset命名規則を確認できていないため、
+# バージョン番号からの自動組み立てはしない)。
+common_windows_alloy_download_url: ""
+common_windows_alloy_sha256: ""
+common_windows_alloy_install_dir: 'C:\Program Files\GrafanaAlloy'
+common_windows_alloy_data_dir: 'C:\ProgramData\GrafanaAlloy'
+# config.windows.alloy.j2の文字列リテラル(River構文、HCL同様に`\`はエスケープ
+# 導入文字)にそのまま埋め込むため、Windowsパスでも`\`ではなく`/`区切りで書く。
+# Win32 APIはパス区切りとして`/`も受け付けるため、Ansible/PowerShell側の他の
+# パス変数(common_windows_alloy_install_dir等)とは扱いを分けている。
+common_windows_iis_log_dir: 'C:/inetpub/logs/LogFiles'
+# 中央LokiのPush API URL。現時点でNOT SET(上記のネットワーク・認証設計が
+# 前提)。例: "https://monitor-01.example.test/loki/api/v1/push"
+common_windows_loki_push_url: ""
+# Loki側で認証を追加した場合のbearer token file(Windows上のファイルパス)。
+# 上記iis_log_dirと同じ理由で`/`区切りで書く。空ならconfig側に
+# bearer_token_file行を出力しない。
+common_windows_loki_push_bearer_token_file: ""

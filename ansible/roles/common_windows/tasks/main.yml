@@ -29,3 +29,6 @@
 - name: Configure Windows Server Backup
   ansible.builtin.include_tasks: backup.yml
   when: common_windows_backup_target_volume | length > 0
+
+- name: Install and configure Grafana Alloy for Windows (FR-05, ログ集約)
+  ansible.builtin.include_tasks: log_collection.yml

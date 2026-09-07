@@ -30,7 +30,10 @@
 >    Firewallが実際の送信元(Dockerホストの実IP)を許可しているか(`NOT SET`)の2点。現状のjob名
 >    `linux-node` へWindowsを混ぜること自体、名前が実態と合わなくなる点も残存課題です
 > 3. Windows Event Log / IISログを既存Lokiへ送る経路(Grafana Alloy for Windowsの導入、Lokiの
->    push APIをloopback以外からも安全に受け付けるための認証・network設計)が無い
+>    push APIをloopback以外からも安全に受け付けるための認証・network設計)が無い。Windows側
+>    (`ansible/roles/common_windows`のAlloy導入タスク・設定テンプレート)はコードとして
+>    追加済みだが、中央側(Lokiのpush API公開・認証設計)には未着手のため、経路全体としては
+>    引き続き無い状態
 >
 > `BLOCKED` は失敗ではなく、前提条件と解除条件を記録した状態です。ただし本書は実行そのものを
 > していない空白の原本なので、結果欄はここでもなお `NOT RUN` のままにし、実際に実行して
@@ -99,7 +102,7 @@ WUT-02は中央host側(既存Linux監視host)の設定検証だけであり、Wi
 | WIT-03 | host metrics(フェーズ2) | 中央PrometheusのTargets画面を確認 | `up{job="linux-node", host="monitor-win-01"}=1`(BLOCKED: Dockerホスト↔対象ネットワーク間の実L3到達性、およびwindows_exporter側Firewall許可(Dockerホストの実IP向け)が確立するまで) | NOT RUN | — |
 | WIT-04 | IIS site | health用エンドポイントへHTTP GET | 200 | NOT RUN | — |
 | WIT-05 | blackbox probe(フェーズ2) | 中央blackbox-exporterのprobe結果を確認 | `probe_success=1`(コード実装済み: `prometheus.yml.j2` の `app_blackbox_probe_targets`。対象ホスト未構築のためNOT RUN) | NOT RUN | — |
-| WIT-06 | ログ集約(フェーズ2) | GrafanaでLogQLを実行 | Windows Event Log / IISログを検索できる(BLOCKED: Grafana Alloy for Windows未導入のため) | NOT RUN | — |
+| WIT-06 | ログ集約(フェーズ2) | GrafanaでLogQLを実行 | Windows Event Log / IISログを検索できる(BLOCKED: Grafana Alloy for Windows側の導入タスク・設定はコード追加済みだが、中央Lokiのpush API公開・認証設計が未着手のため) | NOT RUN | — |
 | WIT-07 | alert(フェーズ2) | テストアラートを発火 | 2分以内に通知(BLOCKED: WIT-03が前提。WIT-03はDockerホスト↔対象ネットワーク間の実L3到達性・Firewall許可が確立するまでBLOCKEDのため連鎖してBLOCKED) | NOT RUN | — |
 | WIT-08 | サービス停止復旧演習(D-1相当) | windows_exporterまたはIISサービスを停止 | 検知・復旧・正常化までの時間を記録 | NOT RUN | — |
 | WIT-09 | backup restore | バックアップアーカイブを別ボリューム/別ホストへ復元 | 内容が一致 | NOT RUN | — |
