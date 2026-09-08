@@ -1,0 +1,34 @@
+[
+  {
+    "id": "E01",
+    "file": "E01-versions.png",
+    "source_filename": "codex-clipboard-327bc271-aa89-4f18-9326-553237c862d1.png",
+    "caption": "Ansible/ansible-playbook core2.16.3、Python3.12.3",
+    "bytes": 21645,
+    "sha256": "12141ac264ce782668d1bac8743db650d207d67eb9e17c595415d449e62fd67e"
+  },
+  {
+    "id": "E02",
+    "file": "E02-first-run.png",
+    "source_filename": "codex-clipboard-d2cbfd6e-bfe6-4248-b6ea-75366d06a3bc.png",
+    "caption": "構文確認0・初回changed2・権限と本文",
+    "bytes": 19677,
+    "sha256": "73a473e101c3a4cf4ac67b866a21ab9f09972e246785a4e5c794787b925d2c99"
+  },
+  {
+    "id": "E03",
+    "file": "E03-second-run.png",
+    "source_filename": "codex-clipboard-f449d3f7-a476-4ddb-9a43-21e54418f4be.png",
+    "caption": "2回目changed0・failed0・終了0",
+    "bytes": 10559,
+    "sha256": "613d979a810debf99682654dbb0494ab117fff51f622eef46ea756c18f9b144c"
+  },
+  {
+    "id": "E04",
+    "file": "E04-drift-repair.png",
+    "source_filename": "codex-clipboard-3e13aee6-95fe-4a95-bd8d-c375c9563731.png",
+    "caption": "本文を手動変更後、再実行changed1で指定本文へ復旧",
+    "bytes": 15438,
+    "sha256": "d74c8c15361d0cdc4b5e384295e7a9226682e25a748418a61ccf2cd4141bd90d"
+  }
+]
