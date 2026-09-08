@@ -12,7 +12,7 @@
 
 | 案件 ID | 対象 | 現在の引き渡し判定 |
 | --- | --- | --- |
-| `SM-WSUS-001` | 既存ADドメイン`corp.example.test`(依存案件`SM-AD-001`)へ、Windows Server 2022 Standard(Desktop Experience基準)の検証用VM1台(論理ホスト名`wsus-01`)をメンバーサーバーとして参加させ、WSUSロール(WID使用)を構築 | **`NOT READY`** — 設計・手順書は作成済みだが、引き渡し対象ホストが未指定でフェーズ1必須試験が`NOT RUN`。フェーズ2は「未実装」3点により`BLOCKED` |
+| `SM-WSUS-001` | 既存ADドメイン`corp.example.test`(依存案件`SM-AD-001`)へ、Windows Server 2022 Standard(Desktop Experience基準)の検証用VM1台(論理ホスト名`wsus-01`)をメンバーサーバーとして参加させ、WSUSロール(WID使用)を構築 | **`NOT READY`** — 2026-09-07に手元Hyper-VのVM 1台でフェーズ1を通しで実施し、必須28 IDのうち26 `PASS` / 1 `FAIL`(SIT-06) / 1 期待結果未達(SIT-04)([報告書](../evidence/2026-09-07-work-result-SM-WSUS-001.md))。手順書の誤り・欠落を9件検出。フェーズ2は「未実装」3点により`BLOCKED` |
 
 表中の`NOT READY`は、必須の試験が終わっておらず、引き渡せる状態ではないことを表します。
 
@@ -71,14 +71,14 @@ flowchart LR
 | 詳細設計 | [02-detailed-design.md](02-detailed-design.md) | 作成済み |
 | パラメータ設計 | [03-parameter-sheet.md](03-parameter-sheet.md) | 作成済み |
 | ネットワーク設計 | [04-network-ip-plan.md](04-network-ip-plan.md) | 作成済み |
-| 構築(フェーズ1) | [05-build-procedure.md](05-build-procedure.md) | 手順作成済み・実機結果は証跡台帳で管理 |
-| 試験 | [06-test-specification.md](06-test-specification.md) | 仕様作成済み・未実施欄は`NOT RUN` |
+| 構築(フェーズ1) | [05-build-procedure.md](05-build-procedure.md) | 2026-09-07にHyper-V VMで通しで実施。実機で見つけた誤り・欠落9件は未修正([報告書](../evidence/2026-09-07-work-result-SM-WSUS-001.md)8節) |
+| 試験 | [06-test-specification.md](06-test-specification.md) | 原本は`NOT RUN`のまま。実績は[構築・試験結果票](../evidence/2026-09-07-wsus-build-validation.md)(26 PASS / SIT-06 FAIL / SIT-04 期待結果未達 / SIT-09 BLOCKED) |
 | 引き渡し | [07-handover-checklist.md](07-handover-checklist.md) | 作成済み |
 | 変更・ロールバック | [08-change-rollback-plan.md](08-change-rollback-plan.md) | 計画・記録様式作成済み(スナップショット復元を最優先手段とする設計)。実施結果は`NOT RUN` |
-| ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | 手順作成済み。実施結果は`NOT RUN` |
-| 立ち上げ・受け入れ | [10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md) | 環境選択肢と最短手順を作成済み |
-| 作業結果報告 | [11-work-result-report.md](11-work-result-report.md) | 原本作成済み。対象ホストごとの実績は日付付きevidenceへ複製して記録 |
-| ネットワーク結果票(WSUS) | [実機検証テンプレート](../evidence/templates/network-host-validation-wsus.md) | テンプレート作成済み |
+| ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | [結果票](../evidence/2026-09-07-network-host-validation-wsus.md) SNW-01〜09 9/9 PASS |
+| 立ち上げ・受け入れ | [10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md) | 評価版ISO + Hyper-V(Windows 11 Pro)の選択肢で実施 |
+| 作業結果報告 | [11-work-result-report.md](11-work-result-report.md) | [2026-09-07 記入済み版](../evidence/2026-09-07-work-result-SM-WSUS-001.md)あり |
+| ネットワーク結果票(WSUS) | [実機検証テンプレート](../evidence/templates/network-host-validation-wsus.md) | テンプレート作成済み。記入例は[2026-09-07 結果票](../evidence/2026-09-07-network-host-validation-wsus.md) |
 | 一次切り分け記録 | [トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md) | テンプレート作成済み(既存4パックと共用) |
 
 ## 工程ゲート
@@ -89,11 +89,11 @@ flowchart LR
 | --- | --- | --- |
 | G0 要件確定 | 要件ID、対象、対象外、受け入れ条件が合意済み | 文書作成済み。実案件での承認は`NOT SET` |
 | G1 設計確定 | 基本・詳細・パラメータ・ネットワーク設計のレビュー完了 | 文書作成済み。実案件での承認は`NOT SET` |
-| G2(フェーズ1)構築完了 | 対象VMへの初回手動構築(`SIT-01`)が成功し、2回目実行で不要な変更が無いこと(`SIT-02`)を記録 | 手順作成済み。引き渡し対象ホストは`NOT RUN` |
+| G2(フェーズ1)構築完了 | 対象VMへの初回手動構築(`SIT-01`)が成功し、2回目実行で不要な変更が無いこと(`SIT-02`)を記録 | `PASS`(2026-09-07、ラボVM。SIT-01・SIT-02とも`PASS`) |
 | G2(フェーズ2)統合完了 | `app_node_exporter_targets`へのWSUSホスト追加、`monitoring`networkのegress拡張、Windows向けログ集約経路の導入が完了 | 設計のみ。3点とも未実装で、着手時期は`NOT SET` |
-| G3(フェーズ1)試験完了 | フェーズ1必須ID(`SUT-01`〜`05`、`SIT-01`〜`08`、`SST-01`〜`06`、`SNW-01`〜`09`)がすべて`PASS` | `NOT READY` |
+| G3(フェーズ1)試験完了 | フェーズ1必須ID(`SUT-01`〜`05`、`SIT-01`〜`08`、`SST-01`〜`06`、`SNW-01`〜`09`)がすべて`PASS` | **`FAIL`**(26/28。`SIT-06`が`FAIL`、`SIT-04`が期待結果未達) |
 | G3(フェーズ2)試験完了 | `SIT-09`が`PASS` | `BLOCKED`(G2フェーズ2の解消が前提) |
-| G4 作業完了 | 作業結果報告書に実績、障害、差異、残存リスクを記録 | 原本のみ。実案件報告は`NOT SET` |
+| G4 作業完了 | 作業結果報告書に実績、障害、差異、残存リスクを記録 | `PASS`([2026-09-07 報告書](../evidence/2026-09-07-work-result-SM-WSUS-001.md)) |
 | G5 引き渡し | 受領者、日時、秘密値受け渡し、未解決事項を記録 | `NOT READY` |
 
 ## 検証環境
@@ -104,7 +104,7 @@ flowchart LR
 
 `wsus-01`は既存のADドメイン`corp.example.test`(DC: `ad-dc01`=`192.0.2.50/24`、`ad-dc02`=`192.0.2.51/24`)へメンバーサーバーとして参加します。例示IPv4/prefixは`192.0.2.52/24`で、既存2台と重複を避けて52を使用します。中央側の既存Linux監視host(論理名`monitor-01`)は変更しません。
 
-フェーズ1(ホスト単体構築)・フェーズ2(中央監視統合)ともに、独立した引き渡し対象VM・管理端末を用いた実測はまだありません。日付付きの[ネットワーク結果票(WSUS)](../evidence/templates/network-host-validation-wsus.md)が保存されるまで`NOT RUN`とします。
+2026-09-07に、Windows 11 Pro上のHyper-V(内部スイッチ`ADLab-Internal`)にWindows Server 2022 評価版のVM 1台を立て、ホストPCを管理端末としてフェーズ1を実施しました([構築・試験結果票](../evidence/2026-09-07-wsus-build-validation.md)、[ネットワーク結果票](../evidence/2026-09-07-network-host-validation-wsus.md))。ホストPCが管理端末・NATゲートウェイ・ハイパーバイザーを兼ねているため、独立した管理端末・組織DNS・実TLS証明書からの検証は含みません。また依存案件側の`ad-dc01`は[2026-09-04のFSMO奪取](../evidence/2026-09-04-ad-fsmo-seize.md)で削除済みのため、DC 2台構成での検証にはなっていません。フェーズ2(中央監視統合)は`NOT RUN`のままです。
 
 ## 完了の定義
 
