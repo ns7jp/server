@@ -1,0 +1,82 @@
+[
+  {
+    "id": "E01",
+    "file": "E01-prerequisites.png",
+    "source_filename": "codex-clipboard-37d8aa4f-c6e1-48e4-83a1-af28758b52b1.png",
+    "caption": "前提診断FAIL0/WARN2・終了0、Ansible未導入・メモリ警告",
+    "bytes": 25307,
+    "sha256": "c26507f47642174e2945ffdeb4872b3f7ca191dca44273f925ec2f135b157c03"
+  },
+  {
+    "id": "E02",
+    "file": "E02-four-services.png",
+    "source_filename": "codex-clipboard-81eec526-eed9-42da-8ca8-c0a2d594b1bf.png",
+    "caption": "4サービス起動・app healthy・available1.3GiB・Swap0",
+    "bytes": 25581,
+    "sha256": "f7bca0bf42876da01261468f12d7c977c2b587395a64f8052105def7fd393ff1"
+  },
+  {
+    "id": "E03",
+    "file": "E03-scrape-up.png",
+    "source_filename": "codex-clipboard-156b91f5-e703-4d3c-a15a-e2058d9966f3.png",
+    "caption": "アプリとlinux-nodeのupクエリ",
+    "bytes": 12484,
+    "sha256": "28cd7fb5083ceacfd68ffbbac31a5c33daa1570141359c5fdc3c4c00d38586a0"
+  },
+  {
+    "id": "E04",
+    "file": "E04-memory-query.png",
+    "source_filename": "codex-clipboard-44643d7d-2150-44f2-bd6e-501a3c3397eb.png",
+    "caption": "node-exporterから計算したメモリ使用率約32.02%",
+    "bytes": 10342,
+    "sha256": "90fc05bd1fe739ac55b6c7cdc0a0e550998577dc71d4f931c66797420231a1a6"
+  },
+  {
+    "id": "E05",
+    "file": "E05-grafana-health.png",
+    "source_filename": "codex-clipboard-e618e750-2d99-4d9a-9ff7-0842a3936f5e.png",
+    "caption": "Grafanaを含む5サービス・available1.2GiB・database ok",
+    "bytes": 29899,
+    "sha256": "ac59e05ab3758e8009620b06a587a3b7db8b67109f61cc80242d45912092f2b7"
+  },
+  {
+    "id": "E06",
+    "file": "E06-clipboard-error.png",
+    "source_filename": "codex-clipboard-77497675-b996-4214-a72b-8f2d89362115.png",
+    "caption": "Windows Set-Clipboardへの空文字指定が失敗。秘密値本文は表示されていない",
+    "bytes": 14894,
+    "sha256": "196c8362c4aae90b47093b513557229a9dea5eda682a297cf555e624d4c0de6e"
+  },
+  {
+    "id": "E07",
+    "file": "E07-dashboard-normal.png",
+    "source_filename": "codex-clipboard-19e26719-a59c-41f4-bfec-6f12f9f6a4ca.png",
+    "caption": "Grafanaの数値・履歴表示、Application Scrape Status1",
+    "bytes": 142482,
+    "sha256": "73465d9976af875e8d83bb2a11e1914a6dc982231c76b362e62eaf5cea33c574"
+  },
+  {
+    "id": "E08",
+    "file": "E08-dashboard-down.png",
+    "source_filename": "codex-clipboard-48be44a4-db62-4502-8407-c287fe3c8993.png",
+    "caption": "手動停止後のApplication Scrape Status0",
+    "bytes": 150504,
+    "sha256": "6e5fd1c6be8ae6e2fa1f6b89c3aefba254b0bd7739b686971fcdabc4a9bea70e"
+  },
+  {
+    "id": "E09",
+    "file": "E09-dashboard-recovered.png",
+    "source_filename": "codex-clipboard-862f1b48-568b-4bb6-9e7f-293981008b73.png",
+    "caption": "手動再開後のApplication Scrape Status1",
+    "bytes": 145437,
+    "sha256": "503fb4a88b3bdbabdc026482a968048ddf2586e70185628f56b76863daf48e0c"
+  },
+  {
+    "id": "E10",
+    "file": "E10-cleanup.png",
+    "source_filename": "codex-clipboard-95dfc87e-5732-4692-bff2-cf2135ff7f8b.png",
+    "caption": "5コンテナ・3ネットワーク撤去、サービス行なし、venv終了",
+    "bytes": 12495,
+    "sha256": "2ec548b104a556b59e014f64b906e82d61d79c9561909999cf7ab3c916f146c1"
+  }
+]
