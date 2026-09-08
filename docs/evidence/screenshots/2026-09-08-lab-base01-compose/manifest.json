@@ -1,0 +1,138 @@
+[
+  {
+    "id": "E01",
+    "file": "E01-memory-before.png",
+    "source_filename": "codex-clipboard-0fb6224e-ca4f-491d-b6e9-e40b0233dbb1.png",
+    "bytes": 8814,
+    "sha256": "c48e0bfc3519e664e24ac21fe0859d4e00c93c5fed914cfcc364a486fdec6c55",
+    "caption": "変更前メモリ658MiB・空きディスク4.7G・Docker未検出"
+  },
+  {
+    "id": "E02",
+    "file": "E02-memory-after.png",
+    "source_filename": "codex-clipboard-43373963-e11f-4a5a-b1f5-06d73baccc90.png",
+    "bytes": 4154,
+    "sha256": "cb9da938fb5c3bed571d8f8383ae8d0dcb507d60bf732950dbdb93639e10ba7d",
+    "caption": "メモリ変更後1.9GiB・available 1.5GiB"
+  },
+  {
+    "id": "E03",
+    "file": "E03-lvm-before.png",
+    "source_filename": "codex-clipboard-107f24db-a638-4c8c-99a5-bde94620e2b2.png",
+    "bytes": 9868,
+    "sha256": "d1ca0a8076233ad7105f29630914c2fb092033d84572ef05d71b62f6dd53269c",
+    "caption": "LV 10GiB・VG未割当約7.32GiB"
+  },
+  {
+    "id": "E04",
+    "file": "E04-lvm-after.png",
+    "source_filename": "codex-clipboard-c0071934-2801-4309-9733-aa41d56a87f7.png",
+    "bytes": 18590,
+    "sha256": "21f0ced10283d52de2081c44eea9a4e779655c19436b2735e0b61613f75899fd",
+    "caption": "LVとext4のオンライン拡張・終了0・空き12G"
+  },
+  {
+    "id": "E05",
+    "file": "E05-docker-repository.png",
+    "source_filename": "codex-clipboard-84e25028-0fd0-4bab-8d5d-d884c8f56f24.png",
+    "bytes": 16794,
+    "sha256": "01bb1788040d4494cbebb247d5c29930c470ad74350bbe609e9f82ad8a7350c2",
+    "caption": "Docker公式noble/amd64の配布元取得"
+  },
+  {
+    "id": "E06",
+    "file": "E06-docker-versions.png",
+    "source_filename": "codex-clipboard-a91ffc2d-4bdd-4cd8-a442-6499f94a08d7.png",
+    "bytes": 16373,
+    "sha256": "94c7671a1cee2db7393868a3979699c8c2bd1c97325f2048940fa3e1310fca9d",
+    "caption": "Docker active・Client/Server 29.8.0・Compose v5.5.1"
+  },
+  {
+    "id": "E07",
+    "file": "E07-hello-world.png",
+    "source_filename": "codex-clipboard-c630afa3-ee12-4e8d-8bf7-eb20b54f84c9.png",
+    "bytes": 23001,
+    "sha256": "5ec2dfd90af1578d913c96ddb47e7a35bb4f22e9bf68e574871568af25c70f03",
+    "caption": "hello-world取得・起動成功・終了0"
+  },
+  {
+    "id": "E08",
+    "file": "E08-source-version.png",
+    "source_filename": "codex-clipboard-b843f4a2-4b04-4fe9-9693-e5b2772b790e.png",
+    "bytes": 15182,
+    "sha256": "46603804119eb1d52a7e9391669d3e51751a12ea094fb57514fcfc5ed817e14d",
+    "caption": "clone・mainのSHA・Python3.12.3・venv作成"
+  },
+  {
+    "id": "E09",
+    "file": "E09-pytest.png",
+    "source_filename": "codex-clipboard-8beaa1b4-0a74-4b76-8dfa-4028462060a7.png",
+    "bytes": 4135,
+    "sha256": "686392d4090a00a87f6578849e74c7c5b7752cf53057fe0d8f2edb4ec0dd2eab",
+    "caption": "pytest 167 passed in 4.08s・終了0"
+  },
+  {
+    "id": "E10",
+    "file": "E10-docker-permission.png",
+    "source_filename": "codex-clipboard-1ef61a8d-db46-43b6-a2bf-dfef06e3aa63.png",
+    "bytes": 5237,
+    "sha256": "8da81238ab4dad23d03b28fd9a2a4974a0f92fe730a6eab8a6b35a076c8703f6",
+    "caption": "opsadminのdockerグループ・sudoなしdocker ps成功"
+  },
+  {
+    "id": "E11",
+    "file": "E11-secret-exclusion.png",
+    "source_filename": "codex-clipboard-80c70f65-366f-49f4-ae92-be2b6221a056.png",
+    "bytes": 20579,
+    "sha256": "61d9407b4be313343de53d10f3a59714620daad7be111730b100c1f6db9f3de9",
+    "caption": "設定生成終了0・4パスignore・秘密値追跡なし"
+  },
+  {
+    "id": "E12",
+    "file": "E12-compose-start.png",
+    "source_filename": "codex-clipboard-e8f23de3-b839-4a64-91f9-26dbab1a791c.png",
+    "bytes": 32376,
+    "sha256": "8bd2ae39e7469c283b1ba685270381aaa2153fd5b4ff216f8d8c0d522efc1c26",
+    "caption": "app healthy・nginx Up・loopback公開・起動終了0"
+  },
+  {
+    "id": "E13",
+    "file": "E13-http-unauthenticated.png",
+    "source_filename": "codex-clipboard-766c0ae0-efcd-47df-971c-e82f1c822146.png",
+    "bytes": 7898,
+    "sha256": "e6948ec514fae7b38911d47a7bd8eaf153fb1cebee80ccdf21a6a741677e8920",
+    "caption": "healthz 200・画面401・metrics401"
+  },
+  {
+    "id": "E14",
+    "file": "E14-http-authenticated.png",
+    "source_filename": "codex-clipboard-4bdda014-7bef-48d8-9530-aa684df0c8d3.png",
+    "bytes": 14140,
+    "sha256": "1359e304e0aa62f0e64b1bdbcab6a7e0d202e5e741aedd22f63783877d3082e4",
+    "caption": "秘密値をファイルから読むPythonで認証付きAPI200"
+  },
+  {
+    "id": "E15",
+    "file": "E15-nginx-stopped.png",
+    "source_filename": "codex-clipboard-474955cf-4e9d-48ce-ae01-fc8e3aa3039c.png",
+    "bytes": 13054,
+    "sha256": "cd42805bda2f7ef5294d8a1d05bb2e488b2f6dd6fb768e963f021456ac2c1275",
+    "caption": "app healthy維持・nginx停止・curl接続失敗000"
+  },
+  {
+    "id": "E16",
+    "file": "E16-nginx-restarted.png",
+    "source_filename": "codex-clipboard-2984210a-7969-45f4-a7db-5a0fc174edcf.png",
+    "bytes": 13111,
+    "sha256": "bb502fab28b10ffe8204eec80fa3fa03236b0ee567d5bfe1a633a2cafe91cf88",
+    "caption": "手動再開後nginx Up・healthz200"
+  },
+  {
+    "id": "E17",
+    "file": "E17-compose-cleanup.png",
+    "source_filename": "codex-clipboard-8b53f4d2-f60a-43b1-82c0-aa76da0bedf7.png",
+    "bytes": 9354,
+    "sha256": "db53727f39212e5cf8dae78262ac1379137caece886c97556f1c683937946667",
+    "caption": "2コンテナと3ネットワーク削除・サービス行なし・venv終了"
+  }
+]
