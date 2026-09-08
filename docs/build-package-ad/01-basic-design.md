@@ -101,6 +101,15 @@ flowchart LR
   FSMO奪取の副次的な影響として、**`ad-dc02`がPDCエミュレーターになったにもかかわらずWindows Time Serviceの構成が追従していなかった点も2026-09-07に是正済み**です([証跡](../evidence/2026-09-07-ad-dc02-time-sync-fix.md))。奪取(seize)は役割の付け替えのみで、依存する周辺サービスの構成までは自動的に追従しないことを実測で確認しています。
 
   windows_exporterサービスアカウントの最小権限化(3.4節・7節で継続課題としていた項目)も**2026-09-07に実施済み**です([証跡](../evidence/2026-09-07-ad-windows-exporter-least-privilege.md))。DCにはローカルSAMが無いため、既定`LocalSystem`からgMSA(`CORP\svc-winexp$`)+`Performance Monitor Users`メンバーシップへ移行しました。
+
+  依存案件[SM-WSUS-001](../build-package-wsus/README.md)のフェーズ1実機検証(2026-09-07)で、`wsus-01`のMicrosoft Update同期に必要な外部FQDNの再帰解決のため、`ad-dc02`へ次の変更が行われています([証跡](../evidence/2026-09-07-wsus-build-validation.md)3節)。**この変更はWSUS側のセッションが実施したもので、本パック側での再検証は未実施です。**
+
+  | 対象 | 変更前 | 変更後 |
+  | --- | --- | --- |
+  | `ad-dc02` default route | 無し | `0.0.0.0/0 → 192.0.2.40`(ホストPCのWinNAT) |
+  | `ad-dc02` DNSフォワーダ | `fec0:0:0:ffff::1`, `::2`, `::3`(既定のプレースホルダ、実在しないアドレス) | `1.1.1.1`, `8.8.8.8` |
+
+  変更後も内部ゾーン解決とNTDS/DNS/Netlogon/W32Timeの稼働に影響がないことはWSUS側の検証で確認済みですが、これは**恒久的な設計変更として承認されたものではありません**。本パックの[03-parameter-sheet.md](03-parameter-sheet.md)の`default gateway`行は`NOT SET`のまま残しており、この値を正式な設計値として採用するかは別途判断が必要です。
 - **RODC(読み取り専用ドメインコントローラー)**: 支店やDMZ相当の環境を想定し、パスワードキャッシュポリシーを制限したRODCを追加する。
 - **monitor-win-01のドメイン参加**: [Windows版パック](../build-package-windows/01-basic-design.md)の系統Bとして言及されている「既存ADに参加させる場合の差分」を、実際に`ad-dc01`を使って検証する統合演習。
 - **Tier分離の実装**: NFR-08で言及したTier0の考え方を、特権アクセスワークステーション(PAW)や管理用ジャンプホストの導入まで含めて実装する。

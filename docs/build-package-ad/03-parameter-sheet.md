@@ -31,7 +31,7 @@
 | ドメイン機能レベル | Windows Server 2016 | `NOT RUN` | `Get-ADDomain`の`DomainMode` |
 | IPv4 / prefix(例示) | `192.0.2.50/24`(TEST-NET-1、RFC 5737の例示用アドレス。[Windows版パック](../build-package-windows/03-parameter-sheet.md)の`192.0.2.30`と同一レンジ、重複回避のため`.50`を使用) | `NOT RUN` | 本書 / `Get-NetIPAddress` |
 | IPアドレスの割り当て方式 | 静的固定IP(DCは動的IPを使用しない) | `NOT RUN` | `Get-NetIPAddress` |
-| default gateway | 環境ごとに決定 | `NOT RUN` | `Get-NetRoute` |
+| default gateway | 環境ごとに決定 | `NOT RUN`(本パック単体では未確定のまま。ただし依存案件[SM-WSUS-001](../build-package-wsus/README.md)のフェーズ1実機検証で`ad-dc02`へ`0.0.0.0/0 → 192.0.2.40`が一時的に追加されている。[詳細](01-basic-design.md#34-発展構成対象外将来課題)、恒久化の判断は`NOT SET`) | `Get-NetRoute` |
 | DNSリゾルバー(自ホスト) | `127.0.0.1`(自分自身のAD統合DNSを優先参照) | `NOT RUN` | `Get-DnsClientServerAddress` |
 | 管理元CIDR(WinRM/RDP用) | 例示管理端末IP`192.0.2.40`を含むCIDRを環境ごとに決定 | `NOT RUN` | Windows Defender Firewallルールの送信元 |
 | 内部ネットワークCIDR(AD DS関連ポート用) | 環境ごとに決定(将来のドメインメンバーが所属しうる範囲) | `NOT RUN` | Windows Defender Firewallルールの送信元 |
