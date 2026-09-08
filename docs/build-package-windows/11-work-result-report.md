@@ -4,7 +4,7 @@
 
 初期値の `NOT SET` は情報未確定、`NOT RUN` は未実行、`NOT READY` は完了条件未達です。空欄や `NOT RUN` を `PASS` として集計しません。
 
-本書はフェーズ1(ホスト単体構築)とフェーズ2(中央監視統合)を区別して記載します。フェーズ2は[要件定義書](00-requirements.md)に記載した3点(Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)が未確立、probe対象の未汎用化、ログ集約経路が無いこと)が解消するまで`BLOCKED`が前提であり、`BLOCKED`のままであること自体はフェーズ1の完了判定を妨げません。
+本書はフェーズ1(ホスト単体構築)とフェーズ2(中央監視統合)を区別して記載します。フェーズ2は[要件定義書](00-requirements.md)に記載した2点(Dockerホスト↔対象Windowsホスト間の実L3到達性とwindows_exporter側Firewall許可(Dockerホストの実IP向け)が未確立であること、Windows対応Ansible roleの実機実行実績がゼロ件であること)が解消するまで`BLOCKED`が前提であり、`BLOCKED`のままであること自体はフェーズ1の完了判定を妨げません。Windows Event Log/IISログを既存Lokiへ送る経路(WIT-06)は、Windows側(Alloy導入タスク・設定テンプレート)・中央側(`compose.loki-push.yaml.example`+`deploy/nginx/loki-push.conf.example`)ともコード追加済みですが、実機Windows Server・実機Lokiへの実行実績はゼロ件で、上記の実L3到達性が確立するまでWIT-03と同じ理由で`BLOCKED`です。
 
 `monitor-win-01`に相当する実ホストの構築そのものがまだ行われていないため、本書に対応する日付付きevidenceは現時点で1件もありません。以下の空欄は次の構築作業で複製して使う原本であり、実ホストでの作業結果は現在も`NOT RUN`です。
 
@@ -50,11 +50,11 @@ Windows版にはLinux版のような単一のcommit SHAで対象ホストの構�
 | 冪等性(フェーズ1) | 同一手順2回目実行、サービス再作成・Firewallルール重複なし(WIT-02) | `NOT RUN` | NOT RUN | — | — |
 | 構築後確認(フェーズ1) | IIS site health、windows_exporter稼働、Firewall、WinRM listener | `NOT RUN` | NOT RUN | — | — |
 | 実機network検証(フェーズ1) | WNW-01〜09(WIT-10) | `NOT RUN` | NOT RUN | — | — |
-| 中央統合(フェーズ2) | `app_node_exporter_targets`追記、中央`site.yml`再適用、scrape/probe/ログ確認 | `NOT RUN` | BLOCKED | — | 未実装3点が未解消のためBLOCKED |
+| 中央統合(フェーズ2) | `app_node_exporter_targets`追記、中央`site.yml`再適用、scrape/probe/ログ確認 | `NOT RUN` | BLOCKED | — | 未実装2点が未解消のためBLOCKED |
 | 障害復旧 | サービス停止復旧演習(WIT-08、D-1相当)、必要に応じてロールバック/復元 | `NOT RUN` | NOT RUN | — | — |
 | 後処理 | RDP一時許可・試験データ削除、最終状態取得 | `NOT RUN` | NOT RUN | — | — |
 
-結果は`PASS / FAIL / BLOCKED / NOT RUN`のいずれかとし、実行コマンド、主要出力、所要時間を日付付きevidenceへ残します。中央統合(フェーズ2)は未実装3点が解消するまで、実施しても前提が揃わず`BLOCKED`になることが設計時点で分かっています。
+結果は`PASS / FAIL / BLOCKED / NOT RUN`のいずれかとし、実行コマンド、主要出力、所要時間を日付付きevidenceへ残します。中央統合(フェーズ2)は未実装2点が解消するまで、実施しても前提が揃わず`BLOCKED`になることが設計時点で分かっています。
 
 ## 4. 試験集計
 
@@ -66,7 +66,7 @@ Windows版にはLinux版のような単一のcommit SHAで対象ホストの構�
 | ネットワーク実機検証(WNW) | `NOT SET` | 0 | 0 | 0 | `NOT SET` | `NOT SET` |
 | 合計 | `NOT SET` | 0 | 0 | 0 | `NOT SET` | [試験仕様書・結果票](06-test-specification.md) |
 
-集計値は個別結果票(ネットワーク実機検証は[Windows版ネットワーク結果票テンプレート](../evidence/templates/network-host-validation-windows.md))から転記し、合計が一致することを確認します。対象ホストが違う結果や、別の変更前状態識別子の結果を合算しません。フェーズ2に属するWIT-03、WIT-05、WIT-06、WIT-07、WIT-11は、未実装3点が解消するまで`BLOCKED`が前提であり、`BLOCKED`件数が残っていること自体はフェーズ1の集計の妥当性を損ないません。
+集計値は個別結果票(ネットワーク実機検証は[Windows版ネットワーク結果票テンプレート](../evidence/templates/network-host-validation-windows.md))から転記し、合計が一致することを確認します。対象ホストが違う結果や、別の変更前状態識別子の結果を合算しません。フェーズ2に属するWIT-03、WIT-05、WIT-06、WIT-07、WIT-11は、未実装2点が解消するまで`BLOCKED`が前提であり、`BLOCKED`件数が残っていること自体はフェーズ1の集計の妥当性を損ないません。
 
 ## 5. 設計値と実績値の差異
 
@@ -102,8 +102,8 @@ Windows版にはLinux版のような単一のcommit SHAで対象ホストの構�
 | バックアップ復元試験(フェーズ1) | NOT RUN | 別ボリューム/別ホストへの復元でWIT-09を実行 |
 | windows_exporterサービスアカウントの最小権限化 | NOT READY | 現状LocalSystemでの運用実績を積んだうえで、最小権限アカウントへの移行方針を検討・適用 |
 | host metrics scrape(フェーズ2、WIT-03) | BLOCKED | Prometheusコンテナは`monitoring`(`internal: true`)に加え`host-access`(internal指定なしのbridge、nftables実機検証でMASQUERADE/`DOCKER-FORWARD` acceptを確認済み)にも接続されており egress自体は塞がれていないが、(a)Dockerホストとサーバー外にある実machine(Windows Server)のネットワークセグメント間の実L3到達性、(b)`windows_exporter`(既定9182/tcp)側Firewallが実際の送信元(`host-access`のMASQUERADEによりDockerホスト自身の実IPとして見える)を許可しているか、の2点が未確立(`NOT SET`)。あわせてjob名`linux-node`にWindowsを混ぜること自体、名前が実態と合わなくなる点も未解消 |
-| blackbox probe(フェーズ2、WIT-05) | BLOCKED | `ansible/roles/app/templates/prometheus.yml.j2`のprobe対象がLinux側の想定で汎用化されておらず、IISサイトをprobe対象へ追加する仕組みが無い(現状未実装) |
-| ログ集約(フェーズ2、WIT-06) | BLOCKED | Windows Event Log / IISログを既存Lokiへ送る経路(Grafana Alloy for Windowsの導入、Lokiのpush APIをloopback以外からも安全に受け付けるための認証・network設計)が無い(現状未実装) |
+| blackbox probe(フェーズ2、WIT-05) | BLOCKED | `ansible/roles/app/templates/prometheus.yml.j2`のprobe対象汎用化(`app_blackbox_probe_targets`)はコードとして解消済みだが、対象ホスト未構築に加えWIT-03と同じDockerホスト↔対象ネットワーク間の実L3到達性が未確立のため(同日訂正: 従来は対象ホスト未構築のみを理由としていた) |
+| ログ集約(フェーズ2、WIT-06) | BLOCKED | Windows Event Log / IISログを既存Lokiへ送る経路(Grafana Alloy for Windowsの導入、Lokiのpush APIを安全に受け付けるための認証・network設計)は、Windows側(`ansible/roles/common_windows`のAlloy導入タスク・設定テンプレート)・中央側(`compose.loki-push.yaml.example`+`deploy/nginx/loki-push.conf.example`。専用ポート・Bearer token認証・送信元IP許可リスト)ともコードとして追加済み。ただし実機Windows Server・実機Lokiへの実行実績はゼロ件で、WIT-03と同じDockerホスト↔対象ネットワーク間の実L3到達性が未確立のため引き続きBLOCKED |
 | alert通知(フェーズ2、WIT-07) | BLOCKED | WIT-03(host metrics scrape)の解消が前提のため連鎖してBLOCKED |
 | 複数ターゲットscrape(フェーズ2、WIT-11) | BLOCKED | WIT-03の解消後、`app_node_exporter_targets`の汎用性の実演として有効化 |
 | Windows対応Ansible role(`ansible/roles/common_windows`)の実機検証 | NOT RUN | コードは追加済み(Firewall、IIS、windows_exporter、バックアップ導入を対象)だが実機Windows Serverへの実行実績がゼロ件(Molecule等のCI検証も無し)。WinRMを話せる検証用ホストを用意し、実機での`ansible-playbook`実行結果をevidenceへ記録 |
@@ -127,7 +127,7 @@ Windows版にはLinux版のような単一のcommit SHAで対象ホストの構�
 
 - [ ] フェーズ1の必須試験がすべて`PASS`で、結果票と集計が一致する
 - [ ] フェーズ1に`FAIL` / `BLOCKED` / 必須の`NOT RUN`が残っていない
-- [ ] フェーズ2が「未実装」3点の解消条件とともに`BLOCKED`として明記されている
+- [ ] フェーズ2が「未実装」2点の解消条件とともに`BLOCKED`として明記されている
 - [ ] 設計差異、障害、残存リスク、未解決Issueを説明した
 - [ ] RDP一時許可、一時設定、テストデータを撤去し、最終状態を採録した
 - [ ] ロールバックまたは復元の開始条件と連絡先を共有した
@@ -136,7 +136,7 @@ Windows版にはLinux版のような単一のcommit SHAで対象ホストの構�
 | 判定 | 値 |
 | --- | --- |
 | 作業完了(フェーズ1) | `NOT READY` |
-| 作業完了(フェーズ2) | `BLOCKED`(未実装3点の解消が前提) |
+| 作業完了(フェーズ2) | `BLOCKED`(未実装2点の解消が前提) |
 | 引き渡し可否 | `NOT READY` |
 | 判定理由 | 必須試験と受領情報が未記入 |
 | 引き渡し日時 | `NOT SET` |

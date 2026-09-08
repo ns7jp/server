@@ -112,20 +112,22 @@
 | PowerShell | 組込5.1 + PowerShell 7.4系 | 同上 |
 | windows_exporter | `NOT SET`(実機決定時にMSIとSHA256を固定) | 本節 |
 | IIS | Windows付属Web-Server機能(`Web-Common-Http`、`Web-Mgmt-Console`) | 本節 |
-| Grafana Alloy for Windows | 導入すれば既存`compose.yaml`のAlloyと合わせv1.16.1系を基準にする設計だが、現時点では未実装 | [詳細設計書](02-detailed-design.md) |
+| Grafana Alloy for Windows | Windows側(`ansible/roles/common_windows`)の導入タスク・設定テンプレート、中央側の`compose.loki-push.yaml.example`+`deploy/nginx/loki-push.conf.example`(専用ポート・Bearer token認証・送信元IP許可リスト)は、いずれもコードとして追加済み(既存`compose.yaml`のAlloyと合わせv1.16.1系を基準にする想定)だが実機Windows Server・実機Lokiへの実行実績はゼロ件でバージョンは`NOT SET`。実L3到達性(`WIT-03`と同じ)の確立も別途必要なため経路全体としては未導入のまま | [詳細設計書](02-detailed-design.md) |
 | Windows Server Backup | OS付属機能(`wbadmin`) | 「監視・ログ」節 |
 
 windows_exporterは実機決定時にバージョンとSHA256ハッシュをこの表と実機記入欄へ記録し、以後のバージョンアップはWUT-03のハッシュ検証を経て行います。IIS・PowerShellはOS付属またはOS対応バージョンを使うため、個別のversion pinningは行いません。
 
 ## 監視・ログ
 
-フェーズ2(中央監視統合)のうち、ログ集約(WIT-06)は[要件定義書](00-requirements.md)に記載の未実装事項(Grafana Alloy for Windows未導入)が解消するまで`BLOCKED`です。windows_exporter scrape(WIT-03)はDockerホスト↔対象ネットワーク間の実L3到達性・windows_exporter側Firewall許可(いずれも`NOT SET`)が確立するまで`BLOCKED`です。blackbox probe(WIT-05)はコード側の制約(`prometheus.yml.j2`のprobe対象汎用化)が解消済みのため、対象ホスト未構築による`NOT RUN`です。値自体は設計として決まっていますが、実行結果としては数えません。
+フェーズ2(中央監視統合)のうち、ログ集約(WIT-06)はWindows側・中央側ともコード追加済みですが、実機Windows Server・実機Lokiへの実行実績がゼロ件であり、[要件定義書](00-requirements.md)に記載のとおり`WIT-03`と同じ実L3到達性が確立するまで`BLOCKED`です。windows_exporter scrape(WIT-03)はDockerホスト↔対象ネットワーク間の実L3到達性・windows_exporter側Firewall許可(いずれも`NOT SET`)が確立するまで`BLOCKED`です。blackbox probe(WIT-05)はコード側の制約(`prometheus.yml.j2`のprobe対象汎用化)は解消済みですが、対象ホスト未構築に加え実L3到達性の未確立にも影響されるため、`WIT-03`と同じ理由で`BLOCKED`です(同日訂正)。値自体は設計として決まっていますが、実行結果としては数えません。
 
 | 項目 | 設定値(設計) | 状態 | 正本 |
 | --- | --- | --- | --- |
 | windows_exporter scrape interval | 中央の既存`linux-node` jobの設定(15秒)を流用予定 | `BLOCKED`(WIT-03。Dockerホスト↔対象ネットワーク間の実接続・windows_exporter側Firewall許可が確立するまで) | `ansible/roles/app/defaults/main.yml`の`app_node_exporter_targets` |
-| blackbox probe interval | 中央の既存blackbox jobの設定(30秒)を流用予定 | `NOT RUN`(WIT-05。`prometheus.yml.j2`の`app_blackbox_probe_targets`によるprobe対象汎用化は実装済み。対象ホスト未構築のため未実施) | [Linux版パラメータシート](../build-package/03-parameter-sheet.md) |
-| ログ集約 | Grafana Alloy for Windows経由で既存Lokiへ集約する設計のみ | `BLOCKED`(WIT-06。Alloy for Windows未導入のため) | [詳細設計書](02-detailed-design.md) |
+| blackbox probe interval | 中央の既存blackbox jobの設定(30秒)を流用予定 | `BLOCKED`(WIT-05。`prometheus.yml.j2`の`app_blackbox_probe_targets`によるprobe対象汎用化は実装済みだが、対象ホスト未構築に加え`WIT-03`と同じ実L3到達性の未確立にも影響されるため`BLOCKED`。同日訂正) | [Linux版パラメータシート](../build-package/03-parameter-sheet.md) |
+| ログ集約 | Grafana Alloy for Windows経由で既存Lokiへ集約する設計。Windows側・中央側(`compose.loki-push.yaml.example`+`deploy/nginx/loki-push.conf.example`)ともコード追加済み | `BLOCKED`(WIT-06。実機Windows Server・実機Lokiへの実行実績はゼロ件で、`WIT-03`と同じ実L3到達性の未確立が理由) | [詳細設計書](02-detailed-design.md) |
+| ログ集約: 中央側push受け口(`LOKI_PUSH_PORT` / `LOKI_PUSH_BIND_ADDRESS`) | 既定値`3101` / `127.0.0.1`(`compose.loki-push.yaml.example`のopt-inオーバーレイを起動した場合のみ有効) | 未使用(overlay未起動のため`NOT RUN`) | `.env.example` |
+| ログ集約: Windows側push設定(`common_windows_loki_push_url` / `common_windows_loki_push_bearer_token_file`) | 空の間はAlloy導入タスクをskipする設計。値の例は`http://monitor-01.example.test:3101/loki/api/v1/push`等(実機決定時に固定) | `NOT SET` | `ansible/roles/common_windows/defaults/main.yml` |
 | 可用性SLO / latency SLO | Windows対象ホスト個別の数値目標は未設定 | `NOT SET`(フェーズ2有効化後に既存[SLO](../slo.md)へ統合予定) | — |
 
 ### バックアップ設計

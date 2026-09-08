@@ -1,0 +1,65 @@
+---
+# FR-05(ログ集約)。中央Lokiのpush APIが実機到達可能かつ認証設計込みで
+# 公開されるまでは、common_windows_loki_push_urlをNOT SETのままにして
+# このタスク一式をskipする(到達しないendpointへ向けてserviceだけ動かさない)。
+- name: Skip Grafana Alloy for Windows until the download URL and Loki push endpoint are set
+  ansible.builtin.debug:
+    msg: >-
+      common_windows_alloy_download_url/common_windows_alloy_sha256/
+      common_windows_loki_push_url のいずれかが未設定のため、Grafana Alloy for
+      Windows の導入をskipします。中央Lokiのpush API公開・認証設計(NOT SET)が
+      前提です。
+  when: >-
+    common_windows_alloy_download_url | length == 0
+    or common_windows_alloy_sha256 | length == 0
+    or common_windows_loki_push_url | length == 0
+
+- name: Manage Grafana Alloy for Windows (download URL and Loki endpoint provided)
+  when: >-
+    common_windows_alloy_download_url | length > 0
+    and common_windows_alloy_sha256 | length > 0
+    and common_windows_loki_push_url | length > 0
+  block:
+    - name: Download Grafana Alloy for Windows with hash verification
+      ansible.windows.win_get_url:
+        url: "{{ common_windows_alloy_download_url }}"
+        dest: 'C:\Windows\Temp\grafana-alloy-windows.zip'
+        checksum: "{{ common_windows_alloy_sha256 }}"
+        checksum_algorithm: sha256
+
+    - name: Ensure the Alloy install directory exists
+      ansible.windows.win_file:
+        path: "{{ common_windows_alloy_install_dir }}"
+        state: directory
+
+    - name: Ensure the Alloy data directory exists
+      ansible.windows.win_file:
+        path: "{{ common_windows_alloy_data_dir }}"
+        state: directory
+
+    - name: Extract the Alloy archive
+      community.windows.win_unzip:
+        src: 'C:\Windows\Temp\grafana-alloy-windows.zip'
+        dest: "{{ common_windows_alloy_install_dir }}"
+
+    - name: Deploy the Alloy configuration (Windows Event Log + IIS logs)
+      ansible.windows.win_template:
+        src: config.windows.alloy.j2
+        dest: "{{ common_windows_alloy_data_dir }}\\config.alloy"
+      notify: Restart Grafana Alloy
+
+    - name: Register the Grafana Alloy Windows service
+      ansible.windows.win_service:
+        name: GrafanaAlloy
+        display_name: Grafana Alloy
+        path: >-
+          "{{ common_windows_alloy_install_dir }}\alloy.exe" run
+          --storage.path="{{ common_windows_alloy_data_dir }}\data"
+          "{{ common_windows_alloy_data_dir }}\config.alloy"
+        start_mode: auto
+        state: started
+
+    - name: Remove the downloaded archive
+      ansible.windows.win_file:
+        path: 'C:\Windows\Temp\grafana-alloy-windows.zip'
+        state: absent

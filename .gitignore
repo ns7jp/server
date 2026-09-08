@@ -8,6 +8,9 @@ deploy/secrets/*.txt
 !deploy/secrets/*.example
 deploy/alertmanager/alertmanager.ansible.yml
 deploy/prometheus/prometheus.ansible.yml
+# docs/build-package-windows のログ集約経路(FR-05)向け。Bearer tokenと
+# 実機IPを含むためコミット禁止。雛形はloki-push.conf.exampleで配布する。
+deploy/nginx/loki-push.conf
 
 # Terraform
 **/.terraform/

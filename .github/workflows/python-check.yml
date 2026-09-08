@@ -42,6 +42,7 @@ jobs:
           docker compose config --quiet
           docker compose -f compose.yaml -f compose.slack.yaml.example config --quiet
           docker compose -f compose.yaml -f compose.ansible.yaml config --quiet
+          docker compose -f compose.yaml -f compose.loki-push.yaml.example config --quiet
           docker compose -f labs/network-troubleshooting/compose.yaml config --quiet
           docker compose -f compose.zabbix.yaml config --quiet
 
