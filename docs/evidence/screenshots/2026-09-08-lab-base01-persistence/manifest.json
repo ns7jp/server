@@ -1,0 +1,42 @@
+[
+  {
+    "id": "E01",
+    "file": "E01-before.png",
+    "source_filename": "codex-clipboard-9ffe610c-4807-4fec-839f-5dfa75316d53.png",
+    "caption": "開始時HEAD・サービス行なし・保存ボリューム4件",
+    "bytes": 8814,
+    "sha256": "20b2c28b22f805f955830010d20e2ae97bf48e6c9a1f486e9461f24ba93a99d0"
+  },
+  {
+    "id": "E02",
+    "file": "E02-recreated.png",
+    "source_filename": "codex-clipboard-13cb4c93-5180-4700-ac8b-df253af9e36a.png",
+    "caption": "LokiとGrafanaだけ再作成・Grafana health ok・Loki準備待ち",
+    "bytes": 21541,
+    "sha256": "0cb528e8915e1fa70d774afadc18717ee59176079fc1fde173acd3764cc819d0"
+  },
+  {
+    "id": "E03",
+    "file": "E03-ready-and-input-error.png",
+    "source_filename": "codex-clipboard-9f1b24f5-b867-4fbb-b7ce-67913de8c68c.png",
+    "caption": "Loki ready・LogQLをBashへ入力したエラー",
+    "bytes": 6078,
+    "sha256": "3815d54cef61962e8bfe8a5a56ad50b6df161cbfbe05d534a0572d1e236f6796"
+  },
+  {
+    "id": "E04",
+    "file": "E04-stored-logs.png",
+    "source_filename": "codex-clipboard-1ae752e6-b0d8-47dd-9c3d-860c52bb42e5.png",
+    "caption": "前回と同じ時刻・目印・GET/401のログ2件を再表示",
+    "bytes": 103229,
+    "sha256": "acca14d9146056d13615bf34fdf2b29653824392b306e93efa1b0ab4d00e86da"
+  },
+  {
+    "id": "E05",
+    "file": "E05-after.png",
+    "source_filename": "codex-clipboard-99289186-8c93-4944-afbc-a5459c471214.png",
+    "caption": "2コンテナ・3ネットワーク撤去後も保存ボリューム4件残存",
+    "bytes": 12730,
+    "sha256": "84bf0f046df95bd81e87f467e9437d98ecc6f61433d6b1942f443d2ef5b84b71"
+  }
+]
