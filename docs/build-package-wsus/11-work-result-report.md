@@ -90,7 +90,7 @@ WSUS版にはLinux版のような単一のcommit SHAで対象ホストの構成�
 | WSUS管理サイトのポート(HTTP 8530 / HTTPS 8531) | HTTP(8530)固定。HTTPS化は次点課題 | `NOT RUN` | `NOT SET` | `NOT SET` |
 | コンテンツストア配置先 | `D:\WSUS\WSUSContent`(Dドライブ) | `NOT RUN` | `NOT SET` | `NOT SET` |
 | `WsusPool`設定(アイドルタイムアウト/キュー長/メモリ制限) | 同上(0分/2000/0) | `NOT RUN` | `NOT SET` | `NOT SET` |
-| GPO「WSUS-Client-Policy」の対象グループ名とWSUSコンピューターグループ名の一致 | 両者とも`Servers` | `NOT RUN` | `NOT SET` | `NOT SET` |
+| GPO「WSUS-Client-Policy」の対象グループ名とWSUSコンピューターグループ名の一致 | 両者とも`Pilot` | `NOT RUN` | `NOT SET` | `NOT SET` |
 | windows_exporter バージョン / SHA256 | [パラメータシート](03-parameter-sheet.md)参照(実機決定時に固定) | `NOT RUN` | `NOT SET` | `NOT SET` |
 | port / Firewallプロファイル | 同上(5986/8530/9182許可、Domainプロファイル) | `NOT RUN` | `NOT SET` | `NOT SET` |
 

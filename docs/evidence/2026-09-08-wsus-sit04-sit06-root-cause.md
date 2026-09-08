@@ -1,0 +1,226 @@
+# WSUS SIT-06・SIT-04 原因切り分け結果票 — 2026-09-08
+
+[2026-09-07のWSUS構築・試験結果票](2026-09-07-wsus-build-validation.md)の「残存リスク・未確認事項」に積み残していた2件、**SIT-06**（`ApplyRule()`が絞り込みを無視する）と**SIT-04**（自己登録先が`Servers`にならない）の原因を、`wsus-01`実機で切り分けた記録です。両方とも原因を特定し、[構築手順書](../build-package-wsus/05-build-procedure.md)・[パラメータシート](../build-package-wsus/03-parameter-sheet.md)・[試験仕様書](../build-package-wsus/06-test-specification.md)へ反映しました。
+
+> **この証跡が示す範囲**: 2026-09-07と同じ環境（Windows 11 Pro上のHyper-V内部スイッチ`ADLab-Internal`、Windows Server 2022評価版VM）での切り分けです。フェーズ1の再試験そのものではなく、**原因の特定と修正内容の妥当性確認**を目的としています。SIT-06・SIT-04を含むフェーズ1の通し再実施は未了です（「残存リスク」参照）。
+
+## 基本情報
+
+| 項目 | 値 |
+| --- | --- |
+| 実施日（JST） | 2026-09-08 |
+| 対象 / host | 検証（ラボ）/ `wsus-01` = `wsus-01.corp.example.test` = `192.0.2.52/24` |
+| ドメインコントローラー | `ad-dc02` = `192.0.2.51`（`ad-dc01`は[FSMO奪取試験](2026-09-04-ad-fsmo-seize.md)で削除済み） |
+| 管理端末 | ホストPC（非ドメイン参加）、`192.0.2.40/24`。WinRM over HTTPS（5986）で接続 |
+| commit SHA（調査開始時） | `257fb2230b06cdb94be7cd1dc5e86d8912e64c4a` |
+| ホストのビルド番号 | `20348`（Windows Server 2022 Standard Evaluation、ja-JP） |
+| 同期済み更新 | 557件（分類内訳: セキュリティ問題の修正プログラム473 / 更新54 / 修正プログラム集30） |
+
+## 結論の要約
+
+| ID | 2026-09-07時点の認識 | 2026-09-08に特定した原因 | 判定 |
+| --- | --- | --- | --- |
+| SIT-06 | 「`ApplyRule()`が設計の絞り込みを無視して555件を全件承認した」 | **誤り。`ApplyRule()`は絞り込みを正しく守る。** 真因は、実行時点でルールの**分類0件・製品0件**が保存されており、WSUSがこれを「絞り込みなし＝全分類・全製品」と解釈したこと | 原因特定・手順修正済み |
+| SIT-04 | 「`TargetingMode=Client`にしても`Servers`へ自己登録しない。再レポート周期か`Pilot`手動追加との競合か不明」 | **クライアント側ターゲティングでは、クライアントが登録し直すたびに所属グループが「申告した`TargetGroup`ただ1つ」へ置き換わる。** 9節の`Pilot`手動追加は次回登録で失われる。設計（GPOは`Servers`を申告・承認ルールは`Pilot`が対象）が自己矛盾していた | 原因特定・設計変更済み |
+
+---
+
+## SIT-06 — `ApplyRule()`は絞り込みを守っていた
+
+### 事象の整理
+
+2026-09-07の実測は「同期済み557件のうち555件を承認」でした。同期済み557件から当時の拒否済み2件を引くと555件であり、これは**「絞り込みが一切効いていない場合の件数」と完全に一致**します。一方、ルールの設計どおりの絞り込み（分類=重要な更新/セキュリティ問題の修正プログラム、製品=`Microsoft Server operating system-21H2`）で対象を数えると、次のとおりです。
+
+```text
+[UpdateScope で本来の対象件数を計測]
+分類フィルタのみ                    : 473 件
+製品フィルタのみ                    : 105 件
+両方（＝ルールが承認すべき件数）    :  87 件
+同期済み総数                        : 557 件
+2026-09-07の実測                    : 555 件   ← 87 とも 473 とも一致しない
+```
+
+### 実機に残っていたルールの状態
+
+調査開始時点で`wsus-01`に保存されていた承認ルールは次のとおりでした。
+
+```text
+Name    = Critical and Security Updates - Pilot Auto-Approve
+Enabled = False
+Action  = Install
+Classifications (0) =
+Categories      (0) =
+TargetGroups    (1) = Pilot
+```
+
+**分類0件・製品0件。** WSUSはこれを「全分類・全製品」として扱います。
+
+### 検証1 — 絞り込みを設定した`ApplyRule()`
+
+拒否済み更新から3つのコホートを取り出して未承認へ戻し、絞り込みを設計値どおりに設定したうえで`ApplyRule()`を実行しました（`BITS`停止によりコンテンツ転送は発生しない状態）。
+
+```text
+rule at apply time: cls=2 cat=1 grp=1
+ApplyRule() returned 4 items
+```
+
+| コホート | 条件 | 件数 | 承認された件数 | 期待 |
+| --- | --- | --- | --- | --- |
+| A | 分類OK＋製品OK | 4 | **4** | 承認される |
+| B | 分類OK＋製品NG（Windows 11） | 4 | **0** | 承認されない |
+| C | 分類NG（更新） | 4 | **0** | 承認されない |
+
+**`ApplyRule()`は分類・製品の両方を正しく守りました。**
+
+### 検証2 — 絞り込みを空にした`ApplyRule()`
+
+同じ12件に対し、ルールの分類・製品を**空**（対象グループ`Pilot`のみ残す）にして再実行しました。
+
+```text
+rule now: Enabled=True cls=0 cat=0 grp=1
+ApplyRule() returned 12 items
+```
+
+| コホート | 条件 | 件数 | 承認された件数 |
+| --- | --- | --- | --- |
+| A | 分類OK＋製品OK | 4 | **4** |
+| B | 分類OK＋製品NG | 4 | **4** |
+| C | 分類NG | 4 | **4** |
+
+分類・製品を問わず全件が承認されました。**これが2026-09-07に555件が承認された機序です。**
+
+### 否定した仮説
+
+「では何が絞り込みを消したのか」について、次の候補を実機で潰しました。
+
+| 仮説 | 検証方法 | 結果 |
+| --- | --- | --- |
+| 9.2節の`.Enabled`のみ変更＋`Save()`が絞り込みを消す | 絞り込みを設定→`Enabled=$true; Save()`→読み戻し | **否定。** cls=2/cat=1/grp=1のまま保持。`Enabled=$false`へ戻す2回目の`Save()`でも保持 |
+| `ApplyRule()`自身が絞り込みを消す | `ApplyRule()`前後で読み戻し | **否定。** 前後とも cls=2/cat=1/grp=1 |
+| 週次クリーンアップタスクが消す | `Get-ScheduledTaskInfo` | **否定。** `LastRunTime = 1999/11/30`（一度も実行されていない）、`NextRunTime = 2026/09/13` |
+| 同期が消す | 絞り込み設定後に`StartSynchronization()`を完走させ読み戻し | **否定。** 同期完了後も cls=2/cat=1/grp=1（ただし差分ゼロの45秒同期であり、2026-09-07の64分の全同期と同等の負荷ではない） |
+
+**絞り込みを空にした操作そのものは再現できていません。** 8節の読み戻しでは正しい絞り込みが表示されており、その後`ApplyRule()`までの間に何かが書き換えたことになりますが、上記のとおりAPI経路の候補は否定されました。残る有力候補はWSUSコンソール（GUI）の「自動承認」ダイアログでルールを有効化した際の書き戻しですが、本調査ではGUI操作を再現していないため未確認です。
+
+### 手順書への反映方針
+
+原因が「`ApplyRule()`が信用できない」ではなく「絞り込みが空のルールを`ApplyRule()`してはいけない」である以上、守るべき不変条件は**実行直前の絞り込み検証**です。9.2節に、分類・製品・グループのいずれかが0件なら`throw`する検証と、`UpdateScope`で「本来の想定対象件数」を事前に数えて`ApplyRule()`の戻り件数と突き合わせる手順を追加しました。
+
+---
+
+## SIT-04 — 所属グループはクライアントの申告値ただ1つに置き換わる
+
+### 調査開始時点の実機状態
+
+```text
+TargetingMode            = Client
+RequestedTargetGroupName = Servers
+MemberOf                 = Servers | All Computers
+Pilot グループの直下メンバー = （空）
+```
+
+2026-09-07に9節の手順で`Pilot`へ手動追加したはずの所属が消えていました。VMを起動した際にクライアントが登録し直したためです。
+
+### 検証3 — 手動追加は次の登録で失われる
+
+9節の手順どおり`AddComputerTarget()`で`Pilot`へ追加し、その後クライアントを強制的に登録し直させました。
+
+```text
+[手動追加の直後]                MemberOf=[Pilot,Servers,All Computers]
+[クライアントが登録し直した後]  MemberOf=[Servers,All Computers]        ← Pilotが消える
+                                RequestedTargetGroupName = Servers
+[このときクライアントへ提示された更新]  0 件
+```
+
+`AddComputerTarget()`自体は成功し、複数グループへの同時所属も作れます。しかし**クライアントが登録し直した時点で、申告された`TargetGroup`ただ1つへ置き換えられます。** そして提示された更新は**0件**でした。承認ルールが`Pilot`を対象にしているため、`Servers`所属のマシンには何も届きません。**この構成のままではSIT-05も成立しません。**
+
+なお、`TargetGroup`やグループ所属を変更した直後に`UsoClient.exe StartScan`だけを走らせても所属は変わりません。クライアントがターゲティング用cookieをキャッシュしており、既定の保持時間が1時間だからです。
+
+```text
+(Get-WsusServer).GetConfiguration().SimpleTargetingCookieExpirationTime = 01:00:00
+```
+
+2026-09-07に「`TargetingMode`を`Client`へ変更後も、再レポートで`Servers`へ移らなかった」のはこのcookieの影響と整合します。即座に反映させるには`SusClientId`等を削除して`wuauclt /resetauthorization /detectnow`で登録し直させる必要があります。
+
+### 検証4 — GPOの`TargetGroup`を`Pilot`にすると解決する
+
+GPO`WSUS-Client-Policy`の`TargetGroup`を`Servers`から`Pilot`へ変更し、`gpupdate`後にクライアントを登録し直させました。
+
+```text
+registry TargetGroup = Pilot
+[修正後]  MemberOf=[Pilot,All Computers]   RequestedTargetGroupName = Pilot
+
+[クライアントへ提示された更新]  1 件
+   2026-08 x64 ベース システム用 Microsoft server operating system version 21H2 の累積更新プログラム (KB5120242)
+```
+
+**提示件数が0件から1件になりました。** `Pilot`向けの承認がクライアントへ届いています。
+
+### 検証5 — 親グループ向けの承認は子へ継承される
+
+`Pilot`へ入れると`Servers`向けの承認を取りこぼすのではないか、という懸念を潰しました。グループ階層は`All Computers` → `Servers` → `Pilot`です。KB5120242の承認を`Pilot`から削除し、`Servers`のみへ付け替えたうえでクライアントに検索させました。
+
+```text
+[start]                 approvals = [Pilot:Install]
+[after move to Servers] approvals = [Servers:Install]
+[client = Pilot 直下のみに所属]
+   search OK: 1 offered
+      offered: 2026-08 ... (KB5120242)
+```
+
+**`Servers`のみに承認しても、`Pilot`所属のクライアントへ提示されました。** 継承は下向きに働きます。したがって`Pilot`を申告させても`Servers`向け・`All Computers`向けの承認を取りこぼしません。
+
+> この検証では2回失敗しています。1回目は拒否解除に`Approve(NotApproved, Pilot)`を使ったため`Pilot`に明示的な「未承認」レコードが残り、継承を打ち消しました（**子グループの明示指定は親からの継承より優先される**）。2回目は対象にARM64向け更新を選んでしまい、x64機には元々適用対象外でした。
+
+---
+
+## 副次的に見つかった手順書の誤り・落とし穴
+
+2026-09-07の[誤り一覧](2026-09-07-wsus-build-validation.md#実機で見つけた手順書の誤り)（1〜9）の続きとして採番します。
+
+| # | 該当箇所 | 内容 | 対処 |
+| --- | --- | --- | --- |
+| 10 | 05 9節 | **`Pilot`グループへの手動追加は永続しない。** `AddComputerTarget()`は成功するが、クライアントが次に登録し直した時点で申告された`TargetGroup`ただ1つへ置き換わって消える。GPOが`Servers`を申告し承認ルールが`Pilot`を対象とする設計は自己矛盾しており、この状態ではクライアントへの提示が0件になる | GPOの`TargetGroup`を`Pilot`へ変更し、手動追加の手順を削除 |
+| 11 | 05 9.1節 | **原因の記述が誤り。** 「ルールの絞り込みが`ApplyRule()`の承認範囲を限定する保証は無いものとして扱う」とあるが、`ApplyRule()`は絞り込みを正しく守る。危険なのは絞り込みが0件で保存されている場合 | 記述を修正し、実行直前の絞り込み検証（0件なら`throw`）と想定対象件数の事前計測を9.2節へ追加 |
+| 12 | 05 9.2節 | **`WsusService`は`BITS`の依存サービス。** 中断手順の`Stop-Service BITS -Force`は`WsusService`も黙って一緒に停止させる。本調査では同期実行中にこれが起き、同期がデータベース上で`Running`のまま固まった（`GetSynchronizationStatus()`は`Running`なのに`GetSynchronizationProgress()`は`Phase=NotProcessing`・`0/0`） | 依存関係を注記し、固まった同期は`WsusService`開始後に`StopSynchronization()`で解除する手順を追記 |
+| 13 | 05 7節 | **GPO操作コマンドはWinRMセッション越しには実行できない。** `Set-GPRegistryValue`等はDC上のGPOへアクセスするため資格情報の再委任（ダブルホップ）が必要で、`操作エラーが発生しました。 (Exception from HRESULT: 0x80072020)`で失敗する | コンソール/RDPの対話セッションか、DC上で実行する旨を注記 |
+
+補足: 2026-09-07の証跡末尾に記録されているBOM無しUTF-8の落とし穴を本調査でも踏みました。検証スクリプトをBOM無しUTF-8で保存したため、日本語リテラルとの文字列比較（`$_.UpdateClassificationTitle -eq "セキュリティ問題の修正プログラム"`）が成立せず、コホート選定が壊れました。以降の検証はロケール非依存のGUIDと`UpdateScope`で対象を選ぶ方式へ切り替えています。
+
+## 手順書への反映
+
+| 文書 | 変更点 |
+| --- | --- |
+| 05 7節 | `TargetGroup`を`Servers`→`Pilot`へ。所属グループが申告値1つへ置き換わる性質、承認の継承、複数サーバー時に別GPOで先行リングを分ける方法、cookie（既定1時間）と強制再登録手順、ダブルホップ制約を追記 |
+| 05 8節 | この節の読み戻しは`ApplyRule()`時点の絞り込みを保証しない旨と、9.2節での再検証を必須とする注記を追加 |
+| 05 9節 | `Pilot`への手動追加手順を削除し、`Pilot`への自己登録確認手順（所属グループ・申告グループ・最終レポート時刻）へ差し替え |
+| 05 9.1節 | 誤った原因記述を修正。「絞り込みが0件のルールを`ApplyRule()`しない」を不変条件として明示 |
+| 05 9.2節 | 実行直前の絞り込み検証（0件なら`throw`）と`UpdateScope`による想定対象件数の事前計測を追加。`BITS`と`WsusService`の依存関係、固まった同期の解除手順を追記 |
+| 03 | クライアント側ターゲティングの対象グループ名を`Pilot`へ。`Pilot`サブグループの説明から「手動で所属させる」を削除 |
+| 06 | SIT-04の期待結果を`Pilot`グループへの自己登録に変更。SIT-06の期待結果に絞り込み0件チェックを追加 |
+| 02・07・08・11・beginner-guide | 対象グループ名の変更に伴う波及修正。`Servers`グループへ自己登録する前提の記述を`Pilot`へ統一し、`Servers`コンピューターグループは「承認を子へ継承させる階層の親」として位置付け直した |
+
+上記のほか、2026-09-07の[誤り3](2026-09-07-wsus-build-validation.md#実機で見つけた手順書の誤り)（WSUSカタログに存在しない製品名`Windows Server 2022`）の直し漏れが`03`の「自動承認ルールの対象製品」、`02`、`08`に残っていたため、`Microsoft Server operating system-21H2`へ修正しました。
+
+## 調査後の実機状態
+
+調査で変更した承認・拒否・ルールはすべて元へ戻しました。GPOの`TargetGroup`のみ、修正内容として`Pilot`のまま残しています。
+
+```text
+STATUS  : Update=557 Approved=2 NotApproved=0 Declined=555     ← 2026-09-07終了時と同じ
+RULE    : Enabled=False cls=2 cat=1 grp=1                      ← 絞り込みを設計値へ復元
+CLIENT  : MemberOf=[Pilot,All Computers] Requested=Pilot        ← 修正後の期待状態
+REG     : TargetGroup=Pilot
+CONTENT : ToDownloadMB=56 DownloadedMB=56                       ← 未完了の転送なし
+D: 空き 98.8GB / C: 空き 65.17GB
+サービス: WsusService=Running BITS=Running W3SVC=Running windows_exporter=Running wuauserv=Running
+```
+
+## 残存リスク・未確認事項
+
+- **フェーズ1の再試験は未実施です。** 本証跡は原因特定と修正の妥当性確認までであり、[試験仕様書](../build-package-wsus/06-test-specification.md)のSIT-04・SIT-05・SIT-06を修正後の手順で通しで再実行してはいません。フェーズ1の総合判定は`FAIL`のままです。
+- **絞り込みを空にした操作は再現できていません。** API経路の候補（`Enabled`のみの`Save()`、`ApplyRule()`、クリーンアップ、同期）はいずれも否定しました。WSUSコンソール（GUI）からルールを有効化した際の書き戻しが有力候補ですが未検証です。9.2節の実行直前検証は、原因が何であれ被害を止める位置に置いてあります。
+- **同期の検証は差分ゼロの45秒同期です。** 2026-09-07の64分の全同期と同等の条件では試せていません。全同期が絞り込みへ影響しないと断定するには、カテゴリが追加される規模の同期での再確認が必要です。
+- **ラボのメモリが不足しています。** ホスト16GBに対し`ad-dc02`（4GB固定）・`lab-base01`（2GB固定）・`wsus-01`（動的、上限8GB）が同居し、調査時点でホストの空きは1.6GB、`wsus-01`への割り当ては1.89GBでした。この状態で全同期を開始すると`WsusService`が停止します。全同期を伴う再試験の前に、他VMを停止するかホストのメモリを増やす必要があります。
+- 検証3〜5でクライアントの`SusClientId`を削除して強制再登録を繰り返しています。実運用では登録IDの重複・欠落を招くため、切り分け目的以外では行わないでください。
+- 2026-09-07の残存リスクのうち、中央Prometheus host未定（フェーズ2）、HTTPS化（8531/tcp）未対応、監査ポリシー既定のまま、独立した管理端末の不在、24/72時間連続稼働未実施は、いずれも本調査の対象外で未解消のままです。
