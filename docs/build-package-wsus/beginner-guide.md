@@ -428,12 +428,14 @@ GPOの自動更新ポリシーは[オプション3（自動ダウンロードを
 **型1: コマンドがエラーになる**（実行すればその場で気づける）
 
 - `Set-WsusProduct -UpdateServer $wsus` → `-UpdateServer`というパラメーター自体が存在しない
-- windows_exporterの`ENABLED_COLLECTORS`に`cs`を含めた → `unknown collector cs`でサービスが起動しない
 - `Enabled=false`のまま`ApplyRule()`を呼んだ → 「この承認規則は、有効でないため適用できません」で拒否
 - WID単体構成に`sqlcmd.exe`が同梱されず、手順書のバックアップコマンドが実行できない
 
 **型2: コマンドは成功するのに、意図した結果になっていない**（いちばん怖い型）
 
+- windows_exporterの`ENABLED_COLLECTORS`に廃止済みの`cs`を含めた → **インストーラ
+  （`msiexec`）は成功する**が、その後サービスが起動しない（`unknown collector cs`）。
+  インストーラの戻り値だけ見て次へ進むと見逃す
 - 承認ルールに製品`Windows Server 2022`を指定した → コマンドは成功するが、WSUSカタログに
   その名前の製品は存在せず（正しくは`Microsoft Server operating system-21H2`）、対象0件のまま
   ルールが保存される
