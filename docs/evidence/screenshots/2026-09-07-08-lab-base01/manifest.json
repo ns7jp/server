@@ -1,0 +1,338 @@
+[
+  {
+    "id": "E01",
+    "file": "E01-initial-os.png",
+    "source_filename": "codex-clipboard-0e480f3e-97c4-48d6-9841-f2c42ad0f398.png",
+    "sha256": "50b2e4baae8f173dc148190b0ac98acc4a826f966977877e0feab935894cad43",
+    "bytes": 100704,
+    "caption": "初期OS・ユーザー・ホスト名・DHCP・SSHサービスinactive"
+  },
+  {
+    "id": "E02",
+    "file": "E02-ssh-socket.png",
+    "source_filename": "codex-clipboard-248255ef-ca09-4a4c-a780-c5d171a3d761.png",
+    "sha256": "8cfc5ab8718a70b79f7abe5825b3072b82c91ca0cbf459d0fd838dc0bfc111ea",
+    "bytes": 51575,
+    "caption": "SSH socket active、22番待受、eth1未設定"
+  },
+  {
+    "id": "E03",
+    "file": "E03-static-ip.png",
+    "source_filename": "codex-clipboard-9b135d32-a711-426b-9ebe-9037bc06a1b2.png",
+    "sha256": "85e8f8f538125a2acbe075c6045c621d8e00ae77e01bf2c96c93fc54d03eec60",
+    "bytes": 46740,
+    "caption": "eth1固定IPとeth0デフォルト経路"
+  },
+  {
+    "id": "E04",
+    "file": "E04-key-login.png",
+    "source_filename": "codex-clipboard-00ab1ad0-6baa-4727-a9e4-89f093d1dd64.png",
+    "sha256": "b12225e6679ec17497fcc49f7ebdf8fca1dad1b46fcf914273329acbd15a76c5",
+    "bytes": 28637,
+    "caption": "公開鍵登録後の鍵認証成功。途中にパスワード再入力あり"
+  },
+  {
+    "id": "E05",
+    "file": "E05-password-denied.png",
+    "source_filename": "codex-clipboard-37135e98-22b6-4966-a079-40215f0b3fde.png",
+    "sha256": "4016247725772743e08db3a43d0d83247e7809221ac52312ca84ccd64a46ef93",
+    "bytes": 4997,
+    "caption": "パスワード方式のみの接続拒否"
+  },
+  {
+    "id": "E06",
+    "file": "E06-ufw.png",
+    "source_filename": "codex-clipboard-62214ace-6d41-49a8-b36a-75291ba85b19.png",
+    "sha256": "d20b1620fc993f2dbdf54c1b81a9b23d0343d1ea4b3dea8be41d8204fe217641",
+    "bytes": 5591,
+    "caption": "UFW有効・SSH許可元限定"
+  },
+  {
+    "id": "E07",
+    "file": "E07-key-after-ufw.png",
+    "source_filename": "codex-clipboard-6891759d-825f-4f8e-a05d-99d5947003e1.png",
+    "sha256": "55da10c77993a68920c7c0fb5d8d95b8b5cbf23bdef23ed5004b086021c72cd4",
+    "bytes": 6218,
+    "caption": "UFW有効化後の鍵接続"
+  },
+  {
+    "id": "E08",
+    "file": "E08-apt-upgrade.png",
+    "source_filename": "codex-clipboard-1796fb21-88bb-498b-95fa-b802ad6dbe10.png",
+    "sha256": "1500f92e0ba7f086adb7f9ebad70142133d8e88c4eecd43d4ff4037ada7d07a5",
+    "bytes": 24314,
+    "caption": "apt upgrade末尾。終了コード・更新全件一覧は未採録"
+  },
+  {
+    "id": "E09",
+    "file": "E09-reboot-ntp.png",
+    "source_filename": "codex-clipboard-09c26971-e335-40e3-b580-f4e36d0c439c.png",
+    "sha256": "f15b8f89c3b0e29b82d115d1bdc84966ced0496f96beac261e56f446f48abb00",
+    "bytes": 21749,
+    "caption": "再起動後の固定IP・経路・NTP同期yes・UFW"
+  },
+  {
+    "id": "E10",
+    "file": "E10-sudo-root-lock.png",
+    "source_filename": "codex-clipboard-26ba730b-714f-4149-accf-a86f99491ca6.png",
+    "sha256": "5a98372085c5d0fa88ee3d8029a083a2195d0a0d69b718c3f6b282b78e1aac45",
+    "bytes": 7600,
+    "caption": "sudo認証要求・終了コード1・認証後root・root L"
+  },
+  {
+    "id": "E11",
+    "file": "E11-locale.png",
+    "source_filename": "codex-clipboard-3f6ab294-3f09-414a-83ba-70cc94a16932.png",
+    "sha256": "d35defeafa9e387a053a269abd04261f9b4f00a440403acf232ed0ec3bdeccf9",
+    "bytes": 8639,
+    "caption": "ja_JP.utf8生成とLANG=ja_JP.UTF-8"
+  },
+  {
+    "id": "E12",
+    "file": "E12-auto-update.png",
+    "source_filename": "codex-clipboard-f412254b-83fd-429e-a459-b6076a7d83c8.png",
+    "sha256": "e447efad9c880b304f6b4e50f47269b9e688257c8eb363d27c17d72f3c4e7cb8",
+    "bytes": 7759,
+    "caption": "自動更新の導入・設定2項目・enabled・dry-run終了0"
+  },
+  {
+    "id": "E13",
+    "file": "E13-root-policy.png",
+    "source_filename": "codex-clipboard-492aa4df-24fb-4b1d-a612-a615537a589a.png",
+    "sha256": "b0ad302b5b89d850acf00b34c0cbb7f90aa35321a00e7b5abc9824f8b16a16e5",
+    "bytes": 2620,
+    "caption": "実効値permitrootlogin no"
+  },
+  {
+    "id": "E14",
+    "file": "E14-root-and-port80.png",
+    "source_filename": "codex-clipboard-09bccf9a-a8e2-4745-a9e3-3467b0fd3792.png",
+    "sha256": "6ffc7966012c1f0fec9d71cc33d3b12121eaa22af605cc9fd1f12ad88c234b09",
+    "bytes": 17509,
+    "caption": "root接続拒否、ping成功、80番TCP接続失敗"
+  },
+  {
+    "id": "E15",
+    "file": "E15-wrong-key-denied.png",
+    "source_filename": "codex-clipboard-d2ac8b74-8323-4324-8238-50aaa2db6271.png",
+    "sha256": "df497a2a0f63dc8f8becb1725bd4b6524c8530d6a36331e459e81503e14d0935",
+    "bytes": 7899,
+    "caption": "未登録の試験鍵による接続拒否"
+  },
+  {
+    "id": "E16",
+    "file": "E16-wrong-key-log.png",
+    "source_filename": "codex-clipboard-b4ed01d8-a26a-4325-a5db-fcf1bc35dec3.png",
+    "sha256": "29a47f85b321cfb869d64d5ee4a5ab0d1bab3f4ac72eece89ae1c3bd9ab9d5ea",
+    "bytes": 9925,
+    "caption": "Failed publickey for opsadminと送信元192.168.56.1"
+  },
+  {
+    "id": "E17",
+    "file": "E17-authorized-keys-mode.png",
+    "source_filename": "codex-clipboard-580d8f8e-b376-4d36-a393-8fff8b24f5c1.png",
+    "sha256": "67c4873d7588a5d5bb0a0a763811209dc5569ae67449ee9f57db1ab6fa0e4a82",
+    "bytes": 24233,
+    "caption": "bad ownership or modesのログと600への復旧"
+  },
+  {
+    "id": "E18",
+    "file": "E18-authorized-keys-recovery.png",
+    "source_filename": "codex-clipboard-93f54bab-5e98-4771-92d7-5eb1cf86d3e4.png",
+    "sha256": "935d28591cc118533ccf82bceac3220fe436b285071957ec3cfd420786663c5d",
+    "bytes": 10794,
+    "caption": "権限不備で拒否、復旧後に同じ正しい鍵で成功"
+  },
+  {
+    "id": "E19",
+    "file": "E19-hostname-before-restore.png",
+    "source_filename": "codex-clipboard-66e2a660-b8d5-43bb-811e-f98d4492adaf.png",
+    "sha256": "545bbf9ce9a2a5ffb9de13120eaa6ad55b68d6d44f49ed4672e355153f159f91",
+    "bytes": 3121,
+    "caption": "ホスト名をlab-restore-testへ一時変更"
+  },
+  {
+    "id": "E20",
+    "file": "E20-hostname-after-restore.png",
+    "source_filename": "codex-clipboard-4fd2253e-ba95-4307-a8e5-1ee5e704b12c.png",
+    "sha256": "397bd2ddba4bb394c79db38d73b26c450c349cd8d0dabb3c2763fb8db8f0ee5b",
+    "bytes": 4526,
+    "caption": "復元操作後lab-base01と日本語ロケール"
+  },
+  {
+    "id": "E21",
+    "file": "E21-sshd-invalid.png",
+    "source_filename": "codex-clipboard-02881157-7b4a-4982-8a36-4ee452cb3fa1.png",
+    "sha256": "ff64d0a6ce10410b1a1506d76f0900b75cd4538169ae8db39c1959475799fe92",
+    "bytes": 6220,
+    "caption": "LabInvalidOption検出・終了255。入力行にsshdコマンド重複あり"
+  },
+  {
+    "id": "E22",
+    "file": "E22-restore-ssh-timeout.png",
+    "source_filename": "codex-clipboard-6dd74f56-e843-4b38-92ab-d773a47a2ded.png",
+    "sha256": "03717f2c722ea81300ef69808373d2aebf85a0b23a7873cc695c270e16905442",
+    "bytes": 5481,
+    "caption": "復元後のSSH接続タイムアウト"
+  },
+  {
+    "id": "E23",
+    "file": "E23-sshd-valid.png",
+    "source_filename": "codex-clipboard-b22f449a-6e37-48ca-874d-091d89c2a90f.png",
+    "sha256": "5ea92a32d0c42041fd49ebe469881981d4bed7ea85c0844913b372e00f57a0cb",
+    "bytes": 3243,
+    "caption": "コンソールでsshd -t成功・終了0"
+  },
+  {
+    "id": "E24",
+    "file": "E24-restore-server-state.png",
+    "source_filename": "codex-clipboard-6a4921dd-5a53-4aaa-b77b-46513005095f.png",
+    "sha256": "4406bb39338bba9d2ef5237239edce9294a0c85d75d86e14226abcdca08b4ffd",
+    "bytes": 19133,
+    "caption": "復元後の固定IP・socket/service active・22番待受・UFW"
+  },
+  {
+    "id": "E25",
+    "file": "E25-restore-connectivity.png",
+    "source_filename": "codex-clipboard-569e3b0c-d3ff-49a6-b9c2-9fb61ae6043c.png",
+    "sha256": "917d28c8b9bb0c3030611ac5f5e34255ee145c064c5afb2c467654607edccfa4",
+    "bytes": 25942,
+    "caption": "再試行でping・22番・鍵接続が成功"
+  },
+  {
+    "id": "E26",
+    "file": "E26-auto-update-missing.png",
+    "source_filename": "codex-clipboard-1e0ee6c5-1cc2-49e6-9793-8f91c63f032c.png",
+    "sha256": "be642db730d7c00074e0bbc92c714c46926774334fed09dbc0aaa30476af4356",
+    "bytes": 6346,
+    "caption": "設定ファイル退避・No such file・終了1"
+  },
+  {
+    "id": "E27",
+    "file": "E27-auto-update-restored.png",
+    "source_filename": "codex-clipboard-7f24262e-3367-484c-821d-c06295b44287.png",
+    "sha256": "4a018788c8634f07f05d4411b69ecbe1026c63015375470ff4972b4e012929a7",
+    "bytes": 9630,
+    "caption": "退避元を復元し自動更新2項目が1"
+  },
+  {
+    "id": "E28",
+    "file": "E28-outside-client.png",
+    "source_filename": "codex-clipboard-e24da74e-f69e-46b3-a4c5-009aa51a087d.png",
+    "sha256": "08c0d82b32c954acf114769a73db30384f9069a7a55b886147b2e3573f3304a5",
+    "bytes": 20539,
+    "caption": "試験用ネットワークのping成功・22番拒否・送信元57.1"
+  },
+  {
+    "id": "E29",
+    "file": "E29-outside-ufw-log.png",
+    "source_filename": "codex-clipboard-a2f86859-6bf1-44da-aeb5-2e06f866aac6.png",
+    "sha256": "d83bf51a7aaf6c7b53e8abb9a89245c8588f36a956a1b7b0e60c2d1305a49bde",
+    "bytes": 24878,
+    "caption": "eth2でUFW BLOCK、SRC57.1、DST57.10、DPT22"
+  },
+  {
+    "id": "E30",
+    "file": "E30-network-cleanup.png",
+    "source_filename": "codex-clipboard-f09c8a81-27c6-4fd7-b824-b11fcb3616ea.png",
+    "sha256": "35a2d3b83fff4894a111b07a7b4b858863a06a6f6382a9ca7d652cb184f720db",
+    "bytes": 7176,
+    "caption": "試験後eth2撤去・eth0/eth1と固定IP維持"
+  },
+  {
+    "id": "E31",
+    "file": "E31-storage-layout.png",
+    "source_filename": "codex-clipboard-e6573211-acf6-423c-9ab9-d7a218c06a70.png",
+    "sha256": "4620730c052c577889920eb4f27cb48b056b1f05bb2fba04e819088040551de0",
+    "bytes": 13214,
+    "caption": "/と/varと/var/tmpが同一ext4 LV、空き約4.7G"
+  },
+  {
+    "id": "E32",
+    "file": "E32-tmpfs-full-first.png",
+    "source_filename": "codex-clipboard-c5e38ef5-21d8-4e50-9c61-a9d4a91ca70f.png",
+    "sha256": "773ce32c613d4817bfd9103ec9bb6a729773ccb4a358c2b8403e981978085771",
+    "bytes": 8982,
+    "caption": "初回tmpfs容量不足・終了1・64M/100%"
+  },
+  {
+    "id": "E33",
+    "file": "E33-tmpfs-resume.png",
+    "source_filename": "codex-clipboard-0f6057d9-fb95-4870-a254-b4d6d30a49e0.png",
+    "sha256": "74a3ca348622af75e9d7aec5d085812318f2d40a4b0be1ecab87ebacd8757cbd",
+    "bytes": 6274,
+    "caption": "中断後はtmpfs未マウント・空ディレクトリのみ"
+  },
+  {
+    "id": "E34",
+    "file": "E34-tmpfs-recovery.png",
+    "source_filename": "codex-clipboard-38360f9e-ce5c-48eb-b88f-2bdd41b18b73.png",
+    "sha256": "99e47419b1d15ed673804d6dde796f0e946cf09009b476df8ac87bd298ac98f8",
+    "bytes": 14302,
+    "caption": "再実施で容量不足1→削除→空き64M→再書込0"
+  },
+  {
+    "id": "E35",
+    "file": "E35-windows-key-baseline.png",
+    "source_filename": "codex-clipboard-44981c84-360c-4ed3-9fd4-744a86a1c848.png",
+    "sha256": "0f4d8595fd35f50342bb9ecc505150eaf1d7eedc70ee978d151cd2e842ca0bc0",
+    "bytes": 11326,
+    "caption": "T18専用鍵の正常接続と変更前ACL"
+  },
+  {
+    "id": "E36",
+    "file": "E36-windows-key-denied.png",
+    "source_filename": "codex-clipboard-7145492a-e8a3-4fed-9ca5-479cda7f0a1f.png",
+    "sha256": "f947e986c3abd2cdd39479ee03d6931357118a12023bb3b43a633d424ea36ef8",
+    "bytes": 14737,
+    "caption": "Users権限によるUNPROTECTED PRIVATE KEY FILEと拒否"
+  },
+  {
+    "id": "E37",
+    "file": "E37-windows-key-recovered.png",
+    "source_filename": "codex-clipboard-0394171f-15ab-4553-9e47-2c0fc21241e7.png",
+    "sha256": "475ae0577ca21278c85bf7a6e8326159ec30a476100842a31975e20d09a7a49e",
+    "bytes": 16426,
+    "caption": "Users権限削除後のACLと鍵接続成功"
+  },
+  {
+    "id": "E38",
+    "file": "E38-test-key-unregistered.png",
+    "source_filename": "codex-clipboard-70466d7c-a51d-4146-a907-070f678cdca5.png",
+    "sha256": "4028fad1e470695607fd43594a762ef900ca6e230c9b7d2211d01a768a8a1122",
+    "bytes": 4972,
+    "caption": "authorized_keysからlab-t18を削除し通常鍵のみ残存"
+  },
+  {
+    "id": "E39",
+    "file": "E39-test-key-revoked.png",
+    "source_filename": "codex-clipboard-88bcee26-f592-456b-933f-bb36d67d69c0.png",
+    "sha256": "e42462a21db05b1185400df5d3133c84f0c28522a6c3d646ad5ef7143d3a35d6",
+    "bytes": 5633,
+    "caption": "登録削除後のT18鍵を拒否"
+  },
+  {
+    "id": "E40",
+    "file": "E40-final-key-cleanup.png",
+    "source_filename": "codex-clipboard-fe5ff0f0-e180-43a5-82a4-50fb52037db3.png",
+    "sha256": "9aeb595c10a6012a90a061baf4b8e5df341e019beda099fb292194c635628430",
+    "bytes": 11330,
+    "caption": "T18鍵2ファイル不存在・通常鍵でopsadmin接続成功"
+  },
+  {
+    "id": "E41",
+    "file": "E41-host-key-warning.png",
+    "source_filename": "codex-clipboard-853d1f1f-1ab2-4aa0-854f-62aff34d865a.png",
+    "sha256": "cf3b7b01caf9c09a57318cb7f93ce4fc983b1b344a3b778f1a3d67bb722f5e52",
+    "bytes": 15492,
+    "caption": "初回接続時の保存済みホスト鍵不一致"
+  },
+  {
+    "id": "E42",
+    "file": "E42-netplan-cleanup.png",
+    "source_filename": "codex-clipboard-0a55e3f9-fe60-4613-9940-0271e22c479a.png",
+    "sha256": "3a68d926878e094c440ac48c18cb9f570204f0f87562c48627fbd87fad847d45",
+    "bytes": 7832,
+    "caption": "撤去時Netplanはeth0/eth1のみ。試験用設定なし"
+  }
+]
