@@ -93,7 +93,7 @@ flowchart TB
 
 | 文書 | Ansible版パックでの読みどころ |
 | --- | --- |
-| [00 要件定義書](00-requirements.md) | 「済(自動)/済(手動)/未実装」の区分表。本パックはコードが実行可能でも、まだ実ホストでの`PASS`実績が無いことを最初に明示している |
+| [00 要件定義書](00-requirements.md) | 「済(自動)/済(手動)/未実装」の区分表。2026-09-04に実ホスト（Hyper-VのVM）でフェーズ1・フェーズ2とも実測`PASS`したが、フェーズ2のVMは再利用環境のため「専用の新規VMでの構築」は引き続き未実装、という境界を最初に明示している |
 | [01 基本設計書](01-basic-design.md) | 「Ansible設計の考え方」の6項目。role分割・ガード・OS抽象化・冪等性・テスト戦略・変数階層 |
 | [02 詳細設計書](02-detailed-design.md) | 本パックの中心。role内部のtask順序図、変数の優先順位の具体例、冪等性の実装パターン表 |
 | [03 パラメータシート](03-parameter-sheet.md) | 「`group_vars/all`の既定値」と「`foundation` groupでの上書き値」を並べた表。②の変数優先順位を数値で確認できる |
@@ -116,7 +116,7 @@ flowchart TB
 | `AF`（試験ID接頭辞） | Ansible Foundationの略。他パックの`Z`（Zabbix）、`A`（AD）と区別するための接頭辞 |
 | `foundation` group | `ansible/playbooks/foundation.yml`が対象とするinventory group。監視アプリ用の`monitor` groupとは独立している |
 | `svc-baseline` | `foundation` group専用に上書きしたアプリ用アカウント名。監視アプリ向けの既定値`monitor`と区別するために選んだ、案件非依存な名前 |
-| フェーズ1 / フェーズ2 | フェーズ1はUbuntu（基準環境）、フェーズ2はAlmaLinux/Rocky 9（未着手）。[AD版パック](../build-package-ad/README.md)と同じ、実行済み範囲と設計のみの範囲を区別する書き方 |
+| フェーズ1 / フェーズ2 | フェーズ1はUbuntu（基準環境）、フェーズ2はAlmaLinux/Rocky 9。2026-09-04に両フェーズとも実機で実測`PASS`済みだが、フェーズ2のVMは再利用環境だったため「新規構築の証跡」としては専用の新規VMでの再実施が必要、という留保が付く。[AD版パック](../build-package-ad/README.md)と同じ、確認できた範囲とまだの範囲を区別する書き方 |
 | assert（ガード） | ホストを変更する前に、前提条件を確認して満たさなければ停止するタスク。「実行してから失敗に気づく」のではなく「変更前に止める」ための仕組み |
 | Molecule scenario | `default`（Ubuntu）や`el9`（Rocky）のように、Moleculeが検証する対象環境の単位 |
 | `--syntax-check` | ホストへ接続せず、playbookの構文だけを確認するAnsibleのオプション |
@@ -170,9 +170,10 @@ role設計では[責務を1つに絞る]ことを意識し、変数は
 冪等性は「祈る」のではなく、[読み取り専用コマンドへのchanged_when: false]や
 [allowとlimitを二重に適用しない設計]のように、コードレベルで保証しています。
 
-現時点ではUbuntu向けの設計・実装が中心で、AlmaLinux/Rocky 9への実機適用は
-[フェーズ2として未着手]です。これは[実VMを用意できていない]という制約であり、
-コード自体はMoleculeの`el9` scenarioで検証済みであることも合わせて説明します。
+実機での適用は[2026-09-04にUbuntu（フェーズ1）とAlmaLinux 9.7（フェーズ2）の両方で
+実測PASS]しました。ただしフェーズ2で使ったVMは[以前の用途からの再利用環境]だったため、
+「専用の新規VMでの構築」「最小公開の証跡」としては[再実施が必要]である、という
+境界まで含めて説明します。
 ```
 
 ## 8. よくある誤解
@@ -181,7 +182,7 @@ role設計では[責務を1つに絞る]ことを意識し、変数は
 | --- | --- |
 | 新しいroleを作った案件だと思った | `common` / `docker`は既存role。本パックが新規に作ったのは`foundation.yml`というplaybookと、それ専用のinventory/group_varsだけ |
 | Linux版パックと内容が重複している | Linux版は「監視アプリの構築」、本パックは「Ansible設計そのもの」を扱う。対象読者も「これから構築する人」から「Ansibleの設計判断を説明したい人」へ変わる |
-| AlmaLinux/Rocky対応は完了している | role側のコードとMoleculeのコンテナ検証は済んでいるが、実VMへ適用した実績は無い（フェーズ2、未着手） |
+| AlmaLinux/Rocky対応は完全に完了している | 2026-09-04にAlmaLinux 9.7の実VMへ適用し、構築・冪等性・SELinux enforcingを実測`PASS`した（[結果票](../evidence/2026-09-04-ansible-foundation-el9-build.md)）。ただしそのVMは以前の用途からの再利用環境で、「新規構築」「最小公開」を示す証跡としては専用の新規VMでの再実施が残っている |
 | Vaultを使っていないのは手抜き | `common` / `docker`両roleは機密値を必要としないため、意図的にVaultを使わない設計にしている（[00-requirements.md](00-requirements.md#5-制約と対象外)） |
 
 ## 次に読む文書
