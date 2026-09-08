@@ -91,7 +91,29 @@ flowchart LR
 
 基準環境はWindows Server 2022 Standard(Desktop Experience基準)の検証用VM 1台(論理ホスト名`ad-dc01`)です。Windows Server 2022 Server Coreへの対応は検討課題であり、基準VMはDesktop Experienceであるため、両エディションでの実測を意味しません。最小構成の目安は2 vCPU / メモリ4GB / ディスク60GBです([Windows版パック](../build-package-windows/README.md)と同じ最小要件)。Windows Serverはライセンス費用が発生するため、[Linux版パック](../build-package/README.md)で使える無償のVirtualBox VMのような代替が使えません。立ち上げ環境の選択肢(クラウドWindows Serverインスタンス/評価版ISOによるHyper-V・VMware上のVM/社内ボリュームライセンス)は[10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md)にまとめます。
 
-2026-09-01〜02に、Windows 11 Pro上のHyper-V(内部スイッチ)にWindows Server 2022 評価版のVM 1台を立て、ホストPCを管理端末としてフェーズ1を実施しました([ネットワーク結果票](../evidence/2026-09-01-network-host-validation-ad.md)、[構築・試験結果票](../evidence/2026-09-01-ad-build-validation.md))。ホストPCとVMが同一物理機であるため、独立した管理端末・組織DNS・実ドメインメンバーからの検証は含みません。
+2026-09-01〜02に、Windows 11 Pro上のHyper-V(内部スイッチ)にWindows Server 2022 評価版のVM 1台を立て、ホストPCを管理端末としてフェーズ1を実施しました。**なおこの`ad-dc01`は2026-09-04の[FSMO役割奪取演習](../evidence/2026-09-04-ad-fsmo-seize.md)で削除済みで、現在は`ad-dc02`の単一DC構成です**（[上記の発展演習](#フェーズ1完了後に実施した発展演習2026-09-0307)を参照）。([ネットワーク結果票](../evidence/2026-09-01-network-host-validation-ad.md)、[構築・試験結果票](../evidence/2026-09-01-ad-build-validation.md))。ホストPCとVMが同一物理機であるため、独立した管理端末・組織DNS・実ドメインメンバーからの検証は含みません。
+
+## フェーズ1完了後に実施した発展演習（2026-09-03〜07）
+
+**重要: この案件パックが構築対象とした `ad-dc01` は、現在存在しません。** 上のフェーズ1の
+`PASS`(31/31)は2026-09-02時点、`ad-dc01`上で取得した結果であり、記録としては有効です。
+その後、[01 基本設計書](01-basic-design.md)3.4節の発展構成を順に実施した結果、
+**現在このドメインを構成しているのは `ad-dc02` 1台のみ**です。
+
+パックの成果物（00〜11の12文書）はフェーズ1を対象としており、以下の演習は成果物の範囲外です。
+ただしこのパックの設計判断を実際に検証・是正した記録であるため、ここから辿れるようにしています。
+
+| 日付 | 演習 | 主な結果 |
+| --- | --- | --- |
+| 2026-09-03 | [2台目DC追加とレプリケーション実測](../evidence/2026-09-03-ad-second-dc-replication.md) | `ad-dc02`を追加し、サイト内レプリケーション遅延**17.8秒**、FSMOフォレストレベル2役割の移譲**0.238秒**を実測。**単一DC構成では無症状だった欠陥3件**（SYSVOLの`scripts`欠損、Default Domain Policyの`gpt.ini`欠損、2設定がGPO化されていなかったこと）を発見・修復 |
+| 2026-09-03 | [DC 1台停止時の可用性試験](../evidence/2026-09-03-ad-dc-outage-drill.md) | `ad-dc01`を計画停止し、`ad-dc02`単独での継続性を実測。DNS・LDAP・Kerberos・GCは継続、PDCエミュレーター/RIDマスター固有の操作のみ縮退。復帰後の**ディレクトリ完全収束まで18分31秒** |
+| 2026-09-04 | [FSMO役割の奪取と`ad-dc01`の完全喪失想定復旧](../evidence/2026-09-04-ad-fsmo-seize.md) | 「dc01が復旧不能になった」想定へ切り替え、`ad-dc02`から役割を強制奪取。ADのメタデータから`ad-dc01`を除去し、**VM自体も削除（不可逆）**。以降このドメインは`ad-dc02`の単一DC構成 |
+| 2026-09-07 | [`ad-dc02`の時刻同期元の是正](../evidence/2026-09-07-ad-dc02-time-sync-fix.md) | 上記の奪取で`ad-dc02`がPDCエミュレーターを保持する構成へ変わったため、時刻同期の前提を再評価して是正 |
+| 2026-09-07 | [windows_exporterの最小権限化(gMSA)](../evidence/2026-09-07-ad-windows-exporter-least-privilege.md) | [03 パラメータシート](03-parameter-sheet.md)等で「AST-07相当の継続課題」としていた、実行アカウントの`LocalSystem`からの最小権限化を実施 |
+
+なお、[WSUS版パック](../build-package-wsus/README.md)の構築に伴い、`ad-dc02`のdefault route
+とDNSフォワーダが変更されています。経緯と戻し方は[01 基本設計書](01-basic-design.md)3.4節に
+記載していますが、**本パック側での再検証は未実施**です。
 
 ## 完了の定義
 
