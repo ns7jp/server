@@ -67,6 +67,7 @@ flowchart LR
 | 実装済み | 認証付き Flask アプリ、Compose、監視、Ansible、復旧手順 | コードが存在することと各環境で動作することは別 |
 | 記録済みの CI 実測 | [2026-08-22 の E2E](docs/evidence/2026-08-22-full-stack-e2e.md)：一括構築・冪等性・復旧・復元など 23 ID PASS | 当該 commit の使い捨て Ubuntu runner。最新差分や永続ホストの保証には使わない |
 | 記録済みの VM 実測 | [2026-09-04 Ubuntu の基盤構築](docs/evidence/2026-09-04-ansible-foundation-build.md)と[AlmaLinux の基盤構築](docs/evidence/2026-09-04-ansible-foundation-el9-build.md)：`foundation.yml` の `common` / `docker` role 適用・冪等性 | 監視全体の `site.yml` とは別。AlmaLinux は再利用 VM で、新規構築・最小公開の証明には未到達 |
+| 記録済みの手作業構築 | [2026-09-07〜08 lab-base01](docs/evidence/2026-09-08-lab-base01-initial-build.md)：Hyper-V 上の Ubuntu へ固定 IP・SSH 鍵認証・sudo・UFW・時刻同期・自動更新を手作業で設定し、設定不備を起こして表示とログを照合し復旧。判定は PASS 14 / PASS-ADAPTED 4 / PARTIAL 2 / NOT RUN 1、ほかに T-14 代替演習 1 件 PASS | Ansible も本リポジトリのコードも使わない OS 単体の演習で、`SM-LAB-001` の受け入れではない。AI が手順案内・画像読取り・記録編集を支援。「教材どおり 21/21 PASS」ではない。独力での再現、第三者への引き渡し、長期稼働は対象外 |
 | 未実施 | AWS の実適用・削除、Slack 実配信、監視ラボの長期稼働、D-2 ホスト障害復元 | `NOT RUN`。[実測計画](docs/real-environment-validation-plan.md)を参照 |
 
 実行者が本人・CI・AI 支援環境のどれかも各証跡で区別します。既存の PASS を、読む人自身の習得・実行実績へ転記しません。
