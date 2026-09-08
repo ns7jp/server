@@ -91,7 +91,7 @@
 - **くわしく**: LDAP は、人や機器の情報を階層状に並べた台帳を読み書きするための決まりごとです。Active Directory は Microsoft 社がこの考え方を土台に作った仕組みで、Windows Server の代表的な役割です。利用者は 1 組の ID とパスワードで社内の複数のサーバーに入れ、担当者は退職者の停止を 1 か所の操作で済ませられます。Linux も同じ台帳を参照させれば、共通のアカウントでログインできます。
 - **覚え方**: directory は「住所録」なので、社内の住所録を 1 冊にまとめる仕組みだと覚えます。
 - **まちがえやすい**: ファイルを入れるフォルダ（ディレクトリ）とは別の意味です。ここでの台帳は、人や機器の情報を集めたものを指します。
-- **関連語**: [Windows Server](#g-os-windows-server)、[サービス](#g-os-service)、DNS（別章）
+- **関連語**: [Windows Server](#g-os-windows-server)、[サービス](#g-os-service)、DNS（別章）、シングルサインオン／SSO（11 章）、Kerberos（11 章）
 - **確かめかた**: Windows Server では PowerShell の `Get-ADDomain` で参加先の情報が出ます。Linux から参加の状況を見るときは `realm list` を使います。
 
 <a id="g-os-package-manager"></a>

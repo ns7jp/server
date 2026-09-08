@@ -78,7 +78,7 @@ flowchart LR
 | 最初の実習を進める | [初心者向け学習ガイド](docs/beginner-learning-guide.md) |
 | 確認を繰り返しすぎず安全に作業を閉じる | [手放して進める運用キット](docs/work-completion/README.md)（詳細設計・記録テンプレート・判定サンプル） |
 | 次の学習範囲を決める | [一本道ラーニングパス](docs/learning-path.md)（Level 0〜5 と選択式 Level 6） |
-| 言葉の意味をたとえと覚え方で覚える | [サーバー基礎用語集（やさしい版）](docs/server-basics-glossary/README.md)（406 語・五十音さくいん付き） |
+| 言葉の意味をたとえと覚え方で覚える | [サーバー基礎用語集（やさしい版）](docs/server-basics-glossary/README.md)（408 語・五十音さくいん付き） |
 | 知らない言葉を、このリポジトリのファイルと結び付けて調べる | [サーバー構築キーワード集](docs/server-building-keywords.md) |
 | コマンド・結果・説明を記録する | [初心者実習記録テンプレート](docs/evidence/templates/beginner-practice-record.md) |
 | 要件や設計書の読み方を知る | [案件パック初心者ガイド](docs/build-package/beginner-guide.md) |
