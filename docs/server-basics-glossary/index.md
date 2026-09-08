@@ -2,7 +2,7 @@
 
 [用語集の入口](README.md) / [混同しやすい言葉](compare.md) / [一問一答](quiz.md) / [確認コマンド](commands.md)
 
-この用語集で説明している **406 語**を、読みの五十音順に並べています。英語の用語もカタカナで読んだ位置に置いています。用語名を選ぶと本文へ移動します。
+この用語集で説明している **408 語**を、読みの五十音順に並べています。英語の用語もカタカナで読んだ位置に置いています。用語名を選ぶと本文へ移動します。
 
 探している言葉が見つからないときは、ブラウザの検索（Ctrl キーを押しながら F）でこのページを検索してください。
 
@@ -146,6 +146,7 @@
 | [メンテナンスウィンドウ／計画停止](10-availability.md#g-avail-maintenance-window) | ケイカクテイシ | あらかじめ告知して止めてよいと決めておく、作業用の時間枠です。 | [10](10-availability.md) |
 | [K・M・G・T（単位の接頭語）](02-hardware.md#g-hw-si-prefix) | ケー・エム・ジー・ティー | キロ・メガ・ギガ・テラと 1000 倍ずつ大きくなる接頭語です。 | [2](02-hardware.md) |
 | [KVM スイッチ](02-hardware.md#g-hw-kvm-switch) | ケー・ブイ・エム・スイッチ | 1 組のキーボードと画面とマウスを複数台で切り替える装置です。 | [2](02-hardware.md) |
+| [Kerberos](11-security.md#g-sec-kerberos) | ケルベロス | 期限つきの通行証を配って本人確認をする、認証の仕組みです。 | [11](11-security.md) |
 | [権威 DNS サーバーとキャッシュ DNS サーバー](06-network-protocols.md#g-net2-authoritative-cache-dns) | ケンイ・ディー・エヌ・エス・サーバー と キャッシュ・ディー・エヌ・エス・サーバー | 答えを持っている側が権威、代わりに探して覚える側がキャッシュです。 | [6](06-network-protocols.md) |
 | [コアとスレッド](02-hardware.md#g-hw-core-thread) | コア・スレッド | コアは計算する頭数、スレッドは OS から見た窓口の数です。 | [2](02-hardware.md) |
 | [工数と見積もり](13-project.md#g-proj-man-hours) | コウスウ／ミツモリ | 作業にかかる人と時間の量が工数、それをお金と期間に直したものが見積もりです。 | [13](13-project.md) |
@@ -214,6 +215,7 @@
 | [情報セキュリティの 3 要素](11-security.md#g-sec-cia) | ジョウホウセキュリティノサンヨウソ | 守る中身を機密性・完全性・可用性の 3 つに分けて考える物差しです。 | [11](11-security.md) |
 | [上流工程と下流工程](13-project.md#g-proj-upstream-downstream) | ジョウリュウコウテイ／カリュウコウテイ | 要件定義や設計が上流、構築や試験、運用が下流と呼ばれる工程の区分です。 | [13](13-project.md) |
 | [所有者とグループ](04-linux.md#g-linux-owner-group) | ショユウシャ／グループ | ファイルごとに決まっている、持ち主と担当チームのことです。 | [4](04-linux.md) |
+| [シングルサインオン／SSO](11-security.md#g-sec-sso) | シングルサインオン／エス・エス・オー | 一度ログインすれば、複数のサービスで入力し直さずに済む仕組みです。 | [11](11-security.md) |
 | [シンボリックリンク](04-linux.md#g-linux-symlink) |  | 別のファイルの場所を指し示す、道しるべ専用のファイルです。 | [4](04-linux.md) |
 | [スイッチ（L2 スイッチ・L3 スイッチ）](05-network-basics.md#g-net1-switch) | スイッチ、エル・ツー スイッチ・エル・スリー スイッチ | MAC アドレスを見て、つながった相手の差込口だけに送る機器です。 | [5](05-network-basics.md) |
 | [スケールアップとスケールアウト](10-availability.md#g-avail-scale-up-out) |  | 1 台を強くするのがスケールアップ、台数を増やすのがスケールアウトです。 | [10](10-availability.md) |
@@ -495,7 +497,7 @@
 
 ## 英字ではじまる用語（アルファベット順）
 
-上の五十音順では、英字の用語も読み（カタカナ）の位置に置いています。つづりから探したいときは、こちらの 122 語を使ってください。
+上の五十音順では、英字の用語も読み（カタカナ）の位置に置いています。つづりから探したいときは、こちらの 124 語を使ってください。
 
 | 用語 | 読み | 一言でいうと | 章 |
 | --- | --- | --- | --- |
@@ -555,6 +557,7 @@
 | [JSON](07-web.md#g-web-json) | ジェイソン | 名前と値の組でデータを書き表す、人も機械も読める文字の形式です。 | [7](07-web.md) |
 | [K・M・G・T（単位の接頭語）](02-hardware.md#g-hw-si-prefix) | ケー・エム・ジー・ティー | キロ・メガ・ギガ・テラと 1000 倍ずつ大きくなる接頭語です。 | [2](02-hardware.md) |
 | [known_hosts とホスト鍵](06-network-protocols.md#g-net2-known-hosts) | ノウン・ホスツ と ホストカギ | 接続先サーバーの身元を控えて、なりすましを見抜くための仕組みです。 | [6](06-network-protocols.md) |
+| [Kerberos](11-security.md#g-sec-kerberos) | ケルベロス | 期限つきの通行証を配って本人確認をする、認証の仕組みです。 | [11](11-security.md) |
 | [Kubernetes](09-virtualization-cloud.md#g-virt-kubernetes) | クバネティス | 多数のコンテナを複数台のサーバーで動かし続ける管理システムです。 | [9](09-virtualization-cloud.md) |
 | [KVM スイッチ](02-hardware.md#g-hw-kvm-switch) | ケー・ブイ・エム・スイッチ | 1 組のキーボードと画面とマウスを複数台で切り替える装置です。 | [2](02-hardware.md) |
 | [LAN と WAN](05-network-basics.md#g-net1-lan-wan) | ランとワン | LAN は建物の中の小さな網、WAN は拠点をまたぐ広い網です。 | [5](05-network-basics.md) |
@@ -592,6 +595,7 @@
 | [SMTP・POP3・IMAP：メールサーバー](06-network-protocols.md#g-net2-smtp-pop3-imap) | エス・エム・ティー・ピー／ポップ・スリー／アイマップ | メールを送るのが SMTP、受け取って読むのが POP3 と IMAP です。 | [6](06-network-protocols.md) |
 | [SNMP](12-operations.md#g-ops-snmp) | エス・エヌ・エム・ピー | 機器の状態を共通の形式でやり取りする、監視用の約束事です。 | [12](12-operations.md) |
 | [SPOF／単一障害点](10-availability.md#g-avail-spof) | エス・ピー・オー・エフ／タンイツショウガイテン | そこが壊れるとサービス全体が止まる、代わりのない 1 か所です。 | [10](10-availability.md) |
+| [シングルサインオン／SSO](11-security.md#g-sec-sso) | シングルサインオン／エス・エス・オー | 一度ログインすれば、複数のサービスで入力し直さずに済む仕組みです。 | [11](11-security.md) |
 | [SQL](08-data-storage.md#g-data-sql) | エス・キュー・エル | データベースに「取って」「入れて」と頼むための共通の言葉です。 | [8](08-data-storage.md) |
 | [SSD](02-hardware.md#g-hw-ssd) | エス・エス・ディー | 半導体に記録する、動く部品がない高速なストレージです。 | [2](02-hardware.md) |
 | [SSH](06-network-protocols.md#g-net2-ssh) | エス・エス・エイチ | 離れたサーバーへ暗号化してログインし、操作するための仕組みです。 | [6](06-network-protocols.md) |
