@@ -135,6 +135,10 @@ T-12用の未登録鍵 `id_ed25519_lab_wrongkey` のWindows側削除は画像で
 次の演習前には上記の未採録項目を補い、VMの現在状態と復元ポイントを確認する。
 外部公開・商用の受け入れ完了とは扱わない。
 
+この続きは[Docker最小構成の起動・認証・停止再開（2026-09-08）](2026-09-08-lab-base01-compose-practice.md)に記録した。
+同じVMでメモリとLVMを調整し、appとnginxの2サービスだけを起動した範囲であり、
+上記の未採録項目を補った記録ではない。
+
 説明例：
 
 > Hyper-V上のUbuntu Serverに固定IP、SSH鍵認証、接続元制限を設定しました。
@@ -146,6 +150,7 @@ T-12用の未登録鍵 `id_ed25519_lab_wrongkey` のWindows側削除は画像で
 
 - [検証証跡台帳](README.md)
 - [元画像42枚・SHA-256対応](screenshots/2026-09-07-08-lab-base01/README.md)
+- [続きの演習：Docker最小構成の起動・認証・停止再開](2026-09-08-lab-base01-compose-practice.md)
 - [教材の学習計画](https://github.com/ns7jp/ns7jp/tree/main/docs/learning-plan)
 
 [E01]: screenshots/2026-09-07-08-lab-base01/E01-initial-os.png

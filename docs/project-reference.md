@@ -474,6 +474,13 @@ sudo ./scripts/labs/storage-guard-test.sh
 - 5 秒タイムアウトの定量条件、ISO のハッシュ一致、初期 OS 導入の全過程は未採録です
 - 独力での再現、第三者への引き渡し、長期稼働は `NOT RUN` です
 
+同じ VM ではこの後、**Docker 最小構成の起動演習**（2026-09-08）を実施しています。
+Docker Engine / Compose を導入し、指定 SHA の作業ツリーで pytest 167 件、app と nginx の 2 サービス起動、
+未認証 401 と Basic 認証つき 200、Nginx の計画停止と手動再開、撤去までを確認しました。記録は
+[Docker 最小構成の起動・認証・停止再開](evidence/2026-09-08-lab-base01-compose-practice.md)にあります。
+**起動したのは app と nginx の 2 つだけ**で、Prometheus / Grafana / Alloy / Loki / Alertmanager の起動、
+Ansible 適用、D-1、AWS は `NOT RUN` です。
+
 Ansible を使った手元 VM への基盤構築は、これとは別に
 [2026-09-04 の Ubuntu](evidence/2026-09-04-ansible-foundation-build.md)・
 [AlmaLinux](evidence/2026-09-04-ansible-foundation-el9-build.md)の記録があります。
