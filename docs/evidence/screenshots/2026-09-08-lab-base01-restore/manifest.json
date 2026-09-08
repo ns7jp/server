@@ -1,0 +1,58 @@
+[
+  {
+    "id": "E01",
+    "file": "E01-preconditions.png",
+    "source_filename": "codex-clipboard-d2c882ee-906b-4fb3-a274-3b20bb5449e9.png",
+    "caption": "HEAD・対象コンテナ停止・元ボリューム存在・空き9G",
+    "bytes": 10626,
+    "sha256": "846930074ed26448969395550222d4b0bc0da5d76a7ae9ec34d31bee8cb0890e"
+  },
+  {
+    "id": "E02",
+    "file": "E02-source-size.png",
+    "source_filename": "codex-clipboard-1420a0fd-7bb7-4e97-8dfb-07a0bae24573.png",
+    "caption": "元ボリュームをread-onlyで確認、使用量約1M",
+    "bytes": 10798,
+    "sha256": "35d62e4d1eec8dc7f4ffd88ddf77022910adcdcd456b3f9b48f9a6411dc5d24a"
+  },
+  {
+    "id": "E03",
+    "file": "E03-archive.png",
+    "source_filename": "codex-clipboard-85e6ff37-23d2-4f72-a2ab-ae61bc6c0c91.png",
+    "caption": "tarバックアップ終了0、499K、SHA256SUMS検査OK",
+    "bytes": 14147,
+    "sha256": "7df568b0ce9e8c972f5f565facc1b4221e4e9ad1d44e1229f32944e3643f5558"
+  },
+  {
+    "id": "E04",
+    "file": "E04-extracted.png",
+    "source_filename": "codex-clipboard-1cf5ff03-5783-4dad-af6e-448a3b8ddb7c.png",
+    "caption": "展開後として提示された終了0と復元先約1M",
+    "bytes": 6369,
+    "sha256": "81e5bc2ec3305b0910986d3227424a1a66fbc2492dba5c405946b93c37dedaf2"
+  },
+  {
+    "id": "E05",
+    "file": "E05-restore-mount-ready.png",
+    "source_filename": "codex-clipboard-1d404349-4101-46d7-b5a7-d037a0aac8e3.png",
+    "caption": "復元先を/lokiへマウント、3110番ready",
+    "bytes": 9841,
+    "sha256": "2ba807e24f4488962d8b0a1da65e55dd8a0f4efc470c4b9bda11a0f6cd7d098a"
+  },
+  {
+    "id": "E06",
+    "file": "E06-restored-query.png",
+    "source_filename": "codex-clipboard-628f18ac-0dc8-4a64-ad3a-1bad8b82dce7.png",
+    "caption": "3110番へのクエリで目印付き過去ログ2件を取得",
+    "bytes": 43798,
+    "sha256": "37728231598ff621b5273347cc24f6d11d239f37b8f2630ce0b68d5a4c9d1f2f"
+  },
+  {
+    "id": "E07",
+    "file": "E07-cleanup.png",
+    "source_filename": "codex-clipboard-a43197e9-9c53-4380-b415-8cc9e7b6e4b7.png",
+    "caption": "確認用コンテナ撤去、元/復元先volume残存、archive検査OK",
+    "bytes": 12091,
+    "sha256": "c5f8ba0e7a6c646a16140c1fc4eacfabbead04ee8255bcb92c0dbfc44b430b29"
+  }
+]
