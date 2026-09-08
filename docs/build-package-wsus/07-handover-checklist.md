@@ -28,7 +28,7 @@
 - [ ] [基本設計書](01-basic-design.md)の構成図と[パラメータシート](03-parameter-sheet.md)を実機値へ更新した
 - [ ] フェーズ1の必須試験がすべて`PASS`した（フェーズ2は`BLOCKED`のまま明記する）
 - [ ] 未解決Issue、制約、残存リスク（未実装3点、windows_exporterサービスアカウント最小権限化、WSUS通信HTTPS化(8531番)が次点課題であることを含む）を説明した
-- [ ] GPO「WSUS-Client-Policy」の対象グループ名がWSUSコンソール側のコンピューターグループ名（`Servers`）と一致していることを確認した（SIT-04）
+- [ ] GPO「WSUS-Client-Policy」の対象グループ名がWSUSコンソール側のコンピューターグループ名（`Pilot`）と一致し、`wsus-01`が`Pilot`グループへ自己登録されていることを確認した（SIT-04）
 - [ ] [作業結果・引き渡し報告書](11-work-result-report.md)を日付付きevidenceへ複製し、計画対実績と試験集計を記入した
 
 ## 運用

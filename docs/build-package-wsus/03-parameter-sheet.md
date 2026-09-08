@@ -61,14 +61,14 @@
 | GPOリンク先 | `Servers`OUのみ。ドメイン直下・`_Tier0-Admins`OUへは広げすぎない設計判断 | `NOT RUN` | `Get-GPInheritance -Target "OU=Servers,DC=corp,DC=example,DC=test"` |
 | 「自動更新を構成する」 | 有効、オプション3(自動ダウンロードを行い、インストールの通知を行う)。オプション4(自動インストール・自動再起動)は選ばない。無人再起動によるサービス影響を避ける安全側の設計判断 | `NOT RUN` | `gpresult /h` の出力、または対象ホストのレジストリ確認 |
 | 「イントラネット Microsoft 更新サービスの場所を指定する」 | 有効。検出サービスの場所・統計サーバーの場所の両方に`http://wsus-01.corp.example.test:8530`を設定 | `NOT RUN` | 同上 |
-| 「クライアント側ターゲティングを有効にする」 | 有効。対象グループ名`Servers`。WSUSコンソール側で作成するコンピューターグループ名と一致させる必要がある | `NOT RUN` | 同上 |
+| 「クライアント側ターゲティングを有効にする」 | 有効。対象グループ名`Pilot`。WSUSコンソール側で作成するコンピューターグループ名と一致させる必要がある。**クライアント側ターゲティングでは、クライアントが登録し直すたびに所属グループが「申告した`TargetGroup`ただ1つ」へ置き換わる**ため、`Servers`を申告して`Pilot`へ手動追加する構成は成立しない。`Pilot`は`Servers`の子であり、`Servers`向け承認は継承される | `NOT RUN` | 同上 |
 | 自動更新の検出頻度 | 既定値のまま変更しない | — | — |
 | WSUSサーバー側の割り当て方式(`TargetingMode`) | `Client`(クライアント側ターゲティング)。**既定は`Server`であり、そのままではGPOの`TargetGroupEnabled`/`TargetGroup`が無視され、クライアントは`割り当てられていないコンピューター`へ入る。** GPO作成前にサーバー側を切り替える | `NOT RUN` | `(Get-WsusServer).GetConfiguration().TargetingMode` |
 | GPO適用の即時反映コマンド | `gpupdate /force` | `NOT RUN` | 対象ホスト |
 | GPO適用状況の確認コマンド | `gpresult /r /scope computer`(または`/h`でHTMLレポート出力) | `NOT RUN` | 対象ホスト |
 | GPO適用確認ログ | イベントログ「グループポリシー操作ログ」(`Microsoft-Windows-GroupPolicy/Operational`) | `NOT RUN` | `Get-WinEvent -LogName "Microsoft-Windows-GroupPolicy/Operational"` |
 
-ここでの「対象グループ名`Servers`」はAD側のOUではなく、WSUSコンソール内で別途作成するコンピューターグループの名前である。両者を混同しやすい点は「コンピューターグループ・承認ルール」節で扱う。
+ここでの「対象グループ名`Pilot`」はAD側のOUではなく、WSUSコンソール内で別途作成するコンピューターグループの名前である。GPOのリンク先OUは`Servers`OU、申告するコンピューターグループ名は`Pilot`であり、両者は別物である。両者を混同しやすい点は「コンピューターグループ・承認ルール」節で扱う。
 
 ## ユーザー・グループ・権限
 
@@ -154,11 +154,11 @@ ADの組織単位(OU)と、WSUSコンソール内の「コンピューターグ�
 
 | 項目 | 設計値 | 実績値 | 正本 |
 | --- | --- | --- | --- |
-| コンピューターグループ`Servers` | 「すべてのコンピューター」の下に手動で作成。GPOのクライアント側ターゲティングの対象グループ名と一致させる | `NOT RUN` | WSUSコンソール「コンピューター」ノード |
-| サブグループ`Pilot` | `Servers`の下に作成。段階的展開の受け皿。本パックでは`wsus-01`自身を`Pilot`にも所属させる | `NOT RUN` | 同上 |
+| コンピューターグループ`Servers` | 「すべてのコンピューター」の下に手動で作成。GPOが申告するのは子の`Pilot`のため直接メンバーは入らないが、全サーバー共通の承認を子へ継承させる階層の親として作成する | `NOT RUN` | WSUSコンソール「コンピューター」ノード |
+| サブグループ`Pilot` | `Servers`の下に作成。段階的展開の受け皿。本パックでは`wsus-01`自身を`Pilot`の検証対象とし、GPOの対象グループ名に`Pilot`を指定して自己登録させる(手動追加は次回登録で失われるため使わない) | `NOT RUN` | 同上 |
 | 自動承認ルール名 | `Critical and Security Updates - Pilot Auto-Approve` | `NOT RUN` | WSUSコンソール「オプション」→「自動承認」 |
 | 自動承認ルールの条件 | 分類がCritical UpdatesまたはSecurity Updates | `NOT RUN` | 同上 |
-| 自動承認ルールの対象製品 | Windows Server 2022 | `NOT RUN` | 同上 |
+| 自動承認ルールの対象製品 | `Microsoft Server operating system-21H2`(WSUSカタログ上のWindows Server 2022の製品名。「同期対象製品」の項と同じ理由で、「Windows Server 2022」というタイトルの製品は存在しない) | `NOT RUN` | 同上 |
 | 自動承認ルールの対象グループ | `Pilot` | `NOT RUN` | 同上 |
 | 自動承認ルールのスケジュール化 | **有効化しない**(`Enabled = false`)。手動実行にとどめる。無人承認による意図しない適用を避ける安全側の判断。ただし**`Enabled = false`のルールは`ApplyRule()`でも実行できない**ため、手動実行の直前だけ有効化し実行後ただちに無効へ戻す運用とする | `NOT RUN` | 同上 |
 | 承認前のダウンロード量見積もり | **必須**。承認はコンテンツ取得を即座に開始させるため、`GetContentDownloadProgress().TotalBytesToDownload`で承認前後を比較し、許容量を超える場合は`Stop-Service WsusService`で中断する | `NOT RUN` | [構築手順書](05-build-procedure.md)9.1節 |

@@ -518,15 +518,35 @@ Set-GPRegistryValue -Name $gpoName -Key $auKey -ValueName "UseWUServer" -Type DW
 Set-GPRegistryValue -Name $gpoName -Key $wuKey -ValueName "WUServer" -Type String -Value "http://wsus-01.corp.example.test:8530"
 Set-GPRegistryValue -Name $gpoName -Key $wuKey -ValueName "WUStatusServer" -Type String -Value "http://wsus-01.corp.example.test:8530"
 
-# 「クライアント側ターゲティングを有効にする」を有効にし、対象グループ名をServersとする。
-# WSUSコンソール側で作成するコンピューターグループ名(8節)と一致させる必要がある
+# 「クライアント側ターゲティングを有効にする」を有効にし、対象グループ名をPilotとする。
+# WSUSコンソール側で作成するコンピューターグループ名(8節)と一致させる必要がある。
+# Serversではなく段階展開リングであるPilotを指定する理由は、直後の「所属グループが1つに
+# 置き換わる」性質による(下記)
 Set-GPRegistryValue -Name $gpoName -Key $wuKey -ValueName "TargetGroupEnabled" -Type DWord -Value 1
-Set-GPRegistryValue -Name $gpoName -Key $wuKey -ValueName "TargetGroup" -Type String -Value "Servers"
+Set-GPRegistryValue -Name $gpoName -Key $wuKey -ValueName "TargetGroup" -Type String -Value "Pilot"
 
 # 自動更新の検出頻度は既定値のまま変更しない(DetectionFrequencyEnabledは設定しない)
 ```
 
+#### 対象グループ名に`Pilot`を指定する理由(重要)
+
+クライアント側ターゲティングでは、**クライアントが登録し直すたびに、WSUS側の所属グループが「クライアントが申告した`TargetGroup`ただ1つ」へ置き換えられる。** 管理者がAPIやコンソールから別グループへ手動追加しても、その所属は次の登録で失われる。2026-09-08の実機では次のとおり確認した([結果票](../evidence/2026-09-08-wsus-sit04-sit06-root-cause.md))。
+
+```text
+[手動でPilotへ追加した直後]        MemberOf=[Pilot,Servers,All Computers]
+[クライアントが登録し直した直後]   MemberOf=[Servers,All Computers]   ← Pilotが消える
+                                   このとき提示される更新は 0 件
+```
+
+したがって「GPOでは`Servers`を申告しつつ、`Pilot`へは手動で追加する」という構成は成立しない。`wsus-01`自身を段階展開の検証対象(`Pilot`)とする設計([パラメータシート](03-parameter-sheet.md))を満たすには、**GPOで`Pilot`を申告させる**しかない。
+
+これで不都合が生じないのは、WSUSのコンピューターグループが階層を持ち、**親グループ向けの承認が子グループへ継承される**ためである。本パックの階層は`All Computers` → `Servers` → `Pilot`であり、`Pilot`所属のマシンは`Servers`向け・`All Computers`向けの承認も受け取る。2026-09-08の実機で、承認先を`Servers`のみにした更新が`Pilot`直下のみに所属するクライアントへ提示されることを確認済みである。
+
+運用で対象サーバーが複数になり、一部だけを先行リングにする場合は、`Servers`OUへリンクした本GPO(`TargetGroup=Servers`)に加えて、先行対象のコンピューターだけにセキュリティフィルタリングした別GPO(`TargetGroup=Pilot`、リンク順位を上位)を用意して上書きする。1台構成のフェーズ1では本GPO1本で足りる。
+
 `wsus-01`自身もこのGPOの適用対象(`Servers`OU)に含まれるため、即時適用・確認を行う。
+
+なお`New-GPO`・`New-GPLink`・`Set-GPRegistryValue`は**WinRMセッション越しには実行できない**。ドメインコントローラー上のGPOへアクセスするために資格情報の再委任(ダブルホップ)が必要で、`操作エラーが発生しました。 (Exception from HRESULT: 0x80072020)`で失敗する。コンソール/RDPでの対話セッションから実行するか、DC上で実行すること。
 
 ```powershell
 gpupdate /force /target:computer
@@ -541,6 +561,24 @@ Get-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate"
 Get-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" -ErrorAction SilentlyContinue
 ```
 
+**レジストリに反映されても、WSUS側の所属グループはすぐには変わらない。** クライアントはターゲティング用のcookieをキャッシュしており、既定の保持時間は1時間である(`(Get-WsusServer ...).GetConfiguration().SimpleTargetingCookieExpirationTime` = `01:00:00`)。`TargetGroup`を変更した直後や`TargetingMode`を切り替えた直後に検出(`UsoClient.exe StartScan`)だけを走らせても、古いcookieが使われるため所属は変わらない。即座に反映させるには登録し直させる。
+
+```powershell
+Stop-Service wuauserv -Force
+$k = "HKLM:\SOFTWARE\Microsoft\Windows\WindowsUpdate"
+foreach ($v in @("SusClientId","SusClientIdValidation","AccountDomainSid","PingID")) {
+    Remove-ItemProperty -Path $k -Name $v -Force -ErrorAction SilentlyContinue
+}
+Start-Service wuauserv
+wuauclt.exe /resetauthorization /detectnow
+
+# WSUSへ実際に問い合わせて登録を確定させる(UsoClient StartScanは非同期で完了を待てないため、
+# 結果を確認したい場面ではCOM APIで同期的に検索する)
+$searcher = (New-Object -ComObject Microsoft.Update.Session).CreateUpdateSearcher()
+$searcher.ServerSelection = 1   # 1 = ManagedServer(WSUS)
+$searcher.Search("IsInstalled=0").Updates | Select-Object Title
+```
+
 ## 8. コンピューターグループ・承認ルール・クリーンアップウィザードの設定
 
 ADの組織単位(OU)と、WSUSコンソール内の「コンピューターグループ」は別の概念である。7節の`Servers`OUはコンピューターオブジェクトの配置場所、ここで作る`Servers`グループはWSUSが独自に管理するクライアント分類であり、名前が同じでも別の仕組みである点を混同しないこと。
@@ -548,16 +586,18 @@ ADの組織単位(OU)と、WSUSコンソール内の「コンピューターグ�
 ```powershell
 $wsus = Get-WsusServer -Name "wsus-01" -PortNumber 8530
 
-# 「すべてのコンピューター」の下にServersグループを手動作成し、GPOのクライアント側
-# ターゲティング(7節)の対象グループ名と一致させる。2回目実行での重複作成を避けるため、
-# 既存グループがあれば再利用する(NFR-01、SIT-02)
+# 「すべてのコンピューター」の下にServersグループを手動作成する。GPOが申告するのは
+# 子のPilot(7節)であり、このServersグループ自体には直接メンバーが入らないが、
+# 「全サーバー共通の承認」を子へ継承させる階層の親として必要である。
+# 2回目実行での重複作成を避けるため、既存グループがあれば再利用する(NFR-01、SIT-02)
 $allComputers = $wsus.GetComputerTargetGroups() | Where-Object { $_.Name -eq "All Computers" }
 $serversGroup = $wsus.GetComputerTargetGroups() | Where-Object { $_.Name -eq "Servers" }
 if (-not $serversGroup) {
     $serversGroup = $wsus.CreateComputerTargetGroup("Servers", $allComputers)
 }
 
-# Serversの下にPilotサブグループを作成する(段階的展開の受け皿)。同様に既存グループを再利用する
+# Serversの下にPilotサブグループを作成する(段階的展開の受け皿)。GPOの対象グループ名(7節)と
+# 一致させる必要があるのはこちらである。同様に既存グループを再利用する
 $pilotGroup = $wsus.GetComputerTargetGroups() | Where-Object { $_.Name -eq "Pilot" }
 if (-not $pilotGroup) {
     $pilotGroup = $wsus.CreateComputerTargetGroup("Pilot", $serversGroup)
@@ -613,6 +653,8 @@ $saved = $wsus.GetInstallApprovalRules() | Where-Object { $_.Name -eq $ruleName 
 "グループ: " + (($saved.GetComputerTargetGroups() | ForEach-Object Name) -join " | ")
 ```
 
+**ここでの読み戻しは「保存できたこと」の確認にすぎず、`ApplyRule()`実行時点の絞り込みを保証しない。** この節と9節の間には全メタデータ同期(数十分)が挟まり、その間にルールが書き換わっていても気づけない。2026-09-07の実機では、この節の読み戻しが正しい絞り込みを表示したにもかかわらず、9節の`ApplyRule()`実行時には分類・製品が0件の状態になっており、555件が承認された([結果票](../evidence/2026-09-08-wsus-sit04-sit06-root-cause.md))。**絞り込みは9.2節で実行直前にもう一度検証する。**
+
 `Enabled = $false`は「同期のたびに自動で承認しない」という安全側の設定である。ただし**`Enabled = $false`のルールは`ApplyRule()`でも実行できず、`この承認規則は、有効でないため適用できません。`で拒否される。** 9節で手動実行する際は、実行の直前だけ有効化し、実行後ただちに無効へ戻す(9節参照)。「平時は無効、手動実行時のみ一時的に有効」という運用でこの制約を回避する。
 
 それ以外の更新プログラムは手動承認とする(手順は9節で扱う)。
@@ -663,37 +705,30 @@ UsoClient.exe StartScan
 Start-Sleep -Seconds 60
 ```
 
-WSUSコンソール側で`wsus-01`が`Servers`グループへ自己登録されていることを確認する(SIT-04)。
+WSUSコンソール側で`wsus-01`が`Pilot`グループへ自己登録されていることを確認する(SIT-04)。
 
 ```powershell
-Get-WsusComputer -UpdateServer $wsus |
-  Where-Object FullDomainName -eq "wsus-01.corp.example.test" |
-  Select-Object FullDomainName, IPAddress, LastReportedStatusTime
-```
-
-クライアント側ターゲティング(7節)による自己登録は、GPOで指定した`Servers`グループへの登録だけであり、`Pilot`サブグループへは自動的には入らない。[パラメータシート](03-parameter-sheet.md)の設計どおり`wsus-01`自身も`Pilot`の検証対象とするため、明示的に`Pilot`グループへ追加する。この手順を省くと、次の自動承認ルールがPilotグループ向けにしか更新を承認しないため、`wsus-01`には何も適用されずSIT-05が成立しない。
-
-```powershell
-$wsusComputer = $wsus.GetComputerTargetGroups() |
-  Where-Object { $_.Name -eq "Servers" } |
-  ForEach-Object { $_.GetComputerTargets() } |
+$me = $wsus.GetComputerTargets() |
   Where-Object { $_.FullDomainName -eq "wsus-01.corp.example.test" }
 
-# 既にPilotグループへ登録済みの場合はAddComputerTargetがエラーになるため、そのエラーだけを許容する(NFR-01、SIT-02)
-try {
-    $pilotGroup.AddComputerTarget($wsusComputer)
-} catch {
-    if ($_.Exception.Message -notmatch "already a member") { throw }
-}
-
-$pilotGroup.GetComputerTargets() | Select-Object FullDomainName
+"所属グループ  : " + (($me.GetComputerTargetGroups() | ForEach-Object Name) -join " | ")
+"申告グループ  : " + $me.RequestedTargetGroupName
+"最終レポート  : " + $me.LastReportedStatusTime
 ```
+
+期待値は所属グループが`Pilot`(と`All Computers`)、申告グループが`Pilot`である。`割り当てられていないコンピューター`のままなら`TargetingMode`が`Server`の疑い(7.0節)、`Servers`のままならGPOの`TargetGroup`が旧値のままか、cookieが切れていない(7節末尾の再登録手順を実行する)。
+
+**`AddComputerTarget()`でグループへ手動追加してはならない。** 追加自体は成功して複数グループ所属になるが、クライアントが次に登録し直した時点で、申告された`TargetGroup`ただ1つへ置き換えられて消える(7節参照)。所属は必ずGPO側で決める。
 
 ### 9.1 承認前の容量見積もりと中断手段の準備(必須)
 
 **承認はコンテンツのダウンロードを即座に開始させる操作である。** 「更新プログラムをこのサーバーに保存する」を有効(6節)にしているため、承認した更新のバイナリがすべてコンテンツストアへ取得される。承認件数を読み違えると数百GB規模のダウンロードが始まり、ディスクを枯渇させて同じホスト上の他システムまで巻き込む。
 
-2026-09-07の実機では、分類・製品・グループを絞り込んだはずの承認ルールの`ApplyRule()`が**同期済み557件のうち555件を承認し、約345GBのダウンロードを開始した**([結果票](../evidence/2026-09-07-wsus-build-validation.md)のSIT-06)。ルールの絞り込みが`ApplyRule()`の承認範囲を限定する保証は無いものとして扱う。
+2026-09-07の実機では、承認ルールの`ApplyRule()`が**同期済み557件のうち555件を承認し、約345GBのダウンロードを開始した**([結果票](../evidence/2026-09-07-wsus-build-validation.md)のSIT-06)。
+
+この原因は2026-09-08に切り分けた([結果票](../evidence/2026-09-08-wsus-sit04-sit06-root-cause.md))。**`ApplyRule()`は絞り込みを正しく守る。** 危険なのは、ルールの分類・製品が**0件で保存されている**場合であり、WSUSはこれを「絞り込みなし=全分類・全製品」と解釈して同期済みの全更新を承認する。実機で、絞り込みを設定したルールは対象外の更新を承認せず、絞り込みを空にしたルールは分類・製品を問わず全件を承認することを確認している。555件は「拒否済み2件を除く全件」であり、絞り込みが空だった場合の件数と一致する。
+
+したがって守るべき不変条件は「`ApplyRule()`を信用しない」ではなく、**「分類・製品が0件のルールを絶対に`ApplyRule()`しない」**である。この検証を9.2節で実行直前に必ず行う。
 
 承認の前に、必ず次の3つを準備する。
 
@@ -716,16 +751,38 @@ Get-Service WsusService, BITS | Select-Object Name, Status
 
 8節のとおりルールは`Enabled = $false`で保存されているため、`ApplyRule()`は直接は実行できない。実行の直前だけ有効化し、実行後ただちに無効へ戻す。
 
+**その前に、絞り込みが空でないことを必ず検証する(9.1節)。** 分類・製品が0件のルールは全更新を承認するため、ここで止めなければ数百GBのダウンロードが始まる。
+
 ```powershell
 $ruleName = "Critical and Security Updates - Pilot Auto-Approve"
 $rule = $wsus.GetInstallApprovalRules() | Where-Object Name -eq $ruleName
+
+# --- 実行直前の絞り込み検証(必須・省略不可) ---
+$cls = @($rule.GetUpdateClassifications())
+$cat = @($rule.GetCategories())
+$grp = @($rule.GetComputerTargetGroups())
+"分類    : {0}件 [{1}]" -f $cls.Count, (($cls | ForEach-Object Title) -join ", ")
+"製品    : {0}件 [{1}]" -f $cat.Count, (($cat | ForEach-Object Title) -join ", ")
+"グループ: {0}件 [{1}]" -f $grp.Count, (($grp | ForEach-Object Name)  -join ", ")
+if ($cls.Count -eq 0 -or $cat.Count -eq 0 -or $grp.Count -eq 0) {
+    throw "承認ルールの絞り込みが空。このまま ApplyRule() すると全更新が承認される。8節をやり直すこと"
+}
+
+# 絞り込みと同条件で「本来何件が対象になるか」を承認前に数える。
+# ApplyRule() の戻り件数がこの件数を超えたら、絞り込みが効いていない
+$scope = New-Object Microsoft.UpdateServices.Administration.UpdateScope
+$cls | ForEach-Object { $scope.Classifications.Add($_) | Out-Null }
+$cat | ForEach-Object { $scope.Categories.Add($_)      | Out-Null }
+$scope.ApprovedStates = [Microsoft.UpdateServices.Administration.ApprovedStates]::Any
+$expected = @($wsus.GetUpdates($scope)).Count
+"想定対象件数: $expected 件 / 同期済み $($wsus.GetStatus().UpdateCount) 件"
 
 # 実行の直前だけ有効化する
 $rule.Enabled = $true
 $rule.Save()
 
 $approved = $rule.ApplyRule()
-"ApplyRule() 承認件数: $(($approved | Measure-Object).Count)"
+"ApplyRule() 承認件数: $(($approved | Measure-Object).Count)（想定 $expected 件以下であること）"
 
 # ただちに無効へ戻す(無人承認を避ける設計を維持する)
 $rule = $wsus.GetInstallApprovalRules() | Where-Object Name -eq $ruleName
@@ -745,7 +802,10 @@ $status = $wsus.GetStatus()
 見積もりが許容量を超えている場合は、**ためらわずダウンロードを止める。**
 
 ```powershell
-# ダウンロードを即座に中断する
+# ダウンロードを即座に中断する。
+# 注意: WsusService は BITS の依存サービスであり、Stop-Service BITS -Force は
+# WsusService も黙って一緒に停止させる((Get-Service BITS).DependentServices で確認できる)。
+# 再開時は BITS ではなく WsusService を明示的に開始すること
 Stop-Service WsusService -Force
 Stop-Service BITS -Force
 
@@ -763,6 +823,8 @@ Invoke-WsusServerCleanup -UpdateServer $wsus -CleanupUnneededContentFiles
 ```
 
 `Stop-Service WsusService`の後もBITSのジョブが残ることがある。ジョブの所有者が`NetworkService`のため、管理者セッションからの`Remove-BitsTransfer`や`bitsadmin /reset /allusers`では破棄できない場合がある。`BITS`サービス自体を停止すれば転送は止まるので、容量保全を優先する場面ではサービス停止で対処する。
+
+`WsusService`が同期の実行中に停止すると、**同期状態がデータベース上で`Running`のまま固まる**。`GetSynchronizationStatus()`が`Running`を返し続けるのに`GetSynchronizationProgress()`は`Phase=NotProcessing`・`0/0`を返す、という食い違いが目印である。`WsusService`を開始し直したうえで`$wsus.GetSubscription().StopSynchronization()`を呼べば解除できる。
 
 ### 9.3 個別の手動承認
 

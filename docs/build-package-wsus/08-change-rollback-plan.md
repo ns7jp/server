@@ -66,8 +66,8 @@ curl.exe -s -o NUL -w "%{http_code}`n" http://localhost:8530/ClientWebService/cl
 - `WsusService`が起動しない、または`wsusutil`によるコンソール接続がエラーになる
 - `WsusPool`が停止/クラッシュし、WSUS管理サイト(8530)がクライアント同期要求に応答しない(503含む)
 - Microsoft Updateとの同期が継続的に失敗する
-- GPOのクライアント側ターゲティングが崩れ、`wsus-01`自身がWSUSコンソールの`Servers`グループへ自己登録できない
-- 承認ルールの対象範囲が設計(分類Critical/Security、製品Windows Server 2022、対象`Pilot`)を超え、意図しない更新が自動承認・配布される
+- GPOのクライアント側ターゲティングが崩れ、`wsus-01`自身がWSUSコンソールの`Pilot`グループへ自己登録できない
+- 承認ルールの対象範囲が設計(分類Critical/Security、製品`Microsoft Server operating system-21H2`、対象`Pilot`)を超え、意図しない更新が自動承認・配布される
 - コンテンツストア(`D:`)の空き容量が枯渇した、またはその見込みが立った
 - WinRM(HTTPS)接続が期限内に復旧しない、Firewall許可範囲が設計外に広がる/必要な許可まで閉じる
 - 重大なEvent Logエラー・継続的なサービス異常、途中失敗で状態を確定できない、実測復旧見込みが許容停止時間を超える
