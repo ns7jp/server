@@ -1,0 +1,58 @@
+[
+  {
+    "id": "E01",
+    "file": "E01-collectors-start.png",
+    "source_filename": "codex-clipboard-3dd4d8bb-faf8-47f5-aaeb-976c3b4fb1e5.png",
+    "caption": "Loki・Alloy・proxy起動、available1.2GiB、Swap0",
+    "bytes": 28512,
+    "sha256": "6a36ca50fadc3e9a14ee13d553ba2cbc723e1614c14f22acbbe6e1b07c519d4b"
+  },
+  {
+    "id": "E02",
+    "file": "E02-six-services.png",
+    "source_filename": "codex-clipboard-7bf7975e-1587-4ec0-9f6f-f64ea4c2d502.png",
+    "caption": "6サービスUp・app healthy・available1.1GiB、Loki ready判定待ち",
+    "bytes": 26395,
+    "sha256": "88b25222f7b7a223335585ae39f9a7fa6f4b89b3b06fc86ab6d1d82ac0a5242c"
+  },
+  {
+    "id": "E03",
+    "file": "E03-ready-and-request.png",
+    "source_filename": "codex-clipboard-c2f0c4bc-be07-4e88-8642-d9fc162eaed4.png",
+    "caption": "Loki ready・目印付きアクセスが401",
+    "bytes": 5898,
+    "sha256": "b785be5a81e55e816161ad29d92c5b21b8fd3e6e02b6fa6ea8bf61a495d6ef7d"
+  },
+  {
+    "id": "E04",
+    "file": "E04-explore-builder-empty.png",
+    "source_filename": "codex-clipboard-aadffb3d-4b6a-4985-9970-f697cf83eb58.png",
+    "caption": "ExploreのBuilderとNo data",
+    "bytes": 78076,
+    "sha256": "7a16ee1c0dc6e44c3d8bb691d4247a0d507f1ddec3e35e1ecc9fd10f5d80e9a9"
+  },
+  {
+    "id": "E05",
+    "file": "E05-explore-code-empty.png",
+    "source_filename": "codex-clipboard-7c9d3e53-9d9b-480a-8b08-c403d8d23805.png",
+    "caption": "Codeに切替後の入力欄が空、No data",
+    "bytes": 71085,
+    "sha256": "b7f05e4ac06cdc0cbe41161df59c3064d78e27af45ecd84f4f5f1822dd30c042"
+  },
+  {
+    "id": "E06",
+    "file": "E06-logs-found.png",
+    "source_filename": "codex-clipboard-343895cb-09e0-49b1-8caf-895152eff219.png",
+    "caption": "入力済みLogQLと目印loki-firstを含むログ2件、GET/401",
+    "bytes": 116446,
+    "sha256": "6d99387c5e99d196e7a5e7d4feb7eca4cbece8b3f357bb35e7e458cdd8ff4954"
+  },
+  {
+    "id": "E07",
+    "file": "E07-cleanup.png",
+    "source_filename": "codex-clipboard-9613ffeb-18e4-4971-91b2-59f576e83847.png",
+    "caption": "6コンテナ・4ネットワーク撤去、psにサービス行なし",
+    "bytes": 13262,
+    "sha256": "dc490bd0fb150d1dcfeaff5b35cc46c24bc94a6d0c5d544eb9d67c70b809d3f2"
+  }
+]
