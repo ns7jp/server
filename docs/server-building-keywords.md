@@ -1420,13 +1420,91 @@ AWS実環境での稼働実績ではありません。
 
 ### フェーズ1 / フェーズ2（Ansible版パック）
 
-- **一言**: フェーズ1はUbuntu（基準環境、設計・実装済み）、フェーズ2はAlmaLinux/Rocky 9
-  実機ホストへの適用（未着手）という区分。
-- **意味**: role自体はMoleculeの`el9` scenarioでコンテナ検証済みだが、実VMへ適用した
-  実績はまだ無い。[AD版パック](build-package-ad/README.md)と同じ、実行済み範囲と設計のみの
-  範囲を区別する書き方である。
+- **一言**: フェーズ1はUbuntu（基準環境）、フェーズ2はAlmaLinux/Rocky 9への適用という区分。
+- **意味**: 2026-09-04に両フェーズとも手元Hyper-VのVMで実測`PASS`した。ただしフェーズ2の
+  対象VMは以前の用途からの再利用環境だったため、「新規構築」「最小公開」の証跡としては
+  専用の新規VMでの再実施が必要、という留保が付く。「動いた」と「証跡として使える」を
+  分けて書く例。
 - **このリポジトリ**: [05-build-procedure.md](build-package-ansible/05-build-procedure.md#9-フェーズ2-almalinuxrocky-9への適用)
-- **確認**: [試験仕様書](build-package-ansible/06-test-specification.md)のAFIT-06欄
+- **確認**: [フェーズ1結果票](evidence/2026-09-04-ansible-foundation-build.md) /
+  [フェーズ2結果票](evidence/2026-09-04-ansible-foundation-el9-build.md)
+
+## 14. WSUS（更新プログラム集中管理）の基礎
+
+この節は`docs/build-package-wsus/`（WSUS版案件パック、案件ID`SM-WSUS-001`）を読むための
+用語です。ドメイン参加・GPO・メンバーサーバーといったAD側の用語は
+「[10. Active Directory の基礎](#10-active-directory-の基礎)」にあります。より丁寧な解説は
+[案件パック初心者ガイド（WSUS版）](build-package-wsus/beginner-guide.md)にあります。
+
+### WSUS（Windows Server Update Services）
+
+- **一言**: Windows Updateを組織内で集中管理する、Microsoft純正のサーバー機能。
+- **意味**: 各サーバーが個別にインターネットへ更新を取りに行く代わりに、WSUSサーバーが
+  代表して取得し、管理者が「承認」した更新だけを配信する。回線負担を減らすことより、
+  **どの更新をいつ当てるかを管理者が決められる**ことが主目的。
+- **このリポジトリ**: [WSUS版案件パック](build-package-wsus/README.md)（`wsus-01`）
+- **確認**: `Get-WsusServer`、WSUSコンソール
+
+### WID（Windows Internal Database）
+
+- **一言**: WSUSなどMicrosoft製品専用の、制限付きSQL Serverエンジン。
+- **意味**: 無償で同梱されるがネットワークポートを持たず、ローカルの名前付きパイプ
+  （`MICROSOFT##WID`）経由でしか接続できない。`sqlcmd.exe`も同梱されないため、実機では
+  .NETの`System.Data.SqlClient`で接続する必要があった（[欠陥台帳](evidence/defects-found.md)#45）。
+  大規模構成では外部SQL Serverを使う（本パックでは対象外）。
+- **このリポジトリ**: [03-parameter-sheet.md](build-package-wsus/03-parameter-sheet.md)の「WSUSロール・IIS・WID」節
+- **確認**: `Get-Service MSSQL$MICROSOFT##WID`
+
+### SUSDB
+
+- **一言**: WSUSが更新プログラムのメタデータと承認状態を保存するデータベース名。
+- **意味**: WID（または外部SQL Server）上に作られる。バックアップ対象は「SUSDB」
+  「コンテンツストア（実ファイル）」「IIS構成」の3点セットで、どれか1つでも欠けると復旧できない。
+- **このリポジトリ**: [08-change-rollback-plan.md](build-package-wsus/08-change-rollback-plan.md)
+- **確認**: `BACKUP DATABASE SUSDB TO DISK = ...`（実機では10.2秒で復元し内容一致を確認）
+
+### 承認（Approval）と自動承認ルール
+
+- **一言**: 「この更新を、このコンピューターグループへ配ってよい」と管理者が明示する操作。
+- **意味**: WSUSが同期しただけでは配信されない。承認して初めてクライアントに提示される。
+  自動承認ルールは、分類・製品・グループの条件に合う更新を自動で承認する仕組み。
+- **注意**: 実機検証では、ルールの`ApplyRule()`が設定した絞り込みを無視して557件中555件を
+  全件承認し、**345GBのダウンロードが始まった**。承認前に
+  `GetContentDownloadProgress().TotalBytesToDownload`で量を見積もる手順が必須
+  （[欠陥台帳](evidence/defects-found.md)#44）。
+- **このリポジトリ**: [05-build-procedure.md](build-package-wsus/05-build-procedure.md)8節・9節
+- **確認**: `(Get-WsusServer).GetStatus()`の`ApprovedUpdateCount`
+
+### コンピューターグループとターゲティングモード（`TargetingMode`）
+
+- **一言**: WSUS内でクライアントを分類する入れ物と、その振り分けを誰が決めるかの設定。
+- **意味**: ADのOUとは**別物**（名前が同じ`Servers`でも一致しない）。`TargetingMode`が
+  既定の`Server`のままだと、GPOで配ったグループ指定が無視され、クライアントは
+  「割り当てられていないコンピューター」へ入る。GPOで振り分けたいなら
+  サーバー側を`Client`（クライアント側ターゲティング）へ変更する必要がある
+  （[欠陥台帳](evidence/defects-found.md)#42）。
+- **このリポジトリ**: [03-parameter-sheet.md](build-package-wsus/03-parameter-sheet.md)の「コンピューターグループ・承認ルール」節
+- **確認**: `(Get-WsusServer).GetConfiguration().TargetingMode`
+
+### 分類（Classification）と製品（Product）
+
+- **一言**: 同期・承認の対象を絞り込む2つの軸。分類は更新の種類、製品は対象ソフトウェア。
+- **意味**: 絞り込まないとメタデータもコンテンツも際限なく肥大化する。実機では
+  **分類名がOSロケールで日本語化されるため英語リテラルでは0件マッチ**になり、GUIDでの指定が
+  必要だった。製品名も`Windows Server 2022`ではなく
+  `Microsoft Server operating system-21H2`が正しい
+  （[欠陥台帳](evidence/defects-found.md)#39・#40）。
+- **このリポジトリ**: [03-parameter-sheet.md](build-package-wsus/03-parameter-sheet.md)の「同期設定」節
+- **確認**: `Get-WsusClassification`、`Get-WsusProduct`
+
+### 8530/tcp・8531/tcp（WSUS管理サイト）
+
+- **一言**: WSUSがクライアントへ更新を配信するための専用ポート。
+- **意味**: IISの既定サイト（80/443）とは別に専用サイトが作られる。WSUS 3.0 SP2以降の標準で、
+  旧バージョンが80/443を使っていたことと混同しない。8531はHTTPS用で、証明書が要るため
+  本パックでは対象外。
+- **このリポジトリ**: [04-network-ip-plan.md](build-package-wsus/04-network-ip-plan.md)
+- **確認**: `Get-NetTCPConnection -LocalPort 8530 -State Listen`
 
 ## 混同しやすい用語の比較
 
