@@ -1,0 +1,34 @@
+[
+  {
+    "id": "E01",
+    "file": "E01-before.png",
+    "source_filename": "codex-clipboard-380773ff-890e-40bf-918e-79fbf5370c91.png",
+    "caption": "開始時HEAD・healthy・HTTP200・PID11749・restart count0",
+    "bytes": 24577,
+    "sha256": "606d67984adeb330ac6579f120972339bfd6c5bcb218bd3d784179b82f4076d0"
+  },
+  {
+    "id": "E02",
+    "file": "E02-summary.png",
+    "source_filename": "codex-clipboard-29f324dc-e39f-45f5-90b2-fba84b7f3916.png",
+    "caption": "サマリー2秒/PASS・終了0・count1・PID12186、health starting",
+    "bytes": 26397,
+    "sha256": "f7d2b0e03ad7af49dec69a7401d052f78ebf0f9455dafee8fb17426fa99e25c3"
+  },
+  {
+    "id": "E03",
+    "file": "E03-healthy.png",
+    "source_filename": "codex-clipboard-b03f9b1c-9d18-4a62-a641-54a19b213a5a.png",
+    "caption": "後続確認でapp healthy・nginx Up・HTTP200",
+    "bytes": 9884,
+    "sha256": "a50875a547430d88e5837c9c0ac0c69ddfd63dbc67d88c2d1ad8878d187d4eda"
+  },
+  {
+    "id": "E04",
+    "file": "E04-cleanup.png",
+    "source_filename": "codex-clipboard-92b7698a-5eff-4a1e-8610-190fc3ea20d7.png",
+    "caption": "2コンテナ・3ネットワーク撤去・サービス行なし",
+    "bytes": 8799,
+    "sha256": "c790c97d1ea22dc15f48edee6a0f8c81e0c34af2db98168846f7137b3a966ff4"
+  }
+]
