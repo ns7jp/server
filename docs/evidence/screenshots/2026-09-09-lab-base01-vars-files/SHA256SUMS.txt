@@ -1,0 +1,3 @@
+c0dcbbf7ee49423210687bc399d7410f6df113199249c2062cc19be0a5f5fe6a  E01-files-and-staging.png
+bf1a79ee52456c394d166a95f7f4d0f058caa67c2fb6584392b3008e1106c7c5  E02-training-apply.png
+6d05cdc575b552d760ef994afff159aa672df1e6ac46ceb8bd2769eac85afd84  E03-training-repeat.png
