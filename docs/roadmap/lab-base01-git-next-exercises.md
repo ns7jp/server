@@ -52,15 +52,57 @@ Ansible側の「切り戻し」演習（別Playbookでの復帰）と対にな�
 - 変更後のPlaybook実行（Ansible側の検証）はこのGit演習の範囲外。ファイル内容の確認のみ。
 - commitの著者情報・署名の検証は前段から継続して未採録。
 
+## 次候補（ブランチ/diffの次）：コンフリクトの発生と解消
+
+前段のブランチ演習は「同じ行を変更していない」ため、`merge`は必ず成功する。次は、
+main側と作業ブランチ側で**同じ行**を別々に変更し、`merge`が止まる・マーカーが挿入される・
+手動で解消するという、実務で最初につまずく手順を扱う。
+
+### 目的
+
+- 同じ行への別々の変更で`git merge`が`CONFLICT`となり、自動マージが止まることを確認する。
+- コンフリクト中の`git status`が該当ファイルを「both modified」等で示すことを確認する。
+- ファイル内の`<<<<<<<`/`=======`/`>>>>>>>`マーカーの位置と、mainの内容・作業ブランチの
+  内容がそれぞれどちらに対応するかを確認する。
+- マーカーを手動で編集し、`git add`→`git commit`でマージが完了することを確認する。
+- `git merge --abort`で、コンフリクト前の状態へ戻せることも別途確認する。
+
+### 想定する実行・確認手順（本人VMで実施予定）
+
+1. `main`で`env-staging.yml`の`listen_port`を`8081`から`8090`へ変更しcommitする
+   （前段のブランチ演習とは別に、mainを直接進める）。
+2. `main`から新しい作業ブランチ`practice/conflict-port`を切り、同じ行の`listen_port`を
+   `8099`へ変更しcommitする。
+3. `git switch main && git merge practice/conflict-port`を実行し、`CONFLICT (content)`が
+   出て自動マージが止まることを確認する。
+4. `git status`で該当ファイルが未マージ状態として表示されることを確認する。
+5. `env-staging.yml`を開き、`<<<<<<< HEAD`（mainの`8090`）と
+   `>>>>>>> practice/conflict-port`（作業ブランチの`8099`）のマーカーを確認したうえで、
+   マーカーを削除してどちらか一方（または別の値）を残す。
+6. `git add env-staging.yml && git commit`（マージコミットとして完了）し、
+   `git log --oneline --graph`で2つの親を持つマージコミットができていることを確認する。
+7. 別途、同じ手順を再現してから今度は`git merge --abort`を使い、mainが
+   コンフリクト前の`8090`のまま、作業ブランチも変更されずに残ることを確認する
+   （6と7は同じブランチの再利用ではなく、別のブランチで再現する）。
+
+### 未実施・範囲外（先に明記しておく）
+
+- 3-way以上の複数ブランチが絡むコンフリクトは扱わない（2ブランチ間のみ）。
+- `git rebase`中のコンフリクト（`merge`とマーカーの意味は同じだが操作系が異なる）は
+  別演習とする。
+- マージ後のPlaybook実行・Ansible側の反映確認はこのGit演習の範囲外。
+- コンフリクトマーカーを含んだファイルを誤ってcommitしてしまうケース
+  （マーカー未解消のままadd）は、今回の手順では発生させない（案内で明示的に避ける）。
+
 ## さらに次の候補（優先度順・未設計）
 
 | 候補 | 確認したいこと |
 | --- | --- |
-| コンフリクトの発生と解消 | mainと作業ブランチで同じ行を変更した場合の`merge`失敗・マーカー表示・手動解消 |
 | `git log`での履歴探索 | `--oneline`・`-p`・特定ファイルの履歴（`git log -- <file>`）の違い |
 | `.gitignore`の境界確認 | `git check-ignore -v`で、前段で案内したパターンがどのパスに効くかを個別に確認 |
 | remote・push（要判断） | GitHub等への公開が前提になるため、公開先・可視性を本人が決めてから着手 |
 
 本書の実行・採録が済んだ段階で、結果は新規の
-`docs/evidence/YYYY-MM-DD-lab-base01-git-branch-practice.md`へ記録し、
-本書側は「実施済み」へ更新するか、[README](README.md)の表から外す。
+`docs/evidence/YYYY-MM-DD-lab-base01-git-branch-practice.md`（ブランチ/diff）または
+`docs/evidence/YYYY-MM-DD-lab-base01-git-conflict-practice.md`（コンフリクト解消）へ記録し、
+本書側は該当セクションを「実施済み」へ更新するか、[README](README.md)の表から外す。
