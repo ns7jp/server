@@ -94,15 +94,102 @@ main側と作業ブランチ側で**同じ行**を別々に変更し、`merge`�
 - コンフリクトマーカーを含んだファイルを誤ってcommitしてしまうケース
   （マーカー未解消のままadd）は、今回の手順では発生させない（案内で明示的に避ける）。
 
-## さらに次の候補（優先度順・未設計）
+## 次候補（コンフリクトの次）：`git log`で履歴を探す
 
-| 候補 | 確認したいこと |
-| --- | --- |
-| `git log`での履歴探索 | `--oneline`・`-p`・特定ファイルの履歴（`git log -- <file>`）の違い |
-| `.gitignore`の境界確認 | `git check-ignore -v`で、前段で案内したパターンがどのパスに効くかを個別に確認 |
-| remote・push（要判断） | GitHub等への公開が前提になるため、公開先・可視性を本人が決めてから着手 |
+コンフリクト解消後は、作った履歴を「眺める」のではなく、質問に応じて絞り込む練習へ進む。
+この演習では新しいcommitを作らず、前段までに作った履歴を読み取り専用で利用する。
+
+### 目的
+
+- `--oneline`は履歴の索引、`-p`は各commitの変更内容を見る指定だと区別する。
+- `git log -- <file>`で、リポジトリ全体ではなく特定ファイルに関係する履歴だけを探す。
+- commit IDを控え、`git show <commit>`で後から同じ変更を再確認できることを確かめる。
+- 表示コマンドは作業ツリーや履歴を変更しないことを、実行前後の`git status`で確認する。
+
+### 想定する実行・確認手順（本人VMで実施予定）
+
+1. `git status --short --branch`を実行し、未commitの変更がない状態から開始する。変更があれば
+   勝手に破棄せず、この演習を中断して内容を確認する。
+2. `git log --oneline --decorate --graph --all`を実行し、main、作業ブランチ、マージcommitの
+   位置を確認する。画面に収まらない場合は`q`でpagerを終了する。
+3. `git log -p -2`で直近2件のcommit本文と差分を読み、`--oneline`との情報量の違いを確認する。
+4. `git log --oneline -- env-staging.yml`を実行し、同ファイルを変更したcommitだけに絞られる
+   ことを確認する。`--`はrevision名とファイルパスの境界であり、省略しない。
+5. (4)で得たcommit IDを1件選び、`git show --stat <commit>`で変更対象の要約、
+   `git show -- env-staging.yml <commit>`ではなく
+   `git show <commit> -- env-staging.yml`でそのファイルの差分を確認する。
+6. `git status --short --branch`を再実行し、開始時と同じであることを確認する。
+
+### 採録する最小証跡
+
+- 実行前後の`git status --short --branch`。
+- `--oneline --decorate --graph --all`でブランチの位置が分かる出力。
+- `git log --oneline -- env-staging.yml`と、そこから選んだcommitに対する`git show --stat`。
+- 「どの質問にどの表示を使うか」を本人の言葉で1行ずつ記録する。
+
+### 未実施・範囲外（先に明記しておく）
+
+- `git bisect`による不具合commitの探索、`git blame`による行単位の履歴確認は扱わない。
+- `reflog`、削除したbranchの復旧、履歴の書き換えは扱わない。
+- pagerや`format.pretty`など、個人のGit表示設定は変更しない。
+
+## 次候補（履歴探索の次）：`.gitignore`の境界を確認する
+
+`.gitignore`を「何となく秘密や一時ファイルを隠すもの」と覚えず、どのルールがどのパスに
+一致したかを`git check-ignore`で説明できる状態を目指す。既存の追跡対象を壊さないよう、
+演習専用の空ファイルだけを作成し、終了時に削除する。
+
+### 目的
+
+- ignore対象と追跡対象は別概念であり、既に追跡済みのファイルには通常のignoreルールが
+  適用されないことを確認する。
+- `git check-ignore -v`の「ルール記載ファイル・行番号・パターン・対象パス」を読み取る。
+- 似た名前でも、ディレクトリ位置や拡張子により一致・不一致が変わることを確認する。
+- 秘密値らしいファイルを作れば安全になるのではなく、commit前の確認が必要だと理解する。
+
+### 事前確認
+
+1. `git status --short --branch`がcleanであることを確認する。
+2. `git check-ignore -v managed/example '*.retry' 2>/dev/null || true`のような架空パスだけの確認ではなく、
+   `sed -n '1,200p' .gitignore`で実在するルールを先に読む。
+3. 以降で使う候補パスは、`.gitignore`に実際に存在するパターンから選ぶ。記載がなければ
+   ルールを推測で追加せず、この演習を`BLOCKED`として記録する。
+
+### 想定する実行・確認手順（本人VMで実施予定）
+
+1. `.gitignore`の既存ルールに一致する、内容が空の演習用ファイルを2件作る。前段で案内した
+   内容が維持されていれば、`mkdir -p managed && touch managed/ignore-check.txt practice.retry`を使う。
+   実際の認証情報や秘密値は入力しない。
+2. それぞれに`git check-ignore -v -- <path>`を実行し、出力されたパターンと行番号が
+   `.gitignore`の記載に一致することを確認する。
+3. 名前は似ているがルールに一致しない空ファイルを1件作り、
+   `git check-ignore -v -- <path>`が終了コード1・出力なしになることを確認する。
+4. `git status --short --ignored`で、ignore対象は`!!`、ignoreされない未追跡ファイルは`??`と
+   表示されることを確認する。終了コードを確認する場合は各コマンドの直後に`echo "$?"`を使う。
+5. `git ls-files --error-unmatch .gitignore`で`.gitignore`自体が追跡済みであることを確認し、
+   ignoreルールを追加しても追跡済みファイルが自動的に追跡解除されるわけではないと整理する。
+6. 作成した演習用ファイルだけを`rm -- <path...>`で削除する。最後に
+   `git status --short --branch`が開始時と同じであることを確認する。
+
+### 安全上の注意
+
+- `git add -f`、`git rm --cached`、`.gitignore`の編集はこの確認演習では行わない。
+- `git clean`は演習用以外の未追跡ファイルも消す可能性があるため使わない。
+- `git check-ignore`の出力なしは即座に「安全」を意味しない。むしろ追跡候補になり得るため、
+  `git status`で確認し、秘密値を含む場合はcommitせず削除する。
+- `2>/dev/null || true`で結果を隠さない。想定した不一致だけ終了コード1として記録する。
+
+## さらに次の候補（要判断）
+
+| 候補 | 着手条件 | 確認したいこと |
+| --- | --- | --- |
+| remote・push | 公開先、可視性、使用する認証方式を本人が決める | `remote -v`・初回push・upstreamの関係 |
+| `git blame` | 履歴探索まで本人VMで採録済み | 行の最終変更commitを調べ、責任追及ではなく変更理由の入口として使う |
+| `git bisect` | テストで良否を判定できる題材を別途用意する | 二分探索で原因commitを絞る流れ |
 
 本書の実行・採録が済んだ段階で、結果は新規の
-`docs/evidence/YYYY-MM-DD-lab-base01-git-branch-practice.md`（ブランチ/diff）または
-`docs/evidence/YYYY-MM-DD-lab-base01-git-conflict-practice.md`（コンフリクト解消）へ記録し、
+`docs/evidence/YYYY-MM-DD-lab-base01-git-branch-practice.md`（ブランチ/diff）、
+`docs/evidence/YYYY-MM-DD-lab-base01-git-conflict-practice.md`（コンフリクト解消）、
+`docs/evidence/YYYY-MM-DD-lab-base01-git-history-practice.md`（履歴探索）、または
+`docs/evidence/YYYY-MM-DD-lab-base01-git-ignore-practice.md`（ignore境界）へ記録し、
 本書側は該当セクションを「実施済み」へ更新するか、[README](README.md)の表から外す。

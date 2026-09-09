@@ -30,7 +30,7 @@
 | [D-2: ホスト障害 → 別ホストに復元](./D-2-host-failure.md) | EC2 ホスト障害を想定した復元演習シナリオ | AWS staging 環境 |
 | [スナップショットからの復元手順](./restore-from-snapshot.md) | D-2 の正本ランブック | AWS staging 環境 |
 | [lab-base01：Ansible演習の次候補](./lab-base01-ansible-next-exercises.md) | ハンドラー（notify）演習のPlaybook案と実行手順。本人VMでの実行・採録はまだ | 本人VMでの実行・画面採録 |
-| [lab-base01：Git演習の次候補](./lab-base01-git-next-exercises.md) | ブランチ作成・diff比較・戻し（merge有無）の手順案。本人VMでの実行・採録はまだ | 本人VMでの実行・画面採録 |
+| [lab-base01：Git演習の次候補](./lab-base01-git-next-exercises.md) | ブランチ・コンフリクト・履歴探索・ignore境界の段階別手順案。本人VMでの実行・採録はまだ | 本人VMでの実行・画面採録 |
 
 ---
 
