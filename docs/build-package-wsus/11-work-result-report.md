@@ -6,7 +6,7 @@
 
 本書はフェーズ1(ホスト単体構築)とフェーズ2(中央監視統合)を区別して記載します。フェーズ2は[要件定義書](00-requirements.md)に記載した「未実装」3点(Windows対応Ansible roleの不在、Dockerホストと`wsus-01`の実ネットワーク接続・windows_exporterのFirewall許可先の確定が無いこと、Windows向けログ集約経路の不在)が解消するまで`BLOCKED`が前提であり、`BLOCKED`のままであること自体はフェーズ1の完了判定を妨げません。この3点の理由付けは[Windows版パック](../build-package-windows/11-work-result-report.md)・[AD版パック](../build-package-ad/11-work-result-report.md)と同一とし、本パック独自の理由へ作り替えません。
 
-`wsus-01`に相当する実ホストの構築そのものがまだ行われていないため、本書に対応する日付付きevidenceは現時点で1件もありません。以下の空欄は次の構築作業で複製して使う原本であり、実ホストでの作業結果は現在も`NOT RUN`です。依存案件の[AD版パック](../build-package-ad/README.md)は実機評価済みの体裁ですが、本パックはこれを踏襲せず、[Windows版パック](../build-package-windows/11-work-result-report.md)と同じ「作成済みだが未実施」の状態を保ちます。
+本書に対応する日付付きevidenceは[2026-09-07の作業結果・引き渡し報告書](../evidence/2026-09-07-work-result-SM-WSUS-001.md)です。**本原本の空欄・`NOT RUN`は、次の作業で複製して使うための初期状態であり、実機の実績を表すものではありません。** 実機での結果は上記の日付付きevidenceと[構築・試験結果票](../evidence/2026-09-07-wsus-build-validation.md)を参照してください。そのフェーズ1は`SIT-06` `FAIL`・`SIT-04` 期待結果未達で総合判定`FAIL`であり、[2026-09-08の切り分け](../evidence/2026-09-08-wsus-sit04-sit06-root-cause.md)で原因を特定して手順書へ反映したものの、**修正後の通し再試験は未実施**のため判定は据え置きです。
 
 ## 1. 文書・作業管理
 
