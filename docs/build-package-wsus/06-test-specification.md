@@ -4,7 +4,13 @@
 
 > ## この文書の読み方(先に読んでください)
 >
-> **下の表がすべて`NOT RUN`なのは、まだ何も試していないからです。** [Windows版パック](../build-package-windows/06-test-specification.md)と同じく、`wsus-01`に相当する検証用ホストがまだ構築されていない段階の**空白の原本**であり、結果を書き込んでも上書きせず常に`NOT RUN`のまま保存します。実施結果は日付付きの証跡ファイル(例: `docs/evidence/YYYY-MM-DD-wsus-build-validation.md`)へコピーして記録し、命名・記録ルールは[検証証跡台帳](../evidence/README.md)に合わせます。依存案件の[AD版パック](../build-package-ad/README.md)は実機評価済みの体裁ですが、本パックは踏襲せず「作成済みだが未実施」の状態を保ちます。
+> **下の表がすべて`NOT RUN`なのは、本書が結果を書き込まない空白の原本だからです。** [Windows版パック](../build-package-windows/06-test-specification.md)と同じく、結果を書き込んでも上書きせず常に`NOT RUN`のまま保存します。実施結果は日付付きの証跡ファイル(例: `docs/evidence/YYYY-MM-DD-wsus-build-validation.md`)へコピーして記録し、命名・記録ルールは[検証証跡台帳](../evidence/README.md)に合わせます。
+>
+> ### 実機での実施状況(2026-09-08時点)
+>
+> **`wsus-01`は2026-09-07に実機で構築済みで、フェーズ1を通しで実施しています。** 実績は[構築・試験結果票](../evidence/2026-09-07-wsus-build-validation.md)にあり、26 ID `PASS` / `SIT-06` `FAIL` / `SIT-04` 期待結果未達 / `SIT-09` `BLOCKED`でした。`SIT-06`・`SIT-04`の原因は[2026-09-08の切り分け結果票](../evidence/2026-09-08-wsus-sit04-sit06-root-cause.md)で特定し、本書の期待結果へも反映済みです(`SIT-04`は`Pilot`グループへの自己登録、`SIT-06`は絞り込み0件チェックの追加)。
+>
+> **ただし修正後の通し再試験は`NOT RUN`で、フェーズ1の総合判定は`FAIL`のままです。** 再試験の進め方は[立ち上げと受け入れ試験](10-host-bringup-and-acceptance.md)8節にまとめています。
 >
 > ### SIT-09(フェーズ2)はBLOCKEDが前提です
 >

@@ -71,12 +71,12 @@ flowchart LR
 | 詳細設計 | [02-detailed-design.md](02-detailed-design.md) | 作成済み |
 | パラメータ設計 | [03-parameter-sheet.md](03-parameter-sheet.md) | 作成済み |
 | ネットワーク設計 | [04-network-ip-plan.md](04-network-ip-plan.md) | 作成済み |
-| 構築(フェーズ1) | [05-build-procedure.md](05-build-procedure.md) | 2026-09-07にHyper-V VMで通しで実施([報告書](../evidence/2026-09-07-work-result-SM-WSUS-001.md)8節)。実機で見つけた誤り・欠落9件と、2026-09-08の追加調査で見つかった3件は**手順書・設計へ反映済み**([原因切り分け結果票](../evidence/2026-09-08-wsus-sit04-sit06-root-cause.md))。**ただしフェーズ1の通し再試験は未実施** |
+| 構築(フェーズ1) | [05-build-procedure.md](05-build-procedure.md) | 2026-09-07にHyper-V VMで通しで実施([報告書](../evidence/2026-09-07-work-result-SM-WSUS-001.md)8節)。実機で見つけた誤り・欠落9件と、2026-09-08の追加調査で見つかった3件は**手順書・設計へ反映済み**([原因切り分け結果票](../evidence/2026-09-08-wsus-sit04-sit06-root-cause.md))。**ただしフェーズ1の通し再試験は未実施**([進め方](10-host-bringup-and-acceptance.md)8節) |
 | 試験 | [06-test-specification.md](06-test-specification.md) | 原本は`NOT RUN`のまま。実績は[構築・試験結果票](../evidence/2026-09-07-wsus-build-validation.md)(26 PASS / SIT-06 FAIL / SIT-04 期待結果未達 / SIT-09 BLOCKED)。SIT-06・SIT-04の原因は[2026-09-08の切り分け](../evidence/2026-09-08-wsus-sit04-sit06-root-cause.md)で特定済みだが、**再試験は未実施のため判定は据え置き** |
 | 引き渡し | [07-handover-checklist.md](07-handover-checklist.md) | 作成済み |
 | 変更・ロールバック | [08-change-rollback-plan.md](08-change-rollback-plan.md) | 計画・記録様式作成済み(スナップショット復元を最優先手段とする設計)。実施結果は`NOT RUN` |
 | ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | [結果票](../evidence/2026-09-07-network-host-validation-wsus.md) SNW-01〜09 9/9 PASS |
-| 立ち上げ・受け入れ | [10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md) | 評価版ISO + Hyper-V(Windows 11 Pro)の選択肢で実施 |
+| 立ち上げ・受け入れ | [10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md) | 評価版ISO + Hyper-V(Windows 11 Pro)の選択肢で実施。**フェーズ1の通し再試験の進め方は8節**(何を再試験するか、開始点の選び方、メモリの事前条件、SIT-06再現試験との関係) |
 | 作業結果報告 | [11-work-result-report.md](11-work-result-report.md) | [2026-09-07 記入済み版](../evidence/2026-09-07-work-result-SM-WSUS-001.md)あり |
 | ネットワーク結果票(WSUS) | [実機検証テンプレート](../evidence/templates/network-host-validation-wsus.md) | テンプレート作成済み。記入例は[2026-09-07 結果票](../evidence/2026-09-07-network-host-validation-wsus.md) |
 | 一次切り分け記録 | [トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md) | テンプレート作成済み(既存4パックと共用) |
