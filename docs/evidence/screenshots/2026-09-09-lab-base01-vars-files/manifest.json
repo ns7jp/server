@@ -1,0 +1,26 @@
+[
+  {
+    "id": "E01",
+    "file": "E01-files-and-staging.png",
+    "source_filename": "codex-clipboard-7cabfbc5-a5e8-4352-b9ed-f4bc64d653bc.png",
+    "caption": "変数ファイル2件の本文・現在staging・staging指定checkでchanged0",
+    "bytes": 15099,
+    "sha256": "c0dcbbf7ee49423210687bc399d7410f6df113199249c2062cc19be0a5f5fe6a"
+  },
+  {
+    "id": "E02",
+    "file": "E02-training-apply.png",
+    "source_filename": "codex-clipboard-4f518b08-864f-44fa-aefc-73263e06094b.png",
+    "caption": "予測後staging維持、trainingファイル指定で実適用changed1",
+    "bytes": 20025,
+    "sha256": "bf1a79ee52456c394d166a95f7f4d0f058caa67c2fb6584392b3008e1106c7c5"
+  },
+  {
+    "id": "E03",
+    "file": "E03-training-repeat.png",
+    "source_filename": "codex-clipboard-2cb53deb-1fe1-447c-8cd5-adeefa0500e7.png",
+    "caption": "trainingファイル指定の通常再実行changed0、本文training維持",
+    "bytes": 11825,
+    "sha256": "6d05cdc575b552d760ef994afff159aa672df1e6ac46ceb8bd2769eac85afd84"
+  }
+]
