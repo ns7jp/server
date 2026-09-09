@@ -1,0 +1,26 @@
+[
+  {
+    "id": "E01",
+    "file": "E01-baseline.png",
+    "source_filename": "codex-clipboard-32b61ac8-9886-499d-870c-0d14448b7c90.png",
+    "caption": "変更前のcheck/diffでchanged0・failed0・終了0",
+    "bytes": 10673,
+    "sha256": "db8470177408d3895f559c8fc5b19779266b7806ce6105862ea9cea5110f0971"
+  },
+  {
+    "id": "E02",
+    "file": "E02-preview.png",
+    "source_filename": "codex-clipboard-88dae747-d4ca-4a6f-b98d-bfe80c311e68.png",
+    "caption": "Playbook退避と指定変更・予測changed1・実ファイルは旧本文",
+    "bytes": 22375,
+    "sha256": "1c7121a14a4cf6f632afa70c571fb764443dd21f46e2821a4406da196dca93d3"
+  },
+  {
+    "id": "E03",
+    "file": "E03-apply-and-repeat.png",
+    "source_filename": "codex-clipboard-b560812d-0b15-4c4e-bee2-d7d663094a69.png",
+    "caption": "適用後の本文version2・changed1、通常再実行changed0",
+    "bytes": 20221,
+    "sha256": "d2d420e19710a075951ad8b86c2242f903909cd419871aa421ef82f1967c1c3b"
+  }
+]
