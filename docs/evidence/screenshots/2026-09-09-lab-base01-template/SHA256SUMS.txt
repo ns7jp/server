@@ -1,0 +1,4 @@
+9868d8a4b23cd6f9c9901ee20d9f152cf001dadb32f33295e3f7043ce1555899  E01-syntax.png
+ce7ddf79f34f546d61c0a13e4ea95f91cc44d610d67902d22affef80c6b05ee3  E02-training.png
+7b2467dec66fd2a3155aa5e864ba038e6004686cc5146208816f071d6e3d08ab  E03-preview.png
+caad724a4914049e630defdbd6edc913e71252a4be8fd6dbffe2faf2ec1fe1dc  E04-applied-and-repeat.png

@@ -1,0 +1,34 @@
+[
+  {
+    "id": "E01",
+    "file": "E01-syntax.png",
+    "source_filename": "codex-clipboard-789063bb-1076-418d-82e0-0048a1eabdcf.png",
+    "caption": "template.ymlのsyntax-check成功・終了0",
+    "bytes": 4937,
+    "sha256": "9868d8a4b23cd6f9c9901ee20d9f152cf001dadb32f33295e3f7043ce1555899"
+  },
+  {
+    "id": "E02",
+    "file": "E02-training.png",
+    "source_filename": "codex-clipboard-b7593cd4-c312-4398-a450-d43247b1d3b5.png",
+    "caption": "初回changed2・終了0、training/8080の生成",
+    "bytes": 16072,
+    "sha256": "ce7ddf79f34f546d61c0a13e4ea95f91cc44d610d67902d22affef80c6b05ee3"
+  },
+  {
+    "id": "E03",
+    "file": "E03-preview.png",
+    "source_filename": "codex-clipboard-80aa0471-d82d-45b6-b53a-e7b5ccfd973f.png",
+    "caption": "staging/8081の変更予測changed1、実体training/8080維持",
+    "bytes": 18730,
+    "sha256": "7b2467dec66fd2a3155aa5e864ba038e6004686cc5146208816f071d6e3d08ab"
+  },
+  {
+    "id": "E04",
+    "file": "E04-applied-and-repeat.png",
+    "source_filename": "codex-clipboard-ff895af0-98bc-430c-9cdf-b57cb0fd383a.png",
+    "caption": "適用changed1・staging/8081、同指定再実行changed0",
+    "bytes": 18199,
+    "sha256": "caad724a4914049e630defdbd6edc913e71252a4be8fd6dbffe2faf2ec1fe1dc"
+  }
+]
