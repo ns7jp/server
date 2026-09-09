@@ -1,0 +1,18 @@
+[
+  {
+    "id": "E01",
+    "file": "E01-preview.png",
+    "source_filename": "codex-clipboard-5688105e-2c4f-4a14-a659-fcebe886f519.png",
+    "caption": "旧Playbookで切り戻し予測changed1、実ファイルはversion2を維持",
+    "bytes": 21361,
+    "sha256": "7d21d86634ad741b3d2dc5f4bbe736c96d2b4d82ab5267f1eaaf68dd378b5bda"
+  },
+  {
+    "id": "E02",
+    "file": "E02-applied-and-checked.png",
+    "source_filename": "codex-clipboard-4d4c3e98-f92b-4d93-983a-6a86f01ddaf4.png",
+    "caption": "旧本文へ適用changed1、check/diff再確認changed0",
+    "bytes": 21676,
+    "sha256": "95b3ef7b301bd25917c3d49aefb7c5f31630c41cd7b4c5accb02dedf91761d2a"
+  }
+]
