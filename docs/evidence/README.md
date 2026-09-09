@@ -111,6 +111,29 @@ SSHトンネル終了、クリップボード後片付け、ボリューム再�
 **監視ラボのSM-LAB-001、Ansible、CI、第三者への引き渡しとは別の演習**であり、
 下記の既存案件のNOT RUNや受け入れ判定をこの記録で上書きしない。
 
+## 2026-09-04：Ansible自動化基盤構築案件（SM-ANS-001）の作業結果・引き渡し報告
+
+[`ans-01`への`foundation.yml`初回構築の作業結果・引き渡し報告書](2026-09-04-work-result-SM-ANS-001.md)を追加。
+フェーズ1必須ID（AFUT-01〜05、AFIT-01〜05、AFIT-07、AFST-01〜05）16/16すべて`PASS`
+（結果票本体は[2026-09-04 Ubuntu構築結果票](2026-09-04-ansible-foundation-build.md)）。
+残るBLOCKED/NOT RUNはフェーズ2項目と任意項目のみ。**ラボ範囲での引き渡しで、組織環境への引き渡しはNOT RUN。**
+
+## 2026-09-04：DHCPサーバー案件（SM-DHCP-001）のサンドボックス代替検証・作業結果
+
+[AI支援セッションのサンドボックスコンテナ上での`dhcp_server` role実測に基づく作業結果・引き渡し報告書](2026-09-04-work-result-SM-DHCP-001.md)を追加。
+DHCPプロトコル動作とroleの機能面（DUT-01〜03/05、DIT-01〜09/11、DST-02/06、DNW-01/02/04〜06/08/09）は
+22/22実測`PASS`（詳細は[結果票](2026-09-04-dhcp-build-validation.md)）。
+**本パックの正本（VM/実機での実演）ではなく、それを補う追加証跡。** `common` role未適用、systemd/AppArmor/監視統合はこのサンドボックス環境の制約で`NOT RUN`／`BLOCKED`。
+
+## 2026-09-04：Zabbix監視案件のサンドボックス代替検証
+
+[AI支援セッションのクラウドsandboxコンテナ上での構築・試験結果票](2026-09-04-zabbix-build-validation.md)を追加。
+`zbx-01`・`monitor-01`に相当する実VM・実ホストは用意していない。組織ポリシーによりDocker Hub・
+`repo.zabbix.com`へのegressがブロックされ、Zabbix本体・Agent2のcontainer image/パッケージを取得できなかったため、
+これに依存するZIT-01〜09の大半・ZST-01/02・ZNW-01〜09は引き続き`NOT RUN`。
+Ubuntu標準aptアーカイブだけで完結する範囲（SSH強化、UFW、DOCKER-USER chain、実PostgreSQLへのbackup/restore実データ検証）
+のみZUT-01〜03・ZST-03・ZST-04相当を実機で`PASS`。
+
 ## 最初に読む：証跡の範囲（2026-09-05 整理）
 
 この台帳は、日付付きの実測を追加してきた索引です。「実装済み」「記録された環境で検証済み」
