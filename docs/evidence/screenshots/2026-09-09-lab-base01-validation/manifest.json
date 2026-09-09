@@ -1,0 +1,18 @@
+[
+  {
+    "id": "E01",
+    "file": "E01-valid.png",
+    "source_filename": "codex-clipboard-4de89304-a842-4a5c-88f1-89119594edcd.png",
+    "caption": "正しいstaging/8081でassert成功・changed0・終了0",
+    "bytes": 16191,
+    "sha256": "aa322ce867413514484f31e10afcf148a7e1f12ef60cc5a862e467f7b0919d0a"
+  },
+  {
+    "id": "E02",
+    "file": "E02-invalid.png",
+    "source_filename": "codex-clipboard-50ba5424-3bc5-4d72-8c33-9260e3d01ac8.png",
+    "caption": "70000を拒否・終了2・前後SHA256一致・既存本文維持",
+    "bytes": 21949,
+    "sha256": "4d545729ce3e69eba21949c8200a56f362f796f30e97257463fc074a7130217b"
+  }
+]
