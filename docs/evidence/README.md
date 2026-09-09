@@ -3,6 +3,13 @@
 このディレクトリは、設計資料や構成コードが存在することと、実環境で確認した結果を
 混同しないための台帳である。実行していない検証を成功実績として記載しない。
 
+## 2026-09-09：lab-base01のAnsible切り戻し
+
+[退避Playbookによる旧本文への切り戻しとcheck/diff再確認](2026-09-09-lab-base01-rollback-practice.md)を原画像2枚付きで記録。
+予測時はversion2を維持、適用で旧本文へ復帰、旧Playbookのcheckでchanged0を確認。
+**ホーム内のファイル変更の切り戻し**であり、OS・全ロール・配備のロールバックではない。
+first.ymlのversion2指定と、今回使ったfirst-before-change.ymlの役割を区別する。
+
 ## 2026-09-09：lab-base01のAnsible変更予測・適用
 
 [check/diffの予測と実ファイル、適用後の通常再実行](2026-09-09-lab-base01-check-diff-practice.md)を原画像3枚付きで記録。
