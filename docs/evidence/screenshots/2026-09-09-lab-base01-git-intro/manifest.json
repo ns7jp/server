@@ -1,0 +1,34 @@
+[
+  {
+    "id": "E01",
+    "file": "E01-before.png",
+    "source_filename": "codex-clipboard-546d0b1e-3a9d-4369-a625-4e0017561015.png",
+    "caption": "Git未管理と演習フォルダーの一覧",
+    "bytes": 18019,
+    "sha256": "b3bf0c325e2cc3db75a21d1f20931ca1b5cb11c8c4994f5b9e43576153a40d12"
+  },
+  {
+    "id": "E02",
+    "file": "E02-staged.png",
+    "source_filename": "codex-clipboard-0ccb91e6-d75c-4fe7-9de4-2430b569de71.png",
+    "caption": "9ファイルのステージ・127行・空白検査出力なし",
+    "bytes": 12678,
+    "sha256": "4f40c7714f94157d93f86d5e0c943af46dcada2eef98627a0f84334c7e056766"
+  },
+  {
+    "id": "E03",
+    "file": "E03-identity-error.png",
+    "source_filename": "codex-clipboard-7edda666-8c31-4a16-9d66-421fad43e4b6.png",
+    "caption": "Author identity unknownにより初回コミット停止",
+    "bytes": 10218,
+    "sha256": "e8dfb062de8f4000276ce163c300adfe62abdff68d1f979a45f1c942c1962c08"
+  },
+  {
+    "id": "E04",
+    "file": "E04-committed.png",
+    "source_filename": "codex-clipboard-48d0d3e2-1bc9-4166-84dd-b36b58c432e7.png",
+    "caption": "root commit a94c1d3・9ファイル・main clean",
+    "bytes": 15367,
+    "sha256": "bc8bf456fd2a4cd323a9071778144c1f763adf951da296b03cb3413feccb6c2b"
+  }
+]
