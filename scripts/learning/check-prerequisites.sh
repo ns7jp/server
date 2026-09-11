@@ -4,14 +4,17 @@ set -uo pipefail
 
 FAILS=0
 WARNS=0
+MINIMAL=false
 
 usage() {
   cat <<'EOF'
-Usage: ./scripts/learning/check-prerequisites.sh
+Usage: ./scripts/learning/check-prerequisites.sh [--minimal]
 
-Linux、Git、Python、OpenSSL、Docker、Compose、Ansible、空き容量、memory、portを診断します。
+リポジトリ直下で、Linux、Git、Python 3.11以上/venv、curl、OpenSSL、Docker、Compose、空き容量を診断します。
 設定変更、package installation、sudo、container起動は行いません。
-この診断はLevel 0〜3相当のみを必須対象とし、Ansible（Level 4で必要）はWARN扱いです。
+--minimal: 初回のapp/nginx向け。既定ポート8080のみを調べます。
+引数なし: 監視全体の既定ポートとmemoryも診断し、Ansible未導入はWARN扱いです。
+変更済みの.envの値は読み込まないため、独自ポートは別途確認してください。
 終了コード: 0=必須条件PASS、1=必須条件FAIL（WARNだけなら0）
 EOF
 }
@@ -20,7 +23,9 @@ if [[ ${1:-} == "--help" || ${1:-} == "-h" ]]; then
   usage
   exit 0
 fi
-if [[ $# -gt 0 ]]; then
+if [[ $# -eq 1 && $1 == "--minimal" ]]; then
+  MINIMAL=true
+elif [[ $# -gt 0 ]]; then
   echo "unknown argument: $1" >&2
   usage >&2
   exit 2
@@ -34,6 +39,13 @@ next() { printf '       NEXT: %s\n' "$*"; }
 version_line() {
   "$@" 2>/dev/null | head -n 1 | tr '\n' ' '
 }
+
+if [[ -f compose.yaml && -f app.py && -f requirements-dev.txt ]]; then
+  pass "実行場所: serverリポジトリ直下"
+else
+  fail "実行場所がserverリポジトリ直下ではありません"
+  next "pwd と ls を確認し、取得済みのserverディレクトリへcdしてください"
+fi
 
 if [[ "$(uname -s 2>/dev/null || true)" == "Linux" ]]; then
   pass "Linux host: $(uname -sr)"
@@ -51,15 +63,28 @@ fi
 
 if command -v python3 >/dev/null 2>&1; then
   python_version="$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:3])))' 2>/dev/null || true)"
-  if python3 -c 'import sys; raise SystemExit(sys.version_info < (3, 9))' 2>/dev/null; then
+  if python3 -c 'import sys; raise SystemExit(sys.version_info < (3, 11))' 2>/dev/null; then
     pass "Python: ${python_version}"
   else
-    fail "Python 3.9以上が必要です: ${python_version:-unknown}"
-    next "python3 --version を確認し、対応版を導入してください"
+    fail "この学習手順はPython 3.11以上を対象とします: ${python_version:-unknown}"
+    next "python3 --version を確認してください。ガイドの使用版は3.11 / Ubuntu 24.04標準の3.12です"
+  fi
+  if python3 -c 'import venv, ensurepip' 2>/dev/null; then
+    pass "Python venv / ensurepipを利用できます"
+  else
+    fail "Python仮想環境の作成に必要なモジュールが不足しています"
+    next "Ubuntu: sudo apt-get install python3-venv"
   fi
 else
   fail "python3がPATHにありません"
   next "Ubuntu: sudo apt-get install python3 python3-venv"
+fi
+
+if command -v curl >/dev/null 2>&1; then
+  pass "curl: $(version_line curl --version)"
+else
+  fail "curlがPATHにありません（HTTP応答の確認に必要）"
+  next "Ubuntu: sudo apt-get install curl"
 fi
 
 if command -v openssl >/dev/null 2>&1; then
@@ -88,11 +113,15 @@ else
   next "公式手順でDocker EngineとCompose pluginを導入してください"
 fi
 
-if command -v ansible >/dev/null 2>&1 || command -v ansible-playbook >/dev/null 2>&1; then
-  pass "Ansible: $(version_line ansible --version)"
-else
-  warn "ansible/ansible-playbookがPATHにありません（一本道ラーニングパスのLevel 4で必要になります）"
-  next "Ubuntu: pipx install ansible-core（詳細はdocs/deployment-ansible.mdを参照）"
+if [[ "$MINIMAL" == false ]]; then
+  if command -v ansible >/dev/null 2>&1; then
+    pass "Ansible: $(version_line ansible --version)"
+  elif command -v ansible-playbook >/dev/null 2>&1; then
+    pass "Ansible playbook: $(version_line ansible-playbook --version)"
+  else
+    warn "ansible/ansible-playbookがPATHにありません（一本道ラーニングパスのLevel 4で必要になります）"
+    next "Ubuntu: pipx install ansible-core（詳細はdocs/deployment-ansible.mdを参照）"
+  fi
 fi
 
 available_kib="$(df -Pk . 2>/dev/null | awk 'NR==2 {print $4}' || true)"
@@ -108,7 +137,7 @@ else
 fi
 
 memory_kib="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null || true)"
-if [[ "$memory_kib" =~ ^[0-9]+$ ]]; then
+if [[ "$MINIMAL" == false && "$memory_kib" =~ ^[0-9]+$ ]]; then
   if (( memory_kib >= 6 * 1024 * 1024 )); then
     pass "memory: $((memory_kib / 1024 / 1024)) GiB"
   else
@@ -118,7 +147,11 @@ if [[ "$memory_kib" =~ ^[0-9]+$ ]]; then
 fi
 
 if command -v ss >/dev/null 2>&1; then
-  for port in 3000 8080 9090 9093 3100; do
+  ports=(8080)
+  if [[ "$MINIMAL" == false ]]; then
+    ports=(3000 8080 9090 9093 3100)
+  fi
+  for port in "${ports[@]}"; do
     if ss -H -lnt 2>/dev/null | awk '{print $4}' | grep -Eq "(^|:)$port$"; then
       warn "TCP port ${port}は既にlistenされています"
       next "ss -lntp | grep ':${port}' で所有processを確認してください"
@@ -147,4 +180,9 @@ if (( FAILS > 0 )); then
   echo "必須条件にFAILがあります。NEXTを確認し、解消前の結果はBLOCKEDと記録してください。"
   exit 1
 fi
-echo "必須条件はPASSです。WARNの影響を確認してからLevel 1へ進んでください。"
+if [[ "$MINIMAL" == true ]]; then
+  echo "最小実習の必須条件はPASSです。WARNを確認し、初心者向け学習ガイドのStep 1へ進んでください。"
+  echo "監視全体のmemory・ポート・Ansibleは未判定です。Step 6では引数なしで再診断してください。"
+else
+  echo "必須条件はPASSです。WARNの影響を確認してから学習を進めてください。"
+fi

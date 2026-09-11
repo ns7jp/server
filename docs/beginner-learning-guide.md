@@ -9,6 +9,8 @@
 
 ## 今日はここまでできればよい
 
+環境がなくても、まず **Step 1 の図と Step 3-3 の期待値を 10 分ほど読む**ところから始められます。「入口は nginx、返答を作るのは app」「認証なしの 401 は今回の期待どおり」を自分の言葉で言えたら、読む練習は一区切りです。実行結果はまだ `NOT RUN` にします。
+
 | 段階 | 学ぶこと | 自分で示すもの |
 | --- | --- | --- |
 | 最初の実習（Step 1〜5） | アプリと入口、応答、認証、計画停止と再開 | 2 サービスの状態、HTTP 結果、復旧後の結果、30 秒説明 |
@@ -29,7 +31,13 @@
 | `server` ディレクトリ直下 | このページの Bash コマンドの実行場所。`compose.yaml` がある場所 |
 | コンテナ内 | 最初の実習では直接操作しない。アプリが内部で動作する場所 |
 
-Ubuntu VM がまだなければ、[学習計画の準備](learning-path.md#level-0-の前に--検証環境と本体コードを用意する)へ進みます。VM は再作成方法を用意します。WSL2 の場合、Linux の観測対象は WSL2 側であり、Windows ホスト全体の監視実績にはなりません。
+| 今の状態 | 次に開く場所 |
+| --- | --- |
+| Linux 環境がない / VM の作り方が分からない | [環境構築ガイド](https://github.com/ns7jp/ns7jp.github.io/blob/main/learning-docs/environment-setup.md)で自分の PC の分岐を選び、Ubuntu のターミナルを開けたらこの節へ戻る |
+| Ubuntu は使えるが Docker がない | この下の基本ツールと Docker 導入へ進む |
+| 前回の `.env` と秘密値が残っている | 同じ clone で前提診断を行い、Step 3-2 から再開する |
+
+VM は再作成方法を用意します。WSL2 の場合、Linux の観測対象は WSL2 側であり、Windows ホスト全体の監視実績にはなりません。[学習計画の準備](learning-path.md#level-0-の前に--検証環境と本体コードを用意する)にも前提をまとめています。
 
 Ubuntu で不足する基本ツールを導入する場合は次を実行します。`sudo` は管理者権限で OS のパッケージを変更するため、この検証環境であることを確認してから使います。
 
@@ -40,7 +48,7 @@ sudo apt-get install -y git python3 python3-venv curl openssl iproute2
 
 Docker Engine と Compose plugin は [Docker 公式 Ubuntu 手順](https://docs.docker.com/engine/install/ubuntu/)で導入します。Docker の操作権限は [公式の導入後設定](https://docs.docker.com/engine/install/linux-postinstall/)を確認します。`docker` グループは強い権限を持つため、共有ユーザーへ無条件に追加しません。この実習の前提は `docker info` が自分のユーザーで成功することです。
 
-Python は Ubuntu 24.04 標準の 3.12 または CI で使う 3.11 を使います。古い Python では `requirements-dev.txt` の依存関係を導入できない場合があります。監視全体へ進む場合、前提診断はメモリ 6 GiB・空き容量 10 GiB 未満で警告します。これは診断の目安で、性能保証値ではありません。
+Python は Ubuntu 24.04 標準の 3.12 または CI で使う 3.11 を使います。診断もこの学習手順に合わせて 3.11 未満を `FAIL` にします。空き容量 10 GiB 未満は警告、監視全体へ進むときはメモリ 6 GiB 未満も警告です。これは診断の目安で、性能保証値ではありません。
 
 初回だけ取得します。すでに取得済みなら、既存の `server` へ `cd` し、再 clone しません。
 
@@ -51,13 +59,22 @@ pwd
 git status --short --branch
 git rev-parse HEAD
 python3 --version
-bash scripts/learning/check-prerequisites.sh
+bash scripts/learning/check-prerequisites.sh --minimal
 echo "$?"
 ```
 
 `echo "$?"` は **直前のコマンド**の終了コードを表示します。`0` は正常終了、その他はエラーです。途中で別のコマンドを打つと、そのコマンドの結果に変わります。
 
-診断が `FAIL` なら `NEXT` を確認し、解消するまでは Docker 実習を `BLOCKED` と記録します。`WARN` は内容を読みます。Ansible 未導入の警告は Step 1〜6 の実行には影響しません。ポートが使用中なら、既存の用途を調べてから進みます。
+`--minimal` は初回の app/nginx 向けです。Ansible と監視用ポートの診断は省きます。診断が `FAIL` なら `NEXT` を確認し、解消するまでは Docker 実習を `BLOCKED` と記録します。`WARN` は内容を読みます。ポートが使用中なら、既存の用途を調べてから進みます。診断は `.env` の変更値を読まないため、独自のポートは別に確認します。
+
+**実習を始める前に、結果を書き込む場所を作ります。** 次のコピーは初回だけです。
+
+```bash
+mkdir -p .artifacts/learning
+cp -n docs/evidence/templates/beginner-practice-record.md .artifacts/learning/first-practice.md
+```
+
+`.artifacts/` は Git 対象外です。同名ファイルがあれば上書きせず、その続きか別名へ記録します。テンプレートの「環境・対象 SHA・今日の範囲」を記入し、各操作の直後に実結果を残します。期待値を実測欄へ写しません。
 
 これ以降は **コマンドの結果を確認してから次の行へ**進みます。エラーが出たら続きのブロックを貼り付けず、「よくあるつまずき」へ進んでください。
 
@@ -187,23 +204,23 @@ docker compose ps --all app nginx
 
 ### 3-3. 応答と認証を分けて確認する
 
-同じ Ubuntu のターミナルで 1 行ずつ実行します。
+同じ Ubuntu のターミナルで、**先に結果を予想 → 1 行実行 → 期待値と比較 → 記録**を 4 回行います。`curl` はブラウザの代わりに通信する道具です。`-o /dev/null` は本文を捨て、`-w` は HTTP コードを表示し、`--max-time 10` は 10 秒で通信を打ち切ります。
 
 ```bash
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/healthz
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/metrics
-curl -sS --user monitor -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/api/stats
+curl --max-time 10 -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/healthz
+curl --max-time 10 -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/
+curl --max-time 10 -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/metrics
+curl --max-time 10 -sS --user monitor -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/api/stats
 ```
 
 最後だけパスワードを尋ねられます。`deploy/secrets/dashboard_password.txt` を **ローカルのエディター**で確認して入力します。入力文字は画面に出ません。録画・共有画面・学習記録へ秘密値を写さず、コマンドへ直接書き込みません。初回 `.env.example` のユーザー名は `monitor` です。
 
-| 確認 | 期待する HTTP コード | 何が分かるか |
+| 順番・確認 | 期待値・分かること | 違ったときの最初の確認 |
 | --- | --- | --- |
-| `/healthz` | `200` | 入口経由で app が応答できる |
-| 認証なしの `/` | `401` | 画面を認証で守っている |
-| token なしの `/metrics` | `401` | 数値取得にも別の認証が必要 |
-| 正しい Basic 認証付き `/api/stats` | `200` | 正しい資格情報で取得できる |
+| 1. `/healthz` | `200`：入口経由で app が応答できる | app/nginx の状態とログ |
+| 2. 認証なしの `/` | `401`：画面を認証で守っている | `200` なら認証設定、`503` なら秘密値ファイルと app のログ |
+| 3. token なしの `/metrics` | `401`：数値取得にも別の認証が必要 | 画面のパスワードとは別のトークン設定と app のログ |
+| 4. 正しい Basic 認証付き `/api/stats` | `200`：正しい資格情報で取得できる | `.env` のユーザーとダッシュボード用パスワードを照合 |
 
 `200` は要求成功、`401` は認証が必要、`503` は設定不足等で処理できない状態です。**この curl は HTTP コードを観測するため `-f` を付けていません。終了コード `0` でも HTTP `401` や `503` の場合があります。** 表の期待値と比較して判定してください。
 
@@ -232,7 +249,7 @@ SSH が接続したまま待機するのは正常です。Windows のブラウ�
 ```bash
 docker compose ps --all app nginx
 docker compose logs --tail=50 app nginx
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/healthz
+curl --max-time 10 -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/healthz
 docker compose config --quiet
 ```
 
@@ -245,7 +262,7 @@ docker compose config --quiet
 ```bash
 docker compose stop nginx
 docker compose ps --all app nginx
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/healthz
+curl --max-time 10 -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/healthz
 ```
 
 nginx が停止し、curl は接続エラーになります。`000` は HTTP 応答が取れなかった表示で、サーバーが返した HTTP コードではありません。ここは停止確認が目的なので、この失敗を観測したら再開します。app は引き続き動いているかも状態で確認します。
@@ -253,7 +270,7 @@ nginx が停止し、curl は接続エラーになります。`000` は HTTP 応
 ```bash
 docker compose start nginx
 docker compose ps --all app nginx
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/healthz
+curl --max-time 10 -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/healthz
 ```
 
 `200` に戻れば復旧確認です。戻らなければ 4-1 の順で調べます。「なぜ失敗するはずだと思ったか」「app が動いていても利用者が使えない理由」を 1 文ずつ書きます。これは手動再開の記録で、自動復旧時間の実績には使いません。
@@ -275,14 +292,7 @@ Python 仮想環境を有効化していたターミナルでは `deactivate` �
 
 ## 5. 説明して定着させる
 
-まず [初心者実習記録](evidence/templates/beginner-practice-record.md)を自分用にコピーします。保存例は Git 対象外の `.artifacts/learning/` です。
-
-```bash
-mkdir -p .artifacts/learning
-cp -n docs/evidence/templates/beginner-practice-record.md .artifacts/learning/first-practice.md
-```
-
-同じファイルがあれば上書きせず続きへ記録するか別名にします。テンプレートの初期値はすべて `NOT RUN` です。公開する場合は、コマンド出力内の秘密値・個人情報・実 IP を確認して必要なマスクを行います。
+準備時に作った `.artifacts/learning/first-practice.md` を開き、実結果を根拠に説明します。[原本はこちら](evidence/templates/beginner-practice-record.md)です。公開する場合は、コマンド出力内の秘密値・個人情報・実 IP を確認して必要なマスクを行います。
 
 **30 秒説明の型**:
 
@@ -308,7 +318,17 @@ cp -n docs/evidence/templates/beginner-practice-record.md .artifacts/learning/fi
 | これは実務経験ですか | 個人学習であること、実行環境と自分の担当範囲を伝える |
 | AI が書いた部分は理解していますか | 説明できるファイル・確認した結果・まだ説明できない箇所を具体的に分ける |
 
-直後に図を見ずに説明し、翌日は「確認コマンドと期待値」を思い出します。数日後、手順を見直しながら起動・確認・終了をもう一巡します。暗記だけでなく、分からないときに文書へ戻って修正できることも習得の一部です。
+### できるようになった範囲を分ける
+
+| 確認 | 自分で判定する条件 |
+| --- | --- |
+| 手順を使って実行できる | Step 3〜4 の操作・期待値・実結果・終了を自分の記録で示せる |
+| 自分の言葉で説明できる | 図と例文を閉じ、入口と app の役割、200/401 の違い、戻し方、未実施を 30 秒で話せる |
+| 自分で再現できる | 後日、同じ専用環境で、起動→4 件の HTTP 確認→終了の順と期待値を先に書き、対話的な案内なしで実行・比較できる |
+
+再現時も文書を調べて構いません。参照した箇所、AI・他者から受けた案内、詰まった点を記録します。案内を受けた項目は「支援あり」と残し、説明できない項目を次の練習にします。この再現は同じ環境での最小構成が対象で、OS の新規構築や全監視の独力再構築を示しません。
+
+直後は説明、翌日は「確認コマンドと期待値」、数日後は再現を 1 回行うと、読む・実行する・説明するを分けて振り返れます。
 
 ### 今回の実習を区切る
 
@@ -343,7 +363,7 @@ docker compose ps --all
 **ログの確認**: Ubuntu のターミナルで次を実行して nginx にアクセス記録を作ります。401 はここでも想定どおりです。`/healthz` は nginx 側でアクセスログを抑止しているため、ログ生成には `/` を使います。
 
 ```bash
-curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/
+curl --max-time 10 -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8080/
 ```
 
 Grafana の Explore で Loki を選び、`{compose_project="server-monitor-lab", service="nginx"}` を検索します。最近のログ行が出れば、Alloy → Loki → Grafana の経路を確認できます。出ない場合は数十秒待って再検索し、改善しなければ `docker compose logs --tail=50 alloy loki docker-socket-proxy` と [LogQL ガイド](loki-queries.md)を確認します。
