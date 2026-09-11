@@ -3,6 +3,12 @@
 このディレクトリは、設計資料や構成コードが存在することと、実環境で確認した結果を
 混同しないための台帳である。実行していない検証を成功実績として記載しない。
 
+## 2026-09-11：lab-base01のGit revert
+
+[変更履歴を残す取り消しとmain復帰](2026-09-11-lab-base01-git-revert-practice.md)を原画像3枚付きで記録。
+d7b3d4dを打ち消すa4644abを追加し、逆向きの差分と元の変更の保持を確認。
+最後はmain clean・本文staging。Ansible反映・VMリポジトリのpushはNOT RUN。
+
 ## 2026-09-10：lab-base01のGitマージ・競合解消・中止
 
 [Fast-forward・2つの親を持つマージ・abort前後一致](2026-09-10-lab-base01-git-merge-practice.md)を原画像5枚付きで記録。
