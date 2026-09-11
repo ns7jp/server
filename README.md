@@ -39,10 +39,10 @@
 ```bash
 git clone https://github.com/ns7jp/server.git
 cd server
-bash scripts/learning/check-prerequisites.sh
+bash scripts/learning/check-prerequisites.sh --minimal
 ```
 
-`FAIL` が出たら表示された `NEXT` を確認します。初回実習は環境構築時間を含めて急がず進め、終了時は同じ場所で `docker compose down` を使います。詳しい成功条件・失敗時の分岐・再開方法はガイドにまとめています。
+環境がまだなくても、ガイドの図と HTTP の期待値を読む 10 分の練習から始められます。`--minimal` は最初の 2 サービス用の診断です。`FAIL` が出たら表示された `NEXT` を確認します。実習の終了時は同じ場所で `docker compose down` を使います。操作前の予想・実結果・自分の説明を記録し、後日の再現と分けて振り返ります。
 
 ## 構成
 
