@@ -6,6 +6,21 @@
 **「サーバーを作る → 動作を確かめる → 異常を調べる → 元へ戻す」を学ぶ、未経験サーバー構築エンジニア志望者の個人学習ラボです。**
 業務での構築・運用経験を示すものではありません。コード・手順・試験記録をつなぎ、確認できた範囲を自分の言葉で説明することを目指します。
 
+## 本人が手元の VM で確認したこと
+
+採用向けには、まず次の実行記録をご覧ください。**AI の手順案内を受けて本人が操作し、結果画像を残した実習**です。独力での再構築・説明を確認した記録とは区別しています。
+
+| 実施日 | 本人の操作と確認結果 | この記録の限界 |
+| --- | --- | --- |
+| 2026-09-07〜08 | [Ubuntu 初期構築](docs/evidence/2026-09-08-lab-base01-initial-build.md)：固定 IP、SSH 鍵認証、sudo、UFW、時刻同期、自動更新、設定不備からの復旧 | OS 単体の演習。監視案件全体の受け入れではない |
+| 2026-09-08 | [Docker 最小構成](docs/evidence/2026-09-08-lab-base01-compose-practice.md)：app/nginx 起動、未認証 401・認証あり 200、計画停止・手動再開 | 2 サービスに限定。手動再開は自動復旧試験とは別 |
+| 2026-09-08 | [数値監視](docs/evidence/2026-09-08-lab-base01-monitoring-practice.md)：Prometheus/Grafana で収集状態の 1→0→1。[ログ検索](docs/evidence/2026-09-08-lab-base01-loki-practice.md)：目印付き Nginx ログ 2 件 | メモリ 2 GiB の VM で、それぞれ 5 / 6 サービスを分けて起動。全構成の同時稼働・通知は未実施 |
+| 2026-09-08 | [バックアップ復元](docs/evidence/2026-09-08-lab-base01-restore-practice.md)：Loki の別名ボリュームから同じログ 2 件を読取り。[D-1](docs/evidence/2026-09-08-lab-base01-d1-practice.md)：再起動回数 0→1、HTTP 復帰の計測 2 秒、後続 healthy 確認 | 復元は同一 VM・同一仮想ディスク内。2 秒は 1 回の HTTP 復帰計測で、監視通知や全機能の復旧時間ではない |
+| 2026-09-08〜09 | [Ansible 入門](docs/evidence/2026-09-08-lab-base01-ansible-intro-practice.md)、[変更予測と適用](docs/evidence/2026-09-09-lab-base01-check-diff-practice.md)、[切り戻し](docs/evidence/2026-09-09-lab-base01-rollback-practice.md)、[入力検証](docs/evidence/2026-09-09-lab-base01-validation-practice.md)：再実行の changed=0、不正値の拒否と本文維持 | ホーム内の演習ファイルが対象。OS 全体への適用、実ポート待受の確認ではない |
+| 2026-09-09〜10 | [Git の保存・履歴・除外](docs/evidence/2026-09-10-lab-base01-git-practice.md)、[マージ・競合解消・abort](docs/evidence/2026-09-10-lab-base01-git-merge-practice.md)：元の main と clean 状態へ復帰 | VM 内の別の演習リポジトリ。GitHub の PR マージや Ansible 反映ではない |
+
+次は [小さな構成の再起動・24 時間点検・別 VM 復元・引き渡し](docs/partial-lab-continuation.md)へ進みます。**この続編は手順を準備した段階で、新しい実機結果は `NOT RUN`** です。過去の記録を上書きせず、実行した段階だけ追記します。
+
 ## 未経験から始める方へ
 
 **最初に開く文書は [初心者向け学習ガイド](docs/beginner-learning-guide.md) です。**
