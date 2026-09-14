@@ -72,6 +72,12 @@ Windows復元先のfsck --fullとbundle verifyの終了0を記録。Ansible動�
 [タグ結果票](../evidence/2026-09-14-lab-base01-tag-practice.md)にpractice-validated-v1の作成と
 参照先38559f2・注釈・変更なしを記録。タグ同期・タグからの実行は未実施。
 
+## タグ付きbundleの追補（2026-09-14）
+
+[タグ付きbundle結果票](../evidence/2026-09-14-lab-base01-tagged-bundle-practice.md)に
+ブランチとタグを明示したbundle作成・復元、注釈と参照先の維持を記録。
+新しいbundleのWindows転送や復元先Ansible実行は未実施。
+
 ## これまでの実施（参考）
 
 | # | テーマ | 証跡 |
