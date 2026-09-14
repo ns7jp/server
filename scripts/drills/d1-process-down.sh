@@ -120,10 +120,10 @@ log "事前 restart_count(${SERVICE})=${BEFORE_RESTART}"
 # 黙って破棄するため、そもそも届かない（man 7 pid_namespaces）。
 # 両方を回避するため、コンテナプロセスのホスト側 PID に対して直接 kill(1) を実行する。
 HOST_PID=$(docker inspect -f '{{.State.Pid}}' "$CID")
-[[ "$HOST_PID" =~ ^[0-9]{1,9}$ ]] && (( 10#$HOST_PID > 1 )) || {
+if ! [[ "$HOST_PID" =~ ^[0-9]{1,9}$ ]] || (( 10#$HOST_PID <= 1 )); then
   echo "invalid or unsafe host PID" >&2
   exit 2
-}
+fi
 KILL_TS_EPOCH=$(date -u +%s)
 log "障害発生: kill -9 ${HOST_PID} (${SERVICE} のホスト側 PID)"
 sudo kill -9 "$HOST_PID"
