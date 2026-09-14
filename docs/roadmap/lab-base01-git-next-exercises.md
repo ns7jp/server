@@ -78,6 +78,11 @@ Windows復元先のfsck --fullとbundle verifyの終了0を記録。Ansible動�
 ブランチとタグを明示したbundle作成・復元、注釈と参照先の維持を記録。
 新しいbundleのWindows転送や復元先Ansible実行は未実施。
 
+## タグ切替の追補（2026-09-14）
+
+[タグ切替結果票](../evidence/2026-09-14-lab-base01-tag-switch-practice.md)に
+タグ指定のdetached HEADと元ブランチ復帰を記録。同じ38559f2を指し、新規Ansible実行は未実施。
+
 ## これまでの実施（参考）
 
 | # | テーマ | 証跡 |
