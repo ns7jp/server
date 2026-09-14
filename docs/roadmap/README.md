@@ -29,7 +29,7 @@
 | [SLO 月次レビュー](./slo-reviews/) | 毎月のエラーバジェット消費・インシデントを振り返る運用サンプル | 数か月分の実運用データ |
 | [D-2: ホスト障害 → 別ホストに復元](./D-2-host-failure.md) | EC2 ホスト障害を想定した復元演習シナリオ | AWS staging 環境 |
 | [スナップショットからの復元手順](./restore-from-snapshot.md) | D-2 の正本ランブック | AWS staging 環境 |
-| [lab-base01：Ansible演習の次候補](./lab-base01-ansible-next-exercises.md) | ハンドラーは2026-09-11〜14に本人VMで採録済み。loop等は未実施 | 本人VMでの実行・画面採録 |
+| [lab-base01：Ansible演習の次候補](./lab-base01-ansible-next-exercises.md) | ハンドラーとloopは2026-09-14までに本人VMで採録済み。block/rescue等は未実施 | 本人VMでの実行・画面採録 |
 | [lab-base01：Git演習の次候補](./lab-base01-git-next-exercises.md) | ブランチ・履歴・ignoreの一部と、Fast-forward・競合解消・abortは2026-09-10採録済み | 本人VMでの実行・画面採録 |
 
 ---
