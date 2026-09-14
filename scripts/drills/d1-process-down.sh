@@ -54,6 +54,16 @@ require_cmd docker
 require_cmd curl
 require_cmd sudo
 
+health_ok() {
+  local status
+  status=$(curl -sS -o /dev/null --max-time "$1" -w '%{http_code}' "$HEALTHZ_URL") || return 1
+  [[ "$status" == "200" ]]
+}
+
+# Reject ambiguous targets and invalid Docker observations before sending a signal.
+valid_count() { [[ "$1" =~ ^[0-9]{1,9}$ ]]; }
+[[ "$TIMEOUT_SECONDS" =~ ^[1-9][0-9]{0,8}$ ]] || { echo "invalid timeout" >&2; exit 2; }
+
 # docker compose v2 plugin を想定（v1 docker-compose も後方互換）
 if docker compose version >/dev/null 2>&1; then
   COMPOSE=(docker compose --project-directory "$PROJECT_DIR")
@@ -68,13 +78,13 @@ log "サービス: $SERVICE  healthz: $HEALTHZ_URL  timeout: ${TIMEOUT_SECONDS}s
 
 # 0. 事前確認: サービスが稼働しており healthz が 200 を返すこと
 log "事前確認: ${HEALTHZ_URL}"
-if ! curl -fsS --max-time 5 "$HEALTHZ_URL" >/dev/null; then
+if ! health_ok 5; then
   log "事前確認 NG: ${HEALTHZ_URL} が 200 を返さない。compose を起動してから再実行する。"
   exit 2
 fi
 
 CID=$("${COMPOSE[@]}" ps -q "$SERVICE")
-if [[ -z "$CID" ]]; then
+if [[ -z "$CID" || "$CID" == *$'\n'* ]]; then
   echo "コンテナが見つからない: ${SERVICE}" >&2
   exit 2
 fi
@@ -84,6 +94,18 @@ restart_count() {
 }
 
 BEFORE_RESTART=$(restart_count)
+valid_count "$BEFORE_RESTART" || { echo "invalid restart count" >&2; exit 2; }
+AFTER_RESTART="$BEFORE_RESTART"
+
+recovery_proven() {
+  local current_cid running
+  current_cid=$("${COMPOSE[@]}" ps -q "$SERVICE") || return 1
+  [[ "$current_cid" == "$CID" ]] || return 1
+  AFTER_RESTART=$(restart_count) || return 1
+  valid_count "$AFTER_RESTART" || return 1
+  running=$(docker inspect -f '{{.State.Running}}' "$CID") || return 1
+  [[ "$running" == "true" ]] && (( 10#$AFTER_RESTART > 10#$BEFORE_RESTART ))
+}
 log "事前 restart_count(${SERVICE})=${BEFORE_RESTART}"
 
 # 1. 障害発生: コンテナ内部の PID 1 を、ホスト側の名前空間から直接 kill する。
@@ -98,6 +120,10 @@ log "事前 restart_count(${SERVICE})=${BEFORE_RESTART}"
 # 黙って破棄するため、そもそも届かない（man 7 pid_namespaces）。
 # 両方を回避するため、コンテナプロセスのホスト側 PID に対して直接 kill(1) を実行する。
 HOST_PID=$(docker inspect -f '{{.State.Pid}}' "$CID")
+if ! [[ "$HOST_PID" =~ ^[0-9]{1,9}$ ]] || (( 10#$HOST_PID <= 1 )); then
+  echo "invalid or unsafe host PID" >&2
+  exit 2
+fi
 KILL_TS_EPOCH=$(date -u +%s)
 log "障害発生: kill -9 ${HOST_PID} (${SERVICE} のホスト側 PID)"
 sudo kill -9 "$HOST_PID"
@@ -108,7 +134,7 @@ SUCCESS=0
 RECOVER_TS_EPOCH=0
 while :; do
   ATTEMPT=$((ATTEMPT + 1))
-  if curl -fsS --max-time 3 "$HEALTHZ_URL" >/dev/null 2>&1; then
+  if health_ok 3 2>/dev/null && recovery_proven 2>/dev/null; then
     SUCCESS=1
     RECOVER_TS_EPOCH=$(date -u +%s)
     break
@@ -134,12 +160,13 @@ else
 fi
 
 # 4. ポストチェック: restart count とコンテナ状態
-AFTER_RESTART=$(restart_count)
+RECOVERY_PROVEN=0
+if recovery_proven 2>/dev/null; then RECOVERY_PROVEN=1; fi
 log "事後 restart_count(${SERVICE})=${AFTER_RESTART}"
 
 # 5. 評価
 RTO_TARGET=300   # 設計書: RTO 5 分以内
-if [[ "$SUCCESS" -eq 1 && "$RECOVER_SECONDS" -le "$RTO_TARGET" ]]; then
+if [[ "$SUCCESS" -eq 1 && "$RECOVERY_PROVEN" -eq 1 && "$RECOVER_SECONDS" -ge 0 && "$RECOVER_SECONDS" -le "$RTO_TARGET" ]]; then
   VERDICT="PASS"
 else
   VERDICT="FAIL"
@@ -164,6 +191,7 @@ recover_at        : $RECOVER_TS_ISO
 recover_seconds   : $RECOVER_SECONDS
 rto_target_seconds: $RTO_TARGET
 restart_count     : $BEFORE_RESTART -> $AFTER_RESTART
+recovery_proven   : $RECOVERY_PROVEN (same container, running, restart count increased)
 verdict           : $VERDICT
 ===================================================
 
