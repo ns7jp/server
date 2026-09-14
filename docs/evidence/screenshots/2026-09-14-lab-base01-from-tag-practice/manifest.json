@@ -1,0 +1,20 @@
+[
+  {
+    "file": "E01-branch.png",
+    "source_filename": "codex-clipboard-41f629a7-0603-4a4f-aae6-8c294be0c5ad.png",
+    "bytes": 19091,
+    "sha256": "e220a822b37b657bf48f2057688e297ae3db556e489c7618d7ea6b29a3bdfe0b"
+  },
+  {
+    "file": "E02-identity.png",
+    "source_filename": "codex-clipboard-86fbe15f-50b8-4fad-8eef-65eb26edee12.png",
+    "bytes": 32659,
+    "sha256": "b267d0595f8f1c1062c2091b4bdc7ba47ece91a4c483efa0c2ef5a981225b01d"
+  },
+  {
+    "file": "E03-commit.png",
+    "source_filename": "codex-clipboard-4deafb2c-2bb3-4d26-b712-7e96c866f548.png",
+    "bytes": 31004,
+    "sha256": "dbe40526ffbe9b771ae24d44c9772687bf05e541214c32bd23848b34f2c65852"
+  }
+]

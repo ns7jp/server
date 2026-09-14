@@ -83,6 +83,12 @@ Windows復元先のfsck --fullとbundle verifyの終了0を記録。Ansible動�
 [タグ切替結果票](../evidence/2026-09-14-lab-base01-tag-switch-practice.md)に
 タグ指定のdetached HEADと元ブランチ復帰を記録。同じ38559f2を指し、新規Ansible実行は未実施。
 
+## タグ起点の変更コミット追補（2026-09-14）
+
+[タグ起点の結果票](../evidence/2026-09-14-lab-base01-from-tag-practice.md)に
+practice/from-tag作成、identity設定、8085への変更コミットとタグ38559f2維持を記録。
+新コミットでのAnsible実行は未実施。
+
 ## これまでの実施（参考）
 
 | # | テーマ | 証跡 |
