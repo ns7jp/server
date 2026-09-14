@@ -56,6 +56,12 @@ GitHubへのpushや別媒体バックアップ、新規OSでの再現は未実�
 VMからWindowsへの複製、サイズ・SHA-256一致を記録。Windowsコピーからの復元は未実施。
 同じホストPC内であり、別媒体へのバックアップとは区別する。
 
+## Windows bundle復元の追補（2026-09-14）
+
+[Windows復元結果票](../evidence/2026-09-14-lab-base01-windows-bundle-practice.md)に
+転送済みbundleからのclone、HEAD・履歴・20追跡ファイル確認を記録。
+前段のWindows復元NOT RUNは当時の記録。Windows上でのAnsible実行は引き続き未実施。
+
 ## これまでの実施（参考）
 
 | # | テーマ | 証跡 |
