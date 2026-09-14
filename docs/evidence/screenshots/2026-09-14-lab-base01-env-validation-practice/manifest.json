@@ -1,0 +1,14 @@
+[
+  {
+    "file": "E01-rejected.png",
+    "source_filename": "codex-clipboard-a4acce19-f071-42a0-a352-e38c47e32669.png",
+    "bytes": 35280,
+    "sha256": "d7d0937ff19d9ef7ca797ed25c58f1b6788c51aa62bf93eb9f0fd3bebacec966"
+  },
+  {
+    "file": "E02-final.png",
+    "source_filename": "codex-clipboard-0e0b2728-6494-46f1-ace7-f3ef725e71d3.png",
+    "bytes": 32395,
+    "sha256": "c555a83786c7e639b3c682dfdd563f49e8f27b8e8d59434c6f8103ccdb089d1c"
+  }
+]
