@@ -38,6 +38,12 @@ push・別媒体バックアップ・保存版のPlaybook再実行はNOT RUN。
 38559f2の入力検証付きroleをstaging/8091で通常再実行し、変更なし・終了0を確認した。
 前の保存時点のNOT RUNは当時の記録として保持。他Playbookや不正入力は今回未検証。
 
+## ローカルclone再現の追補（2026-09-14）
+
+[本人VMのclone再現結果票](../evidence/2026-09-14-lab-base01-reproduce-practice.md)で
+同じVM内の別フォルダーに38559f2をcloneし、検証付きroleの新規生成・同条件再実行を確認した。
+GitHubへのpushや別媒体バックアップ、新規OSでの再現は未実施。
+
 ## これまでの実施（参考）
 
 | # | テーマ | 証跡 |

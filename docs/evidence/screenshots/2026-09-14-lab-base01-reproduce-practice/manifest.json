@@ -1,0 +1,26 @@
+[
+  {
+    "file": "E01-before.png",
+    "source_filename": "codex-clipboard-de431125-c53c-495f-9501-a96028148793.png",
+    "bytes": 13738,
+    "sha256": "d5a967fea2edaf3d5da22341cf5ddb9c56b08a33cbb17952552bad45213bb899"
+  },
+  {
+    "file": "E02-clone.png",
+    "source_filename": "codex-clipboard-7da3ad2b-d1ea-4940-94be-811785246e4f.png",
+    "bytes": 24440,
+    "sha256": "433ab28425ffcb8e170c2764d24579ee7a7a7e0c56abd8b35603a421641a7b0a"
+  },
+  {
+    "file": "E03-first.png",
+    "source_filename": "codex-clipboard-40296dbf-2319-4f8c-8745-d0fc3f5680ab.png",
+    "bytes": 34327,
+    "sha256": "91e0b9e3f7cb6680b39c1f3f9970ad4348fd2b083f7998e073b2dba3caefb9e9"
+  },
+  {
+    "file": "E04-repeat.png",
+    "source_filename": "codex-clipboard-325f3062-41e9-4397-be4b-fd2c0280426b.png",
+    "bytes": 36661,
+    "sha256": "927b28a0d8553e36140892c239690686dee69498af5888417817738d86e7351f"
+  }
+]
