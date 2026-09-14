@@ -84,6 +84,12 @@ VMからホストWindowsへ2ログをscpし、サイズ・SHA-256が一致した
 [Windows側ログ結果票](../evidence/2026-09-14-lab-base01-windows-log-review-practice.md)に
 転送済み2ログのCOMMAND・集計・終了コード抽出を記録。全文レビューやAnsible再実行ではない。
 
+## ログ復元の追補（2026-09-14）
+
+[ログ復元結果票](../evidence/2026-09-14-lab-base01-log-restore-practice.md)に
+WindowsからVMの別フォルダーへ2ログを戻し、ハッシュ・サイズ・抽出内容を確認した結果を記録。
+同じホストPC内の練習であり、別媒体・ホスト故障からの復旧は未実施。
+
 ## これまでの実施順（参考）
 
 | # | テーマ | 証跡 |
