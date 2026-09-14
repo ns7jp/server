@@ -3,6 +3,11 @@
 このディレクトリは、設計資料や構成コードが存在することと、実環境で確認した結果を
 混同しないための台帳である。実行していない検証を成功実績として記載しない。
 
+## 2026-09-14：Windows Git整合性検査
+
+[fsck --fullとbundle verify](2026-09-14-lab-base01-git-integrity-practice.md)を原画像1枚付きで記録。
+31オブジェクト検査、双方終了0、最終Git変更なしを確認。Playbook動作検証とは区別する。
+
 ## 2026-09-14：Windows上でのbundle復元
 
 [転送済みbundleからのソース・履歴復元](2026-09-14-lab-base01-windows-bundle-practice.md)を原画像2枚付きで記録。

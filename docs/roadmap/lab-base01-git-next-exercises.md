@@ -62,6 +62,11 @@ VMからWindowsへの複製、サイズ・SHA-256一致を記録。Windowsコピ
 転送済みbundleからのclone、HEAD・履歴・20追跡ファイル確認を記録。
 前段のWindows復元NOT RUNは当時の記録。Windows上でのAnsible実行は引き続き未実施。
 
+## Windows整合性検査の追補（2026-09-14）
+
+[Git整合性結果票](../evidence/2026-09-14-lab-base01-git-integrity-practice.md)に
+Windows復元先のfsck --fullとbundle verifyの終了0を記録。Ansible動作や全ブランチ保存の保証ではない。
+
 ## これまでの実施（参考）
 
 | # | テーマ | 証跡 |
