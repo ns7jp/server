@@ -3,6 +3,12 @@
 このディレクトリは、設計資料や構成コードが存在することと、実環境で確認した結果を
 混同しないための台帳である。実行していない検証を成功実績として記載しない。
 
+## 2026-09-14：bundleのWindows転送
+
+[practice.bundleのscp転送と一致確認](2026-09-14-lab-base01-bundle-transfer-practice.md)を原画像2枚付きで記録。
+終了0、5138バイト、SHA-256一致を確認。同じホストPC内への複製である。
+Windowsコピーからの復元や別媒体バックアップはNOT RUN。bundle実体は公開対象外。
+
 ## 2026-09-14：lab-base01のGit bundle復元
 
 [bundle作成・verify・復元・新規生成・再実行](2026-09-14-lab-base01-bundle-practice.md)を原画像5枚付きで記録。
