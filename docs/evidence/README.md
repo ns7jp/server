@@ -3,6 +3,12 @@
 このディレクトリは、設計資料や構成コードが存在することと、実環境で確認した結果を
 混同しないための台帳である。実行していない検証を成功実績として記載しない。
 
+## 2026-09-14：Windows上でのbundle復元
+
+[転送済みbundleからのソース・履歴復元](2026-09-14-lab-base01-windows-bundle-practice.md)を原画像2枚付きで記録。
+clone終了0、HEAD38559f2、履歴2件、追跡ファイル20件と変更なしを確認。
+Windows上でのAnsible実行やホスト故障からの復旧はNOT RUN。
+
 ## 2026-09-14：bundleのWindows転送
 
 [practice.bundleのscp転送と一致確認](2026-09-14-lab-base01-bundle-transfer-practice.md)を原画像2枚付きで記録。
