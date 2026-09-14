@@ -3,6 +3,12 @@
 このディレクトリは、設計資料や構成コードが存在することと、実環境で確認した結果を
 混同しないための台帳である。実行していない検証を成功実績として記載しない。
 
+## 2026-09-11〜14：lab-base01のAnsibleハンドラー
+
+[変更時の実行と再実行時の抑止](2026-09-14-lab-base01-handlers-practice.md)を原画像5枚付きで記録。
+changed4→0→2→0、マーカーmtimeの更新・維持、最終staging/8082を確認。
+実サービスのreload/restartはNOT RUN。Playbook・生成物はVM内で未追跡のまま保持。
+
 ## 2026-09-11：lab-base01のGit revert
 
 [変更履歴を残す取り消しとmain復帰](2026-09-11-lab-base01-git-revert-practice.md)を原画像3枚付きで記録。
