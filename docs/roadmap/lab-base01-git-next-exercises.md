@@ -67,6 +67,11 @@ VMからWindowsへの複製、サイズ・SHA-256一致を記録。Windowsコピ
 [Git整合性結果票](../evidence/2026-09-14-lab-base01-git-integrity-practice.md)に
 Windows復元先のfsck --fullとbundle verifyの終了0を記録。Ansible動作や全ブランチ保存の保証ではない。
 
+## 注釈付きタグの追補（2026-09-14）
+
+[タグ結果票](../evidence/2026-09-14-lab-base01-tag-practice.md)にpractice-validated-v1の作成と
+参照先38559f2・注釈・変更なしを記録。タグ同期・タグからの実行は未実施。
+
 ## これまでの実施（参考）
 
 | # | テーマ | 証跡 |

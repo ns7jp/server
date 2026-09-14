@@ -3,6 +3,12 @@
 このディレクトリは、設計資料や構成コードが存在することと、実環境で確認した結果を
 混同しないための台帳である。実行していない検証を成功実績として記載しない。
 
+## 2026-09-14：lab-base01の注釈付きタグ
+
+[practice-validated-v1の作成と参照先確認](2026-09-14-lab-base01-tag-practice.md)を原画像2枚付きで記録。
+作成終了0、種類tag、参照先38559f2、検証範囲の注釈、作業変更なしを確認。
+VM内の版識別であり、タグpushや新しいAnsible実行はNOT RUN。
+
 ## 2026-09-14：Windows Git整合性検査
 
 [fsck --fullとbundle verify](2026-09-14-lab-base01-git-integrity-practice.md)を原画像1枚付きで記録。
