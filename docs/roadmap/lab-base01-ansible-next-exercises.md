@@ -119,6 +119,11 @@ dac8a0fでのtraining/8085新規生成と通常再実行のchanged0を記録。�
 [ログアーカイブ結果票](../evidence/2026-09-15-lab-base01-log-archive-practice.md)に
 5ログとSHA一覧のtar.gz保存、別フォルダー展開と5件OKを記録。別媒体保存や破損試験は未実施。
 
+## ハッシュ不一致検出の追補（2026-09-15）
+
+[不一致検出結果票](../evidence/2026-09-15-lab-base01-checksum-mismatch-practice.md)に
+試験コピー1件のみFAILED、元ログ・検証済みコピーは一致した結果を記録。欠落・一覧破損は未検証。
+
 ## これまでの実施順（参考）
 
 | # | テーマ | 証跡 |
