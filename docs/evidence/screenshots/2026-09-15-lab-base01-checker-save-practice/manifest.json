@@ -1,0 +1,32 @@
+[
+  {
+    "file": "E01-before.png",
+    "source_filename": "codex-clipboard-bdf37dfa-1fa4-4601-b075-de42647b9c0f.png",
+    "bytes": 18130,
+    "sha256": "1eb2cc69baf74a85d4e7dd432a7b9d85b088bceffab854a3d7c8d24af8247cae"
+  },
+  {
+    "file": "E02-tests.png",
+    "source_filename": "codex-clipboard-b67c1bc4-b2f9-4e3a-9331-b6f212fb97e7.png",
+    "bytes": 26242,
+    "sha256": "ecae7f3618cec2161788512033f2139b8089d48b77d2f377744303e525c48c84"
+  },
+  {
+    "file": "E03-staged.png",
+    "source_filename": "codex-clipboard-0ab363fc-96d3-4e12-ac17-199c5701648f.png",
+    "bytes": 28300,
+    "sha256": "6f00190e72dea4106e787e9ee3f719c866aa87a020ba6a81a7f133a6ff61f59b"
+  },
+  {
+    "file": "E04-commit.png",
+    "source_filename": "codex-clipboard-a54ab611-54ce-4598-9ab3-f5c3f8409b84.png",
+    "bytes": 29224,
+    "sha256": "269f9a0147146cc896e217004a4f311ee29dafa50ab247a211f1e7e51cd0ee23"
+  },
+  {
+    "file": "E05-rerun.png",
+    "source_filename": "codex-clipboard-c4989d2f-7b21-47a4-8595-d9b177d88874.png",
+    "bytes": 28309,
+    "sha256": "c3320226d5c9f76f42c8463e9594be7f17ae32a616aab21113402c862678ea43"
+  }
+]
