@@ -124,6 +124,11 @@ dac8a0fでのtraining/8085新規生成と通常再実行のchanged0を記録。�
 [不一致検出結果票](../evidence/2026-09-15-lab-base01-checksum-mismatch-practice.md)に
 試験コピー1件のみFAILED、元ログ・検証済みコピーは一致した結果を記録。欠落・一覧破損は未検証。
 
+## 不一致ログ復元の追補（2026-09-15）
+
+[1件復元結果票](../evidence/2026-09-15-lab-base01-checksum-restore-practice.md)に
+finalだけのFAILEDから選択復元で5件OKへ戻した結果を記録。元のSHA一覧を使用した。
+
 ## これまでの実施順（参考）
 
 | # | テーマ | 証跡 |
