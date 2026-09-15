@@ -139,6 +139,11 @@ finalだけのFAILEDから選択復元で5件OKへ戻した結果を記録。元
 [Python検証結果票](../evidence/2026-09-15-lab-base01-log-checker-practice.md)に
 既存5ログと正常・不一致・欠落・directoryエラー4ケースを記録。汎用入力や権限不足は未検証。
 
+## 不正一覧検証の追補（2026-09-15）
+
+[不正一覧結果票](../evidence/2026-09-15-lab-base01-manifest-validation-practice.md)に
+実ソース読戻しと4ケースの拒否・ハッシュ維持を記録。権限不足や特殊ファイル等は未検証。
+
 ## これまでの実施順（参考）
 
 | # | テーマ | 証跡 |
