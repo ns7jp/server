@@ -104,6 +104,11 @@ practice/from-tag作成、identity設定、8085への変更コミットとタグ
 [保存ログへの適用結果](../evidence/2026-09-15-lab-base01-checker-real-logs-practice.md)に、clone先から保存ログ5件を検証した結果を記録。
 5件OK・終了0・HEAD維持を確認。Ansibleの再実行とは区別する。
 
+## README作成と同期の追補（2026-09-15）
+
+[README保存・同期結果票](../evidence/2026-09-15-lab-base01-checker-readme-practice.md)に、使い方の文書化とclone先への取り込みを記録。
+文書変更のみで、単体テストと保存ログ照合の再実行は行っていない。
+
 ## これまでの実施（参考）
 
 | # | テーマ | 証跡 |

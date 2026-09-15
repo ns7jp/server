@@ -1,0 +1,26 @@
+[
+  {
+    "file": "E01-create.png",
+    "source_filename": "codex-clipboard-46dbf150-825d-43a8-8379-b2636503eeec.png",
+    "bytes": 35644,
+    "sha256": "f562ef5523ebb4261bd95c6976cd569404f9d675f8ab1fb9e064eb5b45166cdd"
+  },
+  {
+    "file": "E02-diff.png",
+    "source_filename": "codex-clipboard-c1dfee77-5bd3-4289-91e0-342c7a73c139.png",
+    "bytes": 32417,
+    "sha256": "becba04dbce13d5faba8fbddb4712f79088f62c2a5975b3d75ff064e1da6e2ec"
+  },
+  {
+    "file": "E03-commit.png",
+    "source_filename": "codex-clipboard-bd49efc6-5172-4e40-966d-2421a56850ef.png",
+    "bytes": 6267,
+    "sha256": "db68190d67fa483345957063ad0137ca6b0beebdd770d922c292fa5fbcdf0e57"
+  },
+  {
+    "file": "E04-sync.png",
+    "source_filename": "codex-clipboard-664ecf04-211a-4692-99d5-c0b4333c4757.png",
+    "bytes": 21919,
+    "sha256": "cdf1a55d5143e21f22c71d656ad86436b9e1a8926f088e613f281d894f29b9fa"
+  }
+]
