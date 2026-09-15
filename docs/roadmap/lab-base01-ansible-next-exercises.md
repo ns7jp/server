@@ -144,6 +144,11 @@ finalだけのFAILEDから選択復元で5件OKへ戻した結果を記録。元
 [不正一覧結果票](../evidence/2026-09-15-lab-base01-manifest-validation-practice.md)に
 実ソース読戻しと4ケースの拒否・ハッシュ維持を記録。権限不足や特殊ファイル等は未検証。
 
+## ログ検証の権限試験追補（2026-09-15）
+
+[権限不足結果票](../evidence/2026-09-15-lab-base01-checker-permission-practice.md)に
+非rootでERROR/終了2、権限復帰後OK/終了0を記録。manifestや親ディレクトリの権限試験ではない。
+
 ## これまでの実施順（参考）
 
 | # | テーマ | 証跡 |
