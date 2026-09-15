@@ -129,6 +129,11 @@ dac8a0fでのtraining/8085新規生成と通常再実行のchanged0を記録。�
 [1件復元結果票](../evidence/2026-09-15-lab-base01-checksum-restore-practice.md)に
 finalだけのFAILEDから選択復元で5件OKへ戻した結果を記録。元のSHA一覧を使用した。
 
+## ログ欠落検出の追補（2026-09-15）
+
+[欠落検出結果票](../evidence/2026-09-15-lab-base01-missing-log-practice.md)に
+別名退避で元名の欠落を検出し、名前を戻して5件OKへ復帰した結果を記録。実削除や媒体故障ではない。
+
 ## これまでの実施順（参考）
 
 | # | テーマ | 証跡 |
