@@ -1,0 +1,14 @@
+[
+  {
+    "file": "E01-before.png",
+    "source_filename": "codex-clipboard-a592266e-4e8a-4a5e-90ed-1b04d76e2985.png",
+    "bytes": 17208,
+    "sha256": "c9cd4e0b7aef67a12fce60aef99c29195072ef2b586d68c8343a2d251dcc1c26"
+  },
+  {
+    "file": "E02-tests.png",
+    "source_filename": "codex-clipboard-6d8714dd-151a-4eda-b190-77d54214bba9.png",
+    "bytes": 38379,
+    "sha256": "f81f9269b03bd281e68f8610cd05861bc0fb95f28cd88e345ea2917b1bc7cd55"
+  }
+]
