@@ -89,6 +89,11 @@ Windows復元先のfsck --fullとbundle verifyの終了0を記録。Ansible動�
 practice/from-tag作成、identity設定、8085への変更コミットとタグ38559f2維持を記録。
 新コミットでのAnsible実行は未実施。
 
+## ログ検証ソース保存の追補（2026-09-15）
+
+[検証ソース保存結果票](../evidence/2026-09-15-lab-base01-checker-save-practice.md)に
+3ファイル172行の初回コミットと保存版での9テスト成功を記録。公開用serverとは別リポジトリである。
+
 ## これまでの実施（参考）
 
 | # | テーマ | 証跡 |
