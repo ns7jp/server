@@ -94,6 +94,11 @@ practice/from-tag作成、identity設定、8085への変更コミットとタグ
 [検証ソース保存結果票](../evidence/2026-09-15-lab-base01-checker-save-practice.md)に
 3ファイル172行の初回コミットと保存版での9テスト成功を記録。公開用serverとは別リポジトリである。
 
+## ログ検証ツール再現の追補（2026-09-15）
+
+[checker clone結果票](../evidence/2026-09-15-lab-base01-checker-reproduce-practice.md)に
+保存版3ファイルの復元と9テスト成功を記録。新規OSや別Python環境での試験ではない。
+
 ## これまでの実施（参考）
 
 | # | テーマ | 証跡 |
