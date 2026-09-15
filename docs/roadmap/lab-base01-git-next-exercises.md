@@ -99,6 +99,11 @@ practice/from-tag作成、identity設定、8085への変更コミットとタグ
 [checker clone結果票](../evidence/2026-09-15-lab-base01-checker-reproduce-practice.md)に
 保存版3ファイルの復元と9テスト成功を記録。新規OSや別Python環境での試験ではない。
 
+## cloneしたツールの利用結果（2026-09-15）
+
+[保存ログへの適用結果](../evidence/2026-09-15-lab-base01-checker-real-logs-practice.md)に、clone先から保存ログ5件を検証した結果を記録。
+5件OK・終了0・HEAD維持を確認。Ansibleの再実行とは区別する。
+
 ## これまでの実施（参考）
 
 | # | テーマ | 証跡 |
