@@ -1,0 +1,26 @@
+[
+  {
+    "file": "E01-before.png",
+    "source_filename": "codex-clipboard-504acb13-dcf5-4c86-8779-7637c6e2d03f.png",
+    "bytes": 13873,
+    "sha256": "6b204d0673232c643017372db0743ef3c56b4e8884b144013831494628df04ba"
+  },
+  {
+    "file": "E02-manifest.png",
+    "source_filename": "codex-clipboard-e2ab0190-854e-4ed6-b70c-599a783fd12b.png",
+    "bytes": 12133,
+    "sha256": "08ea653fae63743d79a585ef48540b86e863406d4d2c3d30389643c566a78480"
+  },
+  {
+    "file": "E03-normal.png",
+    "source_filename": "codex-clipboard-e3479439-f672-4ecc-a2da-c5c4e47ca9e0.png",
+    "bytes": 28913,
+    "sha256": "a5c53ca740f67d8f7129da962ea7793dbb659a37b81cb558839879aa34d20517"
+  },
+  {
+    "file": "E04-cases.png",
+    "source_filename": "codex-clipboard-afd630fc-f62f-4717-8e44-b9ee72100cfc.png",
+    "bytes": 34709,
+    "sha256": "5bc551367bc3d37f4835948ee95fb21d4314f0c6278d23f1c4129378d1208e38"
+  }
+]
