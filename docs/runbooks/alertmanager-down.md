@@ -90,3 +90,4 @@ curl -fsS --get --data-urlencode 'query=up{job="blackbox"}' \
 
 - SLO 定義: [docs/slo.md](../slo.md)
 - 監視構成: [docs/architecture.md](../architecture.md)
+- 対応する演習スクリプト（D-9 通知経路断）: [scripts/drills/d9-alertmanager-down.sh](../../scripts/drills/d9-alertmanager-down.sh)

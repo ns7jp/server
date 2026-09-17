@@ -63,3 +63,4 @@ Grafana の `Server Monitor SLO` ダッシュボードを開き、`Probe Duratio
 
 - SLO 定義: [docs/slo.md](../slo.md)
 - バーンレート定義: `deploy/prometheus/slo-rules.yml`
+- 対応する演習スクリプト（D-8 遅延）: [scripts/drills/d8-latency-spike.sh](../../scripts/drills/d8-latency-spike.sh)

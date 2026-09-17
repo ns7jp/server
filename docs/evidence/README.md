@@ -630,6 +630,7 @@ repository内で完結する構成commit / 設定rollback rehearsalは採録済�
 | 結果 | PASS / FAIL、所要時間、主要ログまたはスクリーンショット |
 | 費用 | AWS を使った場合のみ Cost Explorer の期間と実費 |
 | 後続対応 | 見つかった課題の Issue / PR リンク |
+| 支援区分 | AI 支援の有無。`ai-assisted`（AI アシスタントを使った）／`independent`（AI 不使用。自分の手順書・`man`・公式ドキュメントのみ）を明記する |
 
 ## 予定する記録ファイル
 
@@ -665,6 +666,7 @@ repository内で完結する構成commit / 設定rollback rehearsalは採録済�
 | AD DC 実ホスト network / Firewall | [templates/network-host-validation-ad.md](templates/network-host-validation-ad.md)（[記入済み例: 2026-09-01](2026-09-01-network-host-validation-ad.md)） |
 | DHCPサーバー実ホスト network / Firewall | [templates/network-host-validation-dhcp.md](templates/network-host-validation-dhcp.md)（記入済み例: [2026-09-04（コンテナ内bridge版）](2026-09-04-network-host-validation-dhcp.md)、[2026-09-04（netnsラボ版）](2026-09-04-network-host-validation-dhcp-netns-lab.md)） |
 | 仮説 → コマンド → 結果 → 学び | [templates/troubleshooting-worklog.md](templates/troubleshooting-worklog.md)（[記入例](templates/troubleshooting-worklog-example.md)あり） |
+| 独立再現（支援区分 `independent`） | [templates/independent-rerun.md](templates/independent-rerun.md)（進め方は[独立再現の手引き](../independent-rerun-guide.md)。記入済み記録は現時点で **0 件**） |
 | 作業結果・引き渡し報告 | [../build-package/11-work-result-report.md](../build-package/11-work-result-report.md) |
 | D-1 プロセスダウン | [../drills/logs/TEMPLATE-D-1-process-down.md](../drills/logs/TEMPLATE-D-1-process-down.md) |
 | D-2 ホスト障害復旧 | [../drills/logs/TEMPLATE-D-2-host-failure.md](../drills/logs/TEMPLATE-D-2-host-failure.md) |

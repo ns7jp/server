@@ -87,6 +87,26 @@ D-3 以降は AWS 環境が用意できていないため未実装。手順書�
 - **環境**: 本番影響を避けるため、原則 dev / staging で実施する。本番で実施する
   場合は事前に SLO レビュー会で承認する。
 
+### ローカル Docker で実施する復旧演習（D-6〜D-9）
+
+上の表の D-1〜D-5 に続く番号として、**手元の Docker で実行できる復旧演習**を
+D-6〜D-9 として追加しました。`docs/runbooks/` に手順書があるのに、
+**それを実際に辿って復旧した記録が 1 件も無い**状態を埋めるための演習です。
+
+既存の D-3〜D-5（AWS 環境待ち）とは番号が重ならないよう、続きの番号にしています。
+
+| # | シナリオ | スクリプト | runbook（復旧手順書） | 記録テンプレート | 状態 |
+| --- | --- | --- | --- | --- | --- |
+| D-6 | ディスク逼迫（空き容量が減る） | [`scripts/drills/d6-disk-full.sh`](../../scripts/drills/d6-disk-full.sh) | [disk-full.md](../runbooks/disk-full.md) | [TEMPLATE-D-6-disk-full.md](logs/TEMPLATE-D-6-disk-full.md) | **未実施（NOT RUN）** |
+| D-7 | メモリ圧迫（空きメモリが減る） | [`scripts/drills/d7-memory-pressure.sh`](../../scripts/drills/d7-memory-pressure.sh) | [memory-pressure.md](../runbooks/memory-pressure.md) | [TEMPLATE-D-7-memory-pressure.md](logs/TEMPLATE-D-7-memory-pressure.md) | **未実施（NOT RUN）** |
+| D-8 | 遅延（落ちてはいないが遅い） | [`scripts/drills/d8-latency-spike.sh`](../../scripts/drills/d8-latency-spike.sh) | [latency-spike.md](../runbooks/latency-spike.md) | [TEMPLATE-D-8-latency-spike.md](logs/TEMPLATE-D-8-latency-spike.md) | **未実施（NOT RUN）** |
+| D-9 | 通知経路断（監視は動くが通知が届かない） | [`scripts/drills/d9-alertmanager-down.sh`](../../scripts/drills/d9-alertmanager-down.sh) | [alertmanager-down.md](../runbooks/alertmanager-down.md) | [TEMPLATE-D-9-alertmanager-down.md](logs/TEMPLATE-D-9-alertmanager-down.md) | **未実施（NOT RUN）** |
+
+この 4 本はいずれも **実装済み（未実施 / NOT RUN）** です。スクリプトと runbook と
+記録テンプレートは揃っていますが、**runbook を実際に辿って復旧した記録は 1 件もありません**。
+したがって上の表に実測値（検知時間・RTO・PASS / FAIL）は一切載せていません。
+実施したら [`docs/drills/logs/`](logs/) に `<実施日>-D-<n>-<シナリオ>.md` として記録を追加します。
+
 ## 2. 共通の進行
 
 ```mermaid

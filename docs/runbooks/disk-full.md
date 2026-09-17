@@ -66,3 +66,4 @@ sudo docker system df
 
 - [SLO 定義](../slo.md)
 - [バックアップ命名規則](../backup-naming.md)
+- [対応する演習スクリプト（D-6 ディスク逼迫）](../../scripts/drills/d6-disk-full.sh)

@@ -25,3 +25,7 @@ crash.*.log
 !**/*.tfvars.example
 **/backend.hcl
 !**/backend.hcl.example
+
+# scripts/perf/run-perf.sh が書き出す負荷試験の生結果。
+# 実行環境ごとに値が変わる計測データのため、リポジトリには含めない。
+perf-results/
