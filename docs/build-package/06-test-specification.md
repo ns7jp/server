@@ -117,16 +117,16 @@
 | PT-01 | 集計ロジック単体 | `pytest tests/test_perf.py` | 全 test pass（パーセンタイル・エラー率・SLO 判定の境界） | PASS | 2026-09-17 CI [python-check](https://github.com/ns7jp/server/actions/runs/35197884833)。GitHub hosted runner（PR ブランチ） |
 | PT-02 | perf overlay 構文 | `docker compose -f compose.yaml -f compose.perf.yaml config --quiet` | exit 0 | PASS | 2026-09-17 CI [python-check](https://github.com/ns7jp/server/actions/runs/35197884833)。GitHub hosted runner（PR ブランチ） |
 | PT-03 | 基準計測 | `scripts/perf/run-perf.sh --steps 1` | 並列 1 の段が `p95 <= 500ms` かつ `error_rate <= 0.01` で PASS | NOT RUN | — |
-| PT-04 | 段階負荷・飽和候補 | `scripts/perf/run-perf.sh --steps 1,2,4,8,16,32` | 全段の結果表、飽和候補、各段のSLO判定を保存。単発の候補を容量の確定値にしない | **部分実行・分析済み／一部FAIL** | [2026-09-17 保存結果の再評価](../evidence/2026-09-17-performance-ci-analysis.md)。並列1,2,4,8,16・各20秒・助走は最初に5秒だけ。並列4/8はHTTP502を含めると失敗率1%超、並列4はCI基準5%超。32並列は未実施 |
+| PT-04 | 段階負荷・飽和候補 | `scripts/perf/run-perf.sh --steps 1,2,4,8,16,32` | 全段の結果表、飽和候補、各段のSLO判定を保存。単発の候補を容量の確定値にしない | **版別の部分実行・分析済み** | [旧結果](../evidence/2026-09-17-performance-ci-analysis.md)、[集計修正版のFAIL](../evidence/2026-09-17-performance-rerun.md)、[接続再利用版の比較](../evidence/2026-09-17-upstream-keepalive-comparison.md)を分離。並列1,2,4,8,16・各20秒・助走は最初に5秒だけ。32並列は未実施 |
 | PT-05 | worker 数の比較 | `--workers` の値を変えて PT-04 を 2 回 | 2 回の結果が別の run directory に保存され、飽和点と p95 を比較できる | NOT RUN | — |
 | PT-06 | 重いエンドポイント | `load.py` で `/stats` を計測（認証 header 付き） | `status_counts` が 200 のみ。`/healthz` との p95 の差が記録される | NOT RUN | — |
 | PT-07 | 過負荷時の挙動 | PT-04 の飽和点を超える並列数で実行 | エラー率と p95 は悪化してよいが、`app` / `nginx` は終了せず `RestartCount` が増えない。負荷停止後に `/healthz` が 200 へ戻る | NOT RUN | — |
-| PT-08 | エラーの内訳 | PT-07 の `step-c<並列数>.json` を確認 | `error_counts` に種別（timeout / connection_error）が分かれ、`latency_ms.count` と `response_requests` が一致する（タイムアウトが応答時間に混入していない） | NOT RUN | — |
+| PT-08 | エラーの内訳 | PT-07 の `step-c<並列数>.json` を確認 | 通信例外の`error_counts`、HTTP失敗の`http_error_requests`を分け、合計を失敗率に含める。`latency_ms.count`と`response_requests`が一致する | PT-07としてはNOT RUN | 単体・既存負荷の内訳確認は上記証跡を参照。PT-07条件の実施とは分ける |
 | PT-09 | SLO 未達時の判定 | 全段が SLO を満たさない条件で実行 | 全体 verdict が `FAIL`、終了コードが非 0。PASS として記録されない | NOT RUN | — |
 | PT-10 | 疎通不可時の中止 | `app` を停止した状態で `run-perf.sh --no-compose` | 120 秒待って exit 4。結果 directory も数値も作られない | NOT RUN | — |
 | PT-11 | 不正な引数の拒否 | `--steps 8,4` / `--duration 0` / `--url ftp://example` | いずれも exit 2。負荷をかけずに停止する | NOT RUN | — |
 | PT-12 | 途中打ち切り | 計測中に SIGINT (Ctrl+C) | 結果 JSON の `partial` が `true` になり、部分的な計測である旨が出力に明記される | NOT RUN | — |
-| PT-13 | CI 実行 | Actions → [Performance test](../../.github/workflows/perf-test.yml) → Run workflow | artifactに各段JSONとログを保存。HTTP・通信失敗の合計率が基準超過、値欠測、途中打切りなら失敗する | **旧版実行済み・判定欠陥あり** | [旧runの再評価](../evidence/2026-09-17-performance-ci-analysis.md)。新しい判定コードの実行状態は当該変更のCIで別確認。本人環境の実施ではない |
+| PT-13 | CI 実行 | Actions → [Performance test](../../.github/workflows/perf-test.yml) → Run workflow | artifactに各段JSONとログを保存。HTTP・通信失敗の合計率が基準超過、値欠測、途中打切りなら失敗する | **実行済み・版別結果あり** | [集計修正版の失敗検出](../evidence/2026-09-17-performance-rerun.md)と[接続再利用・復旧の比較](../evidence/2026-09-17-upstream-keepalive-comparison.md)。旧欠陥と新しいコードの実行を合算しない。本人環境の実施ではない |
 
 PT-07 の「飽和点を超える並列数」は PT-04 の実測から決めます。事前に数字を決め打ちしません。
 

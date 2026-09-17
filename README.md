@@ -73,7 +73,7 @@ flowchart LR
 3. [検証証跡台帳](docs/evidence/README.md)：実行日時・環境・対象 commit・結果・未実施の範囲。
 4. [失敗から学んだ事例](docs/lessons-learned.md)：想定が外れた原因、修正と再発防止。
 
-**2026-09-17 の性能結果の再評価**: [保存済み CI の分析](docs/evidence/2026-09-17-performance-ci-analysis.md)で、HTTP 502 をエラー率から除外していた集計漏れを発見しました。並列4の失敗率は39.1493%です。元のPASSを性能合格と扱わず、HTTP失敗を含む集計・CI判定へ修正しています。本人の実施記録とは別の、AI支援による分析・修正です。
+**2026-09-17 の性能改善**: [旧CIの分析](docs/evidence/2026-09-17-performance-ci-analysis.md)でHTTP502の集計漏れを発見し、集計・CI判定と上流接続の再利用を修正しました。[比較と確認試験](docs/evidence/2026-09-17-upstream-keepalive-comparison.md)では、同じ負荷設定の2回のCIで並列1/2/4/8/16のHTTP・通信失敗が0件でした。最終試験では認証とアプリIP変更後の復旧も確認しています。使い捨てrunnerの短時間測定であり、本人の操作・長期運用・本番容量とは別のAI支援による改善記録です。
 
 [保存済み証跡のデモ](https://ns7jp.github.io/demo.html)は 2026-08-18/19 の画像・ログを再構成した閲覧用リプレイで、実操作の連続録画ではありません。
 

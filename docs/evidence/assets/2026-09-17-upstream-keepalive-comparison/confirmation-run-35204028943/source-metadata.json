@@ -1,0 +1,19 @@
+{
+  "run_id": 35204028943,
+  "run_url": "https://github.com/ns7jp/server/actions/runs/35204028943",
+  "event": "pull_request",
+  "head_sha": "796f8d8732efb63b68e7751e8e40a94023db70bc",
+  "checked_out_sha": "dab75bea3e7dfa9c84cfcefb283dc2eaa1a31846",
+  "run_started_at": "2026-09-17T09:14:27Z",
+  "updated_at": "2026-09-17T09:18:12Z",
+  "conclusion": "success",
+  "job_id": 105145331195,
+  "artifact_id": 10489525742,
+  "artifact_name": "perf-test-35204028943-1",
+  "artifact_size": 1169937,
+  "artifact_digest": "sha256:e446a5bedc138989f205cd15b7fcd21520a78d33bddf046e761cac5f21686627",
+  "expires_at": "2026-10-17T09:18:04Z",
+  "load_result": "all five stages PASS, zero HTTP and transport failures",
+  "proxy_recovery_result": "PASS: app absent startup, authentication, changed app IP with original nginx retained",
+  "role": "GitHub Actions CI execution; Codex retrospective analysis, not personal VM performance"
+}

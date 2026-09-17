@@ -4,6 +4,10 @@
 ただし同じ workflow の IP 変更後復旧試験は、テスト用 Docker network の設定不備で中断しました。
 **負荷試験の合格と workflow 全体の失敗を分けて記録します。** 修正した試験の結果は後続の記録で確認します。
 
+> **追補: 修正後の run 35204028943 は workflow 全体が success でした。**
+> 5 段の HTTP・通信失敗 0 件を再確認し、app の IP 変更後の復旧試験も完了しています。
+> 詳細は末尾の「最終確認」を参照してください。以下の 1 回目の失敗記録は保持します。
+
 [変更前の再測定](2026-09-17-performance-rerun.md) /
 [旧集計の問題](2026-09-17-performance-ci-analysis.md) /
 [性能試験の説明](../performance-test.md)
@@ -105,3 +109,43 @@ Docker は、明示した subnet がない network への `--ip` 指定を拒否
 
 次の CI では、**同じ app / Nginx 設定・同じ負荷条件**で再測定し、修正した復旧試験の実行も確認します。
 単発の前後比較を反復試験として扱いません。本人環境、独力実行、別ホスト災害復旧、継続運用、実利用者の容量保証は未実施です。
+
+## 最終確認: 同じアプリ構成の再測定と IP 変更後の復旧
+
+[run 35204028943](https://github.com/ns7jp/server/actions/runs/35204028943) は
+2026-09-17T09:14:27Z 開始、09:18:12Z 更新で **workflow 全体が success** でした。
+PR head は `796f8d8732efb63b68e7751e8e40a94023db70bc`、job log の実 checkout は
+`dab75bea3e7dfa9c84cfcefb283dc2eaa1a31846` です。
+アプリの接続再利用設定と負荷条件は 1 回目と同じで、IP 変更試験の準備と助走時間の説明を修正しました。
+
+| 並列数 | 全完了件数（すべて HTTP 200） | 成功 req/s | p95 ms | HTTP / 通信失敗 | 段判定 |
+| ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | 24,149 | 1,207.376 | 0.870 | 0 / 0 | PASS |
+| 2 | 36,472 | 1,823.487 | 1.379 | 0 / 0 | PASS |
+| 4 | 42,259 | 2,112.793 | 2.690 | 0 / 0 | PASS |
+| 8 | 41,711 | 2,085.259 | 6.035 | 0 / 0 | PASS |
+| 16 | 40,708 | 2,034.894 | 13.259 | 0 / 0 | PASS |
+
+`all_steps_verdict: PASS` と実際の CI ゲート成功を確認しました。
+**接続再利用後の CI 2 回で、各 5 段の HTTP・通信失敗 0 件を確認**しています。
+runner が異なり数値も変動するため、2 回だけで統計的な性能保証や本番容量を主張しません。
+今回の Nginx namespace の ActiveOpens は採録開始 4 → 最後 325、TIME_WAIT 最大採録値 13,996、
+upstream の Address not available は 0 行、診断の `UNAVAILABLE` は 0 箇所でした。
+
+復旧回帰試験は、Nginx 構文、app 不在での起動と 502、app 起動後の health 200、
+root の未認証 401・認証あり 200、**app を別 IP で再作成した後の同じ確認**がすべて PASS。
+元の Nginx container を作り直さずに復帰しました。
+これは専用 Docker network 上の CI 回帰試験で、本人 VM の実習やホスト全体の復旧ではありません。
+
+保存した artifact は [10489525742](https://github.com/ns7jp/server/actions/runs/35204028943/artifacts/10489525742)、
+1,169,937 bytes、ZIP の SHA-256 は
+`e446a5bedc138989f205cd15b7fcd21520a78d33bddf046e761cac5f21686627` で API digest と一致しました。
+原本は [result.json](assets/2026-09-17-upstream-keepalive-comparison/confirmation-run-35204028943/result.json)、
+[proxy-recovery.log](assets/2026-09-17-upstream-keepalive-comparison/confirmation-run-35204028943/proxy-recovery.log)、
+[source-metadata.json](assets/2026-09-17-upstream-keepalive-comparison/confirmation-run-35204028943/source-metadata.json)、
+同ディレクトリの段別 JSON に保存し、
+[SHA256SUMS](assets/2026-09-17-upstream-keepalive-comparison/confirmation-run-35204028943/SHA256SUMS)で照合できます。
+
+この追補の作成時、`git diff --exit-code 796f8d8732efb63b68e7751e8e40a94023db70bc --` で
+Dockerfile、compose.yaml、compose.perf.yaml、app.py、requirements.txt、deploy/nginx/local.conf、
+scripts/perf、性能 workflow に差分がないことを確認しました。追補は記録の追加であり、新しい runtime 試験として数えません。
