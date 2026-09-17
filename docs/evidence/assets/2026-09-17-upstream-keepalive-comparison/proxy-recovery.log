@@ -1,0 +1,11 @@
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+PASS path=/healthz status=502
+PASS nginx started while app was absent
+PASS path=/healthz status=200
+PASS path=/ status=401
+PASS path=/ status=200
+docker: Error response from daemon: invalid config for network 11f910b64e95ec494af8455af86cf9de6d5fe2a5c89edd1d5e967d7565f28e48: invalid endpoint settings:
+user specified IP address is supported only when connecting to networks with user configured subnets
+
+Run 'docker run --help' for more information

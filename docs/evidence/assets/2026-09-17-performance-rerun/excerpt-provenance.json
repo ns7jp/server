@@ -1,0 +1,21 @@
+{
+  "source_artifact_id": 10488187600,
+  "source_sha256": {
+    "diagnostics.log": "b7a5a56ed49b77602de93ae543aad986ee3ead6a478c36c254cbb21068ab0a33",
+    "compose-logs.txt": "f661b816f2e7a980d6e8b9bd829d316602c005c25f058e561b6bab793fd05d14",
+    "run-perf.log": "17d5ed1a4c7f3daa6b6e38263f804a6b6413a553c6042b38d731ba2613938917"
+  },
+  "diagnostics_summary": "Derived by parsing original SAMPLE blocks; field nginx_state06 is a mixed-direction namespace TCP-state aggregate, not upstream port occupancy.",
+  "unavailable_records": 1,
+  "upstream_address_not_available_lines": 3324,
+  "immutable_originals": {
+    "original-result.json": "result.json",
+    "original-summary.md": "summary.md",
+    "original-warmup.json": "20260917T085042Z/warmup.json",
+    "step-c1.json": "20260917T085042Z/step-c1.json",
+    "step-c2.json": "20260917T085042Z/step-c2.json",
+    "step-c4.json": "20260917T085042Z/step-c4.json",
+    "step-c8.json": "20260917T085042Z/step-c8.json",
+    "step-c16.json": "20260917T085042Z/step-c16.json"
+  }
+}

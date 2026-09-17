@@ -1,0 +1,50 @@
+{
+  "schema_version": 2,
+  "tool": "scripts/perf/load.py",
+  "label": "warmup",
+  "target_url": "http://127.0.0.1:8080/healthz",
+  "config": {
+    "concurrency": 1,
+    "duration_seconds": 5.0,
+    "warmup_seconds": 0.0,
+    "timeout_seconds": 10.0,
+    "mode": "closed-loop"
+  },
+  "partial": false,
+  "partial_note": "",
+  "summary": {
+    "total_requests": 4230,
+    "success_requests": 4230,
+    "response_requests": 4230,
+    "error_requests": 0,
+    "transport_error_requests": 0,
+    "http_error_requests": 0,
+    "error_rate": 0.0,
+    "error_rate_definition": "通信エラー + HTTP 非成功応答（2xx/3xx 以外） / 全完了件数",
+    "error_rate_denominator": "warmup 後に完了した全リクエスト（HTTP 応答 + 通信エラー）",
+    "status_counts": {
+      "200": 4230
+    },
+    "error_counts": {},
+    "elapsed_seconds": 5.0006615650000015,
+    "throughput_rps": 845.8880780107339,
+    "success_throughput_rps": 845.8880780107339,
+    "latency_ms": {
+      "count": 4230,
+      "min": 0.9751999999991767,
+      "p50": 1.101996000002714,
+      "p90": 1.2913510000061024,
+      "p95": 1.4608559999942372,
+      "p99": 1.801872000001481,
+      "max": 4.935568000007606
+    },
+    "percentile_method": "nearest-rank（最近接順位法・線形補間なし）"
+  },
+  "slo": {
+    "verdict": null,
+    "checks": [],
+    "note": "SLO のしきい値が指定されていません。"
+  },
+  "verdict": null,
+  "scope_note": "この計測は 1 台のマシン上でローカル接続（同一ホスト・コンテナ内）に対して 行った参考値です。本番環境における性能の保証値ではありません。ネットワーク遅延・実利用者の分布・同時に動く他の負荷・データ量の違いは 含まれていません。負荷生成器自身も同じマシンの CPU を使うため、高い並列数では測定側がボトルネックになることがあります。"
+}

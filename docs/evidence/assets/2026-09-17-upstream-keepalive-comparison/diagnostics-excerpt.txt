@@ -1,0 +1,197 @@
+[2026-09-17T09:05:48Z] READ_ONLY_DIAGNOSTICS max_seconds=180 poll_sleep_seconds=5
+[2026-09-17T09:05:48Z] host-kernel
+[2026-09-17T09:05:48Z] nginx-version
+nginx version: nginx/1.27.5
+[2026-09-17T09:05:48Z] SAMPLE 0
+[2026-09-17T09:05:48Z] host-cpu-memory-sockets
+TCP: inuse 11 orphan 1 tw 139 alloc 32 mem 62
+[2026-09-17T09:05:48Z] nginx-network-namespace
+TCP: inuse 7 orphan 0 tw 233 alloc 32 mem 62
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 4 248 0 0 5 1758 1738 0 0 0 0
+tcp_state_hex=06 count=382
+[2026-09-17T09:05:48Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=55.67% memory=77.81MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=19.19% memory=5.352MiB / 15.61GiB pids=5
+[2026-09-17T09:05:56Z] SAMPLE 1
+[2026-09-17T09:05:56Z] host-cpu-memory-sockets
+TCP: inuse 11 orphan 0 tw 6165 alloc 32 mem 62
+[2026-09-17T09:05:56Z] nginx-network-namespace
+TCP: inuse 7 orphan 0 tw 6125 alloc 32 mem 62
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 8 7284 0 0 5 51023 51004 0 0 0 0
+tcp_state_hex=06 count=6158
+[2026-09-17T09:05:56Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=55.14% memory=77.8MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=19.29% memory=5.359MiB / 15.61GiB pids=5
+[2026-09-17T09:06:04Z] SAMPLE 2
+[2026-09-17T09:06:04Z] host-cpu-memory-sockets
+TCP: inuse 11 orphan 0 tw 9648 alloc 31 mem 62
+[2026-09-17T09:06:04Z] nginx-network-namespace
+TCP: inuse 7 orphan 0 tw 9524 alloc 32 mem 62
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 16 14317 0 0 4 100289 100276 0 0 0 0
+tcp_state_hex=06 count=9546
+[2026-09-17T09:06:04Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=55.26% memory=77.98MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=19.10% memory=5.016MiB / 15.61GiB pids=5
+[2026-09-17T09:06:11Z] SAMPLE 3
+[2026-09-17T09:06:11Z] host-cpu-memory-sockets
+TCP: inuse 9 orphan 0 tw 11557 alloc 30 mem 62
+[2026-09-17T09:06:11Z] nginx-network-namespace
+TCP: inuse 7 orphan 1 tw 11528 alloc 32 mem 62
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 24 21384 0 0 5 149791 149777 0 0 0 0
+tcp_state_hex=06 count=11552
+[2026-09-17T09:06:12Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=54.07% memory=77.99MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=0.03% memory=5.266MiB / 15.61GiB pids=5
+[2026-09-17T09:06:19Z] SAMPLE 4
+[2026-09-17T09:06:19Z] host-cpu-memory-sockets
+TCP: inuse 9 orphan 1 tw 12488 alloc 36 mem 62
+[2026-09-17T09:06:19Z] nginx-network-namespace
+TCP: inuse 12 orphan 0 tw 12447 alloc 40 mem 62
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 32 27075 0 0 9 189665 189622 0 0 0 0
+tcp_state_hex=06 count=12446
+[2026-09-17T09:06:20Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=99.15% memory=78.14MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=26.45% memory=5.59MiB / 15.61GiB pids=5
+[2026-09-17T09:06:27Z] SAMPLE 5
+[2026-09-17T09:06:27Z] host-cpu-memory-sockets
+TCP: inuse 12 orphan 0 tw 13505 alloc 40 mem 0
+[2026-09-17T09:06:27Z] nginx-network-namespace
+TCP: inuse 11 orphan 0 tw 13337 alloc 36 mem 0
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 41 37652 0 0 8 263773 263677 0 0 0 0
+tcp_state_hex=06 count=13342
+[2026-09-17T09:06:27Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=100.30% memory=78.01MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=27.03% memory=5.617MiB / 15.61GiB pids=5
+[2026-09-17T09:06:35Z] SAMPLE 6
+[2026-09-17T09:06:35Z] host-cpu-memory-sockets
+TCP: inuse 11 orphan 1 tw 13990 alloc 40 mem 0
+[2026-09-17T09:06:35Z] nginx-network-namespace
+TCP: inuse 12 orphan 0 tw 13737 alloc 41 mem 0
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 56 48280 0 0 9 338232 338124 0 0 0 0
+tcp_state_hex=06 count=13739
+[2026-09-17T09:06:35Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=52.27% memory=79.58MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=0.00% memory=5.191MiB / 15.61GiB pids=5
+[2026-09-17T09:06:43Z] SAMPLE 7
+[2026-09-17T09:06:43Z] host-cpu-memory-sockets
+TCP: inuse 19 orphan 0 tw 14112 alloc 65 mem 62
+[2026-09-17T09:06:43Z] nginx-network-namespace
+TCP: inuse 21 orphan 1 tw 13860 alloc 61 mem 62
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 72 55526 0 0 19 389006 388882 0 0 0 0
+tcp_state_hex=06 count=13864
+[2026-09-17T09:06:43Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=116.71% memory=81.17MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=30.24% memory=5.305MiB / 15.61GiB pids=5
+[2026-09-17T09:06:51Z] SAMPLE 8
+[2026-09-17T09:06:51Z] host-cpu-memory-sockets
+TCP: inuse 16 orphan 0 tw 14249 alloc 62 mem 62
+[2026-09-17T09:06:51Z] nginx-network-namespace
+TCP: inuse 21 orphan 0 tw 13931 alloc 61 mem 62
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 86 67589 0 0 17 473555 473350 0 0 0 0
+tcp_state_hex=06 count=13926
+[2026-09-17T09:06:51Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=115.32% memory=81.18MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=30.38% memory=5.648MiB / 15.61GiB pids=5
+[2026-09-17T09:06:59Z] SAMPLE 9
+[2026-09-17T09:06:59Z] host-cpu-memory-sockets
+TCP: inuse 19 orphan 1 tw 14364 alloc 65 mem 62
+[2026-09-17T09:06:59Z] nginx-network-namespace
+TCP: inuse 19 orphan 1 tw 13909 alloc 56 mem 0
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 92 79838 0 0 19 559366 559063 0 0 0 0
+tcp_state_hex=06 count=13907
+[2026-09-17T09:06:59Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=0.03% memory=80.8MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=0.08% memory=5.418MiB / 15.61GiB pids=5
+[2026-09-17T09:07:06Z] SAMPLE 10
+[2026-09-17T09:07:06Z] host-cpu-memory-sockets
+TCP: inuse 29 orphan 1 tw 14347 alloc 96 mem 318
+[2026-09-17T09:07:06Z] nginx-network-namespace
+TCP: inuse 35 orphan 1 tw 13911 alloc 97 mem 318
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 119 87145 0 0 31 610594 610310 0 0 0 0
+tcp_state_hex=06 count=13917
+[2026-09-17T09:07:07Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=111.77% memory=81.31MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=29.85% memory=5.465MiB / 15.61GiB pids=5
+[2026-09-17T09:07:14Z] SAMPLE 11
+[2026-09-17T09:07:14Z] host-cpu-memory-sockets
+TCP: inuse 21 orphan 3 tw 14366 alloc 89 mem 0
+[2026-09-17T09:07:14Z] nginx-network-namespace
+TCP: inuse 36 orphan 1 tw 13914 alloc 99 mem 0
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 129 99152 0 0 30 694699 694397 0 0 0 0
+tcp_state_hex=06 count=13915
+[2026-09-17T09:07:15Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=115.19% memory=81.12MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=30.19% memory=5.719MiB / 15.61GiB pids=5
+[2026-09-17T09:07:22Z] SAMPLE 12
+[2026-09-17T09:07:22Z] host-cpu-memory-sockets
+TCP: inuse 6 orphan 0 tw 14346 alloc 66 mem 62
+[2026-09-17T09:07:22Z] nginx-network-namespace
+TCP: inuse 28 orphan 0 tw 13926 alloc 66 mem 62
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 146 110304 0 0 26 772857 772541 0 0 0 0
+tcp_state_hex=06 count=13926
+[2026-09-17T09:07:23Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=0.50% memory=80.99MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=0.02% memory=5.5MiB / 15.61GiB pids=5
+[2026-09-17T09:07:30Z] SAMPLE 13
+[2026-09-17T09:07:30Z] host-cpu-memory-sockets
+TCP: inuse 48 orphan 4 tw 14311 alloc 130 mem 318
+[2026-09-17T09:07:30Z] nginx-network-namespace
+TCP: inuse 43 orphan 6 tw 13983 alloc 116 mem 318
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 199 117934 0 0 37 826389 826179 0 0 0 0
+tcp_state_hex=06 count=13981
+[2026-09-17T09:07:30Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=108.18% memory=80.89MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=29.32% memory=5.559MiB / 15.61GiB pids=5
+[2026-09-17T09:07:38Z] SAMPLE 14
+[2026-09-17T09:07:38Z] host-cpu-memory-sockets
+TCP: inuse 41 orphan 6 tw 14291 alloc 124 mem 62
+[2026-09-17T09:07:38Z] nginx-network-namespace
+TCP: inuse 45 orphan 2 tw 14048 alloc 124 mem 62
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 252 129618 0 0 46 908321 908239 0 0 0 0
+tcp_state_hex=06 count=14052
+[2026-09-17T09:07:38Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=112.58% memory=81.14MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=29.24% memory=5.57MiB / 15.61GiB pids=5
+[2026-09-17T09:07:46Z] SAMPLE 15
+[2026-09-17T09:07:46Z] host-cpu-memory-sockets
+TCP: inuse 5 orphan 0 tw 14308 alloc 71 mem 62
+[2026-09-17T09:07:46Z] nginx-network-namespace
+TCP: inuse 31 orphan 0 tw 14106 alloc 71 mem 62
+32768	60999
+Tcp: RtoAlgorithm RtoMin RtoMax MaxConn ActiveOpens PassiveOpens AttemptFails EstabResets CurrEstab InSegs OutSegs RetransSegs InErrs OutRsts InCsumErrors
+Tcp: 1 200 120000 -1 295 139809 0 0 29 979858 979857 0 0 0 0
+tcp_state_hex=06 count=14106
+[2026-09-17T09:07:46Z] app-nginx-resource-usage
+server-monitor-lab-app-1 cpu=0.04% memory=80.75MiB / 15.61GiB pids=5
+server-monitor-lab-nginx-1 cpu=0.15% memory=5.453MiB / 15.61GiB pids=5
+[2026-09-17T09:07:49Z] COLLECTION_STOPPED_BY_CALLER unavailable_checks=0

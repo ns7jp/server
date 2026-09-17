@@ -40,10 +40,22 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 network_id="$(docker network create "$prefix")"
-nginx_id="$(docker run -d --name "${prefix}-nginx" --network "$network_id" \
+# Docker permits --ip only with an explicitly configured subnet. Ask its IPAM
+# for an unused range first, then recreate this still-empty, test-owned network
+# with that exact range. Never choose a hard-coded range that may overlap CI.
+test_subnet="$(docker network inspect --format '{{(index .IPAM.Config 0).Subnet}}' "$network_id")"
+[[ "$test_subnet" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+$ ]] || {
+  echo "FAIL missing IPv4 subnet for isolated network" >&2
+  exit 1
+}
+docker network rm "$network_id" >/dev/null
+network_id=""
+network_id="$(docker network create --subnet "$test_subnet" "$prefix")"
+nginx_id="$(docker create --name "${prefix}-nginx" --network "$network_id" \
   -p 127.0.0.1::8080 \
   -v "$ROOT/deploy/nginx/local.conf:/etc/nginx/conf.d/default.conf:ro" "$nginx_image")"
 created+=("$nginx_id")
+docker start "$nginx_id" >/dev/null
 binding="$(docker port "$nginx_id" 8080/tcp)"
 [[ "$binding" =~ ^127\.0\.0\.1:[0-9]+$ ]] || { echo "Unexpected bind: $binding" >&2; exit 1; }
 url="http://$binding"
@@ -79,10 +91,11 @@ echo "PASS nginx started while app was absent"
 
 start_app() {
   # Synthetic credentials belong only to this isolated test.
-  app_id="$(docker run -d --network "$network_id" --network-alias app \
+  app_id="$(docker create --network "$network_id" --network-alias app \
     -e MONITOR_USERNAME=monitor -e MONITOR_PASSWORD=proxy-test-only \
     -e MONITOR_METRICS_TOKEN=proxy-test-only "$app_image")"
   created+=("$app_id")
+  docker start "$app_id" >/dev/null
 }
 start_app
 wait_health
@@ -93,9 +106,10 @@ old_ip="$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddre
 [[ -n "$old_ip" ]] || exit 1
 docker rm -f "$app_id" >/dev/null
 # Reserve the released address so recreation must produce a genuinely new IP.
-reservation="$(docker run -d --network "$network_id" --ip "$old_ip" \
+reservation="$(docker create --network "$network_id" --ip "$old_ip" \
   --entrypoint /bin/sh "$nginx_image" -c 'sleep 120')"
 created+=("$reservation")
+docker start "$reservation" >/dev/null
 start_app
 new_ip="$(docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$app_id")"
 [[ -n "$new_ip" && "$new_ip" != "$old_ip" ]] || { echo "FAIL app IP did not change" >&2; exit 1; }

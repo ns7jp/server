@@ -1,0 +1,11 @@
+Selected job log lines; omitted lines are not reproduced.
+
+job-log line 112: load-test	Checkout	2026-09-17T08:49:55.0865352Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +6df5b50ddbf418c276ef1db0aaeedafbd7eebcb7:refs/remotes/pull/261/merge
+job-log line 114: load-test	Checkout	2026-09-17T08:49:55.8886876Z  * [new ref]         6df5b50ddbf418c276ef1db0aaeedafbd7eebcb7 -> pull/261/merge
+job-log line 139: load-test	Checkout	2026-09-17T08:49:56.0102586Z HEAD is now at 6df5b50 Merge a8bf1ee23d7770c94f205f9a35f46ce441ceaf02 into 2896db653f5cb67110607ff90d1d524eb8e681be
+job-log line 141: load-test	Checkout	2026-09-17T08:49:56.0146665Z [command]/usr/bin/git log -1 --format=%H
+job-log line 142: load-test	Checkout	2026-09-17T08:49:56.0175925Z 6df5b50ddbf418c276ef1db0aaeedafbd7eebcb7
+job-log line 164: load-test	Set up Python	2026-09-17T08:49:56.1854000Z Successfully set up CPython (3.11.16)
+job-log line 637: load-test	Run load test	2026-09-17T08:52:42.6884963Z run-perf.sh exit code: 0
+job-log line 767: load-test	Check for obvious failures	2026-09-17T08:52:45.1540572Z ##[error]concurrency=4: HTTP-inclusive error_rate=0.2104463437796771 > 0.05
+job-log line 768: load-test	Check for obvious failures	2026-09-17T08:52:45.1565566Z ##[error]Process completed with exit code 1.

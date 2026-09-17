@@ -17,7 +17,7 @@ on:
         required: false
         default: '20'
       warmup:
-        description: '各段階の前に捨てる助走時間（秒）'
+        description: '最初の段階の前に1回だけ行う助走時間（秒）'
         required: false
         default: '5'
       max_error_rate:

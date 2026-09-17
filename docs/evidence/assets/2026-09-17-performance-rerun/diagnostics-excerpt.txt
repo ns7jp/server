@@ -1,0 +1,72 @@
+Original selected lines from diagnostics.log, not a complete or atomic snapshot.
+TIME_WAIT aggregates include incoming and outgoing connections; they are not upstream-only port occupancy.
+
+diagnostics.log line 1: [2026-09-17T08:50:42Z] READ_ONLY_DIAGNOSTICS max_seconds=180 poll_sleep_seconds=5
+diagnostics.log line 2: Host counters and nginx network namespace are separate; no sysctl values are changed.
+diagnostics.log line 3: 
+diagnostics.log line 4: [2026-09-17T08:50:42Z] host-kernel
+diagnostics.log line 5: Linux 6.17.0-1022-azure
+diagnostics.log line 6: 
+diagnostics.log line 7: [2026-09-17T08:50:42Z] nginx-version
+diagnostics.log line 8: nginx version: nginx/1.27.5
+diagnostics.log line 10: [2026-09-17T08:50:42Z] SAMPLE 0
+diagnostics.log line 12: [2026-09-17T08:50:42Z] host-cpu-memory-sockets
+diagnostics.log line 19: TCP: inuse 11 orphan 1 tw 147 alloc 24 mem 0
+diagnostics.log line 31: [2026-09-17T08:50:42Z] nginx-network-namespace
+diagnostics.log line 34: TCP: inuse 2 orphan 0 tw 439 alloc 23 mem 0
+diagnostics.log line 39: /proc/sys/net/ipv4/ip_local_port_range
+diagnostics.log line 40: 32768	60999
+diagnostics.log line 41: /proc/sys/net/ipv4/ip_local_reserved_ports
+diagnostics.log line 42: 
+diagnostics.log line 43: /proc/sys/net/ipv4/tcp_tw_reuse
+diagnostics.log line 44: 2
+diagnostics.log line 65: tcp_state_hex=06 count=2585
+diagnostics.log line 70: [2026-09-17T08:50:43Z] app-nginx-resource-usage
+diagnostics.log line 71: server-monitor-lab-app-1 cpu=60.88% memory=73.46MiB / 15.61GiB pids=3
+diagnostics.log line 72: server-monitor-lab-nginx-1 cpu=24.76% memory=6.039MiB / 15.61GiB pids=5
+diagnostics.log line 128: UNAVAILABLE label=nginx-network-namespace exit=124
+diagnostics.log line 384: [2026-09-17T08:51:34Z] SAMPLE 6
+diagnostics.log line 386: [2026-09-17T08:51:34Z] host-cpu-memory-sockets
+diagnostics.log line 393: TCP: inuse 19 orphan 0 tw 12840 alloc 39 mem 0
+diagnostics.log line 405: [2026-09-17T08:51:34Z] nginx-network-namespace
+diagnostics.log line 408: TCP: inuse 6 orphan 1 tw 37947 alloc 37 mem 0
+diagnostics.log line 413: /proc/sys/net/ipv4/ip_local_port_range
+diagnostics.log line 414: 32768	60999
+diagnostics.log line 415: /proc/sys/net/ipv4/ip_local_reserved_ports
+diagnostics.log line 416: 
+diagnostics.log line 417: /proc/sys/net/ipv4/tcp_tw_reuse
+diagnostics.log line 418: 2
+diagnostics.log line 438: tcp_state_hex=06 count=37989
+diagnostics.log line 442: [2026-09-17T08:51:35Z] app-nginx-resource-usage
+diagnostics.log line 443: server-monitor-lab-app-1 cpu=53.43% memory=73.84MiB / 15.61GiB pids=3
+diagnostics.log line 444: server-monitor-lab-nginx-1 cpu=201.62% memory=12.2MiB / 15.61GiB pids=5
+diagnostics.log line 446: [2026-09-17T08:51:42Z] SAMPLE 7
+diagnostics.log line 448: [2026-09-17T08:51:42Z] host-cpu-memory-sockets
+diagnostics.log line 455: TCP: inuse 19 orphan 0 tw 13940 alloc 40 mem 0
+diagnostics.log line 467: [2026-09-17T08:51:42Z] nginx-network-namespace
+diagnostics.log line 470: TCP: inuse 6 orphan 1 tw 40189 alloc 35 mem 0
+diagnostics.log line 475: /proc/sys/net/ipv4/ip_local_port_range
+diagnostics.log line 476: 32768	60999
+diagnostics.log line 477: /proc/sys/net/ipv4/ip_local_reserved_ports
+diagnostics.log line 478: 
+diagnostics.log line 479: /proc/sys/net/ipv4/tcp_tw_reuse
+diagnostics.log line 480: 2
+diagnostics.log line 500: tcp_state_hex=06 count=40180
+diagnostics.log line 504: [2026-09-17T08:51:43Z] app-nginx-resource-usage
+diagnostics.log line 505: server-monitor-lab-app-1 cpu=0.01% memory=73.73MiB / 15.61GiB pids=3
+diagnostics.log line 506: server-monitor-lab-nginx-1 cpu=277.02% memory=12.49MiB / 15.61GiB pids=5
+diagnostics.log line 883: [2026-09-17T08:52:42Z] SAMPLE 14
+diagnostics.log line 885: [2026-09-17T08:52:42Z] host-cpu-memory-sockets
+diagnostics.log line 892: TCP: inuse 5 orphan 0 tw 20068 alloc 13 mem 204
+diagnostics.log line 904: [2026-09-17T08:52:42Z] nginx-network-namespace
+diagnostics.log line 907: TCP: inuse 2 orphan 0 tw 25728 alloc 13 mem 204
+diagnostics.log line 912: /proc/sys/net/ipv4/ip_local_port_range
+diagnostics.log line 913: 32768	60999
+diagnostics.log line 914: /proc/sys/net/ipv4/ip_local_reserved_ports
+diagnostics.log line 915: 
+diagnostics.log line 916: /proc/sys/net/ipv4/tcp_tw_reuse
+diagnostics.log line 917: 2
+diagnostics.log line 936: tcp_state_hex=06 count=25728
+diagnostics.log line 940: [2026-09-17T08:52:42Z] app-nginx-resource-usage
+diagnostics.log line 941: server-monitor-lab-app-1 cpu=0.01% memory=76.47MiB / 15.61GiB pids=3
+diagnostics.log line 942: server-monitor-lab-nginx-1 cpu=0.00% memory=9.863MiB / 15.61GiB pids=5
