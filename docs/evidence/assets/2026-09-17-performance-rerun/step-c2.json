@@ -1,0 +1,65 @@
+{
+  "schema_version": 2,
+  "tool": "scripts/perf/load.py",
+  "label": "c2",
+  "target_url": "http://127.0.0.1:8080/healthz",
+  "config": {
+    "concurrency": 2,
+    "duration_seconds": 20.0,
+    "warmup_seconds": 0.0,
+    "timeout_seconds": 10.0,
+    "mode": "closed-loop"
+  },
+  "partial": false,
+  "partial_note": "",
+  "summary": {
+    "total_requests": 9826,
+    "success_requests": 9826,
+    "response_requests": 9826,
+    "error_requests": 0,
+    "transport_error_requests": 0,
+    "http_error_requests": 0,
+    "error_rate": 0.0,
+    "error_rate_definition": "通信エラー + HTTP 非成功応答（2xx/3xx 以外） / 全完了件数",
+    "error_rate_denominator": "warmup 後に完了した全リクエスト（HTTP 応答 + 通信エラー）",
+    "status_counts": {
+      "200": 9826
+    },
+    "error_counts": {},
+    "elapsed_seconds": 20.002865481,
+    "throughput_rps": 491.2296195429281,
+    "success_throughput_rps": 491.2296195429281,
+    "latency_ms": {
+      "count": 9826,
+      "min": 3.0226010000120596,
+      "p50": 3.6817899999874726,
+      "p90": 5.520282000006205,
+      "p95": 5.913765999991938,
+      "p99": 7.104662999992684,
+      "max": 14.0907699999957
+    },
+    "percentile_method": "nearest-rank（最近接順位法・線形補間なし）"
+  },
+  "slo": {
+    "verdict": "PASS",
+    "checks": [
+      {
+        "name": "p95_latency_ms",
+        "threshold": 500.0,
+        "actual": 5.913765999991938,
+        "passed": true,
+        "reason": "p95 = 5.914 ms がしきい値 500.0 ms 以下です。"
+      },
+      {
+        "name": "error_rate",
+        "threshold": 0.01,
+        "actual": 0.0,
+        "passed": true,
+        "reason": "エラー率 0.000000 がしきい値 0.01 以下です。"
+      }
+    ],
+    "note": "しきい値ちょうどの場合は PASS とします（<= で判定）。"
+  },
+  "verdict": "PASS",
+  "scope_note": "この計測は 1 台のマシン上でローカル接続（同一ホスト・コンテナ内）に対して 行った参考値です。本番環境における性能の保証値ではありません。ネットワーク遅延・実利用者の分布・同時に動く他の負荷・データ量の違いは 含まれていません。負荷生成器自身も同じマシンの CPU を使うため、高い並列数では測定側がボトルネックになることがあります。"
+}

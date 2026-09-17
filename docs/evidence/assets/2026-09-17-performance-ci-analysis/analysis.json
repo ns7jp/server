@@ -1,0 +1,128 @@
+{
+  "analysis_type": "retrospective arithmetic on preserved artifact; no new load test",
+  "run_id": 35197884893,
+  "checked_out_sha": "da53d8d7a7ad7eb936d8498f478c406c52a02daf",
+  "original_workflow_conclusion": "success",
+  "failure_definition": "HTTP outside 200..399 plus transport errors, divided by total completed requests",
+  "thresholds": {
+    "step_p95_ms": 500,
+    "step_error_rate": 0.01,
+    "workflow_error_rate": 0.05
+  },
+  "latency_scope": "all HTTP responses, including 502; successful-response-only quantiles unavailable",
+  "steps": [
+    {
+      "concurrency": 1,
+      "total_requests": 12703,
+      "success_requests": 12703,
+      "http_error_requests": 0,
+      "transport_error_requests": 0,
+      "failed_requests": 0,
+      "status_counts": {
+        "200": 12703
+      },
+      "original_error_rate": 0.0,
+      "corrected_error_rate": 0,
+      "throughput_rps": 635.046615331842,
+      "success_throughput_rps": 635.046615331842,
+      "latency_p50_ms": 0.9816730000125062,
+      "latency_p95_ms": 3.147628000021996,
+      "latency_p99_ms": 3.33674199998768,
+      "original_verdict": "PASS",
+      "retrospective_step_verdict": "PASS",
+      "retrospective_ci_error_gate": "PASS",
+      "source_file": "step-c1.json"
+    },
+    {
+      "concurrency": 2,
+      "total_requests": 9875,
+      "success_requests": 9875,
+      "http_error_requests": 0,
+      "transport_error_requests": 0,
+      "failed_requests": 0,
+      "status_counts": {
+        "200": 9875
+      },
+      "original_error_rate": 0.0,
+      "corrected_error_rate": 0,
+      "throughput_rps": 493.6778095926385,
+      "success_throughput_rps": 493.6778095926385,
+      "latency_p50_ms": 3.4890889999701358,
+      "latency_p95_ms": 5.896973000005801,
+      "latency_p99_ms": 6.655176999970536,
+      "original_verdict": "PASS",
+      "retrospective_step_verdict": "PASS",
+      "retrospective_ci_error_gate": "PASS",
+      "source_file": "step-c2.json"
+    },
+    {
+      "concurrency": 4,
+      "total_requests": 18174,
+      "success_requests": 11059,
+      "http_error_requests": 7115,
+      "transport_error_requests": 0,
+      "failed_requests": 7115,
+      "status_counts": {
+        "200": 11059,
+        "502": 7115
+      },
+      "original_error_rate": 0.0,
+      "corrected_error_rate": 0.39149334213711895,
+      "throughput_rps": 908.3683445436816,
+      "success_throughput_rps": 552.7481854467137,
+      "latency_p50_ms": 3.635492000000795,
+      "latency_p95_ms": 10.037167999996655,
+      "latency_p99_ms": 13.926503999982742,
+      "original_verdict": "PASS",
+      "retrospective_step_verdict": "FAIL",
+      "retrospective_ci_error_gate": "FAIL",
+      "source_file": "step-c4.json"
+    },
+    {
+      "concurrency": 8,
+      "total_requests": 21526,
+      "success_requests": 21105,
+      "http_error_requests": 421,
+      "transport_error_requests": 0,
+      "failed_requests": 421,
+      "status_counts": {
+        "200": 21105,
+        "502": 421
+      },
+      "original_error_rate": 0.0,
+      "corrected_error_rate": 0.01955774412338567,
+      "throughput_rps": 1075.8649618991753,
+      "success_throughput_rps": 1054.8234702630352,
+      "latency_p50_ms": 6.628332999980557,
+      "latency_p95_ms": 14.596236999977918,
+      "latency_p99_ms": 18.889692999948693,
+      "original_verdict": "PASS",
+      "retrospective_step_verdict": "FAIL",
+      "retrospective_ci_error_gate": "PASS",
+      "source_file": "step-c8.json"
+    },
+    {
+      "concurrency": 16,
+      "total_requests": 18926,
+      "success_requests": 18926,
+      "http_error_requests": 0,
+      "transport_error_requests": 0,
+      "failed_requests": 0,
+      "status_counts": {
+        "200": 18926
+      },
+      "original_error_rate": 0.0,
+      "corrected_error_rate": 0,
+      "throughput_rps": 945.6677041606739,
+      "success_throughput_rps": 945.6677041606739,
+      "latency_p50_ms": 16.61462599997776,
+      "latency_p95_ms": 24.310028999991573,
+      "latency_p99_ms": 28.50498000003654,
+      "original_verdict": "PASS",
+      "retrospective_step_verdict": "PASS",
+      "retrospective_ci_error_gate": "PASS",
+      "source_file": "step-c16.json"
+    }
+  ],
+  "conclusion": "HTTP failure rate exceeded step threshold at c4 and c8; workflow error gate would fail at c4; saturation/capacity unconfirmed"
+}

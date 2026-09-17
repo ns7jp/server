@@ -1,0 +1,11 @@
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+PASS path=/healthz status=502
+PASS nginx started while app was absent
+PASS path=/healthz status=200
+PASS path=/ status=401
+PASS path=/ status=200
+PASS path=/healthz status=200
+PASS path=/ status=401
+PASS path=/ status=200
+PASS dynamic upstream recovered after app IP changed; original nginx container retained

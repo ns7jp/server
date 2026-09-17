@@ -15,9 +15,8 @@
 #   docs/drills/logs/ にそのまま貼れる Markdown サマリーを stdout、
 #   機械可読 JSON を最終行に "RESULT_JSON=" で出力します（d1-process-down.sh と同じ作法）。
 #
-# 状態: 実装済み（未実施 / NOT RUN）
-#   このスクリプトはまだ実行していません。数値は実行したときに初めて生まれます。
-#   このファイルにも、リポジトリのどこにも、測っていない数値は書いていません。
+# 実行履歴と判定の限界は docs/evidence/2026-09-17-performance-ci-analysis.md を参照。
+# 単発の隣接段比較が示す飽和候補は、保証できる処理能力ではありません。
 
 set -euo pipefail
 
@@ -301,9 +300,8 @@ done
 #        (A) gain_i      <  ${SATURATION_GAIN_THRESHOLD}   … 並列を増やしても処理量が伸びない
 #        (B) lat_ratio_i >  ${SATURATION_LATENCY_FACTOR}   … その一方でレイテンシだけ悪化する
 #
-#      このとき報告する「飽和点 (saturation_concurrency)」は、飽和した段 i ではなく
-#      その 1 つ手前の段 i-1 の並列数です。すなわち「まだ余裕のあった最大の並列数」を
-#      容量設計の基準値として扱います。
+#      saturation_concurrency は 1 つ手前の段 i-1 の並列数を示す候補です。
+#      後段で処理量が回復する場合もあり、単発の値を容量設計の基準値にはしません。
 #
 #      最後の段まで (A) と (B) を同時に満たさなかった場合、飽和点は null（未検出）です。
 #      これは「飽和しなかった」ではなく「試験した範囲内では飽和点が見つからなかった」
@@ -366,6 +364,10 @@ for path in step_files:
         "p95": pick(data, ("latency_ms", "p95"), ("summary", "latency_ms", "p95")),
         "p99": pick(data, ("latency_ms", "p99"), ("summary", "latency_ms", "p99")),
         "error_rate": pick(data, ("error_rate",), ("summary", "error_rate")),
+        "total_requests": pick(data, ("summary", "total_requests")),
+        "success_rps": pick(data, ("summary", "success_throughput_rps")),
+        "http_error_requests": pick(data, ("summary", "http_error_requests")),
+        "transport_error_requests": pick(data, ("summary", "transport_error_requests")),
         "verdict": pick(data, ("verdict",), ("slo", "verdict")),
         "partial": bool(pick(data, ("partial",)) or False),
     })
@@ -406,6 +408,7 @@ slo_ok = [r["concurrency"] for r in rows
           if r["verdict"] == "PASS" and num(r["concurrency"])]
 slo_max_concurrency = max(slo_ok) if slo_ok else None
 verdict = "PASS" if slo_max_concurrency is not None else "FAIL"
+all_steps_verdict = "PASS" if rows and all(r["verdict"] == "PASS" and not r["partial"] for r in rows) else "FAIL"
 
 # ---- Markdown サマリー（docs/drills/logs/ にそのまま貼れる形）----
 out = []
@@ -448,14 +451,16 @@ out.append("判定式: 前段比のスループット伸び率 < %s%% かつ p95
            % (fmt(gain_threshold * 100, 0), fmt(latency_factor, 2)))
 out.append("")
 if saturation_concurrency is None:
-    out.append("- 飽和点: **未検出**（試験した並列数の範囲内では頭打ちになりませんでした）")
+    out.append("- 飽和候補: **未検出**（この比較式では検出できませんでした）")
     out.append("- 次の一手: `--steps` にもっと大きい並列数を足して再測定します。")
 else:
-    out.append("- 飽和点（まだ余裕のあった最大並列数）: **%s**" % saturation_concurrency)
+    out.append("- 隣接段比較の飽和候補（容量の確定値ではない）: **%s**" % saturation_concurrency)
     out.append("- 頭打ちが現れた段: 並列 **%s**" % saturated_at)
 out.append("- SLO (p95 <= 500ms / error_rate <= 0.01) を満たした最大並列数: **%s**"
            % (slo_max_concurrency if slo_max_concurrency is not None else "なし"))
-out.append("- 全体判定: **%s**" % verdict)
+out.append("- 1段以上のSLO達成: **%s**（全段合格を意味しません）" % verdict)
+out.append("- 全段のSLO判定: **%s**" % all_steps_verdict)
+out.append("- 応答時間はHTTPエラー応答も含みます。成功した要求だけの性能ではありません。")
 out.append("")
 partial_steps = [r["concurrency"] for r in rows if r["partial"]]
 if partial_steps:
@@ -478,6 +483,7 @@ out.append("")
 sys.stdout.write("\n".join(out) + "\n")
 
 result = {
+    "schema_version": 2,
     "url": url,
     "duration_seconds": int(duration),
     "warmup_seconds": int(warmup),
@@ -493,6 +499,10 @@ result = {
         "latency_p95_ms": r["p95"],
         "latency_p99_ms": r["p99"],
         "error_rate": r["error_rate"],
+        "total_requests": r["total_requests"],
+        "success_throughput_rps": r["success_rps"],
+        "http_error_requests": r["http_error_requests"],
+        "transport_error_requests": r["transport_error_requests"],
         "verdict": r["verdict"],
         "partial": r["partial"],
     } for r in rows],
@@ -502,6 +512,9 @@ result = {
     "saturation_latency_factor": latency_factor,
     "slo_max_concurrency": slo_max_concurrency,
     "verdict": verdict,
+    "verdict_definition": "at_least_one_step_passed_slo",
+    "all_steps_verdict": all_steps_verdict,
+    "saturation_status": "candidate_only" if saturation_concurrency is not None else "not_detected",
 }
 sys.stdout.write("RESULT_JSON=" + json.dumps(result, ensure_ascii=False) + "\n")
 

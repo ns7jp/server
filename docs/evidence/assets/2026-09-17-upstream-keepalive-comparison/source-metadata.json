@@ -1,0 +1,19 @@
+{
+  "run_id": 35203160709,
+  "run_url": "https://github.com/ns7jp/server/actions/runs/35203160709",
+  "event": "pull_request",
+  "head_sha": "dbd61155cad4a80bfbd2f8943cf9633a1928b327",
+  "checked_out_sha": "f9069e8632cdd63de514f19c18dcab4ec6778c45",
+  "run_started_at": "2026-09-17T09:04:57Z",
+  "updated_at": "2026-09-17T09:08:27Z",
+  "conclusion": "failure",
+  "job_id": 105142512730,
+  "load_test_result": "PASS all five stages, error gate success",
+  "lifecycle_result": "FAIL test harness IPAM configuration; startup and initial auth checks passed; changed-IP recovery not executed",
+  "artifact_id": 10488697888,
+  "artifact_name": "perf-test-35203160709-1",
+  "artifact_digest": "sha256:7d8024a4323a27b001318e07bbc334a92b5da7c800ae09913a0de6b887791a5e",
+  "artifact_size": 875207,
+  "expires_at": "2026-10-17T09:08:22Z",
+  "analysis_actor": "Codex assisted CI artifact analysis; not personal VM evidence"
+}

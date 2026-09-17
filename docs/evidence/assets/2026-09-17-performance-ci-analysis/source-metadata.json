@@ -1,0 +1,26 @@
+{
+  "repository": "ns7jp/server",
+  "run_id": 35197884893,
+  "run_url": "https://github.com/ns7jp/server/actions/runs/35197884893",
+  "event": "pull_request",
+  "run_attempt": 1,
+  "workflow_conclusion": "success",
+  "run_started_at": "2026-09-17T08:06:06Z",
+  "run_updated_at": "2026-09-17T08:09:02Z",
+  "head_sha": "92ff2f270eca9be7775e6112c28b821579a0d9b9",
+  "checked_out_sha": "da53d8d7a7ad7eb936d8498f478c406c52a02daf",
+  "checkout_evidence": "job log git log -1 --format=%H",
+  "job_id": 105125329682,
+  "job_url": "https://github.com/ns7jp/server/actions/runs/35197884893/job/105125329682",
+  "artifact": {
+    "id": 10486587103,
+    "name": "perf-test-35197884893-1",
+    "size_in_bytes": 591313,
+    "digest": "sha256:e2bc4cb94c3a68cf2ab507f387866b378b82a5842089d86afe34ae6ae71aba55",
+    "created_at": "2026-09-17T08:08:59Z",
+    "expires_at": "2026-10-17T08:08:58Z"
+  },
+  "analysis_date": "2026-09-17",
+  "analysis_actor": "Codex assisted retrospective analysis; execution actor was GitHub Actions CI",
+  "new_load_test_performed": false
+}

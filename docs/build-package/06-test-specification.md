@@ -117,22 +117,22 @@
 | PT-01 | 集計ロジック単体 | `pytest tests/test_perf.py` | 全 test pass（パーセンタイル・エラー率・SLO 判定の境界） | PASS | 2026-09-17 CI [python-check](https://github.com/ns7jp/server/actions/runs/35197884833)。GitHub hosted runner（PR ブランチ） |
 | PT-02 | perf overlay 構文 | `docker compose -f compose.yaml -f compose.perf.yaml config --quiet` | exit 0 | PASS | 2026-09-17 CI [python-check](https://github.com/ns7jp/server/actions/runs/35197884833)。GitHub hosted runner（PR ブランチ） |
 | PT-03 | 基準計測 | `scripts/perf/run-perf.sh --steps 1` | 並列 1 の段が `p95 <= 500ms` かつ `error_rate <= 0.01` で PASS | NOT RUN | — |
-| PT-04 | 段階負荷・飽和点 | `scripts/perf/run-perf.sh --steps 1,2,4,8,16,32` | 全段の結果表と、飽和点（または未検出）、SLO を満たす最大並列数が `summary.md` に記録される | **実行済み・判定未確認** | 2026-09-17 CI [perf-test](https://github.com/ns7jp/server/actions/runs/35197884893)。並列 1,2,4,8,16・各 20 秒・助走 5 秒で完走し、エラー率は閾値 0.05 以内。結果は artifact `perf-test-35197884893-1` にあるが、**まだ誰も中身を読んでいない**ため合否は未判定。32 並列も未実施 |
+| PT-04 | 段階負荷・飽和候補 | `scripts/perf/run-perf.sh --steps 1,2,4,8,16,32` | 全段の結果表、飽和候補、各段のSLO判定を保存。単発の候補を容量の確定値にしない | **版別の部分実行・分析済み** | [旧結果](../evidence/2026-09-17-performance-ci-analysis.md)、[集計修正版のFAIL](../evidence/2026-09-17-performance-rerun.md)、[接続再利用版の比較](../evidence/2026-09-17-upstream-keepalive-comparison.md)を分離。並列1,2,4,8,16・各20秒・助走は最初に5秒だけ。32並列は未実施 |
 | PT-05 | worker 数の比較 | `--workers` の値を変えて PT-04 を 2 回 | 2 回の結果が別の run directory に保存され、飽和点と p95 を比較できる | NOT RUN | — |
 | PT-06 | 重いエンドポイント | `load.py` で `/stats` を計測（認証 header 付き） | `status_counts` が 200 のみ。`/healthz` との p95 の差が記録される | NOT RUN | — |
 | PT-07 | 過負荷時の挙動 | PT-04 の飽和点を超える並列数で実行 | エラー率と p95 は悪化してよいが、`app` / `nginx` は終了せず `RestartCount` が増えない。負荷停止後に `/healthz` が 200 へ戻る | NOT RUN | — |
-| PT-08 | エラーの内訳 | PT-07 の `step-c<並列数>.json` を確認 | `error_counts` に種別（timeout / connection_error）が分かれ、`latency_ms.count` と `response_requests` が一致する（タイムアウトが応答時間に混入していない） | NOT RUN | — |
+| PT-08 | エラーの内訳 | PT-07 の `step-c<並列数>.json` を確認 | 通信例外の`error_counts`、HTTP失敗の`http_error_requests`を分け、合計を失敗率に含める。`latency_ms.count`と`response_requests`が一致する | PT-07としてはNOT RUN | 単体・既存負荷の内訳確認は上記証跡を参照。PT-07条件の実施とは分ける |
 | PT-09 | SLO 未達時の判定 | 全段が SLO を満たさない条件で実行 | 全体 verdict が `FAIL`、終了コードが非 0。PASS として記録されない | NOT RUN | — |
 | PT-10 | 疎通不可時の中止 | `app` を停止した状態で `run-perf.sh --no-compose` | 120 秒待って exit 4。結果 directory も数値も作られない | NOT RUN | — |
 | PT-11 | 不正な引数の拒否 | `--steps 8,4` / `--duration 0` / `--url ftp://example` | いずれも exit 2。負荷をかけずに停止する | NOT RUN | — |
 | PT-12 | 途中打ち切り | 計測中に SIGINT (Ctrl+C) | 結果 JSON の `partial` が `true` になり、部分的な計測である旨が出力に明記される | NOT RUN | — |
-| PT-13 | CI 実行 | Actions → [Performance test](../../.github/workflows/perf-test.yml) → Run workflow | artifact `perf-test-<run id>-<attempt>` に各段 JSON / `summary.md` / Compose log が保存される。エラー率が `max_error_rate` を超えた段があれば job が失敗する | NOT RUN | — |
+| PT-13 | CI 実行 | Actions → [Performance test](../../.github/workflows/perf-test.yml) → Run workflow | artifactに各段JSONとログを保存。HTTP・通信失敗の合計率が基準超過、値欠測、途中打切りなら失敗する | **実行済み・版別結果あり** | [集計修正版の失敗検出](../evidence/2026-09-17-performance-rerun.md)と[接続再利用・復旧の比較](../evidence/2026-09-17-upstream-keepalive-comparison.md)。旧欠陥と新しいコードの実行を合算しない。本人環境の実施ではない |
 
 PT-07 の「飽和点を超える並列数」は PT-04 の実測から決めます。事前に数字を決め打ちしません。
 
-PT-05 には前提があります。`Dockerfile` の `CMD` が worker 数を直接指定しているため、
-現状は `--workers` を渡しても実際の worker 数は変わりません。実施の前に `Dockerfile`
-側の変更が必要です（[既知の制約](../performance-test.md#10-既知の制約)）。
+PT-05 は `compose.perf.yaml` が起動コマンドを上書きしてworker数を変更します。
+`--no-compose` 時は既存の起動状態を測るため、指定値は反映されません。
+指定値・実適用の有無・app起動ログを分けて確認します。
 
 判定の境界について。`load.py` はしきい値ちょうどを PASS とします（`p95 <= 500`）。
 `docs/slo.md` の表記は `p95 < 500ms`（未満）のため、ちょうど 500.0ms のときだけ
@@ -150,9 +150,8 @@ PT-13 の CI は GitHub hosted runner の性能ばらつきを踏まえ、絶対
 > 実行環境は **GitHub hosted runner（PR ブランチ、使い捨て）**、実行者は **CI（人手ではない）**です。
 > 本人の手元の環境で実施したものではありません。
 >
-> PT-04 は完走してエラー率の閾値も満たしましたが、**飽和点と p95 の値はまだ誰も読んでいません。**
-> artifact（保存 30 日）を開いて `summary.md` を確認するまで、合否は判定していません。
-> 日付付きの証跡として残す場合は[検証証跡台帳](https://github.com/ns7jp/server/blob/main/docs/evidence/README.md)の運用に従います。
+> PT-04の原本を分析し、HTTP502の集計漏れを確認しました。元のCI成功は性能合格ではありません。
+> [日付付き分析と原本](../evidence/2026-09-17-performance-ci-analysis.md)に、p95、再計算した失敗率、容量を確定できない理由を保存しています。
 
 ## 終了判定
 

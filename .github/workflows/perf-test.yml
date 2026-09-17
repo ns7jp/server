@@ -17,7 +17,7 @@ on:
         required: false
         default: '20'
       warmup:
-        description: '各段階の前に捨てる助走時間（秒）'
+        description: '最初の段階の前に1回だけ行う助走時間（秒）'
         required: false
         default: '5'
       max_error_rate:
@@ -34,6 +34,7 @@ on:
       - 'deploy/nginx/**'
       - 'scripts/perf/**'
       - 'tests/test_perf.py'
+      - 'tests/test_perf_gate.py'
       - '.github/workflows/perf-test.yml'
 
 permissions:
@@ -110,6 +111,17 @@ jobs:
         id: perf
         run: |
           set -o pipefail
+          # Read-only counters from the host and nginx network namespace.
+          # Bounded independently of the requested load duration; no secrets/config dump.
+          timeout --signal=TERM --kill-after=5s 180s \
+            bash scripts/perf/collect-diagnostics.sh \
+            > "$PERF_OUT_DIR/diagnostics.log" 2>&1 &
+          diagnostics_pid=$!
+          stop_diagnostics() {
+            kill "$diagnostics_pid" 2>/dev/null || true
+            wait "$diagnostics_pid" || true
+          }
+          trap stop_diagnostics EXIT
           # run-perf.sh は「SLO を満たさなかった」ときに exit 1 を返します。
           # それは測定が失敗したのではなく、測った結果が目標に届かなかったという意味です。
           # ここで打ち切ると result.json が書かれず、いちばん見たい「届かなかった記録」が
@@ -238,43 +250,19 @@ jobs:
         #     3) /healthz が応答しない（前段の Wait ステップで既に失敗します）
         #   絶対値での SLO 判定は docs/slo.md に基づき、本番相当の環境で別途行います。
         run: |
-          python - <<'PY'
-          import json
-          import os
-          import pathlib
-          import sys
+          python scripts/perf/check_result.py "$PERF_OUT_DIR/result.json" \
+            --max-error-rate "$PERF_MAX_ERROR_RATE"
 
-          out_dir = pathlib.Path(os.environ["PERF_OUT_DIR"])
-          result_path = out_dir / "result.json"
-          if not result_path.exists():
-              print("::error::result.json was not produced; the load test did not complete")
-              sys.exit(1)
-
-          data = json.loads(result_path.read_text(encoding="utf-8"))
-          rows = data.get("steps") or data.get("results") or []
-          if not rows:
-              print("::error::the load test produced no measurement steps")
-              sys.exit(1)
-
-          threshold = float(os.environ["PERF_MAX_ERROR_RATE"])
-          failed = []
-          for row in rows:
-              rate = row.get("error_rate")
-              if rate is None and row.get("requests"):
-                  errors = row.get("errors") or 0
-                  rate = errors / float(row["requests"])
-              if rate is None:
-                  continue
-              if float(rate) > threshold:
-                  failed.append((row.get("concurrency", "?"), float(rate)))
-
-          for concurrency, rate in failed:
-              print(f"::error::concurrency={concurrency} error_rate={rate} > {threshold}")
-
-          if failed:
-              sys.exit(1)
-          print(f"error rate is within the threshold ({threshold})")
-          PY
+      - name: Check isolated proxy DNS and recovery
+        if: always()
+        # Run after measurement so lifecycle work cannot cool or alter the load test.
+        # A failure, including unavailable images, is a nonzero result, not a skip.
+        run: |
+          set -o pipefail
+          mkdir -p "$PERF_OUT_DIR"
+          timeout --signal=TERM --kill-after=30s 150s \
+            bash scripts/perf/check-proxy-recovery.sh \
+            2>&1 | tee "$PERF_OUT_DIR/proxy-recovery.log"
 
       - name: Collect Compose logs
         if: always()

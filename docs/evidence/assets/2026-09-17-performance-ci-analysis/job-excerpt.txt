@@ -1,0 +1,15 @@
+Selected lines from GitHub job 105125329682; not a complete log.
+2026-09-17T08:06:10.1993754Z Ubuntu
+2026-09-17T08:06:10.1994290Z 24.04.5
+2026-09-17T08:06:10.1997011Z Version: 20260907.300.1
+2026-09-17T08:06:12.8184787Z HEAD is now at da53d8d Merge 92ff2f270eca9be7775e6112c28b821579a0d9b9 into 864dc7f91d92ea05965a318a2f0dc73205e566ec
+2026-09-17T08:06:12.8249616Z da53d8d7a7ad7eb936d8498f478c406c52a02daf
+2026-09-17T08:06:12.9782771Z Successfully set up CPython (3.11.16)
+2026-09-17T08:06:26.3260044Z  Container server-monitor-lab-app-1  Started
+2026-09-17T08:06:56.9769426Z  Container server-monitor-lab-nginx-1  Started
+2026-09-17T08:08:57.5941332Z run-perf.sh exit code: 0
+2026-09-17T08:08:57.6707892Z error rate is within the threshold (0.05)
+2026-09-17T08:08:59.0051116Z Uploaded bytes 591313
+2026-09-17T08:08:59.0376762Z SHA256 digest of uploaded artifact zip is e2bc4cb94c3a68cf2ab507f387866b378b82a5842089d86afe34ae6ae71aba55
+2026-09-17T08:09:00.1740311Z  Container server-monitor-lab-nginx-1  Removed
+2026-09-17T08:09:00.4457558Z  Container server-monitor-lab-app-1  Removed
