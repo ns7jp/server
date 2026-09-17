@@ -114,10 +114,10 @@
 
 | ID | 試験 | 操作 | 期待結果 | 結果 | 証跡 |
 | --- | --- | --- | --- | --- | --- |
-| PT-01 | 集計ロジック単体 | `pytest tests/test_perf.py` | 全 test pass（パーセンタイル・エラー率・SLO 判定の境界） | NOT RUN | — |
-| PT-02 | perf overlay 構文 | `docker compose -f compose.yaml -f compose.perf.yaml config --quiet` | exit 0 | NOT RUN | — |
+| PT-01 | 集計ロジック単体 | `pytest tests/test_perf.py` | 全 test pass（パーセンタイル・エラー率・SLO 判定の境界） | PASS | 2026-09-17 CI [python-check](https://github.com/ns7jp/server/actions/runs/35197884833)。GitHub hosted runner（PR ブランチ） |
+| PT-02 | perf overlay 構文 | `docker compose -f compose.yaml -f compose.perf.yaml config --quiet` | exit 0 | PASS | 2026-09-17 CI [python-check](https://github.com/ns7jp/server/actions/runs/35197884833)。GitHub hosted runner（PR ブランチ） |
 | PT-03 | 基準計測 | `scripts/perf/run-perf.sh --steps 1` | 並列 1 の段が `p95 <= 500ms` かつ `error_rate <= 0.01` で PASS | NOT RUN | — |
-| PT-04 | 段階負荷・飽和点 | `scripts/perf/run-perf.sh --steps 1,2,4,8,16,32` | 全段の結果表と、飽和点（または未検出）、SLO を満たす最大並列数が `summary.md` に記録される | NOT RUN | — |
+| PT-04 | 段階負荷・飽和点 | `scripts/perf/run-perf.sh --steps 1,2,4,8,16,32` | 全段の結果表と、飽和点（または未検出）、SLO を満たす最大並列数が `summary.md` に記録される | **実行済み・判定未確認** | 2026-09-17 CI [perf-test](https://github.com/ns7jp/server/actions/runs/35197884893)。並列 1,2,4,8,16・各 20 秒・助走 5 秒で完走し、エラー率は閾値 0.05 以内。結果は artifact `perf-test-35197884893-1` にあるが、**まだ誰も中身を読んでいない**ため合否は未判定。32 並列も未実施 |
 | PT-05 | worker 数の比較 | `--workers` の値を変えて PT-04 を 2 回 | 2 回の結果が別の run directory に保存され、飽和点と p95 を比較できる | NOT RUN | — |
 | PT-06 | 重いエンドポイント | `load.py` で `/stats` を計測（認証 header 付き） | `status_counts` が 200 のみ。`/healthz` との p95 の差が記録される | NOT RUN | — |
 | PT-07 | 過負荷時の挙動 | PT-04 の飽和点を超える並列数で実行 | エラー率と p95 は悪化してよいが、`app` / `nginx` は終了せず `RestartCount` が増えない。負荷停止後に `/healthz` が 200 へ戻る | NOT RUN | — |
@@ -143,6 +143,16 @@ PT-13 の CI は GitHub hosted runner の性能ばらつきを踏まえ、絶対
 
 この章の試験はいずれも 1 台・ローカル・コンテナ内の計測であり、本番環境の性能保証値
 にはなりません（[測定の限界](../performance-test.md#9-測定の限界)）。
+
+> **2026-09-17 の CI 実行について**
+>
+> PT-01・PT-02・PT-04 は、この試験項目書を追加した PR の CI で自動実行されました。
+> 実行環境は **GitHub hosted runner（PR ブランチ、使い捨て）**、実行者は **CI（人手ではない）**です。
+> 本人の手元の環境で実施したものではありません。
+>
+> PT-04 は完走してエラー率の閾値も満たしましたが、**飽和点と p95 の値はまだ誰も読んでいません。**
+> artifact（保存 30 日）を開いて `summary.md` を確認するまで、合否は判定していません。
+> 日付付きの証跡として残す場合は[検証証跡台帳](https://github.com/ns7jp/server/blob/main/docs/evidence/README.md)の運用に従います。
 
 ## 終了判定
 
