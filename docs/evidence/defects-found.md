@@ -20,8 +20,8 @@
 
 | 区分 | 件数 |
 | --- | --- |
-| 総数 | 48 |
-| うち **偽 PASS**（壊れているのに合格と判定していた） | 9（#39〜40、#46を含む） |
+| 総数 | 49 |
+| うち **偽 PASS**（壊れているのに合格と判定していた） | 10（#39〜40、#46、#49を含む） |
 | うち **証跡が壊れる / 残らない** | 5 |
 | うち **一度も起動・実行できていなかった** | 4 |
 | うち **対象 OS / イメージで動かない**（#25, #27〜29, #32, #35） | 6 |
@@ -84,6 +84,12 @@
 | 47 | WSUS版パック手順書9.2節の中断手順`Stop-Service BITS -Force`が、**`WsusService`も黙って一緒に停止させる**（`WsusService`は`BITS`の依存サービス）。手順書は`WsusService`と`BITS`を独立に停止・再開できる前提で書かれており、再開時に`WsusService`を明示的に開始する指示がない。同期の実行中にこれが起きると、同期状態がデータベース上で`Running`のまま固まる | サービス依存関係は`(Get-Service BITS).DependentServices`を実行しないと分からず、`Stop-Service`は巻き添え停止をエラーとして報告しない | 2026-09-08、`wsus-01`実機で同期が完了しないため調査したところ、`WsusService`が停止しており、`GetSynchronizationStatus()`が`Running`を返す一方で`GetSynchronizationProgress()`が`Phase=NotProcessing`・`0/0`を返す食い違いから発覚 | 実行時に別の副作用 | [PR](https://github.com/ns7jp/server/pull/184) |
 | 48 | WSUS版パック手順書は2節で`Enter-PSSession -ComputerName wsus-01 -UseSSL`によるリモート作業を前提としているが、**7節のGPO操作コマンド（`New-GPO`・`New-GPLink`・`Set-GPRegistryValue`）はWinRMセッション越しには実行できない**。ドメインコントローラー上のGPOへアクセスするために資格情報の再委任（ダブルホップ）が必要で、`操作エラーが発生しました。 (Exception from HRESULT: 0x80072020)`で失敗する | コマンド自体は正しく、対話セッション（コンソール/RDP）では成功する。失敗するのは手順書が指定した接続方式で実行したときだけ | 2026-09-08、`wsus-01`へのWinRMセッションから`Set-GPRegistryValue`を実行して発覚。DC（`ad-dc02`）へ直接WinRM接続する方式へ切り替えて回避 | 実行時エラー | [PR](https://github.com/ns7jp/server/pull/184) |
 
+## 2026-09-17 追補
+
+| # | 症状 | なぜ静的検査で捕まらないか | どう見つけたか | 種別 | 修正 |
+| --- | --- | --- | --- | --- | --- |
+| 49 | 負荷生成器がHTTP 502を応答件数に含めながら失敗率の分子から除外し、並列4で7,115/18,174件が502でもPASSになった | 文法は正しく、旧テストはHTTPエラーがレイテンシへ含まれることだけを確認し、失敗率を検査していなかった | CodexがCI run 35197884893の原JSON・ログを分析し、[HTTP込みの失敗率39.1493%を再計算](2026-09-17-performance-ci-analysis.md)。本人の独力発見ではない | **偽 PASS** | [#261](https://github.com/ns7jp/server/pull/261)。HTTPと通信の失敗を合算し、欠測・部分実行をCIで拒否 |
+
 ## この台帳に載せていないもの
 
 - **SELinux の `reboot_required` を無視して次の task が落ちる件**（[#91](https://github.com/ns7jp/server-monitor/pull/91)）は、
@@ -96,7 +102,7 @@
 
 **言えること**: 静的検査（shellcheck / ansible-lint / molecule / 構文検査）を全部通しても、
 「一度も起動できていない」「壊れているのに PASS する」「証跡が残らない」ものは残ります。
-36 件のうち **6 件が偽 PASS** で、テストが無いより悪い状態でした。
+初期の36件では **6件が偽PASS** でした。現在の件数は上の集計表を参照します。
 うち 3 件（#27〜29）は 2026-08-25 に el9 の Molecule scenario を初めて実行して
 見つけたもので、いずれも「対象 OS の既定パッケージ・イメージでは動かない」型でした。
 1 件直すと次のエラーが出る、を 3 回繰り返しています。

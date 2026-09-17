@@ -16,4 +16,6 @@ COPY static ./static
 USER monitor
 EXPOSE 5000
 
-CMD ["gunicorn", "--workers", "2", "--bind", "0.0.0.0:5000", "--access-logfile", "-", "--error-logfile", "-", "app:app"]
+# gthread supports upstream keepalive; sync closes every response. Keep request
+# concurrency at two workers x one thread while reducing TCP connection churn.
+CMD ["gunicorn", "--workers", "2", "--worker-class", "gthread", "--threads", "1", "--keep-alive", "5", "--bind", "0.0.0.0:5000", "--access-logfile", "-", "--error-logfile", "-", "app:app"]

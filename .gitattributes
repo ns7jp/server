@@ -1,2 +1,2 @@
 # Preserve archived CI evidence bytes and SHA-256 on every operating system.
-docs/evidence/assets/2026-09-17-performance-ci-analysis/** -text
+docs/evidence/assets/** -text

@@ -253,6 +253,17 @@ jobs:
           python scripts/perf/check_result.py "$PERF_OUT_DIR/result.json" \
             --max-error-rate "$PERF_MAX_ERROR_RATE"
 
+      - name: Check isolated proxy DNS and recovery
+        if: always()
+        # Run after measurement so lifecycle work cannot cool or alter the load test.
+        # A failure, including unavailable images, is a nonzero result, not a skip.
+        run: |
+          set -o pipefail
+          mkdir -p "$PERF_OUT_DIR"
+          timeout --signal=TERM --kill-after=30s 150s \
+            bash scripts/perf/check-proxy-recovery.sh \
+            2>&1 | tee "$PERF_OUT_DIR/proxy-recovery.log"
+
       - name: Collect Compose logs
         if: always()
         run: |
