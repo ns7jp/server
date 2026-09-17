@@ -183,6 +183,46 @@ def test_http_error_status_is_kept_in_latency_but_not_in_success():
     assert summary["latency_ms"]["count"] == 3
     assert summary["success_requests"] == 1
     assert summary["status_counts"] == {"200": 1, "404": 1, "500": 1}
+    assert summary["http_error_requests"] == 2
+    assert summary["transport_error_requests"] == 0
+    assert summary["error_requests"] == 2
+    assert summary["error_rate"] == pytest.approx(2 / 3)
+    assert summary["success_throughput_rps"] == pytest.approx(1.0)
+
+
+def test_http_and_transport_errors_are_counted_once_and_exclude_warmup():
+    samples = [
+        Sample(latency_ms=1.0, status=502, warmup=True),
+        Sample(latency_ms=2.0, status=200),
+        Sample(latency_ms=3.0, status=302),
+        Sample(latency_ms=4.0, status=502),
+    ]
+    errors = [ErrorRecord(kind="timeout"), ErrorRecord(kind="timeout", warmup=True)]
+    summary = load.summarize(samples, errors, elapsed_s=2.0)
+    assert summary["total_requests"] == 4
+    assert summary["response_requests"] == 3
+    assert summary["error_requests"] == 2
+    assert summary["http_error_requests"] == 1
+    assert summary["transport_error_requests"] == 1
+    assert summary["error_rate"] == pytest.approx(0.5)
+    assert summary["success_requests"] + summary["error_requests"] == 4
+    assert summary["success_throughput_rps"] == pytest.approx(1.0)
+
+
+def test_historical_502_failures_cannot_pass_error_rate_gate():
+    # CI run 35197884893, concurrency 4: fast 502s were incorrectly counted as no error.
+    samples = [Sample(latency_ms=10.0, status=200)] * 11059
+    samples += [Sample(latency_ms=1.0, status=502)] * 7115
+    summary = load.summarize(samples, [], elapsed_s=20.0)
+    assert summary["error_rate"] == pytest.approx(7115 / 18174)
+    assert load.evaluate_slo(summary, p95_ms=500, error_rate=0.05)["verdict"] == "FAIL"
+
+
+def test_fast_http_errors_fail_slo_even_when_latency_is_good():
+    summary = load.summarize([Sample(latency_ms=1.0, status=502)] * 10, [], 1.0)
+    assert summary["latency_ms"]["p95"] == 1.0
+    assert summary["error_rate"] == 1.0
+    assert load.evaluate_slo(summary, p95_ms=500, error_rate=0.01)["verdict"] == "FAIL"
 
 
 # ---------------------------------------------------------------------------

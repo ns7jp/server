@@ -28,7 +28,9 @@
 エラー率の定義（重要）
 ----------------------
     エラー率 = エラー件数 / (warmup 後に完了した全リクエスト件数)
-分母は「warmup 後に完了した全リクエスト」＝ 成功サンプル件数 + エラー件数 です。
+分子は通信エラーと HTTP の非成功応答（2xx/3xx 以外）の合計です。
+分母は「warmup 後に完了した全リクエスト」＝ HTTP 応答件数 + 通信エラー件数 です。
+HTTP エラーは応答件数に含まれるため、分母へ二重に加算しません。
 warmup 中に完了したものと、打ち切り時にまだ完了していないものは、
 分子にも分母にも入れません。
 
@@ -150,7 +152,7 @@ def summarize(
     - レイテンシ統計の対象は「レスポンスを受け取れたもの」だけです。
       タイムアウト・接続エラーは latency に混ざりません。
     - エラー率の分母は「warmup 後に完了した全リクエスト」
-      ＝ 成功サンプル件数 + エラー件数 です。
+      ＝ HTTP 応答件数 + 通信エラー件数 です。HTTP 非成功応答も分子へ含めます。
     - elapsed_s が 0 以下のときは throughput を 0.0 とします（ゼロ除算回避）。
     """
     counted_samples = [s for s in samples if not s.warmup]
@@ -162,12 +164,13 @@ def summarize(
 
     # 分母: warmup 後に完了した全リクエスト。
     total_completed = len(counted_samples) + len(counted_errors)
-    error_count = len(counted_errors)
-    error_rate = (error_count / total_completed) if total_completed else 0.0
-
     # 2xx/3xx を「成功」とみなします（4xx/5xx はレスポンスは返っているので
     # レイテンシには含めますが、成功数からは外します）。
     success_count = sum(c for st, c in status_counts.items() if 200 <= st < 400)
+    transport_error_count = len(counted_errors)
+    http_error_count = len(counted_samples) - success_count
+    error_count = transport_error_count + http_error_count
+    error_rate = (error_count / total_completed) if total_completed else 0.0
 
     throughput = (total_completed / elapsed_s) if elapsed_s > 0 else 0.0
 
@@ -176,12 +179,16 @@ def summarize(
         "success_requests": success_count,
         "response_requests": len(counted_samples),
         "error_requests": error_count,
+        "transport_error_requests": transport_error_count,
+        "http_error_requests": http_error_count,
         "error_rate": error_rate,
-        "error_rate_denominator": "warmup 後に完了した全リクエスト（成功サンプル + エラー）",
+        "error_rate_definition": "通信エラー + HTTP 非成功応答（2xx/3xx 以外） / 全完了件数",
+        "error_rate_denominator": "warmup 後に完了した全リクエスト（HTTP 応答 + 通信エラー）",
         "status_counts": {str(k): v for k, v in sorted(status_counts.items())},
         "error_counts": dict(sorted(error_counts.items())),
         "elapsed_seconds": elapsed_s,
         "throughput_rps": throughput,
+        "success_throughput_rps": (success_count / elapsed_s) if elapsed_s > 0 else 0.0,
         "latency_ms": {
             "count": len(latencies),
             "min": latencies[0] if latencies else None,
@@ -402,6 +409,7 @@ def build_report(
 ) -> dict[str, Any]:
     """出力 JSON を組み立てます。"""
     report: dict[str, Any] = {
+        "schema_version": 2,
         "tool": "scripts/perf/load.py",
         "label": args.label,
         "target_url": args.url,
@@ -454,7 +462,8 @@ def format_human(report: dict[str, Any]) -> str:
         f"エラー率          : {s['error_rate'] * 100:.3f} %",
         f"スループット      : {s['throughput_rps']:.2f} req/s",
         f"ステータス内訳    : {s['status_counts'] or '(なし)'}",
-        f"エラー内訳        : {s['error_counts'] or '(なし)'}",
+        f"通信エラー内訳    : {s['error_counts'] or '(なし)'}",
+        f"HTTP 非成功応答   : {s['http_error_requests']} 件（2xx/3xx 以外）",
         f"レイテンシ        : min {ms(lat['min'])} / p50 {ms(lat['p50'])} / "
         f"p90 {ms(lat['p90'])} / p95 {ms(lat['p95'])} / p99 {ms(lat['p99'])} / max {ms(lat['max'])}",
         f"パーセンタイル法  : {s['percentile_method']}",
