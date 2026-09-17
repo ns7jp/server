@@ -1,0 +1,299 @@
+name: Performance test
+
+# 目的:
+#   負荷を段階的に上げて「どこで飽和するか（さばききれなくなるか）」と
+#   p95 応答時間（速い順に並べて 95% 目の値）の傾向を記録するワークフローです。
+#   実測値そのものは実行時に生成され、成果物（artifact）として保存されます。
+#   このファイルには実測値を一切書きません。閾値はすべて input か環境変数で与えます。
+on:
+  workflow_dispatch:
+    inputs:
+      steps:
+        description: '同時接続数の段階（カンマ区切り）。例: 1,2,4,8,16'
+        required: false
+        default: '1,2,4,8,16'
+      duration:
+        description: '各段階の測定時間（秒）'
+        required: false
+        default: '20'
+      warmup:
+        description: '各段階の前に捨てる助走時間（秒）'
+        required: false
+        default: '5'
+      max_error_rate:
+        description: '失敗と見なすエラー率のしきい値（0.05 = 5%）'
+        required: false
+        default: '0.05'
+  pull_request:
+    paths:
+      - 'app.py'
+      - 'compose.yaml'
+      - 'compose.perf.yaml'
+      - 'Dockerfile'
+      - 'requirements.txt'
+      - 'deploy/nginx/**'
+      - 'scripts/perf/**'
+      - 'tests/test_perf.py'
+      - '.github/workflows/perf-test.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  # 性能測定は同じ runner 上で並走させると互いに干渉するため、重ねて走らせません。
+  group: perf-test-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # nginx はホストの 127.0.0.1:8080 に公開されます（compose.yaml の既定値）。
+      MONITOR_BIND_ADDRESS: '127.0.0.1'
+      MONITOR_PORT: '8080'
+      PERF_URL: 'http://127.0.0.1:8080/healthz'
+      # workflow_dispatch 以外（pull_request）では inputs が空になるため、既定値へ落とします。
+      PERF_STEPS: ${{ inputs.steps || '1,2,4,8,16' }}
+      PERF_DURATION: ${{ inputs.duration || '20' }}
+      PERF_WARMUP: ${{ inputs.warmup || '5' }}
+      PERF_MAX_ERROR_RATE: ${{ inputs.max_error_rate || '0.05' }}
+      # 起動対象。フル構成（Prometheus / Grafana など）は測定ノイズになるため上げません。
+      PERF_SERVICES: 'app nginx'
+      PERF_OUT_DIR: ${{ github.workspace }}/.artifacts/perf
+      COMPOSE_FILES: '-f compose.yaml -f compose.perf.yaml'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Prepare secrets from examples
+        # python-check.yml と同じやり方です。CI では example をそのまま使います
+        # （本物の資格情報はリポジトリに置きません）。
+        run: |
+          cp deploy/secrets/dashboard_password.txt.example deploy/secrets/dashboard_password.txt
+          cp deploy/secrets/metrics_token.txt.example deploy/secrets/metrics_token.txt
+          cp deploy/secrets/grafana_admin_password.txt.example deploy/secrets/grafana_admin_password.txt
+          cp deploy/secrets/slack_webhook_url.txt.example deploy/secrets/slack_webhook_url.txt
+          cp deploy/secrets/zabbix_db_password.txt.example deploy/secrets/zabbix_db_password.txt
+
+      - name: Validate perf Compose overlay
+        run: docker compose $COMPOSE_FILES config --quiet
+
+      - name: Start application stack
+        run: |
+          mkdir -p "$PERF_OUT_DIR"
+          # shellcheck disable=SC2086
+          docker compose $COMPOSE_FILES up -d --build $PERF_SERVICES
+
+      - name: Wait for /healthz
+        # ここで返らない場合は測定以前の問題なので、ワークフローを落とします。
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -fsS --max-time 5 "$PERF_URL" > /dev/null; then
+              echo "healthz responded"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::/healthz did not respond within the timeout" >&2
+          exit 1
+
+      - name: Run load test
+        id: perf
+        run: |
+          set -o pipefail
+          # run-perf.sh は「SLO を満たさなかった」ときに exit 1 を返します。
+          # それは測定が失敗したのではなく、測った結果が目標に届かなかったという意味です。
+          # ここで打ち切ると result.json が書かれず、いちばん見たい「届かなかった記録」が
+          # 残らなくなるため、終了コードは記録だけして先へ進めます。
+          # 測定そのものが成立しなかったケース（RESULT_JSON が無い）は、この下で落とします。
+          run_rc=0
+          bash scripts/perf/run-perf.sh \
+            --url "$PERF_URL" \
+            --steps "$PERF_STEPS" \
+            --duration "$PERF_DURATION" \
+            --warmup "$PERF_WARMUP" \
+            --out-dir "$PERF_OUT_DIR" \
+            --no-compose \
+            2>&1 | tee "$PERF_OUT_DIR/run-perf.log" || run_rc=$?
+          echo "run-perf.sh exit code: $run_rc"
+          echo "run_rc=$run_rc" >> "$GITHUB_OUTPUT"
+          # run-perf.sh は最終行に RESULT_JSON= で機械可読な JSON を出します。
+          result_line="$(grep '^RESULT_JSON=' "$PERF_OUT_DIR/run-perf.log" | tail -n 1)"
+          if [ -z "$result_line" ]; then
+            echo "::error::RESULT_JSON line was not found in run-perf.sh output (exit $run_rc)" >&2
+            exit 1
+          fi
+          printf '%s\n' "${result_line#RESULT_JSON=}" > "$PERF_OUT_DIR/result.json"
+
+      - name: Build Markdown summary
+        if: always()
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import pathlib
+
+          out_dir = pathlib.Path(os.environ["PERF_OUT_DIR"])
+          summary_path = out_dir / "summary.md"
+          result_path = out_dir / "result.json"
+
+          lines = ["## 負荷試験サマリー", ""]
+
+          # measured = このジョブで段階ごとの測定値が実際に得られたか。
+          # 測れていないのに「実測済み」と書くと、実行していない試験の結果が
+          # あるかのように読めてしまうため、末尾の注記はこのフラグで切り替えます。
+          measured = False
+
+          if not result_path.exists():
+              lines += [
+                  "**このジョブでは測定値が得られませんでした（実測値なし / NOT MEASURED）。**",
+                  "結果 JSON がありません。測定が完走しなかった可能性があります。",
+                  "詳細は artifact の `run-perf.log` を確認してください。",
+              ]
+          else:
+              data = json.loads(result_path.read_text(encoding="utf-8"))
+              rows = data.get("steps") or data.get("results") or []
+              meta = [
+                  f"- 対象 URL: `{data.get('url', os.environ.get('PERF_URL', ''))}`",
+                  f"- 段階: `{os.environ.get('PERF_STEPS', '')}`",
+                  f"- 各段階の測定時間: {os.environ.get('PERF_DURATION', '')} 秒"
+                  f"（助走 {os.environ.get('PERF_WARMUP', '')} 秒）",
+                  f"- 実行環境: GitHub hosted runner（`{os.environ.get('RUNNER_OS', '')}`）",
+              ]
+              lines += meta + [""]
+              if rows:
+                  measured = True
+                  lines += [
+                      "| 同時接続数 | req/s | p50 (ms) | p95 (ms) | p99 (ms) | エラー率 |",
+                      "| ---: | ---: | ---: | ---: | ---: | ---: |",
+                  ]
+
+                  def cell(row, *keys):
+                      for key in keys:
+                          value = row.get(key)
+                          if value is not None:
+                              return value
+                      return "-"
+
+                  for row in rows:
+                      lines.append(
+                          "| {c} | {r} | {p50} | {p95} | {p99} | {err} |".format(
+                              c=cell(row, "concurrency", "workers"),
+                              # run-perf.sh の RESULT_JSON は throughput_rps /
+                              # latency_p95_ms というキー名で出します。取れない値は
+                              # "-" のままにし、推測で埋めることはしません。
+                              r=cell(row, "throughput_rps", "requests_per_second", "rps"),
+                              p50=cell(row, "latency_p50_ms", "p50_ms", "p50"),
+                              p95=cell(row, "latency_p95_ms", "p95_ms", "p95"),
+                              p99=cell(row, "latency_p99_ms", "p99_ms", "p99"),
+                              err=cell(row, "error_rate", "errors_rate"),
+                          )
+                      )
+              else:
+                  lines.append("段階ごとの結果が JSON に含まれていませんでした。")
+              lines += ["", "<details><summary>RESULT_JSON</summary>", "", "```json"]
+              lines += [json.dumps(data, ensure_ascii=False, indent=2), "```", "</details>"]
+
+          if measured:
+              lines += [
+                  "",
+                  "> 上の表は、このジョブで実際に測った値（実測済み）です。GitHub hosted runner は",
+                  "> 実行ごとに性能がばらつくため、絶対値の比較ではなく飽和点と p95 の傾向を",
+                  "> 読む目的で使います。",
+                  "> 本番相当の判定は `docs/slo.md` の SLO に基づき別途行います。",
+              ]
+          else:
+              lines += [
+                  "",
+                  "> このジョブでは測定できていないため、**実測値はありません（未実施 / NOT RUN 相当）。**",
+                  "> 値が無いことを「問題なし」と読み替えないでください。",
+              ]
+
+          summary_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          step_summary = os.environ.get("GITHUB_STEP_SUMMARY")
+          if step_summary:
+              with open(step_summary, "a", encoding="utf-8") as handle:
+                  handle.write(summary_path.read_text(encoding="utf-8"))
+          PY
+
+      - name: Check for obvious failures
+        if: always()
+        # 合否の考え方（重要）:
+        #   GitHub hosted runner は CPU もディスクも他の利用者と共有され、実行ごとに
+        #   性能が大きくばらつきます。そこで「p95 が N ミリ秒未満」のような絶対値での
+        #   合否判定は行いません（同じコードでも runner 次第で落ちてしまい、
+        #   赤信号が信用されなくなるためです）。
+        #   ここで落とすのは、環境のばらつきでは説明できない明らかな異常だけです:
+        #     1) 結果 JSON が無い（測定が走っていない）
+        #     2) エラー率が PERF_MAX_ERROR_RATE を超えた
+        #     3) /healthz が応答しない（前段の Wait ステップで既に失敗します）
+        #   絶対値での SLO 判定は docs/slo.md に基づき、本番相当の環境で別途行います。
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import pathlib
+          import sys
+
+          out_dir = pathlib.Path(os.environ["PERF_OUT_DIR"])
+          result_path = out_dir / "result.json"
+          if not result_path.exists():
+              print("::error::result.json was not produced; the load test did not complete")
+              sys.exit(1)
+
+          data = json.loads(result_path.read_text(encoding="utf-8"))
+          rows = data.get("steps") or data.get("results") or []
+          if not rows:
+              print("::error::the load test produced no measurement steps")
+              sys.exit(1)
+
+          threshold = float(os.environ["PERF_MAX_ERROR_RATE"])
+          failed = []
+          for row in rows:
+              rate = row.get("error_rate")
+              if rate is None and row.get("requests"):
+                  errors = row.get("errors") or 0
+                  rate = errors / float(row["requests"])
+              if rate is None:
+                  continue
+              if float(rate) > threshold:
+                  failed.append((row.get("concurrency", "?"), float(rate)))
+
+          for concurrency, rate in failed:
+              print(f"::error::concurrency={concurrency} error_rate={rate} > {threshold}")
+
+          if failed:
+              sys.exit(1)
+          print(f"error rate is within the threshold ({threshold})")
+          PY
+
+      - name: Collect Compose logs
+        if: always()
+        run: |
+          mkdir -p "$PERF_OUT_DIR"
+          # shellcheck disable=SC2086
+          docker compose $COMPOSE_FILES logs --no-color --timestamps > "$PERF_OUT_DIR/compose-logs.txt" 2>&1 || true
+
+      - name: Upload performance artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-test-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.PERF_OUT_DIR }}
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Tear down Compose stack
+        if: always()
+        run: |
+          # shellcheck disable=SC2086
+          docker compose $COMPOSE_FILES down --volumes --remove-orphans || true

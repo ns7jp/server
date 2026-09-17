@@ -65,3 +65,4 @@ free -h
 
 - [SLO 定義](../slo.md)
 - [レイテンシ Runbook](./latency-spike.md)
+- [対応する演習スクリプト（D-7 メモリ圧迫）](../../scripts/drills/d7-memory-pressure.sh)

@@ -101,6 +101,49 @@
 | ST-05 | secret scan | CI security scan | high severity なし | NOT RUN | — |
 | ST-06 | storage 安全装置 | `storage-guard-test.sh`（negative test 6 ケース + 許可される正常系 1 ケース） | 意図した拒否がすべて成立し、正常系ケースは拒否されない | NOT RUN | — |
 
+## 性能試験
+
+負荷をかけて、スループット（秒あたり処理本数）・レイテンシ分布（応答時間のばらつき）・
+エラー率・飽和点（さばききれなくなる点）を測る試験です。測り方と結果の読み方は
+[負荷試験の手順と読み方](../performance-test.md)にまとめています。
+
+合否条件の `p95 <= 500ms` は [docs/slo.md](../slo.md) の
+[2.2 レイテンシ](../slo.md#22-レイテンシ)の値をそのまま使います。この章で新しい
+目標値は作りません。エラー率 `0.01` は
+[`scripts/perf/run-perf.sh`](../../scripts/perf/run-perf.sh) が判定に使う値です。
+
+| ID | 試験 | 操作 | 期待結果 | 結果 | 証跡 |
+| --- | --- | --- | --- | --- | --- |
+| PT-01 | 集計ロジック単体 | `pytest tests/test_perf.py` | 全 test pass（パーセンタイル・エラー率・SLO 判定の境界） | NOT RUN | — |
+| PT-02 | perf overlay 構文 | `docker compose -f compose.yaml -f compose.perf.yaml config --quiet` | exit 0 | NOT RUN | — |
+| PT-03 | 基準計測 | `scripts/perf/run-perf.sh --steps 1` | 並列 1 の段が `p95 <= 500ms` かつ `error_rate <= 0.01` で PASS | NOT RUN | — |
+| PT-04 | 段階負荷・飽和点 | `scripts/perf/run-perf.sh --steps 1,2,4,8,16,32` | 全段の結果表と、飽和点（または未検出）、SLO を満たす最大並列数が `summary.md` に記録される | NOT RUN | — |
+| PT-05 | worker 数の比較 | `--workers` の値を変えて PT-04 を 2 回 | 2 回の結果が別の run directory に保存され、飽和点と p95 を比較できる | NOT RUN | — |
+| PT-06 | 重いエンドポイント | `load.py` で `/stats` を計測（認証 header 付き） | `status_counts` が 200 のみ。`/healthz` との p95 の差が記録される | NOT RUN | — |
+| PT-07 | 過負荷時の挙動 | PT-04 の飽和点を超える並列数で実行 | エラー率と p95 は悪化してよいが、`app` / `nginx` は終了せず `RestartCount` が増えない。負荷停止後に `/healthz` が 200 へ戻る | NOT RUN | — |
+| PT-08 | エラーの内訳 | PT-07 の `step-c<並列数>.json` を確認 | `error_counts` に種別（timeout / connection_error）が分かれ、`latency_ms.count` と `response_requests` が一致する（タイムアウトが応答時間に混入していない） | NOT RUN | — |
+| PT-09 | SLO 未達時の判定 | 全段が SLO を満たさない条件で実行 | 全体 verdict が `FAIL`、終了コードが非 0。PASS として記録されない | NOT RUN | — |
+| PT-10 | 疎通不可時の中止 | `app` を停止した状態で `run-perf.sh --no-compose` | 120 秒待って exit 4。結果 directory も数値も作られない | NOT RUN | — |
+| PT-11 | 不正な引数の拒否 | `--steps 8,4` / `--duration 0` / `--url ftp://example` | いずれも exit 2。負荷をかけずに停止する | NOT RUN | — |
+| PT-12 | 途中打ち切り | 計測中に SIGINT (Ctrl+C) | 結果 JSON の `partial` が `true` になり、部分的な計測である旨が出力に明記される | NOT RUN | — |
+| PT-13 | CI 実行 | Actions → [Performance test](../../.github/workflows/perf-test.yml) → Run workflow | artifact `perf-test-<run id>-<attempt>` に各段 JSON / `summary.md` / Compose log が保存される。エラー率が `max_error_rate` を超えた段があれば job が失敗する | NOT RUN | — |
+
+PT-07 の「飽和点を超える並列数」は PT-04 の実測から決めます。事前に数字を決め打ちしません。
+
+PT-05 には前提があります。`Dockerfile` の `CMD` が worker 数を直接指定しているため、
+現状は `--workers` を渡しても実際の worker 数は変わりません。実施の前に `Dockerfile`
+側の変更が必要です（[既知の制約](../performance-test.md#10-既知の制約)）。
+
+判定の境界について。`load.py` はしきい値ちょうどを PASS とします（`p95 <= 500`）。
+`docs/slo.md` の表記は `p95 < 500ms`（未満）のため、ちょうど 500.0ms のときだけ
+判断が分かれます。この表の期待結果は `load.py` の判定（`<=`）に合わせています。
+
+PT-13 の CI は GitHub hosted runner の性能ばらつきを踏まえ、絶対値では合否を出しません。
+**CI の成功は SLO の達成を意味しません。**
+
+この章の試験はいずれも 1 台・ローカル・コンテナ内の計測であり、本番環境の性能保証値
+にはなりません（[測定の限界](../performance-test.md#9-測定の限界)）。
+
 ## 終了判定
 
 - 必須 ID: UT-01〜04、UT-06、IT-01〜09、IT-12、ST-01〜05
@@ -108,6 +151,7 @@
 - 必須 ID に `NOT RUN` が残る場合も構築完了としません。
 - AWS を使用しない検証では UT-05 を `BLOCKED (AWS credentials not used)` とせず、ローカル `validate` の結果を記録します。
 - 結果はこの原本を直接上書きせず、`docs/evidence/YYYY-MM-DD-build-validation.md` にコピーして保存します。
+- 性能試験 PT-01〜PT-13 は必須 ID に含めません（1 台・ローカルの参考計測のため）。実施した場合は結果を `docs/evidence/YYYY-MM-DD-performance-test.md` に保存し、SLO の達成主張には使いません。
 
 2026-08-19の既存結果票は本項目追加前の履歴です。ephemeral runnerのIT-12は上記E2Eで
 別途採録済みですが、引き渡し対象host/管理端末のIT-12へ読み替えず、その対象環境で別途採録します。

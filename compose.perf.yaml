@@ -1,0 +1,83 @@
+# 負荷試験（パフォーマンステスト）用のオーバーレイ設定です。
+#
+# オーバーレイ = 既存の compose.yaml に「上書き・追記」する差分ファイルのことです。
+# 単体では使いません。かならず既存ファイルと一緒に指定してください。
+#
+#   docker compose -f compose.yaml -f compose.perf.yaml up -d app nginx
+#
+# 既存の compose.yaml は一切書き換えません。壊さずに設定だけ差し替えるための
+# ファイルなので、通常運用（compose.yaml だけを使う起動）には影響しません。
+#
+# 状態: 実装済み（未実施 / NOT RUN）
+#   このファイルの内容で実際に負荷試験を実行した記録はまだありません。
+#   数値はどこにも書いていません。実行したときに初めて記録します。
+---
+services:
+  # ------------------------------------------------------------------
+  # app: Flask + Gunicorn の本体です。
+  # 負荷試験では Gunicorn の worker 数（同時にリクエストをさばくプロセスの数）を
+  # 変えながら測りたいので、環境変数で外から差し替えられるようにします。
+  # ------------------------------------------------------------------
+  app:
+    environment:
+      # どのノード（サーバー）で測ったかを結果に残すための名前です。
+      MONITOR_NODE_NAME: "${MONITOR_NODE_NAME:-perf-local}"
+    # Gunicorn の worker 数（同時にリクエストをさばくプロセスの数）を、測るたびに
+    # 変えられるようにします。
+    #
+    # なぜ環境変数だけでは足りないか:
+    #   Dockerfile の CMD が `gunicorn --workers 2 ...` と worker 数を直接書いており、
+    #   Gunicorn はコマンドライン引数を環境変数 (GUNICORN_CMD_ARGS) より優先します。
+    #   そのため環境変数を渡しても worker 数は 2 のまま変わりません。
+    #   確実に変えるには、このオーバーレイで起動コマンドごと差し替えます。
+    #
+    # 注意: 下の command は Dockerfile の CMD を worker 数だけ変えて写したものです。
+    #       Dockerfile 側を変えたらここも直す必要があります。ずれを見逃さないよう、
+    #       tests/test_perf.py の test_compose_perf_command_matches_dockerfile_cmd が
+    #       CI で照合します。
+    command:
+      - gunicorn
+      - --workers
+      - "${GUNICORN_WORKERS:-2}"
+      - --bind
+      - 0.0.0.0:5000
+      - --access-logfile
+      - "-"
+      - --error-logfile
+      - "-"
+      - app:app
+
+  # nginx（受け口となるリバースプロキシ）には、このオーバーレイで変更を加えません。
+  # 公開ポートは既存の compose.yaml が
+  #   "${MONITOR_BIND_ADDRESS:-127.0.0.1}:${MONITOR_PORT:-8080}:8080"
+  # として定義しており、環境変数で変えられます。ここで ports を書き直すと
+  # 定義が二重に足し込まれてしまうため、あえて何も書いていません。
+
+  # ------------------------------------------------------------------
+  # 以下は監視系のサービスです。
+  # profiles を付けると「そのプロファイル名を明示的に指定したときだけ起動する」
+  # サービスになります。負荷試験では app と nginx だけを動かしたいので、
+  # 監視系には "monitoring" プロファイルを付けて既定では起動しないようにします。
+  #
+  # 監視込みで測りたいときは次のように --profile を足してください。
+  #   docker compose -f compose.yaml -f compose.perf.yaml --profile monitoring up -d
+  #
+  # 注意: サービスを消しているわけではありません。profiles は「起動条件」を
+  # 付けるだけなので、既存構成は壊れません。
+  # ------------------------------------------------------------------
+  prometheus:
+    profiles: ["monitoring"]
+  alertmanager:
+    profiles: ["monitoring"]
+  grafana:
+    profiles: ["monitoring"]
+  loki:
+    profiles: ["monitoring"]
+  blackbox:
+    profiles: ["monitoring"]
+  node-exporter:
+    profiles: ["monitoring"]
+  alloy:
+    profiles: ["monitoring"]
+  docker-socket-proxy:
+    profiles: ["monitoring"]
