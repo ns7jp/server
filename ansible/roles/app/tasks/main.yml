@@ -200,6 +200,8 @@
         repo: "{{ server_monitor_git_repo }}"
         dest: "{{ app_release_staging.path }}/repository"
         version: "{{ server_monitor_git_version }}"
+        # Fetch the exact object even when no branch or tag points to the commit.
+        refspec: "{{ server_monitor_git_version }}"
         update: true
         force: false
         recursive: false
