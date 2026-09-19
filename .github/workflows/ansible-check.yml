@@ -5,10 +5,12 @@ on:
     paths:
       - 'ansible/**'
       - '.github/workflows/ansible-check.yml'
+      - 'tests/test_git_source_fetch.py'
   pull_request:
     paths:
       - 'ansible/**'
       - '.github/workflows/ansible-check.yml'
+      - 'tests/test_git_source_fetch.py'
 
 jobs:
   lint:
@@ -31,6 +33,13 @@ jobs:
         run: |
           ansible --version
           ansible-lint --version
+
+      - name: Test immutable git revision fetching
+        run: |
+          command -v ansible-playbook
+          git --version
+          python -c "import yaml"
+          python -m unittest discover -s tests -p test_git_source_fetch.py -v
 
       - name: ansible-lint
         working-directory: ansible
