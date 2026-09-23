@@ -1,4 +1,4 @@
-# server — Linux サーバー構築・監視の学習ポートフォリオ
+# server — Linux / Windows Server の構築・監視の学習ポートフォリオ
 
 [![Python check](https://github.com/ns7jp/server/actions/workflows/python-check.yml/badge.svg)](https://github.com/ns7jp/server/actions/workflows/python-check.yml)
 [![Full-stack Ansible E2E](https://github.com/ns7jp/server/actions/workflows/full-stack-e2e.yml/badge.svg)](https://github.com/ns7jp/server/actions/workflows/full-stack-e2e.yml)
@@ -6,12 +6,16 @@
 **「サーバーを作る → 動作を確かめる → 異常を調べる → 元へ戻す」を学ぶ、未経験サーバー構築エンジニア志望者の個人学習ラボです。**
 業務での構築・運用経験を示すものではありません。コード・手順・試験記録をつなぎ、確認できた範囲を自分の言葉で説明することを目指します。
 
-## 本人が手元の VM で確認したこと
+## 手元の VM で私が確認したこと
 
-採用向けには、まず次の実行記録をご覧ください。**AI の手順案内を受けて本人が操作し、結果画像を残した実習**です。独力での再構築・説明を確認した記録とは区別しています。
+採用向けには、まず次の実行記録をご覧ください。いずれも **AI の手順案内を受けて、私が手元の Hyper-V 上の VM を操作し、結果を画面で確認した実習**です。AI を使わずに再現した記録は、まだありません。
 
-| 実施日 | 本人の操作と確認結果 | この記録の限界 |
+| 実施日 | 私の操作と確認結果 | この記録の限界 |
 | --- | --- | --- |
+| 2026-09-01〜02 | [AD の構築・試験](docs/evidence/2026-09-01-ad-build-validation.md)：Windows Server 2022 評価版の `ad-dc01` で AD DS（ドメインの認証基盤）を構築し、試験仕様書のフェーズ 1 必須 31 項目がすべて PASS。手順書・設計書の欠陥 6 件を実機で見つけて修正 | VM 1 台のラボで、組織 DNS・クライアント PC・中央 Prometheus からの収集（フェーズ 2、BLOCKED）は含まない |
+| 2026-09-02 | [System State 復元](docs/evidence/2026-09-02-ad-restore-drill.md)：非権威復元で、バックアップ後に作った目印の OU が消えることを確認。復元処理 15 分 29 秒、復旧全体は約 40 分（うち約 18 分は `safeboot` 解除漏れによるやり直し） | 当日は SYSVOL の欠損を見落とし、翌日に訂正 |
+| 2026-09-03〜04 | [2 台目の DC と複製](docs/evidence/2026-09-03-ad-second-dc-replication.md)：複製の失敗 0/5、遅延 17.8 秒。GPO（グループポリシー）が届かない原因を、前日の復元で欠けた `gpt.ini` と特定して修復。[計画停止](docs/evidence/2026-09-03-ad-dc-outage-drill.md)：1 台を止めても DNS・LDAP・Kerberos が継続し、復帰後の収束は 18 分 31 秒。[FSMO 奪取](docs/evidence/2026-09-04-ad-fsmo-seize.md)：1 台を失った想定で、残った DC へ FSMO 役割（特定の DC だけが担う管理役割）を奪取し、`ntdsutil` で古い DC の情報を削除 | 奪取は正常停止からで、電源断・ディスク破損の模擬ではない |
+| 2026-09-07〜08 | [WSUS の構築](docs/evidence/2026-09-07-wsus-build-validation.md)：更新配信サーバー `wsus-01` をドメインに参加させて構築。必須 28 項目中 26 PASS / 1 FAIL / 1 期待結果未達で、判定は FAIL。翌日、[残った 2 件の原因](docs/evidence/2026-09-08-wsus-sit04-sit06-root-cause.md)を実機で特定し、手順書を修正（SIT-06 は承認ルールの分類・製品が 0 件で保存され、「絞り込みなし」と解釈されていた） | 修正後のフェーズ 1 通し再試験は未実施 |
 | 2026-09-07〜08 | [Ubuntu 初期構築](docs/evidence/2026-09-08-lab-base01-initial-build.md)：固定 IP、SSH 鍵認証、sudo、UFW、時刻同期、自動更新、設定不備からの復旧 | OS 単体の演習。監視案件全体の受け入れではない |
 | 2026-09-08 | [Docker 最小構成](docs/evidence/2026-09-08-lab-base01-compose-practice.md)：app/nginx 起動、未認証 401・認証あり 200、計画停止・手動再開 | 2 サービスに限定。手動再開は自動復旧試験とは別 |
 | 2026-09-08 | [数値監視](docs/evidence/2026-09-08-lab-base01-monitoring-practice.md)：Prometheus/Grafana で収集状態の 1→0→1。[ログ検索](docs/evidence/2026-09-08-lab-base01-loki-practice.md)：目印付き Nginx ログ 2 件 | メモリ 2 GiB の VM で、それぞれ 5 / 6 サービスを分けて起動。全構成の同時稼働・通知は未実施 |
@@ -19,7 +23,20 @@
 | 2026-09-08〜09 | [Ansible 入門](docs/evidence/2026-09-08-lab-base01-ansible-intro-practice.md)、[変更予測と適用](docs/evidence/2026-09-09-lab-base01-check-diff-practice.md)、[切り戻し](docs/evidence/2026-09-09-lab-base01-rollback-practice.md)、[入力検証](docs/evidence/2026-09-09-lab-base01-validation-practice.md)：再実行の changed=0、不正値の拒否と本文維持 | ホーム内の演習ファイルが対象。OS 全体への適用、実ポート待受の確認ではない |
 | 2026-09-09〜10 | [Git の保存・履歴・除外](docs/evidence/2026-09-10-lab-base01-git-practice.md)、[マージ・競合解消・abort](docs/evidence/2026-09-10-lab-base01-git-merge-practice.md)：元の main と clean 状態へ復帰 | VM 内の別の演習リポジトリ。GitHub の PR マージや Ansible 反映ではない |
 
-次は [小さな構成の再起動・24 時間点検・別 VM 復元・引き渡し](docs/partial-lab-continuation.md)へ進みます。**この続編は手順を準備した段階で、新しい実機結果は `NOT RUN`** です。過去の記録を上書きせず、実行した段階だけ追記します。
+AD の作業結果と、障害・課題 15 件（LAB-01〜15）の対処は[作業結果・引き渡し報告](docs/evidence/2026-09-02-work-result-SM-AD-001.md)にまとめています。
+
+Linux の演習は、次に [小さな構成の再起動・24 時間点検・別 VM 復元・引き渡し](docs/partial-lab-continuation.md)へ進みます。**この続編は手順を準備した段階で、新しい実機結果は `NOT RUN`** です。過去の記録を上書きせず、実行した段階だけ追記します。
+
+## 採用ご担当者向け：最初に見る 4 点
+
+1. [構成と設計判断](docs/design-decisions.md)：何を作り、なぜその構成にしたか。
+2. [Linux 構築案件パック](docs/build-package/README.md)・[AD 構築案件パック](docs/build-package-ad/README.md)：要件 → 設計値 → 構築 → 試験 → 証跡 → 運用 → 変更の文書。
+3. [検証証跡台帳](docs/evidence/README.md)：実行日時・環境・対象 commit・結果・未実施の範囲。
+4. [失敗から学んだ事例](docs/lessons-learned.md)：想定が外れた原因、修正と再発防止。
+
+**2026-09-17 の性能改善**: [旧 CI の分析](docs/evidence/2026-09-17-performance-ci-analysis.md)で HTTP 502 の集計漏れを見つけ、集計・CI 判定と上流接続の再利用を修正しました。[比較と確認試験](docs/evidence/2026-09-17-upstream-keepalive-comparison.md)では、同じ負荷設定の 2 回の CI で、並列 1/2/4/8/16 の HTTP・通信失敗が 0 件でした。最終試験では、認証（未認証 401・認証あり 200）と、アプリの IP を変えた後の復旧も確かめました。AI 支援による分析・改善で、測定は使い捨て runner での短時間のものです（長期運用や本番の容量は対象外）。
+
+[保存済み証跡のデモ](https://ns7jp.github.io/demo.html)は 2026-08-18/19 の画像・ログを再構成した閲覧用リプレイで、実操作の連続録画ではありません。
 
 ## 未経験から始める方へ
 
@@ -60,22 +77,12 @@ flowchart LR
 コンテナ内の `psutil` は実行環境から見える値を返します。すべてがコンテナの使用量だけを表すとは限らないため、Linux ホストの監視は `node-exporter` 側で確認します。
 
 <a id="3分で説明するなら"></a>
+
 ## 30 秒で説明するなら
 
 > サーバーを構築し、動作確認と障害対応まで学ぶ個人ラボです。Linux 上でアプリを動かし、応答と認証を確認します。次に Prometheus で数値を集め、Grafana で見えるようにします。実際に行った操作と結果を記録し、未実施の内容も分けて説明します。
 
 これはプロジェクトの紹介例です。「私は構築・検証しました」と話す範囲は、自分の実行記録がある項目に限ります。[3 分説明の型・想定質問・復習方法](docs/beginner-learning-guide.md#5-説明して定着させる)で練習できます。
-
-## 採用ご担当者向け：最初に見る 4 点
-
-1. [構成と設計判断](docs/design-decisions.md)：何を作り、なぜその構成にしたか。
-2. [Linux 構築案件パック](docs/build-package/README.md)：要件 → 設計値 → 構築 → 試験 → 証跡 → 運用 → 変更の文書。
-3. [検証証跡台帳](docs/evidence/README.md)：実行日時・環境・対象 commit・結果・未実施の範囲。
-4. [失敗から学んだ事例](docs/lessons-learned.md)：想定が外れた原因、修正と再発防止。
-
-**2026-09-17 の性能改善**: [旧CIの分析](docs/evidence/2026-09-17-performance-ci-analysis.md)でHTTP502の集計漏れを発見し、集計・CI判定と上流接続の再利用を修正しました。[比較と確認試験](docs/evidence/2026-09-17-upstream-keepalive-comparison.md)では、同じ負荷設定の2回のCIで並列1/2/4/8/16のHTTP・通信失敗が0件でした。最終試験では認証とアプリIP変更後の復旧も確認しています。使い捨てrunnerの短時間測定であり、本人の操作・長期運用・本番容量とは別のAI支援による改善記録です。
-
-[保存済み証跡のデモ](https://ns7jp.github.io/demo.html)は 2026-08-18/19 の画像・ログを再構成した閲覧用リプレイで、実操作の連続録画ではありません。
 
 ## 実装と検証の範囲
 
@@ -86,9 +93,10 @@ flowchart LR
 | 記録済みの VM 実測 | [2026-09-04 Ubuntu の基盤構築](docs/evidence/2026-09-04-ansible-foundation-build.md)と[AlmaLinux の基盤構築](docs/evidence/2026-09-04-ansible-foundation-el9-build.md)：`foundation.yml` の `common` / `docker` role 適用・冪等性 | 監視全体の `site.yml` とは別。AlmaLinux は再利用 VM で、新規構築・最小公開の証明には未到達 |
 | 記録済みの手作業構築 | [2026-09-07〜08 lab-base01](docs/evidence/2026-09-08-lab-base01-initial-build.md)：Hyper-V 上の Ubuntu へ固定 IP・SSH 鍵認証・sudo・UFW・時刻同期・自動更新を手作業で設定し、設定不備を起こして表示とログを照合し復旧。判定は PASS 14 / PASS-ADAPTED 4 / PARTIAL 2 / NOT RUN 1、ほかに T-14 代替演習 1 件 PASS | Ansible も本リポジトリのコードも使わない OS 単体の演習で、`SM-LAB-001` の受け入れではない。AI が手順案内・画像読取り・記録編集を支援。「教材どおり 21/21 PASS」ではない。独力での再現、第三者への引き渡し、長期稼働は対象外 |
 | 記録済みの手作業アプリ起動 | [2026-09-08 lab-base01 の Docker 最小構成](docs/evidence/2026-09-08-lab-base01-compose-practice.md)：同じ VM に Docker Engine / Compose を導入し、指定 SHA の作業ツリーで pytest 167 件、app と nginx の 2 サービス起動、未認証 401 と Basic 認証つき 200、Nginx の計画停止と手動再開、撤去までを CP-01〜13 で PASS | 起動したのは app と nginx の 2 つだけ。Prometheus / Grafana / Alloy / Loki / Alertmanager の起動、Ansible 適用、D-1 自動復旧、AWS は `NOT RUN`。表示された停止 0.7 秒などは Docker CLI の表示で、利用者視点の RTO ではない |
+| 記録済みの手作業 Windows Server 構築 | [2026-09-01〜08 の AD / WSUS](docs/evidence/2026-09-02-work-result-SM-AD-001.md)：手元の Hyper-V 上の Windows Server 2022 評価版 VM で、[AD 構築案件パック](docs/build-package-ad/README.md)と [WSUS 構築案件パック](docs/build-package-wsus/README.md)の手順書・試験仕様書どおりに構築・試験。AD はフェーズ 1 必須 31 項目 PASS、WSUS は判定 FAIL（原因は特定済み） | PowerShell による手作業で、Ansible の Windows 対応 role（フェーズ 2）は実機へ未適用。組織 DNS・クライアント PC・長期稼働は対象外 |
 | 未実施 | AWS の実適用・削除、Slack 実配信、監視ラボの長期稼働、D-2 ホスト障害復元 | `NOT RUN`。[実測計画](docs/real-environment-validation-plan.md)を参照 |
 
-実行者が本人・CI・AI 支援環境のどれかも各証跡で区別します。既存の PASS を、読む人自身の習得・実行実績へ転記しません。
+実行者が私・CI・AI 支援環境のどれかも、各証跡で区別します。既存の PASS を、読む人自身の習得・実行実績へ転記しません。
 
 ## ドキュメント
 
@@ -105,7 +113,7 @@ flowchart LR
 
 ## AI の利用について
 
-文書作成、コード生成、レビュー、検証補助に AI を使っています。本人の理解や実施を代行した実績として扱いません。学習記録には **自分で実行・説明できる範囲、AI に支援された範囲、未確認の範囲**を残します。[利用範囲の詳細](docs/project-reference.md#ai-の利用について)も公開しています。
+文書作成、コード生成、レビュー、検証補助に AI を使っています。AI が生成したコードや説明は、私が実行・理解するまで実績として扱いません。学習記録には **自分で実行・説明できる範囲、AI に支援された範囲、未確認の範囲**を残します。[利用範囲の詳細](docs/project-reference.md#ai-の利用について)も公開しています。
 
 <details>
 <summary>以前の README の節から探す</summary>
