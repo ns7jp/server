@@ -22,7 +22,7 @@ PASSは下表の観測した観点に対する判定で、未採録の全操作�
 | --- | --- |
 | 実施者 | ns7jp本人。対話で提示された手順を本人が入力し、結果画像を提供 |
 | 実施期間 | 2026-09-07〜08（JST、対話の日付に基づく）。全コマンドの正確な実行日時は未採録 |
-| 教材 | [Phase 1：空のVMからの初期構築](https://github.com/ns7jp/ns7jp/blob/main/docs/learning-plan/05-phase1-exercise-design.md)。2026-09-08取得時のGit blob SHAは `a836462b476a70a03a0e84fa52ac66fbb7aa11ba` |
+| 教材 | [Phase 1：空のVMからの初期構築](https://github.com/ns7jp/ns7jp/blob/3f3403d9722d32024afafee8d717c1e77d078c5d/docs/learning-plan/05-phase1-exercise-design.md)。2026-09-08取得時のGit blob SHAは `a836462b476a70a03a0e84fa52ac66fbb7aa11ba`（リンクはこの blob を含む ns7jp/ns7jp のコミットに固定。教材は 2026-09-23 に [ns7jp/learning](https://github.com/ns7jp/learning/blob/main/docs/learning-plan/05-phase1-exercise-design.md) へ移動） |
 | 記録作成の基点 | `ns7jp/server` main `33f1fae9b9c5bc4854831e70553a3009c8f8e097`。報告書を追加する基点であり、VMの配備commitではない |
 | VMの配備commit | 未採録／今回の手動OS初期構築に対応するアプリ配備SHAはない。Git checkoutやAnsible適用を実施したとは扱わない |
 | 一次資料 | 本人提供のスクリーンショット42枚。原画像を無加工でコピーし、[画像一覧・由来](screenshots/2026-09-07-08-lab-base01/README.md)とハッシュを添付 |
@@ -151,7 +151,7 @@ T-12用の未登録鍵 `id_ed25519_lab_wrongkey` のWindows側削除は画像で
 - [検証証跡台帳](README.md)
 - [元画像42枚・SHA-256対応](screenshots/2026-09-07-08-lab-base01/README.md)
 - [続きの演習：Docker最小構成の起動・認証・停止再開](2026-09-08-lab-base01-compose-practice.md)
-- [教材の学習計画](https://github.com/ns7jp/ns7jp/tree/main/docs/learning-plan)
+- [教材の学習計画](https://github.com/ns7jp/learning/tree/main/docs/learning-plan)
 
 [E01]: screenshots/2026-09-07-08-lab-base01/E01-initial-os.png
 [E02]: screenshots/2026-09-07-08-lab-base01/E02-ssh-socket.png

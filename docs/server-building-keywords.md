@@ -1433,7 +1433,7 @@ AWS実環境での稼働実績ではありません。
 
 この節は`docs/build-package-wsus/`（WSUS版案件パック、案件ID`SM-WSUS-001`）を読むための
 用語です。ドメイン参加・GPO・メンバーサーバーといったAD側の用語は
-「[10. Active Directory の基礎](#10-active-directory-の基礎)」にあります。より丁寧な解説は
+「[10. Active Directory の基礎](#10-active-directoryadの基礎)」にあります。より丁寧な解説は
 [案件パック初心者ガイド（WSUS版）](build-package-wsus/beginner-guide.md)にあります。
 
 ### WSUS（Windows Server Update Services）

@@ -19,7 +19,7 @@
 | ログ集約 | Loki + Grafana Alloy でコンテナログとホスト `/var/log` を収集。AlloyはDocker socketを直接持たず、専用proxyのGET/HEAD限定APIを使用 |
 | 障害対応 | アラートルール、停止ランブック、CPU 高負荷の模擬インシデント記録 |
 | 構成管理 | Ansible roles で OS / Docker / TLS / 監視設定 / アプリ配備 / バックアップを宣言的に管理 |
-| OS ファミリー | Ubuntu 22.04 / 24.04 に加えて **AlmaLinux / Rocky 9** に対応（`dnf`、firewalld、SELinux、dnf-automatic、sshd drop-in 検査）|
+| OS ファミリー | Ubuntu 22.04 / 24.04 に加えて **AlmaLinux / Rocky 9** に対応（`dnf`、firewalld、SELinux、dnf-automatic、sshd drop-in 検査） |
 | ディスク設計 | `storage` role で LVM の VG / LV / ファイルシステム / fstab を管理。既存署名のあるディスクは `wipefs` の実読みで拒否 |
 | 3 層構成 | [Web / AP / DB ラボ](../labs/three-tier/README.md)。層別 health endpoint、層の分離、PostgreSQL の復元試験 |
 | L2 / L3 | [ルーティングラボ](../labs/routing/README.md)。静的ルート、`ip_forward`、802.1Q VLAN の切り分け |
@@ -94,11 +94,11 @@ flowchart LR
 | 文書 | 内容 |
 | --- | --- |
 | [Ansible自動化基盤構築案件パック](build-package-ansible/README.md) | 監視アプリではなく、`common` / `docker` roleと新設した`ansible/playbooks/foundation.yml`（既存roleの組み合わせ）自体を案件の成果物として設計・試験・引き渡しする一式（[初心者ガイド](build-package-ansible/beginner-guide.md)付き）。role設計・変数の優先順位・冪等性・複数OS対応が主題。2026-09-04に手元Hyper-VのVM 2台（Ubuntu・AlmaLinux 9.7）でフェーズ1・フェーズ2の構築・冪等性を実測PASS（[フェーズ1](evidence/2026-09-04-ansible-foundation-build.md) / [フェーズ2](evidence/2026-09-04-ansible-foundation-el9-build.md)）。実行して見つけた欠陥2件は[欠陥台帳](evidence/defects-found.md)#30・#31に記録。フェーズ2のVMは再利用環境のため、最小公開の証跡は専用新規VMでの再実施が必要 |
-| [Windows サーバー構築案件パック](build-package-windows/README.md) | 既存監視基盤へ Windows Server を監視対象ホストとして追加する設計・パラメータ・手順一式（[初心者ガイド](build-package-windows/beginner-guide.md)付き）。フェーズ2（中央監視統合）は、Windows対応Ansible role（`ansible/roles/common_windows`）、Grafana Alloy for WindowsのWindows側導入タスク・設定テンプレート、中央側のログpush経路（`compose.loki-push.yaml.example`+`deploy/nginx/loki-push.conf.example`、Bearer token認証・送信元IP許可リスト）をいずれもコードとして追加済みだが、実機Windows Server・実機Lokiへの実行実績はゼロ件。Dockerホスト↔対象Windowsホスト間の実L3到達性・Firewall許可の未確立とあわせ2点の解消待ちで`BLOCKED` |
-| [AD (Active Directory) サーバー構築案件パック](build-package-ad/README.md) | 新規フォレスト・単一ドメインコントローラーを構築する設計・パラメータ・手順一式（[初心者ガイド](build-package-ad/beginner-guide.md)付き）。2026-09 に手元 Hyper-V の VM で フェーズ1 を通しで実施し、必須 31 ID を PASS（[構築・試験](evidence/2026-09-01-ad-build-validation.md) / [ネットワーク](evidence/2026-09-01-network-host-validation-ad.md) / [引き渡し報告](evidence/2026-09-02-work-result-SM-AD-001.md)）。実機で見つけた手順書の誤り 6 件は修正済み。中央監視統合はWindows版と同じ理由で未実装 |
+| [Windows サーバー構築案件パック](build-package-windows/README.md) | 既存監視基盤へ Windows Server を監視対象ホストとして追加する設計・パラメータ・手順一式（[初心者ガイド](build-package-windows/beginner-guide.md)付き）。フェーズ2（中央監視統合）は、Windows対応Ansible role（`ansible/roles/common_windows`）、Grafana Alloy for WindowsのWindows側導入タスク・設定テンプレート、中央側のログpush経路（`compose.loki-push.yaml.example`+`deploy/nginx/loki-push.conf.example`、Bearer token認証・送信元IP許可リスト）をいずれもコードとして追加済みだが、これらのフェーズ2のコードを実機Windows Server・実機Lokiへ適用した実績はまだない（AD・WSUS パックでの Windows Server の手作業構築とは別）。Dockerホスト↔対象Windowsホスト間の実L3到達性・Firewall許可の未確立とあわせ2点の解消待ちで`BLOCKED` |
+| [AD (Active Directory) サーバー構築案件パック](build-package-ad/README.md) | 新規フォレスト・単一ドメインコントローラーを構築する設計・パラメータ・手順一式（[初心者ガイド](build-package-ad/beginner-guide.md)付き）。2026-09 に手元 Hyper-V の VM で フェーズ1 を通しで実施し、必須 31 ID を PASS（[構築・試験](evidence/2026-09-01-ad-build-validation.md) / [ネットワーク](evidence/2026-09-01-network-host-validation-ad.md) / [引き渡し報告](evidence/2026-09-02-work-result-SM-AD-001.md)）。実機で見つけた手順書の誤り 6 件は修正済み。続けて [System State 復元](evidence/2026-09-02-ad-restore-drill.md)、[2 台目の DC と複製](evidence/2026-09-03-ad-second-dc-replication.md)、[DC 1 台の計画停止](evidence/2026-09-03-ad-dc-outage-drill.md)、[FSMO 役割の奪取](evidence/2026-09-04-ad-fsmo-seize.md)も実機で行った。中央監視統合はWindows版と同じ理由で未実装 |
 | [Zabbix 監視基盤構築案件パック](build-package-zabbix/README.md) | 既存の Prometheus / Grafana スタックとは別に、新規ホストへ Zabbix 7.0 LTS（Server / Frontend / PostgreSQL）を構築し、既存の監視対象ホストを Zabbix Agent2 で追加監視する設計・パラメータ・手順一式（[初心者ガイド](build-package-zabbix/beginner-guide.md)付き）。`compose.zabbix.yaml` はCIで構文検証済み。2026-09-04、クラウドsandboxコンテナ上で ZUT-01〜03・ZST-03 と backup/restoreスクリプトの中核ロジック（実PostgreSQL、flock直列化、restore後の件数一致）を実測PASS（[構築・試験結果票](evidence/2026-09-04-zabbix-build-validation.md)）。Docker Hub・`repo.zabbix.com`へのegressが同環境の組織ポリシーでブロックされており、Zabbix Server/Frontend/Agent2本体を含む構築・試験（ZIT-01〜09大半、ZST-01/02、ZNW-01〜09）とAnsible role化は未実装 |
 | [DHCP サーバー構築案件パック](build-package-dhcp/README.md) | 検証用LANセグメント（`192.168.50.0/24`）へIPv4アドレスを払い出す isc-dhcp-server を新規ホスト `dhcp-01` へ構築する設計・パラメータ・手順一式（[初心者ガイド](build-package-dhcp/beginner-guide.md)付き）。新規Ansible role `dhcp_server` と専用playbook `ansible/playbooks/dhcp.yml` を追加し、`ansible-lint --offline`（production profile、0 failure）と `--syntax-check` をローカルでPASS済み。中央Prometheusへのnode_exporter登録はLinuxホストのため未実装ブロッカーなし。2026-09-04に2つの独立したAI支援セッションがそれぞれサンドボックスコンテナ上で実機検証を実施（(1) network namespace + vethラボで`common` role込みの構築を含め、commit`ebcae209`にて必須31 ID中27 ID PASS、(2) コンテナ自身をDocker bridge越しに使う構成で31 ID中22 ID PASS、[結果票](evidence/2026-09-04-dhcp-build-validation.md)）。2026-09-07には(1)と同じ種類のnetnsラボを別commit`0974872`で再構築し、監視統合（実Prometheus/node_exporterで`up{host="dhcp-01"}=1`を実測）とDNS名前解決の2 IDを追加でPASSへ切り替え（別commitのため上記27 IDとは合算しない。[結果票](evidence/2026-09-04-dhcp-build-validation-netns-lab.md) / [追補](evidence/2026-09-07-dhcp-dit10-dnw03-followup.md)）。残るSKIP-ENVはAppArmor・監査ログの2件のみ（サンドボックスの恒久的な環境制約）。VM/実機での正本実演はまだ未実施 |
-| [WSUS サーバー構築案件パック](build-package-wsus/README.md) | 既存の AD ドメイン（`corp.example.test`）へ WSUS（Windows Server Update Services）サーバーを 1 台追加し、グループポリシーによる更新プログラムの集中管理を実現する設計・パラメータ・手順一式（[初心者ガイド](build-package-wsus/beginner-guide.md)付き）。Windows 版・AD 版パックで「実務では推奨だが対象外」としていた WSUS/グループポリシー集中管理を埋める案件パック。2026-09-07に手元Hyper-VのWindows Server 2022評価版VMでフェーズ1必須28 ID中26 IDを実測PASS（[結果票](evidence/2026-09-07-wsus-build-validation.md)）。`ApplyRule()`が絞り込みを無視し555件・345GBのダウンロードを開始した事象を検知1分で停止するなど、実行して見つけた手順書の誤り・欠落9件は[欠陥台帳](evidence/defects-found.md)#37〜45に記録。SIT-06(自動承認)がFAIL、SIT-04(自己登録先グループ)が期待結果未達のため引き渡し判定は`NOT READY`。中央監視統合は他パックと同じ理由で未実装 |
+| [WSUS サーバー構築案件パック](build-package-wsus/README.md) | 既存の AD ドメイン（`corp.example.test`）へ WSUS（Windows Server Update Services）サーバーを 1 台追加し、グループポリシーによる更新プログラムの集中管理を実現する設計・パラメータ・手順一式（[初心者ガイド](build-package-wsus/beginner-guide.md)付き）。Windows 版・AD 版パックで「実務では推奨だが対象外」としていた WSUS/グループポリシー集中管理を埋める案件パック。2026-09-07に手元Hyper-VのWindows Server 2022評価版VMでフェーズ1必須28 ID中26 IDを実測PASS（[結果票](evidence/2026-09-07-wsus-build-validation.md)）。`ApplyRule()`の実行で555件が承認され約345GBのダウンロードが始まった事象を検知1分で停止するなど（原因は、承認ルールの分類・製品が0件で保存され「絞り込みなし」と解釈されたこと。[原因切り分け](evidence/2026-09-08-wsus-sit04-sit06-root-cause.md)）、実行して見つけた手順書の誤り・欠落9件は[欠陥台帳](evidence/defects-found.md)#37〜45に記録。SIT-06(自動承認)がFAIL、SIT-04(自己登録先グループ)が期待結果未達のため引き渡し判定は`NOT READY`。中央監視統合は他パックと同じ理由で未実装 |
 | [AWS / Terraform 設計](aws-architecture.md) | VPC / ALB / EC2 などの構成コード（apply 未実施） |
 | [AWS コスト計画](cost-report.md) | 月額試算、Budgets |
 | [SLO / SLI / エラーバジェット設計](slo.md) | サービス品質目標の決め方とアラート条件 |
@@ -235,7 +235,7 @@ D-2は実行ログがないため、演習手順と自動化コードが整備�
 | 演習 | 頻度 | 想定時間 | 環境 | 自動化 |
 | --- | --- | --- | --- | --- |
 | **D-1** プロセスダウン → 自動復旧 | 月次 | 15 分 | ローカル Docker / ephemeral runner | 実測済み（RTO 13秒 / 1秒） / `scripts/drills/d1-process-down.sh` |
-| **D-2** ホスト障害 → 別ホストに復元 | 四半期 | 2 時間 | AWS staging | 未実測 / 手動（ランブック化）|
+| **D-2** ホスト障害 → 別ホストに復元 | 四半期 | 2 時間 | AWS staging | 未実測 / 手動（ランブック化） |
 
 ```bash
 # D-1 を実行
@@ -452,7 +452,7 @@ sudo ./scripts/labs/storage-guard-test.sh
 ## 手作業でのOS初期構築演習（lab-base01）
 
 **一言でいうと**: 上の B シリーズがスクリプトで自動判定するのに対し、こちらは
-**本人が空の VM から手作業で Linux を立ち上げ、壊して直した**記録です。
+**私が空の VM から手作業で Linux を立ち上げ、壊して直した**記録です。
 
 2026-09-07〜08、Hyper-V 上の Ubuntu Server 24.04.4 LTS（論理ホスト名 `lab-base01`）へ、
 固定 IP・SSH 鍵認証・sudo・UFW・時刻同期・自動更新を手作業で設定しました。そのうえで
@@ -462,7 +462,7 @@ sudo ./scripts/labs/storage-guard-test.sh
 | 項目 | 内容 |
 | --- | --- |
 | 判定 | **PASS 14 / PASS-ADAPTED 4 / PARTIAL 2 / NOT RUN 1**、ほかに T-14 代替演習 1 件 PASS |
-| 一次資料 | 本人提供のスクリーンショット 42 枚（原画像を無加工で保存、SHA-256 付き） |
+| 一次資料 | 操作中に私が残したスクリーンショット 42 枚（原画像を無加工で保存、SHA-256 付き） |
 | 主な確認内容 | SSH の socket 起動と service 表示の違い、ホスト鍵不一致の警告と指紋照合、鍵登録の失敗と再試行、再起動直後の NTP 未同期、SSH 設定復元後の接続タイムアウトからの復旧 |
 
 **この演習の境界**（記録本体にも同じ内容を明記しています）:
@@ -484,10 +484,13 @@ Ansible 適用、D-1、AWS は `NOT RUN` です。
 Ansible を使った手元 VM への基盤構築は、これとは別に
 [2026-09-04 の Ubuntu](evidence/2026-09-04-ansible-foundation-build.md)・
 [AlmaLinux](evidence/2026-09-04-ansible-foundation-el9-build.md)の記録があります。
+Windows Server の手作業構築（AD・WSUS、2026-09-01〜08）の記録は、上の
+[AD 構築案件パック](build-package-ad/README.md)・[WSUS 構築案件パック](build-package-wsus/README.md)の行と
+[検証証跡台帳](evidence/README.md)にあります。
 
 ## AI の利用について
 
-このリポジトリの文書とコードには AI 支援を使っている。範囲を正確に書く。
+このリポジトリの文書とコードには AI 支援を使っています。範囲は次のとおりです。
 
 | 使っている範囲 | 具体例 |
 | --- | --- |
@@ -496,23 +499,23 @@ Ansible を使った手元 VM への基盤構築は、これとは別に
 | コードレビュー、リンク・表記の確認 | PR 上でのレビューと修正提案 |
 
 `git log --no-merges` で数えると、`Author: Claude <noreply@anthropic.com>` または
-`Co-Authored-By: Claude` を含むコミットは **95 件中 49 件**（2026-08-25 時点）。
+`Co-Authored-By: Claude` を含むコミットは **95 件中 49 件**です（2026-08-25 時点）。
 プロフィール側は 71 件中 42 件、サイト側は 77 件中 19 件で、
-**範囲はこのリポジトリに限らない**（内訳は
-[プロフィール README](https://github.com/ns7jp/ns7jp/blob/main/README.md#ai-の利用について)）。
+**AI 支援はこのリポジトリに限りません**（ポートフォリオ全体の前提は
+[プロフィール README](https://github.com/ns7jp/ns7jp/blob/main/README.md#3-つの前提ai-の利用を含む)に書いています）。
 
-**AI が生成した手順や説明を、本人が実行・理解していない状態で実績にはしない。**
-機密情報のマスク、技術選定の最終判断、面接での説明は本人が担当する。
+**AI が生成した手順や説明は、私が実行・理解するまで実績にしません。**
+機密情報のマスク、技術選定の最終判断、面接での説明は私が担当します。
 
-**証跡の実行環境については、次の区別を守る。** B-1〜B-4（2026-08-24）は
-AI 支援セッションの作業環境上で実行している。独立した物理／VPS ホストではなく、
-本人の手元 WSL2 でもない。各証跡ファイルの「実施環境」欄には、採録時の `uname` を
-そのまま残している。2026-08-18 / 19 の WSL2 上の実測は、証跡に実行者を明記している。
+**証跡の実行環境は、次のように区別しています。** B-1〜B-4（2026-08-24）は
+AI 支援セッションの作業環境上で実行しました。独立した物理／VPS ホストでも、
+私の手元の WSL2 でもありません。各証跡ファイルの「実施環境」欄には、採録時の `uname` を
+そのまま残しています。2026-08-18 / 19 の WSL2 上の実測は、証跡に実行者を明記しています。
 
 仮説を外した経緯を含む一次記録は、プロフィール側の
-[学習の一次記録](https://github.com/ns7jp/ns7jp/blob/main/LEARNINGS.md)にある
-（**本人のみが編集するファイル**）。実行して見つかった欠陥は
-[欠陥台帳](evidence/defects-found.md)に 1 件ずつ記録している。
+[学習の一次記録](https://github.com/ns7jp/ns7jp/blob/main/LEARNINGS.md)にあります
+（**私だけが編集するファイル**）。実行して見つかった欠陥は
+[欠陥台帳](evidence/defects-found.md)に 1 件ずつ記録しています。
 
 ## 現在の制約と次の拡張
 
@@ -532,7 +535,7 @@ AI 支援セッションの作業環境上で実行している。独立した�
 - **B-1 〜 B-4 は実行した証跡がありますが、実行環境は AI 支援セッションの
   作業環境です**（B-1 は qemu 上の Ubuntu 24.04 ゲスト、B-2 / B-3 は Docker
   コンテナ、B-4 は network namespace）。独立した物理／VPS ホストや、
-  本人の手元 WSL2 での再実行証跡ではありません。ラボ環境の演習なので、
+  私の手元の WSL2 での再実行証跡ではありません。ラボ環境の演習なので、
   物理ディスク、物理スイッチ、VLAN 対応スイッチの設定は対象外です。B-4 の VLAN 部は kernel が `CONFIG_VLAN_8021Q`
   を有効にしている環境でのみ実行でき、証跡を採った環境では未検証（`SKIP-ENV`）
   です。

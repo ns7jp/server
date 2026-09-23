@@ -120,7 +120,7 @@ flowchart TB
 | assert（ガード） | ホストを変更する前に、前提条件を確認して満たさなければ停止するタスク。「実行してから失敗に気づく」のではなく「変更前に止める」ための仕組み |
 | Molecule scenario | `default`（Ubuntu）や`el9`（Rocky）のように、Moleculeが検証する対象環境の単位 |
 | `--syntax-check` | ホストへ接続せず、playbookの構文だけを確認するAnsibleのオプション |
-| `--check --diff` | 実際には変更せず、変更予定の差分だけを表示する実行（dry run）。「検証済み」の代わりにはならない限界があることを[05-build-procedure.md](05-build-procedure.md#3-適用前確認-check-diff)で説明している |
+| `--check --diff` | 実際には変更せず、変更予定の差分だけを表示する実行（dry run）。「検証済み」の代わりにはならない限界があることを[05-build-procedure.md](05-build-procedure.md#3-適用前確認--check---diff)で説明している |
 
 ## 5. 読む順とかかる時間の目安
 
