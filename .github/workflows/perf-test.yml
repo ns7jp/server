@@ -273,7 +273,7 @@ jobs:
 
       - name: Upload performance artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: perf-test-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.PERF_OUT_DIR }}
