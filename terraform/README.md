@@ -1,5 +1,17 @@
 # Server Monitor on AWS (Terraform)
 
+> **状態：未実行（NOT RUN）**
+>
+> このディレクトリのコード（約 3,600 行）は、AWS へ一度も `apply` していません。確認済みなのは CI での `fmt` / `validate` / tfsec / checkov までです。実際に作成・削除したリソース、疎通、実費の記録はありません。コードの生成には AI 支援を使っています。
+
+| 対象 | 使う環境 | 状態 |
+| --- | --- | --- |
+| `modules/network`・`compute`・`alb`・`monitoring`・`backup` | dev / staging / prod | 未実行（NOT RUN） |
+| `modules/synthetics-probe`・`central-metrics` | staging のみ（既定で無効） | 未実行（NOT RUN） |
+| `environments/dev`・`staging`・`prod` | — | 未実行（NOT RUN） |
+
+最初の実行は、dev の最小構成で `plan → apply → 疎通 → destroy` を 1 回行い、実費とともに[検証証跡台帳](../docs/evidence/README.md)へ記録する予定です（テンプレートは [aws-validation.md](../docs/evidence/templates/aws-validation.md)）。
+
 `server-monitor` を AWS 上で再構築する Terraform 構成。設計の根拠は
 [docs/aws-architecture.md](../docs/aws-architecture.md)、コスト計画は
 [docs/cost-report.md](../docs/cost-report.md) を参照する。

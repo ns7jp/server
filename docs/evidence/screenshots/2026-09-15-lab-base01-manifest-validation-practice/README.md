@@ -1,6 +1,6 @@
 # 不正ハッシュ一覧検証の原画像
 
-[結果票](../../2026-09-15-lab-base01-manifest-validation-practice.md)
+[結果票](../../practice/2026-09-15-lab-base01-manifest-validation-practice.md)
 
 本人提供画像3枚を無加工で保存。ユーザー名・ホスト名・パス・Python版・スクリプト本文・SHA・試験結果を含む。
 秘密鍵本文やパスワードは含まない。スクリプト・試験データ実体は添付しない。画像ハッシュはコピー一致確認用。
