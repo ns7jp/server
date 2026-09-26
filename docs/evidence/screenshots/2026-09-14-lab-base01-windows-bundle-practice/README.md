@@ -1,6 +1,6 @@
 # Windows上のbundle復元の原画像
 
-[結果票](../../2026-09-14-lab-base01-windows-bundle-practice.md)
+[結果票](../../practice/2026-09-14-lab-base01-windows-bundle-practice.md)
 
 本人提供画像2枚を無加工で保存。Windowsユーザーパス・保存先と復元先・Git版・SHA・ブランチ名・ファイル一覧を含む。
 秘密鍵本文やパスワードは含まない。bundle実体と復元ソース実体は添付しない。

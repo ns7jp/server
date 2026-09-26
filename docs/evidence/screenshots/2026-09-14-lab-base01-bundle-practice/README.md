@@ -1,6 +1,6 @@
 # lab-base01：bundle復元の原画像
 
-[結果票](../../2026-09-14-lab-base01-bundle-practice.md)
+[結果票](../../practice/2026-09-14-lab-base01-bundle-practice.md)
 
 本人提供画像5枚を無加工で保存。ユーザー名・ホスト名・パス・日時・Git状態・SHA・設定本文を含む。
 Vaultファイル名は表示されるが、秘密鍵本文・パスワード・Vault暗号文は含まない。bundle実体は公開しない。

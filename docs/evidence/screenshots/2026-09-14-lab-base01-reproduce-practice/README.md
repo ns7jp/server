@@ -1,6 +1,6 @@
 # lab-base01：clone再現演習の原画像
 
-[結果票](../../2026-09-14-lab-base01-reproduce-practice.md)
+[結果票](../../practice/2026-09-14-lab-base01-reproduce-practice.md)
 
 本人提供画像4枚を無加工で保存。ユーザー名・ホスト名・パス・日時・Git状態・設定本文・SHAを含む。
 Vaultファイル名は表示されるが、秘密鍵本文・Vaultパスワード・暗号文本文は含まない。

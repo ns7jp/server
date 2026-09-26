@@ -1,6 +1,6 @@
 # lab-base01：bundle転送の原画像
 
-[結果票](../../2026-09-14-lab-base01-bundle-transfer-practice.md)
+[結果票](../../practice/2026-09-14-lab-base01-bundle-transfer-practice.md)
 
 本人提供画像2枚を無加工で保存。ユーザー名・ホスト名・プライベートIP・SSH鍵パス・Windows保存先・SHAを含む。
 秘密鍵本文や入力パスフレーズは表示されていない。bundle実体は添付しない。

@@ -21,18 +21,21 @@
 | 2026-09-08 | [数値監視](docs/evidence/2026-09-08-lab-base01-monitoring-practice.md)：Prometheus / Grafana で収集状態の 1→0→1。[ログ検索](docs/evidence/2026-09-08-lab-base01-loki-practice.md)：目印付き Nginx ログ 2 件（メモリ 2 GiB の VM で、それぞれ 5 / 6 サービスを分けて起動） |
 | 2026-09-08 | [バックアップ復元](docs/evidence/2026-09-08-lab-base01-restore-practice.md)：Loki の別名ボリューム（同じ VM 内）から同じログ 2 件を読取り。[D-1](docs/evidence/2026-09-08-lab-base01-d1-practice.md)：アプリの自動再起動で再起動回数 0→1、HTTP 復帰 2 秒（1 回の計測）、その後 healthy を確認 |
 
-Ansible と Git の小さな練習（2026-09-08〜15）の記録は、[検証証跡台帳](docs/evidence/README.md)に並べています。各記録で確認できていない範囲は、それぞれの証跡と下の[実装と検証の範囲](#実装と検証の範囲)に書いています。
+Ansible と Git の小さな練習（2026-09-09〜15）の記録は、[練習ログ](docs/evidence/practice/README.md)に分けています。各記録で確認できていない範囲は、それぞれの証跡と下の[実装と検証の範囲](#実装と検証の範囲)に書いています。
 
 AD の作業結果と、障害・課題 15 件（LAB-01〜15）の対処は[作業結果・引き渡し報告](docs/evidence/2026-09-02-work-result-SM-AD-001.md)にまとめています。
 
 Linux の演習は、次に [小さな構成の再起動・24 時間点検・別 VM 復元・引き渡し](docs/partial-lab-continuation.md)へ進みます。**この続編は手順を準備した段階で、新しい実機結果は `NOT RUN`** です。過去の記録を上書きせず、実行した段階だけ追記します。
 
-## 採用ご担当者向け：最初に見る 4 点
+## 採用ご担当者向け：最初に見る 3 本
 
-1. [構成と設計判断](docs/design-decisions.md)：何を作り、なぜその構成にしたか。
-2. [Linux 構築案件パック](docs/build-package/README.md)・[AD 構築案件パック](docs/build-package-ad/README.md)：要件 → 設計値 → 構築 → 試験 → 証跡 → 運用 → 変更の文書。
-3. [検証証跡台帳](docs/evidence/README.md)：実行日時・環境・対象 commit・結果・未実施の範囲。
-4. [失敗から学んだ事例](docs/lessons-learned.md)：想定が外れた原因、修正と再発防止。
+手元の VM で確認した記録のうち、特に説明したいものを 3 本に絞りました。
+
+1. **AD の冗長化と復旧**：[構築・試験](docs/evidence/2026-09-01-ad-build-validation.md)・[System State 復元](docs/evidence/2026-09-02-ad-restore-drill.md)・[FSMO 奪取](docs/evidence/2026-09-04-ad-fsmo-seize.md)
+2. **Ubuntu の構築と監視**：[初期構築](docs/evidence/2026-09-08-lab-base01-initial-build.md)・[数値監視](docs/evidence/2026-09-08-lab-base01-monitoring-practice.md)
+3. **原因の切り分け**：[WSUS の SIT-04 / SIT-06 原因特定](docs/evidence/2026-09-08-wsus-sit04-sit06-root-cause.md)
+
+背景を知りたい場合は、[構成と設計判断](docs/design-decisions.md)、[AD 構築案件パック](docs/build-package-ad/README.md)、[失敗から学んだ事例](docs/lessons-learned.md)をご覧ください。すべての記録は[検証証跡台帳](docs/evidence/README.md)の「主要な記録」と、2026-09-09〜15 の細かな Ansible / Git 練習を集めた[練習ログ](docs/evidence/practice/README.md)に分けています。`terraform/` の AWS 構成は[未実行（NOT RUN）](terraform/README.md)です。
 
 **2026-09-17 の性能改善**: [旧 CI の分析](docs/evidence/2026-09-17-performance-ci-analysis.md)で HTTP 502 の集計漏れを見つけ、集計・CI 判定と上流接続の再利用を修正しました。[比較と確認試験](docs/evidence/2026-09-17-upstream-keepalive-comparison.md)では、同じ負荷設定の 2 回の CI で、並列 1/2/4/8/16 の HTTP・通信失敗が 0 件でした。最終試験では、認証（未認証 401・認証あり 200）と、アプリの IP を変えた後の復旧も確かめました。AI 支援による分析・改善で、測定は使い捨て runner での短時間のものです（長期運用や本番の容量は対象外）。
 
