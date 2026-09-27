@@ -5,7 +5,7 @@ variable "region" {
 }
 
 variable "environment" {
-  description = "環境名（dev / prod）。"
+  description = "環境名（dev / staging）。"
   type        = string
   default     = "dev"
 }

@@ -265,7 +265,7 @@ resource "aws_lb_listener" "https" {
 }
 
 # HTTP listener。use_https=true なら 443 へリダイレクト、false (dev) なら平文転送。
-# 平文転送モードは dev / 検証専用で、prod は certificate_arn 必須のため必ずリダイレクトになる。
+# 平文転送モードは dev / 検証専用。certificate_arn を設定するとリダイレクトになる。
 # trivy:ignore:AVD-AWS-0054 tfsec:ignore:aws-elb-http-not-used
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.this.arn

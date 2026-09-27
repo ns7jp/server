@@ -42,7 +42,7 @@ variable "access_log_retention_days" {
 }
 
 variable "force_destroy" {
-  description = "短時間の非本番環境でALB log bucket内のobjectもdestroyするか。prodではfalseのまま使う。"
+  description = "短時間の非本番環境でALB log bucket内のobjectもdestroyするか。長期稼働する環境ではfalseのまま使う。"
   type        = bool
   default     = false
 }

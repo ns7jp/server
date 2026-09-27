@@ -1,5 +1,5 @@
 variable "name" {
-  description = "リソース名の接頭辞。環境名（dev / prod）などを含める。"
+  description = "リソース名の接頭辞。環境名（dev / staging）などを含める。"
   type        = string
 }
 

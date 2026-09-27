@@ -11,6 +11,10 @@ Terraform は VPC からモニタリング基盤までを宣言的に管理す�
 未収録である。実行結果は [検証証跡台帳](evidence/README.md) に沿って記録し、
 コードが存在することを稼働実績として表現しない。
 
+> **2026-09-27**：本書で「production」「本番相当」と書いているマルチ AZ 構成の `environments/prod` は、
+> 一度も `apply` しないままだったため削除した。Terraform に残っているのは dev と D-2 staging だけで、
+> production の記述は設計上の境界として残している。
+
 この設計は AWS のベストプラクティス集や公式ドキュメントを参考に組み立てたもので、
 実務での AWS 運用経験に基づくものではない。
 
@@ -147,10 +151,9 @@ INPUTを通るとは仮定しない。3000 / 9090 / 9093 / 3100はAWSでもloopb
 | 予期せぬ課金 | Budgets 80% / 100% で SNS 通知 | `aws_budgets_budget` |
 | 不審 API コール | GuardDuty findings | GuardDuty + 後続のレビュー |
 
-GuardDuty detectorはaccount / regionごとに1個なので、同一accountでdev / staging / prodを
-重ねても各stackから作成しません。本構成では長期利用するprod rootだけがGuardDutyと
-account-wide CloudTrailを所有し、devとD-2 stagingはその共有controlを重複作成しません。
-別account構成へ移す場合は、application stackではなくaccount baselineの専用stateで管理します。
+GuardDuty detectorはaccount / regionごとに1個で、CloudTrailもaccount全体の設定です。
+devとD-2 stagingはどちらも短時間の検証用のため、これらを作りません。必要な場合は、
+application stackではなくaccount baselineの専用stateで1回だけ管理します（このリポジトリの対象外）。
 
 図と表のHTTPS記載はproduction境界を示す。ACM証明書を設定しないdev / D-2 stagingは、
 短時間検証に限ってHTTP 80を使い、ALB Security Groupの許可元を承認済みCIDRへ限定する。

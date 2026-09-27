@@ -8,7 +8,7 @@
 # Terraform で作成した EC2 は次のタグを持つ:
 #   - Application = "server-monitor"
 #   - AnsibleHost = "true"
-#   - Environment = "dev" or "prod"
+#   - Environment = "dev" or "staging"
 #
 # SSM Session Manager 経由で接続する場合は ansible_connection を上書きする:
 #   ansible-playbook -i aws_ec2.yml \
@@ -22,7 +22,7 @@ regions:
 filters:
   tag:Application: server-monitor
   tag:AnsibleHost: "true"
-  # fail closed: copy後にdev / staging / prodのいずれかへ必ず置換する。
+  # fail closed: copy後にdev / stagingのいずれかへ必ず置換する。
   tag:Environment: "<REPLACE-WITH-ENVIRONMENT>"
   instance-state-name:
     - running

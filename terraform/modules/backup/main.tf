@@ -209,7 +209,7 @@ resource "aws_backup_selection" "this" {
   name         = "${local.name}-selection"
   plan_id      = aws_backup_plan.this.id
 
-  # Explicit environment-scoped ARNs prevent dev/staging/prod selections from
+  # Explicit environment-scoped ARNs prevent dev/staging selections from
   # forming a union through a broad account-wide Application tag.
   resources = var.instance_arns
 }
