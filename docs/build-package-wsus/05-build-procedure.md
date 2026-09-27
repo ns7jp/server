@@ -764,7 +764,9 @@ Get-Service WsusService, BITS | Select-Object Name, Status
 
 ```powershell
 $ruleName = "Critical and Security Updates - Pilot Auto-Approve"
-$rule = $wsus.GetInstallApprovalRules() | Where-Object Name -eq $ruleName
+$rules = @($wsus.GetInstallApprovalRules() | Where-Object Name -eq $ruleName)
+if ($rules.Count -ne 1) { throw "承認ルールが1件に特定できない。承認せず設定を確認すること" }
+$rule = $rules[0]
 
 # --- 実行直前の絞り込み検証(必須・省略不可) ---
 $cls = @($rule.GetUpdateClassifications())
@@ -786,18 +788,48 @@ $scope.ApprovedStates = [Microsoft.UpdateServices.Administration.ApprovedStates]
 $expected = @($wsus.GetUpdates($scope)).Count
 "想定対象件数: $expected 件 / 同期済み $($wsus.GetStatus().UpdateCount) 件"
 
-# 実行の直前だけ有効化する
-$rule.Enabled = $true
-$rule.Save()
-
-$approved = $rule.ApplyRule()
-"ApplyRule() 承認件数: $(($approved | Measure-Object).Count)（想定 $expected 件以下であること）"
-
-# ただちに無効へ戻す(無人承認を避ける設計を維持する)
-$rule = $wsus.GetInstallApprovalRules() | Where-Object Name -eq $ruleName
-$rule.Enabled = $false
-$rule.Save()
+# 有効化の保存や承認が失敗した場合も、finallyで無効化を試みる。
+$applyError = $null
+$cleanupError = $null
+try {
+    $rule.Enabled = $true
+    $rule.Save()
+    $approved = $rule.ApplyRule()
+    "ApplyRule() 承認件数: $(($approved | Measure-Object).Count)（想定 $expected 件以下であること）"
+}
+catch {
+    $applyError = $_
+}
+finally {
+    try {
+        $rules = @($wsus.GetInstallApprovalRules() | Where-Object Name -eq $ruleName)
+        if ($rules.Count -ne 1) { throw "無効化対象の承認ルールが1件に特定できない" }
+        $rule = $rules[0]
+        $rule.Enabled = $false
+        $rule.Save()
+        # ローカルのプロパティだけで判断せず、保存後の状態を取り直す。
+        $savedRules = @($wsus.GetInstallApprovalRules() | Where-Object Name -eq $ruleName)
+        if ($savedRules.Count -ne 1 -or $savedRules[0].Enabled) {
+            throw "承認ルールの無効化を読み戻して確認できない"
+        }
+    }
+    catch {
+        $cleanupError = $_
+    }
+}
+if ($applyError) {
+    if ($cleanupError) {
+        Write-Warning ("無効化も未確認。手動でルールを無効化し、保存状態を確認すること: {0}" -f $cleanupError.Exception.Message) -WarningAction Continue
+    }
+    throw $applyError
+}
+if ($cleanupError) { throw $cleanupError }
 ```
+
+`finally`は無効化の試行を行いますが、通信障害や保存失敗があれば無効化を保証できません。
+有効化・承認と無効化の両方が失敗した場合は、元のエラーを再送出し、無効化の失敗も警告に残します。
+無効化未確認なら試験を成功扱いにせず、WSUSコンソール等でルールを無効化して読み戻します。
+承認途中の失敗でも一部が承認済みの可能性があるため、次の件数・容量確認を省略しません。
 
 **実行直後に、承認件数とダウンロード見積もりを必ず確認する。**
 

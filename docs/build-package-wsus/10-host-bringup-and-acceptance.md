@@ -170,11 +170,18 @@ Get-NetFirewallRule | Where-Object Enabled -eq $true |
 # WinRM(HTTPS)、WSUS管理サイト、windows_exporterへの疎通
 Test-NetConnection -ComputerName localhost -Port 5986
 Test-NetConnection -ComputerName localhost -Port 8530
-curl.exe -s http://localhost:9182/metrics | Select-String "windows_cs_hostname"
+$metrics = Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:9182/metrics' -TimeoutSec 10 -ErrorAction Stop
+$bootMetric = $metrics.Content -split "`n" | Where-Object { $_ -match '^windows_system_boot_time_timestamp(?:\{[^}]*\})?\s+\S+' }
+if (-not $bootMetric) { throw 'system collectorの起動時刻メトリクスがない。導入版・有効コレクター・exporterログを確認すること' }
+$bootMetric
 
 # クリーンアップウィザードのTask Schedulerタスクが残っているか
 Get-ScheduledTask -TaskName "WSUS-Cleanup-Weekly"
 ```
+
+このメトリクスは[実測時のwindows_exporter 0.31.8](../evidence/2026-09-07-wsus-build-validation.md)で有効にした`system` collectorの値である
+([同版の公式メトリクス一覧](https://github.com/prometheus-community/windows_exporter/blob/v0.31.8/docs/collector.system.md))。
+HTTP取得とメトリクスの存在を確認し、導入版が異なる場合はその版の出力と照合する。OS再起動の判定は上の`LastBootUpTime`の比較と併せて行う。
 
 ## 5. 24時間 / 72時間の連続稼働
 

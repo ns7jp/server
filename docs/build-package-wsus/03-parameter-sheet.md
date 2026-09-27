@@ -186,7 +186,7 @@ ADの組織単位(OU)と、WSUSコンソール内の「コンピューターグ�
 | クリーンアップのスケジュール | 毎週日曜03:00(Asia/Tokyo)、Task Schedulerに登録 | 同上 |
 | バックアップスケジュール | `NOT SET`(実機で決定) | 同上 |
 | バックアップ格納先 | `NOT SET`(別ボリューム推奨。実機で決定) | 同上 |
-| 復元試験方法 | SUSDB・コンテンツストア・IIS構成それぞれについて別ボリューム/別ホストへ復元し、内容が一致することを確認する(SIT-08) | [試験仕様書・結果票](06-test-specification.md) |
+| 復元試験方法 | 系統A(WID)のSUSDBは、復元前のバックアップを確保して`SUSDB`自身へ`WITH REPLACE`で復元する。別名DBへの復元を使わない。コンテンツストア・IIS構成も退避して復元し、内容とWSUS API・ClientWebServiceの応答を照合する(SIT-08)。別インスタンスへのDB復元は系統B(外部SQL Server)の範囲 | [試験仕様書・結果票](06-test-specification.md) |
 
 ## 配備パス・サービス
 
@@ -234,7 +234,7 @@ Windows Defender Firewallは既定Default Inbound Blockとし、上表の受信�
 | WSUSサービス起動確認(`Get-Service WsusService`) | `NOT RUN` | — | — |
 | `wsusutil postinstall`実行結果 | `NOT RUN` | — | — |
 | 初回同期の所要時間・取得コンテンツ量 | `NOT RUN` | — | — |
-| GPO適用・`wsus-01`自己登録確認(WSUSコンソール`Servers`グループ) | `NOT RUN` | — | — |
+| GPO適用・`wsus-01`自己登録確認(WSUSコンソール`Pilot`グループ) | `NOT RUN` | — | — |
 | 自動承認ルールの動作確認結果 | `NOT RUN` | — | — |
 | クリーンアップウィザード実行結果 | `NOT RUN` | — | — |
 | SUSDB・コンテンツストアのバックアップ/リストア所要時間 | `NOT RUN` | — | — |
