@@ -6,7 +6,7 @@
 
 ## 設計上の訂正
 
-現行 Terraform は dev / prod ともに NAT Gateway と ALB を作成する。そのため、
+現行 Terraform は dev / staging ともに NAT Gateway と ALB を作成する。そのため、
 dev を 1 か月常時稼働させて **1,500 円 / 月** とする旧想定は成立しない。
 NAT Gateway と ALB だけで概算 **約 7,000 円 / 月** となり、EC2、EBS、ログ、
 バックアップ等はその上に加算される。
@@ -16,6 +16,8 @@ NAT Gateway と ALB だけで概算 **約 7,000 円 / 月** となり、EC2、EB
 別アーキテクチャを設計してから Terraform を変更する。
 
 ## 試算（東京リージョン、24h 稼働ベース）
+
+下表は、2026-09-27 に削除したマルチ AZ の `environments/prod`（EC2 2 台）を 24 時間稼働させた場合の参考値として残している。
 
 | リソース | 仕様 | prod 想定月額（円） |
 | --- | --- | --- |
@@ -40,7 +42,6 @@ dev は EC2 が 1 台で夜間停止される一方、NAT Gateway と ALB は存
 | 環境 | `monthly_budget_jpy` | 意味 |
 | --- | ---: | --- |
 | dev | 3,000 | 短時間検証で削除忘れを検知する警戒値。常時稼働見積ではない |
-| prod | 15,000 | 24h 稼働の概算 12,940 円を踏まえた通知閾値 |
 
 `terraform/modules/monitoring/main.tf` は 80% の Actual 通知と 100% の Forecasted
 通知を作成する。換算レートは `jpy_per_usd`（既定 150）で調整する。
@@ -67,8 +68,6 @@ AWS 上での `apply` / `destroy` および Cost Explorer 実測は、現時点�
 
 ```bash
 cd terraform/environments/dev
-terraform destroy -var-file=terraform.tfvars
-cd ../prod
 terraform destroy -var-file=terraform.tfvars
 ```
 

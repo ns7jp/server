@@ -33,7 +33,7 @@ variable "archive_bucket_lifecycle_days" {
 }
 
 variable "force_destroy" {
-  description = "短時間の非本番環境でvault recovery pointとarchive objectもdestroyするか。prodではfalseのまま使う。"
+  description = "短時間の非本番環境でvault recovery pointとarchive objectもdestroyするか。長期稼働する環境ではfalseのまま使う。"
   type        = bool
   default     = false
 }

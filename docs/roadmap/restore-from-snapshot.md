@@ -2,7 +2,7 @@
 
 ホスト障害（EC2 起動不能 / OS 破損 / EBS 読込不可）から **別 EC2** として復元する
 手順。演習シナリオ [D-2 ホスト障害](./D-2-host-failure.md) の正本です。本手順は
-`terraform/environments/staging`専用で、dev/prodのstateやhostには適用しません。
+`terraform/environments/staging`専用で、devのstateやhostには適用しません。
 以降のコマンドは、明記がない限りrepository rootから実行します。
 
 ## 1. 発火条件
@@ -528,7 +528,7 @@ SSM_TRANSFER_BUCKET=$(terraform -chdir=terraform/environments/staging output -ra
 ## 8. ALB Target Group での一時検証（D-2 PASSに必須）
 
 §7の単体検証に合格した後、既存staging Target Groupへ復元EC2を一時登録してALB経由を
-確認します。dev/prodのTarget GroupやDNSは変更しません。ここを省略した結果はrestore-onlyの
+確認します。devのTarget GroupやDNSは変更しません。ここを省略した結果はrestore-onlyの
 `PARTIAL`であり、D-2/RTOのPASSにしません。失敗時は中断scriptでsourceへrollbackします。
 
 ```bash

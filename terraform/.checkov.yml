@@ -19,7 +19,7 @@ skip-check:
   - CKV_AWS_145
 
   # LB deletion protection: ラボ用途で `terraform destroy` を頻繁に行うため OFF。
-  # prod でデプロイを長期化する場合は再考。
+  # 長期稼働する環境を作る場合は再考。
   - CKV_AWS_150
 
   # CloudWatch logs retention 1 year: VPC Flow Logs / CloudTrail logs は cost を抑えるため
@@ -34,7 +34,7 @@ skip-check:
   - CKV_AWS_21
 
   # LB no HTTP: dev は HTTP 平文転送を受け入れる（ACM 証明書未設定時）。
-  # prod は certificate_arn 必須のため必ず 443→80 redirect になる。
+  # certificate_arn を設定すると 443→80 redirect になる。
   - CKV_AWS_378
 
   # LB TLS 1.2: ssl_policy = `ELBSecurityPolicy-TLS13-1-2-2021-06` を使用しており、

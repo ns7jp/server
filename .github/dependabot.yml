@@ -70,7 +70,6 @@ updates:
       - /terraform
       - /terraform/environments/dev
       - /terraform/environments/staging
-      - /terraform/environments/prod
       - /terraform/modules/alb
       - /terraform/modules/backup
       - /terraform/modules/compute

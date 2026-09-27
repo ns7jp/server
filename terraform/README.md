@@ -2,12 +2,12 @@
 
 > **状態：未実行（NOT RUN）**
 >
-> このディレクトリのコード（約 3,200 行）は、AWS へ一度も `apply` していません。確認済みなのは CI での `fmt` / `validate` / tfsec / checkov までです。実際に作成・削除したリソース、疎通、実費の記録はありません。コードの生成には AI 支援を使っています。
+> このディレクトリのコード（約 2,900 行）は、AWS へ一度も `apply` していません。確認済みなのは CI での `fmt` / `validate` / tfsec / checkov までです。実際に作成・削除したリソース、疎通、実費の記録はありません。コードの生成には AI 支援を使っています。
 
 | 対象 | 使う環境 | 状態 |
 | --- | --- | --- |
-| `modules/network`・`compute`・`alb`・`monitoring`・`backup` | dev / staging / prod | 未実行（NOT RUN） |
-| `environments/dev`・`staging`・`prod` | — | 未実行（NOT RUN） |
+| `modules/network`・`compute`・`alb`・`monitoring`・`backup` | dev / staging | 未実行（NOT RUN） |
+| `environments/dev`・`staging` | — | 未実行（NOT RUN） |
 
 外部 probe（`synthetics-probe`）と metrics 中央化（`central-metrics`）の module は、一度も実行しないまま staging で既定無効になっていたため、2026-09-27 に削除しました。設計は [docs/roadmap/external-probe-central-telemetry.md](../docs/roadmap/external-probe-central-telemetry.md) に残しています。
 
@@ -30,14 +30,15 @@ terraform/
 │   └── backup/          # AWS Backup vault / plan / S3 archive
 └── environments/
     ├── dev/             # ALB用2 AZ・EC2 1台（account-wide GuardDuty / CloudTrailは作らない）
-    ├── staging/         # D-2専用・ALB用2 AZ・EC2 1台（GuardDuty / CloudTrailは作らない）
-    └── prod/            # マルチ AZ・EC2 2 台・Budgets 15,000 円
+    └── staging/         # D-2専用・ALB用2 AZ・EC2 1台（GuardDuty / CloudTrailは作らない）
 ```
 
-同じAWS account / regionで複数environmentを使う場合、GuardDuty detectorは1個だけです。
-この構成では長期利用するprod rootだけがGuardDuty / account-wide CloudTrailを所有し、devと
-短時間stagingは重複作成しません。environmentを別accountへ分離する場合は、account baselineを
-別stateで1回だけ管理する設計へ移します。
+GuardDuty detectorはaccount / regionごとに1個で、CloudTrailもaccount全体の設定です。
+dev・stagingはどちらも短時間の検証用のため、これらを作りません。必要な場合は、account
+baselineとして別stateで1回だけ管理します（このリポジトリの対象外）。
+
+以前はマルチ AZ・EC2 2 台の `environments/prod` があり、GuardDuty / CloudTrail を所有していましたが、
+一度も `apply` しないままだったため 2026-09-27 に削除しました。
 
 すべて Tokyo (`ap-northeast-1`) を既定とする。
 
@@ -69,10 +70,10 @@ SSE-S3・public blockを持つ専用transfer bucketとcontroller用最小権限p
 既存controller roleへ自動attachする場合だけ`ssm_controller_role_name`を指定する。
 
 Backup selectionはenvironmentごとの明示的なEC2 ARNだけを対象とし、広いApplication tagとのunionを
-作らない。dev/prodのVault policyはrecovery pointの直接削除・lifecycle短縮・policy除去を拒否し、
+作らない。devのVault policyはrecovery pointの直接削除・lifecycle短縮・policy除去を拒否し、
 自動retentionを行うAWS Backup roleと、tfvarsで指定した実在break-glass principalだけを例外にする。
 Vault policy更新時もbreak-glass principalを利用する。stagingは承認済みdestroyを可能にするためこの
-保護を無効化する。初回apply後のdev/prod Terraform更新・destroyは、tfvarsへ列挙した実在
+保護を無効化する。初回apply後のdev Terraform更新・destroyは、tfvarsへ列挙した実在
 break-glass/deploy roleを必ずassumeして実行する。通常deploy roleを列挙せずに適用すると自己ロックする。
 
 ## 検証

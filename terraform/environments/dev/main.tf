@@ -64,7 +64,8 @@ module "monitoring" {
   target_group_arn_suffix  = module.alb.target_group_arn_suffix
   alarm_emails             = var.alarm_emails
   monthly_budget_jpy       = var.monthly_budget_jpy
-  # Account-wide controls are owned once by the long-lived prod/account baseline.
+  # Account-wide controls (GuardDuty / CloudTrail) are outside this lab's stacks.
+  # Manage them once in a separate account baseline if needed.
   enable_guardduty  = false
   enable_cloudtrail = false
   tags              = local.common_tags

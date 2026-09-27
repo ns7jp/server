@@ -179,7 +179,7 @@ CI では `ansible-lint` と Molecule scenario の構文検証を常時実行す
 
 `terraform/` 配下に AWS 上の同等構成を IaC（Infrastructure as Code。基盤の設定をコードで書き、同じ環境を再現する考え方）として用意した。
 VPC からアラート通知までを 5 モジュール（`network` / `compute` / `alb` / `monitoring` / `backup`）に分けた。
-環境別（`dev` / `prod`）の `terraform/environments/<env>/` がそれらを呼び出すパターンである。
+環境別（`dev` / `staging`）の `terraform/environments/<env>/` がそれらを呼び出すパターンである。
 
 ```bash
 cd terraform/environments/dev

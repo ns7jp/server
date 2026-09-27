@@ -90,7 +90,7 @@ flowchart LR
 
 有効化は `terraform/environments/staging/variables.tf` の
 `enable_central_observability`（既定 `false`）を `true` にした場合のみ。
-既存の dev/prod や Docker Compose lab には一切影響しない。
+既存の dev や Docker Compose lab には一切影響しない。
 
 このセッションを実行したサンドボックス環境は `registry.terraform.io` への
 egressが組織ポリシーでブロックされており（Docker Hub / deadsnakes PPA と同種の

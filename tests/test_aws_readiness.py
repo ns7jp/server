@@ -23,14 +23,12 @@ def role_tasks(role: str) -> str:
 
 def test_alb_ingress_matches_the_active_listener() -> None:
     alb = text("terraform/modules/alb/main.tf")
-    prod_variables = text("terraform/environments/prod/variables.tf")
 
     assert "client_listener_port = local.use_https ? 443 : 80" in alb
     assert "from_port         = local.client_listener_port" in alb
     assert "to_port           = local.client_listener_port" in alb
     assert 'count = local.use_https ? 1 : 0' in alb
     assert 'for_each = local.use_https ? [] : [1]' in alb
-    assert 'length(var.certificate_arn) > 0' in prod_variables
 
 
 def test_alb_access_log_prefix_matches_bucket_policy_path() -> None:
@@ -47,33 +45,30 @@ def test_cloudwatch_target_group_dimension_keeps_required_prefix() -> None:
     outputs = text("terraform/modules/alb/outputs.tf")
     assert 'output "target_group_arn_suffix"' in outputs
     assert "aws_lb_target_group.app.arn_suffix" in outputs
-    for environment in ("dev", "staging", "prod"):
+    for environment in ("dev", "staging"):
         main = text(f"terraform/environments/{environment}/main.tf")
         assert "target_group_arn_suffix  = module.alb.target_group_arn_suffix" in main
         assert 'split(":targetgroup/"' not in main
 
 
-def test_account_wide_security_controls_have_one_owner() -> None:
-    dev = text("terraform/environments/dev/main.tf")
-    staging = text("terraform/environments/staging/main.tf")
-    prod = text("terraform/environments/prod/main.tf")
-    assert re.search(r"enable_guardduty\s*=\s*false", dev)
-    assert re.search(r"enable_cloudtrail\s*=\s*false", dev)
-    assert re.search(r"enable_guardduty\s*=\s*false", staging)
-    assert re.search(r"enable_cloudtrail\s*=\s*false", staging)
-    assert re.search(r"enable_guardduty\s*=\s*true", prod)
-    assert re.search(r"enable_cloudtrail\s*=\s*true", prod)
+def test_application_stacks_do_not_create_account_wide_security_controls() -> None:
+    """GuardDuty / CloudTrail はaccount全体の設定なので、短時間の検証stackでは作らない。
+
+    以前はprod rootが所有していたが、2026-09-27にprodを削除した。
+    """
+    assert not (ROOT / "terraform/environments/prod").exists()
+    for environment in ("dev", "staging"):
+        main = text(f"terraform/environments/{environment}/main.tf")
+        assert re.search(r"enable_guardduty\s*=\s*false", main)
+        assert re.search(r"enable_cloudtrail\s*=\s*false", main)
 
 
 def test_backup_cold_storage_retention_and_cloudtrail_kms_are_validated() -> None:
-    prod = text("terraform/environments/prod/main.tf")
     backup = text("terraform/modules/backup/main.tf")
     monitoring = text("terraform/modules/monitoring/main.tf")
     cloudtrail_statement = monitoring.split('Sid    = "AllowCloudTrail"', 1)[1].split(
         'Sid    = "AllowSNS"', 1
     )[0]
-    assert "backup_retention_days" in prod and "= 180" in prod
-    assert "cold_storage_after_days" in prod and "= 90" in prod
     assert "var.backup_retention_days >= var.cold_storage_after_days + 90" in backup
     assert '"kms:Decrypt"' in cloudtrail_statement
 
@@ -114,13 +109,13 @@ def test_staging_root_and_restore_outputs_are_complete() -> None:
         "backup_vault_name",
         "backup_role_arn",
     }
-    for environment in ("dev", "staging", "prod"):
+    for environment in ("dev", "staging"):
         outputs = text(f"terraform/environments/{environment}/outputs.tf")
         for name in required_outputs:
             assert f'output "{name}"' in outputs
 
     workflow = text(".github/workflows/terraform-check.yml")
-    assert "environment: [dev, staging, prod]" in workflow
+    assert "environment: [dev, staging]" in workflow
 
 
 def test_force_destroy_is_isolated_to_short_lived_staging() -> None:
@@ -158,7 +153,7 @@ def test_backup_deletion_policy_has_real_break_glass_and_lifecycle_exceptions() 
     assert '"backup:UpdateRecoveryPointLifecycle"' in module
     assert '"backup:PutBackupVaultAccessPolicy"' in module
     assert '"backup:DeleteBackupVaultAccessPolicy"' in module
-    for environment in ("dev", "prod"):
+    for environment in ("dev",):
         main = text(f"terraform/environments/{environment}/main.tf")
         values = text(f"terraform/environments/{environment}/terraform.tfvars.example")
         assert "var.backup_admin_principal_arns" in main
@@ -174,7 +169,7 @@ def test_backup_selection_is_explicitly_environment_scoped() -> None:
 
 
 def test_management_alb_cidrs_reject_full_open() -> None:
-    for environment in ("dev", "staging", "prod"):
+    for environment in ("dev", "staging"):
         variables = text(f"terraform/environments/{environment}/variables.tf")
         assert '!contains(var.allowed_ingress_cidrs, "0.0.0.0/0")' in variables
 
@@ -257,7 +252,7 @@ def test_aws_app_port_contract_preserves_loopback_default() -> None:
     assert "${MONITOR_BIND_ADDRESS:-127.0.0.1}:${MONITOR_PORT:-8080}:8080" in compose
     assert "MONITOR_BIND_ADDRESS={{ app_monitor_bind_address }}" in app_tasks
     assert "common_ufw_alb_source_cidr" in common_tasks
-    for environment in ("dev", "staging", "prod"):
+    for environment in ("dev", "staging"):
         main = text(f"terraform/environments/{environment}/main.tf")
         assert "AlbHealthCheckSourceCidr = var.vpc_cidr" in main
 

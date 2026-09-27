@@ -20,7 +20,7 @@ EC2 ホストが応答しなくなった状態を再現し、**AWS Backup の re
 
 | 項目 | 確認方法 |
 | --- | --- |
-| 専用staging stateと実値file | `backend.hcl` / `terraform.tfvars`がdev/prodと別で、Git管理外 |
+| 専用staging stateと実値file | `backend.hcl` / `terraform.tfvars`がdevと別で、Git管理外 |
 | staging構成のdriftなし | `terraform -chdir=terraform/environments/staging plan -detailed-exitcode`が`0` |
 | 最新の AWS Backup recovery point が存在 | `aws backup list-recovery-points-by-backup-vault` |
 | 演習対象の EC2 タグ | `Application=server-monitor`、`Environment=staging` |
@@ -32,7 +32,7 @@ EC2 ホストが応答しなくなった状態を再現し、**AWS Backup の re
 stagingはALB用networkを2 AZ、復元元EC2を1 AZに絞った短時間の非本番環境です。可用性や性能をproduction相当と
 主張しません。stagingだけはALB access-log bucket、Backup Vault、archive bucket、SSM transfer bucketを
 `force_destroy=true`、Vaultの削除拒否policyを無効にし、承認済みの`terraform destroy`で
-演習用データも削除できる設計です。dev/prodの既定値は保護側のままです。account/regionで共有される
+演習用データも削除できる設計です。devの既定値は保護側のままです。account/regionで共有される
 GuardDutyとaccount-wide CloudTrailはstagingでは作成しません。演習後は証跡を外部へ保存し、
 destroy結果とCost Explorerの反映を確認します。
 
@@ -84,7 +84,7 @@ OS/EBS破損の再現実績とは主張しません。異常時は復元元EC2�
 - `terraform/environments/staging`の`terraform plan`出力をSlackに貼り、承認を得てから`apply`
 - 復元中はトラフィックを **新 EC2 に切替えない**（旧の DNS / TG はそのまま）
 - ALB Target Group の付替前に新 EC2 単体で `/healthz` を確認
-- 演習中はdev/prodのTerraform stateを変更せず、復元EC2はstagingの一時resourceとして扱う
+- 演習中はdevのTerraform stateを変更せず、復元EC2はstagingの一時resourceとして扱う
 - 演習中の異常系は迷わず中断、本番影響を最優先に判断
 
 ## 7. 想定発見事項のヒント
