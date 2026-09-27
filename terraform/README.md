@@ -2,13 +2,14 @@
 
 > **状態：未実行（NOT RUN）**
 >
-> このディレクトリのコード（約 3,600 行）は、AWS へ一度も `apply` していません。確認済みなのは CI での `fmt` / `validate` / tfsec / checkov までです。実際に作成・削除したリソース、疎通、実費の記録はありません。コードの生成には AI 支援を使っています。
+> このディレクトリのコード（約 3,200 行）は、AWS へ一度も `apply` していません。確認済みなのは CI での `fmt` / `validate` / tfsec / checkov までです。実際に作成・削除したリソース、疎通、実費の記録はありません。コードの生成には AI 支援を使っています。
 
 | 対象 | 使う環境 | 状態 |
 | --- | --- | --- |
 | `modules/network`・`compute`・`alb`・`monitoring`・`backup` | dev / staging / prod | 未実行（NOT RUN） |
-| `modules/synthetics-probe`・`central-metrics` | staging のみ（既定で無効） | 未実行（NOT RUN） |
 | `environments/dev`・`staging`・`prod` | — | 未実行（NOT RUN） |
+
+外部 probe（`synthetics-probe`）と metrics 中央化（`central-metrics`）の module は、一度も実行しないまま staging で既定無効になっていたため、2026-09-27 に削除しました。設計は [docs/roadmap/external-probe-central-telemetry.md](../docs/roadmap/external-probe-central-telemetry.md) に残しています。
 
 最初の実行は、dev の最小構成で `plan → apply → 疎通 → destroy` を 1 回行い、実費とともに[検証証跡台帳](../docs/evidence/README.md)へ記録する予定です（テンプレートは [aws-validation.md](../docs/evidence/templates/aws-validation.md)）。
 
@@ -26,9 +27,7 @@ terraform/
 │   ├── compute/         # EC2 (IMDSv2 強制) / IAM / EBS / SG
 │   ├── alb/             # ALB / Target Group / Listener / ACM / Access Log
 │   ├── monitoring/      # CloudWatch Alarms / SNS / CloudTrail / GuardDuty / Budgets
-│   ├── backup/          # AWS Backup vault / plan / S3 archive
-│   ├── synthetics-probe/ # 外部probe（CloudWatch Synthetics canary）。staging限定・既定無効
-│   └── central-metrics/  # metrics中央化（AMP workspace + remote_write policy）。staging限定・既定無効
+│   └── backup/          # AWS Backup vault / plan / S3 archive
 └── environments/
     ├── dev/             # ALB用2 AZ・EC2 1台（account-wide GuardDuty / CloudTrailは作らない）
     ├── staging/         # D-2専用・ALB用2 AZ・EC2 1台（GuardDuty / CloudTrailは作らない）
