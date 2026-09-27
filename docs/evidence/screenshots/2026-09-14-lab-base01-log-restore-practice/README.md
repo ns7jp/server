@@ -1,6 +1,6 @@
 # lab-base01：ログ復元の原画像
 
-[結果票](../../2026-09-14-lab-base01-log-restore-practice.md)
+[結果票](../../practice/2026-09-14-lab-base01-log-restore-practice.md)
 
 本人提供画像3枚を無加工で保存。ユーザー名・ホスト名・プライベートIP・SSH鍵パス・Windows保存先・ログ名・SHA・抽出内容を含む。
 秘密鍵本文や入力パスフレーズは表示されていない。ログ実体は添付しない。

@@ -1,3 +1,5 @@
+# 状態：未実行（NOT RUN）。AWS へ一度も apply していない。詳細は terraform/README.md を参照。
+
 locals {
   name = var.name
   tags = merge(var.tags, { Module = "backup" })

@@ -1,6 +1,6 @@
 # lab-base01：revert演習の原画像
 
-[結果票へ戻る](../../2026-09-11-lab-base01-git-revert-practice.md)
+[結果票へ戻る](../../practice/2026-09-11-lab-base01-git-revert-practice.md)
 
 本人提供の原画像3枚を無加工で保存。ユーザー名・ホスト名・演習パス・Git author名と
 noreplyメールアドレス・コミット日時・SHAを含む。秘密鍵本文・パスワードは含まない。

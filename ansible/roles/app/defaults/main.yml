@@ -52,7 +52,8 @@ app_watchdog_webhook_url: ""
 
 # 外部probe / 中央telemetry（docs/roadmap/external-probe-central-telemetry.md）
 # 向け。Amazon Managed Service for Prometheus (AMP) への remote_write
-# endpoint。terraform/modules/central-metrics の remote_write_url 出力を渡す。
+# endpoint。AMP workspace を作る Terraform module は 2026-09-27 に削除したため、
+# 使う場合は workspace を別途用意して URL を渡す。
 # 空のままだと remote_write は追加されず、既存のホスト内 Prometheus だけの
 # 構成を変えない。
 app_amp_remote_write_url: ""

@@ -20,9 +20,8 @@ alerting:
 # 単一ホストPrometheusは、ホストが消えると時系列の正本も一緒に失われる
 # （docs/roadmap/external-probe-central-telemetry.md）。Amazon Managed
 # Service for Prometheus へ remote_write することで、ホスト外に正本を残す。
-# EC2 instance roleに terraform/modules/central-metrics の
-# remote_write_policy_arn がアタッチされている前提（sigv4はinstance
-# metadataの認証情報を使う）。
+# EC2 instance roleに AMP への remote_write 権限がアタッチされている前提
+# （sigv4はinstance metadataの認証情報を使う）。
 remote_write:
   - url: "{{ app_amp_remote_write_url }}"
     sigv4:

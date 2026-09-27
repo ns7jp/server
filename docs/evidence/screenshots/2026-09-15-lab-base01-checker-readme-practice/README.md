@@ -1,6 +1,6 @@
 # README作成・保存・同期の原画像
 
-[結果票](../../2026-09-15-lab-base01-checker-readme-practice.md)
+[結果票](../../practice/2026-09-15-lab-base01-checker-readme-practice.md)
 
 本人提供画像4枚を無加工で保存。VMユーザー名・ホスト名・パス・短縮SHA・文書内容・操作結果を含む。
 画像のSHA-256はコピー一致確認用。VM上のREADME実体は取得していない。

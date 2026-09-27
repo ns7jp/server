@@ -1,6 +1,6 @@
 # lab-base01：Ansible check/diff演習の原画像
 
-[結果票へ戻る](../../2026-09-09-lab-base01-check-diff-practice.md)
+[結果票へ戻る](../../practice/2026-09-09-lab-base01-check-diff-practice.md)
 
 本人が対話へ提供した原画像3枚を無加工でコピーした。ホスト名・ユーザー名・パス・演習用本文を含む。
 秘密値本文は含めない。ハッシュはコピーの同一性確認用で、主体や日時の第三者認証ではない。

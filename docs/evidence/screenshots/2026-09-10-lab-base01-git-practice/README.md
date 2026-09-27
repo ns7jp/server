@@ -1,6 +1,6 @@
 # lab-base01：Git演習の原画像（2026-09-10）
 
-[結果票へ戻る](../../2026-09-10-lab-base01-git-practice.md)
+[結果票へ戻る](../../practice/2026-09-10-lab-base01-git-practice.md)
 
 本人提供の原画像9枚を無加工で保存。ユーザー名・ホスト名・ホーム内のパス・Git authorの
 noreplyメールアドレス・コミット日時とSHAを含む。秘密鍵本文・パスワードは含まない。

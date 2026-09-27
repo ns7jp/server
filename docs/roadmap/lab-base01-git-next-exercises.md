@@ -1,7 +1,7 @@
 # lab-base01：Git演習の次候補（未実施）
 
 > 本書は手順案の保管文書。2026-09-10に本人VMでブランチ・履歴・ignoreの一部を実施した。
-> 実物に合わせた変更点・実測範囲は[結果票](../evidence/2026-09-10-lab-base01-git-practice.md)を正本とする。
+> 実物に合わせた変更点・実測範囲は[結果票](../evidence/practice/2026-09-10-lab-base01-git-practice.md)を正本とする。
 > 以下の案をすべて実行したという意味ではない。未実施項目は引き続きNOT RUN。
 
 ## 2026-09-10時点の実施範囲
@@ -9,7 +9,7 @@
 | テーマ | 状態 |
 | --- | --- |
 | ブランチ・diff | 環境名staging→staging-testに変更して実施。取り込まず作業ブランチを残す6bを選択 |
-| コンフリクト | VM内の練習ブランチで発生・解消・abortを実施。[追補結果票](../evidence/2026-09-10-lab-base01-git-merge-practice.md) |
+| コンフリクト | VM内の練習ブランチで発生・解消・abortを実施。[追補結果票](../evidence/practice/2026-09-10-lab-base01-git-merge-practice.md) |
 | 履歴探索 | 2コミットでファイル別log --all、show、show --stat、前後状態を確認。log -p -2は未採録 |
 | ignore境界 | *.retryの一致/不一致と削除を確認。ディレクトリ比較・追跡継続の比較試験はNOT RUN |
 
@@ -22,98 +22,98 @@
 
 ## 2026-09-11追補：revert
 
-[単一の変更コミットを取り消す演習](../evidence/2026-09-11-lab-base01-git-revert-practice.md)を本人VMで実施。
+[単一の変更コミットを取り消す演習](../evidence/practice/2026-09-11-lab-base01-git-revert-practice.md)を本人VMで実施。
 練習ブランチに取り消しコミットを追加し、元の変更を履歴に残した。最後はmainへ復帰。
 マージコミットのrevert・revert中の競合はNOT RUN。
 
 ## 演習ソース保存の追補（2026-09-14）
 
-[本人VMの保存結果票](../evidence/2026-09-14-lab-base01-save-ansible-practice.md)に
+[本人VMの保存結果票](../evidence/practice/2026-09-14-lab-base01-save-ansible-practice.md)に
 生成物等の除外、ソース差分レビュー、12ファイルのローカルコミット38559f2を記録。
 push・別媒体バックアップ・保存版のPlaybook再実行はNOT RUN。
 
 ## 保存版再実行の追補（2026-09-14）
 
-[本人VMの保存版結果票](../evidence/2026-09-14-lab-base01-saved-rerun-practice.md)で
+[本人VMの保存版結果票](../evidence/practice/2026-09-14-lab-base01-saved-rerun-practice.md)で
 38559f2の入力検証付きroleをstaging/8091で通常再実行し、変更なし・終了0を確認した。
 前の保存時点のNOT RUNは当時の記録として保持。他Playbookや不正入力は今回未検証。
 
 ## ローカルclone再現の追補（2026-09-14）
 
-[本人VMのclone再現結果票](../evidence/2026-09-14-lab-base01-reproduce-practice.md)で
+[本人VMのclone再現結果票](../evidence/practice/2026-09-14-lab-base01-reproduce-practice.md)で
 同じVM内の別フォルダーに38559f2をcloneし、検証付きroleの新規生成・同条件再実行を確認した。
 GitHubへのpushや別媒体バックアップ、新規OSでの再現は未実施。
 
 ## bundle復元の追補（2026-09-14）
 
-[本人VMのbundle結果票](../evidence/2026-09-14-lab-base01-bundle-practice.md)に
+[本人VMのbundle結果票](../evidence/practice/2026-09-14-lab-base01-bundle-practice.md)に
 指定ブランチのbundle作成・検査・別フォルダー復元とroleの初回/再実行を記録。
 同じVM内の練習であり、全ブランチ保存や別媒体バックアップではない。
 
 ## bundle転送の追補（2026-09-14）
 
-[bundle転送結果票](../evidence/2026-09-14-lab-base01-bundle-transfer-practice.md)に
+[bundle転送結果票](../evidence/practice/2026-09-14-lab-base01-bundle-transfer-practice.md)に
 VMからWindowsへの複製、サイズ・SHA-256一致を記録。Windowsコピーからの復元は未実施。
 同じホストPC内であり、別媒体へのバックアップとは区別する。
 
 ## Windows bundle復元の追補（2026-09-14）
 
-[Windows復元結果票](../evidence/2026-09-14-lab-base01-windows-bundle-practice.md)に
+[Windows復元結果票](../evidence/practice/2026-09-14-lab-base01-windows-bundle-practice.md)に
 転送済みbundleからのclone、HEAD・履歴・20追跡ファイル確認を記録。
 前段のWindows復元NOT RUNは当時の記録。Windows上でのAnsible実行は引き続き未実施。
 
 ## Windows整合性検査の追補（2026-09-14）
 
-[Git整合性結果票](../evidence/2026-09-14-lab-base01-git-integrity-practice.md)に
+[Git整合性結果票](../evidence/practice/2026-09-14-lab-base01-git-integrity-practice.md)に
 Windows復元先のfsck --fullとbundle verifyの終了0を記録。Ansible動作や全ブランチ保存の保証ではない。
 
 ## 注釈付きタグの追補（2026-09-14）
 
-[タグ結果票](../evidence/2026-09-14-lab-base01-tag-practice.md)にpractice-validated-v1の作成と
+[タグ結果票](../evidence/practice/2026-09-14-lab-base01-tag-practice.md)にpractice-validated-v1の作成と
 参照先38559f2・注釈・変更なしを記録。タグ同期・タグからの実行は未実施。
 
 ## タグ付きbundleの追補（2026-09-14）
 
-[タグ付きbundle結果票](../evidence/2026-09-14-lab-base01-tagged-bundle-practice.md)に
+[タグ付きbundle結果票](../evidence/practice/2026-09-14-lab-base01-tagged-bundle-practice.md)に
 ブランチとタグを明示したbundle作成・復元、注釈と参照先の維持を記録。
 新しいbundleのWindows転送や復元先Ansible実行は未実施。
 
 ## タグ切替の追補（2026-09-14）
 
-[タグ切替結果票](../evidence/2026-09-14-lab-base01-tag-switch-practice.md)に
+[タグ切替結果票](../evidence/practice/2026-09-14-lab-base01-tag-switch-practice.md)に
 タグ指定のdetached HEADと元ブランチ復帰を記録。同じ38559f2を指し、新規Ansible実行は未実施。
 
 ## タグ起点の変更コミット追補（2026-09-14）
 
-[タグ起点の結果票](../evidence/2026-09-14-lab-base01-from-tag-practice.md)に
+[タグ起点の結果票](../evidence/practice/2026-09-14-lab-base01-from-tag-practice.md)に
 practice/from-tag作成、identity設定、8085への変更コミットとタグ38559f2維持を記録。
 新コミットでのAnsible実行は未実施。
 
 ## ログ検証ソース保存の追補（2026-09-15）
 
-[検証ソース保存結果票](../evidence/2026-09-15-lab-base01-checker-save-practice.md)に
+[検証ソース保存結果票](../evidence/practice/2026-09-15-lab-base01-checker-save-practice.md)に
 3ファイル172行の初回コミットと保存版での9テスト成功を記録。公開用serverとは別リポジトリである。
 
 ## ログ検証ツール再現の追補（2026-09-15）
 
-[checker clone結果票](../evidence/2026-09-15-lab-base01-checker-reproduce-practice.md)に
+[checker clone結果票](../evidence/practice/2026-09-15-lab-base01-checker-reproduce-practice.md)に
 保存版3ファイルの復元と9テスト成功を記録。新規OSや別Python環境での試験ではない。
 
 ## cloneしたツールの利用結果（2026-09-15）
 
-[保存ログへの適用結果](../evidence/2026-09-15-lab-base01-checker-real-logs-practice.md)に、clone先から保存ログ5件を検証した結果を記録。
+[保存ログへの適用結果](../evidence/practice/2026-09-15-lab-base01-checker-real-logs-practice.md)に、clone先から保存ログ5件を検証した結果を記録。
 5件OK・終了0・HEAD維持を確認。Ansibleの再実行とは区別する。
 
 ## README作成と同期の追補（2026-09-15）
 
-[README保存・同期結果票](../evidence/2026-09-15-lab-base01-checker-readme-practice.md)に、使い方の文書化とclone先への取り込みを記録。
+[README保存・同期結果票](../evidence/practice/2026-09-15-lab-base01-checker-readme-practice.md)に、使い方の文書化とclone先への取り込みを記録。
 文書変更のみで、単体テストと保存ログ照合の再実行は行っていない。
 
 ## これまでの実施（参考）
 
 | # | テーマ | 証跡 |
 | --- | --- | --- |
-| 1 | Git管理の開始（`git init`・初回commit、identity未設定の検出） | [2026-09-09](../evidence/2026-09-09-lab-base01-git-intro-practice.md) |
+| 1 | Git管理の開始（`git init`・初回commit、identity未設定の検出） | [2026-09-09](../evidence/practice/2026-09-09-lab-base01-git-intro-practice.md) |
 
 初回commit `a94c1d3`の時点で、ローカル`main`に9ファイルがある状態から次を扱う。
 remote設定・push・ブランチ操作はまだ一度も行っていない（前段記録の「未実施範囲」どおり）。

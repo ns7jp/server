@@ -1,6 +1,6 @@
 # lab-base01：演習ソース保存の原画像
 
-[結果票](../../2026-09-14-lab-base01-save-ansible-practice.md)
+[結果票](../../practice/2026-09-14-lab-base01-save-ansible-practice.md)
 
 本人提供画像10枚を無加工で保存。ユーザー名・ホスト名・演習パス・ソース差分・Git状態・短縮SHAを含む。
 秘密鍵本文・Vaultパスワード・Vault暗号文本文は含まない。Vaultファイル名は一覧に表示される。

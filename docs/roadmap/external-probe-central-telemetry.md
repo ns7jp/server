@@ -73,8 +73,12 @@ flowchart LR
 
 ## 実装状況（2026-09-01）
 
+> **2026-09-27 追記**：下表の Terraform module（`synthetics-probe`・`central-metrics`）と、staging の
+> `enable_central_observability` 変数は、一度も `apply` しないまま既定無効で残っていたため削除した。
+> 必要になったら、この節の設計と Git 履歴から作り直す。Ansible 側の `remote_write` opt-in は残している。
+
 外部 probe と metrics 中央化（表の 1〜2 行目）だけ、Terraform / Ansible の雛形を
-`terraform/environments/staging` に追加した。**`terraform apply` は未実施**で、
+`terraform/environments/staging` に追加した（上記のとおり Terraform 側は削除済み）。**`terraform apply` は未実施**で、
 このセクションの内容は設計から一歩進んだ「コード化された未検証の雛形」であり、
 上記 Definition of Done のいずれも満たしていない。
 
