@@ -2,7 +2,7 @@
 
 > **状態：未実行（NOT RUN）**
 >
-> このディレクトリのコード（約 2,900 行）は、AWS へ一度も `apply` していません。確認済みなのは CI での `fmt` / `validate` / tfsec / checkov までです。実際に作成・削除したリソース、疎通、実費の記録はありません。コードの生成には AI 支援を使っています。
+> このディレクトリのコード（`*.tf` 約 2,900 行。2026-09-28 時点で 2,925 行）は、AWS へ一度も `apply` していません。確認済みなのは CI での `fmt` / `validate` / tfsec / checkov までです。実際に作成・削除したリソース、疎通、実費の記録はありません。コードの生成には AI 支援を使っています。
 
 | 対象 | 使う環境 | 状態 |
 | --- | --- | --- |
@@ -34,7 +34,8 @@ terraform/
 ```
 
 GuardDuty detectorはaccount / regionごとに1個で、CloudTrailもaccount全体の設定です。
-dev・stagingはどちらも短時間の検証用のため、これらを作りません。必要な場合は、account
+dev・stagingはどちらも短時間の検証用のため、これらを作りません（`modules/monitoring` の
+`enable_guardduty` / `enable_cloudtrail` を両環境で `false` にしています。module 側の既定値は `true`）。必要な場合は、account
 baselineとして別stateで1回だけ管理します（このリポジトリの対象外）。
 
 以前はマルチ AZ・EC2 2 台の `environments/prod` があり、GuardDuty / CloudTrail を所有していましたが、
@@ -47,6 +48,13 @@ baselineとして別stateで1回だけ管理します（このリポジトリの
 `backend.tf` は環境ごとに `key` を分けて S3 にリモート保存し、DynamoDB
 テーブルでロックを取る。S3 バケットと DynamoDB テーブルは Terraform の
 管理対象外（先に手動 / 別 stack で作る）として扱う。
+
+> **ロック方式の現状（2026-09-28 追記）**: 実装しているロック方式は、上のとおり DynamoDB テーブル
+> （`backend.hcl.example` の `dynamodb_table`）です。S3 ネイティブロック（`use_lockfile = true`。
+> DynamoDB を使わず、S3 上のロックファイルで排他する方式）への切り替えは**予定であり、未実施**です。
+> `use_lockfile` は Terraform 1.10 以降でしか使えず、CI（`.github/workflows/terraform-check.yml`）が
+> 1.9.8 を使っているため、切り替えるときは `required_version`（現在 `>= 1.6.0`）と CI の版を
+> 同じ変更で上げます。改善設計の文書に「切り替えた」と書かれている場合は、このコードの状態が正です。
 
 ```bash
 # 例: dev 環境

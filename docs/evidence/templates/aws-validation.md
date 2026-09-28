@@ -1,7 +1,7 @@
 # AWS staging短時間検証記録テンプレート
 
 > 初期状態: **NOT RUN**。実ログが揃うまでPASSへ変更しない。
-> `terraform/environments/staging`専用で、dev/prodへ適用しない。
+> `terraform/environments/staging`専用で、devへ適用しない（`environments/prod`は2026-09-27に削除済み）。
 
 ## 基本情報
 
