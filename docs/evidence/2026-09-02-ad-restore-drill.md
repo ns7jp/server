@@ -4,6 +4,12 @@
 
 > **この証跡が示す範囲**: 手元 Hyper-V 上の VM 1台(`ad-dc01`)での非権威復元です。複数DC環境での権威復元、USN ロールバック、SYSVOL の複製回復は含みません。
 
+> **2026-09-28 追記（実施体制と一次資料）**：[README](../../README.md)の「実行者が私・CI・AI 支援環境のどれかは、各証跡に書く」という方針に沿って、実施者・原因推論の担い手・一次資料の有無を明記します。
+>
+> - **実施者**: 本人（ns7jp）が手元の Hyper-V 上の VM を操作しました。手順は AI 支援セッションで案内を受けています（[証跡台帳](README.md)の「主要な記録」の記載による）。
+> - **原因の推論**: 本文にある原因・考察を、誰が推論したか（AI 支援セッションの提案か、本人の判断か）は、この記録に書かれていません。この追記の時点でも特定できないため、推測で補いません。
+> - **一次資料**: 画像・生ログはこのリポジトリに収録していません（`screenshots/`・`logs/` に該当なし）。本文のコマンド出力は当時の画面から転記したもので、要約した箇所との区別は行ごとには付いていません（[FSMO 奪取の証跡](2026-09-04-ad-fsmo-seize.md)の 2026-09-28 訂正を参照）。当時の画像が手元に残っているかは未確認です。
+
 ## 結果の要約
 
 | 項目 | 結果 |
@@ -67,6 +73,10 @@ Microsoft-Windows-Backup:
 > ⚠️ **2026-09-03 追記・訂正**: この復元では `dcdiag` の `DFSREvent` 失敗も出ており、当時は上記と同じく再起動由来と判断しましたが、**それは不十分な切り分けでした**。実際には非権威復元によって `C:\Windows\SYSVOL\domain\scripts`(NETLOGON 共有の実体)が失われていました。単一 DC 構成では既存の共有定義が残るため症状が出ず、翌日 2台目 DC を追加して初めて顕在化しています(詳細は[2台目DC追加の証跡](2026-09-03-ad-second-dc-replication.md) LAB-19)。**System State 復元の完了確認では、`dcdiag` の合否だけでなく `Get-ChildItem C:\Windows\SYSVOL\domain` に `Policies` と `scripts` が揃っていることをファイルシステムで確認してください。**
 
 > ⚠️ **2026-09-03 追記・訂正(2)**: 失われていたのは `scripts` だけではありませんでした。Default Domain Policy(`{31B2F340-016D-11D2-945F-00C04FB984F9}`)の `gpt.ini` と `GptTmpl.inf` も欠損しており、**この DC は GPO を1件も適用できない状態になっていました**(1つの GPO のダウンロード失敗が適用サイクル全体を中断させるため)。既に適用済みのローカルポリシーは残り、パスワードポリシーもドメインオブジェクトの属性として保持されるため、単一 DC では正常に見え続けます。これも 2台目 DC を追加して初めて発覚しました(詳細は[2台目DC追加の証跡](2026-09-03-ad-second-dc-replication.md) LAB-20)。**復元後は SYSVOL 配下の GPO の実体(`gpt.ini`・`GptTmpl.inf`)の存在と、`Microsoft-Windows-GroupPolicy/Operational` にエラー `7257` が出ていないことも確認してください。** 確認手順は[構築手順書](../build-package-ad/05-build-procedure.md)14節に追加しました。
+
+> **2026-09-28 訂正**：上の2つの追記は、欠損を「非権威復元によって失われた」と書いていますが、これは確認した事実ではなく**最有力の仮説**です。当時は、DFSRが退避したファイルを置く `C:\Windows\SYSVOL\domain\DfsrPrivate` 配下の `PreExisting`・`ConflictAndDeleted` や、`DFS Replication` ログのイベントを確認していません。また、この演習の復元方法そのものにも見落としがありました。本ラボの `ad-dc01` は唯一の DC なので、Microsoft の手順では `wbadmin start systemstaterecovery` に **`-authsysvol`(SYSVOL の権威復元)** を付けるのが正しい形です。この演習は `-authsysvol` 無しで実行しており、これが欠損につながった可能性があります(未確認)。本文の実行コマンド・所要時間・判定は当時の記録のまま残します。手順書は [05](../build-package-ad/05-build-procedure.md) 14節・[08](../build-package-ad/08-change-rollback-plan.md) 6節で `-authsysvol` 付きの形に直しました(実機では未検証)。
+>
+> あわせて、追記・訂正(2)の「パスワードポリシーもドメインオブジェクトの属性として保持されるため」も不正確でした。パスワードポリシーの正本は Default Domain Policy の `GptTmpl.inf` で、PDC エミュレーターがその値を属性へ書き戻します。14文字の設定が残って見えたのは、`GptTmpl.inf` が失われて GPO 側に上書きする値が無かったためと考えられます([詳細設計書](../build-package-ad/02-detailed-design.md) 4項)。
 
 ## インシデントと欠陥(LAB-11〜15)
 

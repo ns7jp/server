@@ -117,6 +117,10 @@ storage role は何も実行しない（既定は「触らない」）。
 Docker API proxyはtagとdigestを固定しています。その他はversion tagまたはpackage rangeであり、
 registry上のtag不変性まで保証するdigest固定ではありません。更新時はCIとFull-stack E2Eを再実行します。
 
+監視stack（Prometheus・Alertmanager・Grafana・Loki）は、いずれも最新の大きな版ではありません。版を固定している理由、
+更新すると壊れるもの（例: Loki 3系ではcompactorの`shared_store`が廃止され、TSDB・`v13`スキーマへの移行が必要）、
+見直しの条件は[設計判断記録 ADR-008](../design-decisions.md#adr-008-監視stackのimage版を固定し見直しを計画して行う)にまとめています。
+
 ## 監視・ログ
 
 | 項目 | 設定値 | 正本 |

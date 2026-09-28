@@ -43,6 +43,8 @@
 | AFIT-06 | RHEL系（フェーズ2）構築 | BLOCKED | 実VM未用意のため未着手（既存の状態を維持） |
 | AFIT-07 | 実ホストnetwork | PASS | 下表AFNW参照。AFNW-01〜05すべてPASS（AFNW-06は任意項目でNOT RUN） |
 
+> **2026-09-28 訂正**：AFIT-04の備考にある「NTPポート（`127.0.0.1:323`、`[::1]:323`）」は誤りです。323/udpは、`chronyc`コマンドが`chronyd`へ状態を問い合わせるための**制御用ポート（cmdport）**で、NTPの通信に使うポートは123/udpです。また、`chronyd`がポートを待ち受けていることは、時刻が同期していることを意味しません。この記録で確認できたのは「`chronyd`が起動している」ところまでで、**同期状態は記録されていません**。当時の期待結果（[試験仕様書](../build-package-ansible/06-test-specification.md)のAFIT-04、`systemctl is-active chrony`が`active`）に照らした判定としてPASSは残しますが、同期の確認にはなっていません。試験仕様書のAFIT-04は、`chronyc tracking`（`Leap status: Normal`）、`chronyc sources`（`^*`の行）、`timedatectl`（`System clock synchronized: yes`）で同期を確かめる形に改訂しました。`ans-01`での再確認は行っていません（同期まで確認した例は[lab-base01の初期構築](2026-09-08-lab-base01-initial-build.md)のT-03）。
+
 ## セキュリティ試験（AFST）
 
 | ID | 確認対象 | 結果 | 実出力（要点）/ 備考 |
@@ -65,6 +67,8 @@
 | AFNW-04 | SSH到達性 | PASS | `usr722`（password）・`ansible-admin`（鍵、`ssh -i ~/.ssh/ans01-admin`）双方で到達性を繰り返し確認 |
 | AFNW-05 | firewall許可範囲 | PASS | `sudo ufw status verbose` → `Status: active`、`Default: deny (incoming), allow (outgoing), deny (routed)`、`22/tcp` / `22/tcp (v6)`のみ`LIMIT IN Anywhere` |
 | AFNW-06 | rate limit発火確認（任意） | NOT RUN | 対象ホストへの負荷を伴うため未実施 |
+
+> **2026-09-28 訂正（補足）**：この適用時点の`common` roleは、最初のタスクでUFWを有効化し（既定policy `deny`）、SSHの`limit` ruleをその後で追加する順序でした。適用が途切れなかったのは、既存のSSH接続がconntrack（接続追跡）のESTABLISHED許可で維持され、Ansibleが接続を再利用していたためと考えられます。タスクの合間にSSHを張り直すと締め出される可能性がある順序だったため、2026-09-28にroleを「policy設定 → rule追加 → 最後に有効化」の順へ改めました（`ans-01`での再適用は未実施）。上表の結果は当時の記録のままです。
 
 ## 見つかった欠陥
 

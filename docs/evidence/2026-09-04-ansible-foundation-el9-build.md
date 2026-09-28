@@ -51,6 +51,8 @@ fatal: [ans-el9-01]: FAILED! =>
 | firewalld（`common` roleが追加したルール） | PASS（ただし下記の限定つき） | `sudo firewall-cmd --list-all`の`rich rules`に`rule family="ipv4" port port="22" protocol="tcp" accept limit value="4/m"`が設計どおり追加されている |
 | 最小公開（AFST-03相当） | **対象外（再利用VMのため不成立）** | 同じ`firewall-cmd --list-all`に、`services: cockpit dhcpv6-client http`、`ports: 10051/tcp 10050/tcp`が残っている。`ss -lntup`でも`zabbix_server`（多数）、`zabbix_agent2`（10050/tcp）、`mysqld`、`httpd`（80/tcp）、`cupsd`、`rpcbind`のLISTENが確認できた。**これらは`common`/`docker` roleが追加したものではなく、VM再利用前の環境から残っているもの。** `common` roleのfirewalld管理は「必要なルールを追加する」設計であり、無関係な既存ルールを削除しないため、この状態は roleの欠陥ではない |
 
+> **2026-09-28 訂正**：上表の「時刻同期」PASSは、`chronyd`サービスが`active`であることだけを確かめたもので、時刻が同期しているかは記録していません。同期の確認方法は[試験仕様書](../build-package-ansible/06-test-specification.md)のAFIT-04（2026-09-28改訂）を参照してください。
+
 ## 未実施・今後の課題
 
 - **専用の新規AlmaLinux/Rocky 9 VMでの再実施**: 「新規構築」「最小公開」を厳密に確認するには、Zabbix等が入っていないまっさらなVMが必要。次回の課題とする

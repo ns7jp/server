@@ -29,7 +29,7 @@ pwsh -Command '$PSVersionTable.PSVersion'
 ```bash
 # この案件パックの取得
 git clone https://github.com/ns7jp/server.git
-cd server-monitor
+cd server
 git rev-parse HEAD
 ```
 

@@ -18,7 +18,7 @@
       "gridPos": {"h": 5, "w": 6, "x": 6, "y": 0},
       "id": 2,
       "targets": [{"expr": "server_monitor_cpu_usage_percent", "legendFormat": "{{node}}", "refId": "A"}],
-      "title": "Application Container CPU",
+      "title": "Host CPU (via app psutil)",
       "type": "gauge"
     },
     {
@@ -45,7 +45,7 @@
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 5},
       "id": 5,
       "targets": [{"expr": "server_monitor_cpu_usage_percent", "legendFormat": "CPU {{node}}", "refId": "A"}, {"expr": "server_monitor_memory_usage_percent", "legendFormat": "Memory {{node}}", "refId": "B"}],
-      "title": "Application Container Resource History",
+      "title": "Host CPU / Memory History (via app psutil)",
       "type": "timeseries"
     },
     {

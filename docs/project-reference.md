@@ -51,7 +51,7 @@ flowchart LR
     Loki -->|"LogQL"| Grafana
 ```
 
-重要な点として、コンテナ化した Flask アプリの `psutil` 表示はアプリコンテナの状態です。Linux ホスト全体の監視は `node-exporter` と Grafana 側で扱い、役割を混同しない設計にしています。
+重要な点として、コンテナ化した Flask アプリの `psutil` が返す CPU・メモリの値は、**アプリコンテナの使用量ではなく、Linux ホスト(VM)全体の値**です。`psutil` はこれらを `/proc/stat`・`/proc/meminfo` から読みますが、この2つはコンテナの名前空間(プロセスごとに見える範囲を分ける Linux の仕組み)で分離されないためです。一方、ネットワーク(`/proc/net/dev`)やプロセス一覧はコンテナの名前空間ごとに分かれるので、コンテナから見える範囲の値になります。コンテナ単位の CPU・メモリ使用量が必要な場合は、cgroup(コンテナごとの資源制限・計測の仕組み)の値(`memory.current` など)や cAdvisor を使います。Linux ホスト全体の監視の正本は `node-exporter` と Grafana 側で扱います。
 
 ## ドキュメント
 

@@ -10,7 +10,7 @@
 flowchart LR
     User["運用担当者"] -->|"localhost 転送 / VPN + Basic 認証"| Nginx["Nginx reverse proxy"]
     Nginx --> App["Flask dashboard / Gunicorn / non-root"]
-    App -->|"psutil: コンテナの状態"| Container["Application container"]
+    App -->|"psutil: CPU・メモリはホスト全体の値"| Container["Application container"]
 
     Prom["Prometheus / 35日保持"] -->|"Bearer token /metrics"| App
     Prom -->|"scrape :9100"| Node["node-exporter"]
@@ -50,7 +50,7 @@ flowchart LR
 | Web アプリを非 root コンテナで実行 | アプリ侵害時の権限を限定するため |
 | Compose の公開ポートは loopback のみ | 学習環境で誤って LAN / Internet に露出しないため |
 | 公開対象だけ `host-access` bridgeにも接続 | `internal` networkだけではLinux hostへのport転送が作られないため。内部通信用の`frontend` / `monitoring`は維持し、host側は`127.0.0.1` bindとUFWで制限する |
-| ホスト監視には node-exporter を採用 | コンテナ内の `psutil` だけではホスト全体の監視にならないため |
+| ホスト監視には node-exporter を採用 | コンテナ内の `psutil` の CPU・メモリは `/proc` を通じてホスト全体の値を返すが、アプリの動作に依存する簡易な計測(CPUは0.1秒の標本)で、ホスト監視の正本には向かないため。なお、コンテナ単位の使用量は `psutil` では測れず、cgroup か cAdvisor が必要 |
 | 履歴は Prometheus TSDB に保持 | UI の短期グラフではなく、障害調査で遡れる履歴を残すため |
 | ログは Loki に集約 | アラートで気づいた異常の原因を、同じ Grafana 画面で即時に追跡するため |
 | ログラベルは固定値のみ | カーディナリティ爆発を避け、Loki の単一ホスト構成を安定動作させるため |

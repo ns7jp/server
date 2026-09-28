@@ -32,7 +32,7 @@
 | IPv4 / prefix(例示) | `192.0.2.50/24`(TEST-NET-1、RFC 5737の例示用アドレス。[Windows版パック](../build-package-windows/03-parameter-sheet.md)の`192.0.2.30`と同一レンジ、重複回避のため`.50`を使用) | `NOT RUN` | 本書 / `Get-NetIPAddress` |
 | IPアドレスの割り当て方式 | 静的固定IP(DCは動的IPを使用しない) | `NOT RUN` | `Get-NetIPAddress` |
 | default gateway | 環境ごとに決定 | `NOT RUN`(本パック単体では未確定のまま。ただし依存案件[SM-WSUS-001](../build-package-wsus/README.md)のフェーズ1実機検証で`ad-dc02`へ`0.0.0.0/0 → 192.0.2.40`が一時的に追加されている。[詳細](01-basic-design.md#34-発展構成対象外将来課題)、恒久化の判断は`NOT SET`) | `Get-NetRoute` |
-| DNSリゾルバー(自ホスト) | `127.0.0.1`(自分自身のAD統合DNSを優先参照) | `NOT RUN` | `Get-DnsClientServerAddress` |
+| DNSリゾルバー(自ホスト) | 単一DC: `127.0.0.1`(自分自身のAD統合DNSを参照)。**DCが2台以上の場合: 優先DNSを相手のDC、`127.0.0.1`を2番目以降**(自分だけを参照すると、再起動直後に自分のDNSがゾーンを読み込むまで何も名前解決できず、複製がエラー8524で止まりやすい。2026-09-03のLAB-23参照。2台構成時の設計値は2026-09-28追加で、実機では未検証) | `NOT RUN` | `Get-DnsClientServerAddress` |
 | 管理元CIDR(WinRM/RDP用) | 例示管理端末IP`192.0.2.40`を含むCIDRを環境ごとに決定 | `NOT RUN` | Windows Defender Firewallルールの送信元 |
 | 内部ネットワークCIDR(AD DS関連ポート用) | 環境ごとに決定(将来のドメインメンバーが所属しうる範囲) | `NOT RUN` | Windows Defender Firewallルールの送信元 |
 | WinRM port | `5986/tcp`(HTTPS) | `NOT RUN` | `winrm enumerate winrm/config/listener` |
@@ -77,11 +77,13 @@ OU構造は既定の`CN=Users`・`CN=Computers`コンテナをそのまま使わ
 
 | GPO名 | 適用先 | 内容 | 実装状態 |
 | --- | --- | --- | --- |
-| Default Domain Policy | ドメインルート | パスワードポリシー(NFR-07)、アカウントロックアウトポリシー | 済(手動)。実務では専用GPOへ分離することが多いが、本パックでは既定GPOを直接編集し、そのトレードオフを[詳細設計書](02-detailed-design.md)に明記する |
+| Default Domain Policy | ドメインルート | パスワードポリシー(NFR-07)、アカウントロックアウトポリシー | 済(手動)。実務では専用GPOへ分離することが多いが、本パックでは既定GPOで管理し、そのトレードオフを[詳細設計書](02-detailed-design.md)に明記する。**2026-09-28 注記**: 実機では`Set-ADDefaultDomainPasswordPolicy`でドメインオブジェクトの属性を直接設定しており、DDPの`GptTmpl.inf`は09-02の復元後に欠損したまま(DDPは実質空)。GPMCでDDPに設計値を入れ直して`GptTmpl.inf`を再生成する作業は未実施 |
 | Servers-Baseline(設計のみ) | `OU=Servers` | NLA必須化、監査ポリシー、Windows Updateの集中管理 | 未実装(設計のみ。適用対象サーバーが本パックに無いため) |
 | Workstation-Baseline(設計のみ) | `OU=Workstations` | 画面ロック、監査ポリシー、ローカル管理者制限 | 未実装(設計のみ。適用対象クライアントが本パックに無いため) |
 
 ## パスワードポリシー(既定ドメインGPO)
+
+正本はDefault Domain Policyの`GptTmpl.inf`(アカウント ポリシー)です。`Get-ADDefaultDomainPasswordPolicy`はPDCエミュレーターが属性へ書き戻した結果を読む確認用コマンドで、GPOとずれている場合はGPO側の値が優先されます。下表の「正本」列は確認手段を示します。
 
 | 項目 | 設定値 | 正本 |
 | --- | --- | --- |
@@ -121,7 +123,7 @@ OU構造は既定の`CN=Users`・`CN=Computers`コンテナをそのまま使わ
 | バックアップ対象 | System State(AD DS データベース`ntds.dit`、SYSVOL、レジストリ等一式)、Firewallルールのエクスポート(`netsh advfirewall export`) | 同上 |
 | スケジュール | 毎日03:30(Asia/Tokyo)、Task Schedulerに登録 | 同上 |
 | 保持世代 | 14日([Linux版](../build-package/03-parameter-sheet.md)・[Windows版](../build-package-windows/03-parameter-sheet.md)と同じ値) | 同上 |
-| AD ごみ箱 | `Enable-ADOptionalFeature 'Recycle Bin Feature'`で有効化。tombstone lifetime(既定180日)の間、削除オブジェクトを`Restore-ADObject`で復元可能 | [構築手順書](05-build-procedure.md) |
+| AD ごみ箱 | `Enable-ADOptionalFeature 'Recycle Bin Feature'`で有効化。削除済みオブジェクトの保持期間`msDS-deletedObjectLifetime`(未設定時は`tombstoneLifetime`と同値、既定180日)の間、`Restore-ADObject`で復元可能。その後はリサイクル済みとなり復元不可 | [構築手順書](05-build-procedure.md) |
 | 復元試験方法 | System Stateバックアップからの復元(権威復元/非権威復元の違いを含む)と、AD ごみ箱によるオブジェクト単位の復元を区別して確認(AIT-06、AIT-07) | [試験仕様書・結果票](06-test-specification.md) |
 
 ## 公開ポート

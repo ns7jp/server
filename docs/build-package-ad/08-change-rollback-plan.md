@@ -163,6 +163,8 @@ Restart-Service DNS, Netlogon
 
 System State復元には**非権威復元(non-authoritative restore)**と**権威復元(authoritative restore)**の2種類があり、目的が異なります。**通常の障害復旧**(`ntds.dit`の破損、サービス起動不能等でSystem State全体を戻す場合)では、復元後に他のドメインコントローラーとの複製によって最新状態へ追いつかせる**非権威復元**を使います。一方、誤って削除・変更したオブジェクトを戻す目的でSystem State復元だけを行うと、複製パートナーが存在する構成では、復元直後に他のドメインコントローラーから最新の(削除後の)状態で上書きされてしまいます。この上書きを防ぎ、復元したオブジェクトを正として他のドメインコントローラーへ複製させたい場合に**限り**、`ntdsutil`による**権威復元**を検討します。本パックは単一DC構成(3節で確認するとおり複製対象が存在しない構成)のため、通常のロールバックでは上書きの問題自体が発生しませんが、[基本設計書](01-basic-design.md)2.4節に記す2台目DC追加後の運用を見据え、権威復元の手順もここに記録します。
 
+**SYSVOLは別に扱います。** 上の議論はADデータベース(NTDS)の話です。SYSVOL(GPOやログオンスクリプトの共有フォルダー。DFSRで複製)は、唯一のDC、または全DCを失ったときの最初の1台を戻す場合、`wbadmin`に`-authsysvol`を付けてSYSVOLを権威復元します。複数DCのうち1台だけを戻す場合は付けず、DFSRが他のDCから初期同期する(`DFS Replication`ログのイベント`4614`→`4604`)のを待ちます。2026-09-02の実機演習は`-authsysvol`無しで実行し、SYSVOLの一部が欠損しました(因果は最有力の仮説で、未確認。[構築手順書](05-build-procedure.md)14節)。
+
 非権威復元(通常の障害復旧で使用します):
 
 ```powershell
@@ -173,13 +175,18 @@ shutdown /r /t 0
 # DSRM内で
 wbadmin get versions -backupTarget:D:
 $restoreVersion = "<NOT SET: 復元対象のバージョン識別子(例: 09/02/2026-05:16)>"
-wbadmin start systemstaterecovery -version:$restoreVersion -backupTarget:D: -quiet
+# 単一DC(本パック)または全DC喪失後の最初の1台: SYSVOLを権威復元する(未検証)
+wbadmin start systemstaterecovery -version:$restoreVersion -backupTarget:D: -authsysvol -quiet
+# 複数DCのうち1台だけを戻す場合: -authsysvol を付けない(2026-09-02 の実機演習はこの形)
+# wbadmin start systemstaterecovery -version:$restoreVersion -backupTarget:D: -quiet
 
 # 通常起動へ戻す。{current} は PowerShell では引用符が必要
 bcdedit /deletevalue '{current}' safeboot
 bcdedit /enum '{current}' | Select-String safeboot   # 何も出なければ解除済み
 shutdown /r /t 0
 ```
+
+> **未検証**: `-authsysvol`付きの形は2026-09-28に手順を直したもので、実機では実行していません。以下の実測値は`-authsysvol`無しの形のものです。
 
 実機(2026-09-02)では復元処理が15分29秒、DSRM再起動の指示から通常起動で全サービス正常までが約40分でした(うち約18分は`safeboot`解除漏れによるDSRM再起動のやり直し)。手順の注意点は[構築手順書](05-build-procedure.md)14節、実測は[復元演習の証跡](../evidence/2026-09-02-ad-restore-drill.md)を参照してください。
 
@@ -205,14 +212,20 @@ bcdedit /deletevalue '{current}' safeboot
 shutdown /r /t 0
 ```
 
+権威復元の後処理(**NOT RUN**: 本パックでは演習していない参考手順です):
+
+- **グループメンバーシップ(リンク属性)の復元**: OU単位で権威復元すると、そのOUの外にあるグループからのメンバーシップ(グループの`member`属性のようなリンク属性)は戻りません。`ntdsutil`は権威復元の際、カレントディレクトリに`ar_<日時>_objects.txt`と`ar_<日時>_links_<ドメイン名>.ldf`を出力します。通常起動へ戻して複製が落ち着いた後、この`.ldf`を`ldifde -i -k -f ar_<日時>_links_<ドメイン名>.ldf`で取り込み、メンバーシップを戻します(`-k`は「既に存在する」等のエラーで止まらずに続けるための指定)。
+- **GPOを戻す場合**: GPOはADオブジェクトとSYSVOL側のファイルの2つで構成されるため、`ntdsutil`の権威復元だけではSYSVOL側が戻りません。単一DC・全DC喪失時は`-authsysvol`、それ以外は事前バックアップからの`Restore-GPO`で戻します。
+- 誤削除からの復旧は、まず7節のADごみ箱を優先します。ごみ箱による復元ではリンク属性も戻るため、上の後処理は不要です。
+
 いずれの手段を使った場合も、ロールバック後は`Get-Service NTDS,DNS,Netlogon,Kdc,W32Time`、`netdom query fsmo`、`Resolve-DnsName`で、AD DS関連サービス・FSMO保持者・DNSゾーンの応答をあわせて再確認します。ロールバックの完了確認は、Gitのrevision markerに相当するものが無いため、スナップショット名(またはチェックポイント名)・`OsBuildNumber`・エクスポート/バックアップのタイムスタンプの一致で行います。中央側(`app_node_exporter_targets`)に対する変更のロールバックは、既存のGit/Ansible基準の手段が使えるため[Linux版変更・ロールバック計画](../build-package/08-change-rollback-plan.md)6節の手順に従います。
 
 ## 7. データのロールバック
 
 設定を戻すだけではデータ破損を解消できない場合に限り、AD ごみ箱による復元、またはWindows Server BackupによるSystem State復元(6節3)を使用します。両者は次の基準で使い分けます。
 
-- 少数オブジェクトの誤削除・誤変更で、tombstone lifetime(既定180日)以内、かつAD ごみ箱機能(`Enable-ADOptionalFeature 'Recycle Bin Feature'`)が有効な場合は、**AD ごみ箱による復元**(`Get-ADObject -IncludeDeletedObjects`と`Restore-ADObject`、AIT-07相当)を優先します。ダウンタイムが無く、対象オブジェクト以外の変更を巻き戻さないためです。
-- `ntds.dit`自体の破損、AD ごみ箱で戻せない範囲の欠損(機能無効時、tombstone lifetime超過、System State全体の不整合)の場合は、**System State復元**(6節3、原則として非権威復元)を使用します。
+- 少数オブジェクトの誤削除・誤変更で、削除済みオブジェクトの保持期間(`msDS-deletedObjectLifetime`、未設定時は`tombstoneLifetime`と同値、既定180日)以内、かつAD ごみ箱機能(`Enable-ADOptionalFeature 'Recycle Bin Feature'`)が有効な場合は、**AD ごみ箱による復元**(`Get-ADObject -IncludeDeletedObjects`と`Restore-ADObject`、AIT-07相当)を優先します。ダウンタイムが無く、対象オブジェクト以外の変更を巻き戻さないためです。
+- `ntds.dit`自体の破損、AD ごみ箱で戻せない範囲の欠損(機能無効時、削除済みオブジェクトの保持期間の超過、System State全体の不整合)の場合は、**System State復元**(6節3、原則として非権威復元)を使用します。
 - AD ごみ箱でも復元できず、かつ誤って削除したオブジェクトを他のドメインコントローラーからの複製で上書きされないよう確実に戻す必要がある場合に限り、6節3の**権威復元**(`ntdsutil` authoritative restore)を検討します。単一DC構成の本パックでは複製パートナーが存在しないためこの状況は通常発生しませんが、判断基準として記録します。
 
 復元作業では次の点を確認します。
@@ -240,3 +253,55 @@ shutdown /r /t 0
 - [ ] 変更前後の時刻、実出力、判断理由をevidenceへ保存した(命名・記録ルールは[検証証跡台帳](../evidence/README.md)に合わせる)
 - [ ] 残存リスク、暫定対応、恒久対応のIssueを記録した
 - [ ] 一時的なFirewall許可、DSRMブート設定(`bcdedit /set safeboot`)、試験データ、保守モードを解除した
+## 10. 参考: FSMO役割の移譲・奪取時のチェックリスト
+
+2026-09-03の移譲、2026-09-04の奪取([証跡](../evidence/2026-09-04-ad-fsmo-seize.md))の後で、時刻設定の付け替え漏れ(09-07に別件として発覚)や、確認範囲の不足が見つかりました。その反省から、実施時に確認する項目をまとめます。**本節は2026-09-28に追加したもので、項目の多くは実機で未検証です。** 奪取(seize)は、元の保持者が二度と戻らないと判断した場合だけに使います。
+
+**事前確認**
+
+- [ ] `repadmin /showrepl`と`repadmin /replsummary`で、奪取する側のDCが元の保持者と最後にいつ複製できていたかを記録する(最後の複製以降の変更は失われるため)。
+- [ ] 元の保持者の電源を切り、ネットワークから外したことを確認する(戻ってくると役割が二重になる)。
+
+**時刻設定の付け替え(PDCエミュレーターを移した場合は必須)**
+
+Windowsは、PDCエミュレーター役割の移動に合わせて時刻設定を自動で切り替えません。移譲・奪取のどちらでも、次を手作業で行います。
+
+```powershell
+# 新しいPDCエミュレーターで(外部NTP、閉域なら組織内NTPを指定)
+w32tm /config /manualpeerlist:"time.windows.com,0x8 ntp.nict.jp,0x8" /syncfromflags:manual /reliable:yes /update
+# 仮想マシンのPDCでは、ホスト時刻への依存を切るかどうかを判断して記録する
+# Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\TimeProviders\VMICTimeProvider' -Name Enabled -Value 0
+Restart-Service w32time
+w32tm /query /source
+w32tm /query /status
+
+# 旧PDCエミュレーターが残っている場合(移譲時)は、ドメイン階層に従う設定へ戻す
+w32tm /config /syncfromflags:domhier /update
+Restart-Service w32time
+```
+
+**奪取後の後始末(メタデータ削除の確認)**
+
+`ntdsutil`のメタデータクリーンアップの後、元のDCの痕跡が次の場所に残っていないかを確認します。
+
+```powershell
+$old = 'ad-dc01'; $oldIp = '192.0.2.50'
+# ドメインゾーンと _msdcs ゾーンの両方を確認する(DSA GUID の CNAME、gc の A レコード、SRV は _msdcs 側にある)
+foreach ($zone in 'corp.example.test', '_msdcs.corp.example.test') {
+    Get-DnsServerResourceRecord -ZoneName $zone |
+      Where-Object {
+          $_.HostName -match $old -or
+          ($_.RecordType -eq 'A'     -and $_.RecordData.IPv4Address.IPAddressToString -eq $oldIp) -or
+          ($_.RecordType -eq 'SRV'   -and $_.RecordData.DomainName -match $old) -or
+          ($_.RecordType -eq 'CNAME' -and $_.RecordData.HostNameAlias -match $old) -or
+          ($_.RecordType -eq 'NS'    -and $_.RecordData.NameServer -match $old)
+      } | Select-Object @{n='Zone';e={$zone}}, HostName, RecordType
+}
+# 逆引きゾーンがある場合はそのゾーンも同様に確認する
+Get-ADObject -SearchBase "CN=Sites,CN=Configuration,DC=corp,DC=example,DC=test" -Filter "Name -eq '$old'"   # サイトのサーバーオブジェクト
+Get-ADObject -SearchBase "CN=Topology,CN=Domain System Volume,CN=DFSR-GlobalSettings,CN=System,DC=corp,DC=example,DC=test" -Filter * |
+  Where-Object Name -match $old                                                                      # SYSVOL の DFSR メンバー
+```
+
+- [ ] 上の確認でどれも0件であること。残っていた場合は手作業で削除し、削除したものを記録する。
+- [ ] `dcdiag /test:dns /v`がエラーなしで通ること。

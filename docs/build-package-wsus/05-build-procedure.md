@@ -31,7 +31,7 @@ pwsh -Command '$PSVersionTable.PSVersion'
 ```bash
 # この案件パックの取得
 git clone https://github.com/ns7jp/server.git
-cd server-monitor
+cd server
 git rev-parse HEAD
 ```
 
@@ -546,7 +546,7 @@ Set-GPRegistryValue -Name $gpoName -Key $wuKey -ValueName "TargetGroup" -Type St
 
 `wsus-01`自身もこのGPOの適用対象(`Servers`OU)に含まれるため、即時適用・確認を行う。
 
-なお`New-GPO`・`New-GPLink`・`Set-GPRegistryValue`は**WinRMセッション越しには実行できない**。ドメインコントローラー上のGPOへアクセスするために資格情報の再委任(ダブルホップ)が必要で、`操作エラーが発生しました。 (Exception from HRESULT: 0x80072020)`で失敗する。コンソール/RDPでの対話セッションから実行するか、DC上で実行すること。
+なお`New-GPO`・`New-GPLink`・`Set-GPRegistryValue`は**WinRMセッション越しには実行できない**。ドメインコントローラー上のGPOへアクセスするために資格情報の再委任(ダブルホップ)が必要で、`操作エラーが発生しました。 (Exception from HRESULT: 0x80072020)`で失敗する。本来は、ドメインに参加した管理端末にRSAT(GPMCとGroupPolicyモジュール)を入れ、そこから直接実行する(1段目で済むためダブルホップが起きない)。本ラボでは管理端末がドメイン未参加のため、コンソール/RDPでの対話セッションから、またはDC上で実行した。2段目の接続が避けられない場合は、リソースベースの制約付き委任やCredSSPを検討する(本ラボでは未検証)。
 
 ```powershell
 gpupdate /force /target:computer
@@ -825,6 +825,8 @@ if ($applyError) {
 }
 if ($cleanupError) { throw $cleanupError }
 ```
+
+> **未検証(実WSUSでは`NOT RUN`)**: 上の`try`/`catch`/`finally`による承認ブロック(2026-09-27変更)は、`tests/test_wsus_approval_guard.py`で**模擬API(WSUSに接続しない、メモリ上の代用品)**に対してだけ動作を確かめています。実際のWSUSサーバーでは実行しておらず、フェーズ1の通し再試験も未実施です。
 
 `finally`は無効化の試行を行いますが、通信障害や保存失敗があれば無効化を保証できません。
 有効化・承認と無効化の両方が失敗した場合は、元のエラーを再送出し、無効化の失敗も警告に残します。

@@ -72,6 +72,9 @@ play recapで`failed=0`になることを確認します。`unreachable`が出�
 # OS共通
 timedatectl                              # timezoneがAsia/Tokyoであること
 sudo systemctl is-active chrony || sudo systemctl is-active chronyd
+chronyc tracking                         # Leap status : Normal であること（同期している）
+chronyc sources                          # ^* の行（選択中の時刻源）があること
+timedatectl | grep synchronized          # System clock synchronized: yes であること
 id svc-baseline                          # dockerグループが含まれていないこと
 ls -ld /opt/ansible-foundation           # 所有者・パーミッションの確認
 

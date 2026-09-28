@@ -140,8 +140,10 @@ Level 0〜4 だけでは、構成を作って確認するところまでしか�
 
   消えない。Grafanaは可視化するだけで、収集・保存はPrometheusが担う。Grafanaが
   停止していてもPrometheusが収集済みの時系列データはそのまま残る。コンテナ内
-  `psutil` はコンテナから見える値で、指標によってはホスト側の値を含む。
-  全指標をコンテナ使用量と決め付けず、Linuxホスト全体はnode-exporter側で確認する。
+  `psutil` はコンテナから見える値を返す。CPU・メモリは `/proc/stat`・`/proc/meminfo`
+  がコンテナの名前空間で分離されないため、ホスト(VM)全体の値になる。ネットワークや
+  プロセス一覧はコンテナの名前空間ごとの値になる。コンテナ単位のCPU・メモリは
+  cgroup(`memory.current` など)や cAdvisor で測り、Linuxホスト全体はnode-exporter側で確認する。
 
   </details>
 

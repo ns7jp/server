@@ -43,6 +43,8 @@ docker compose ps --format 'table {{.Service}}\t{{.Status}}'
 | Linux Host CPU | 0.0508% |
 | Linux Host Memory | 12.8% |
 
+> **2026-09-28 訂正**：上表の「Application Container CPU」は当時のパネル名です。このパネルが表示する`server_monitor_cpu_usage_percent`は、コンテナ内の`psutil`が`/proc/stat`から読むホスト全体の値で、コンテナ単位の使用量ではありません（`/proc/stat`はコンテナの名前空間で分離されないため）。Linux Host CPUとの差は、測る範囲ではなく、計測の窓（アプリは0.1秒の標本、Linux Hostは5分間の`rate`）の違いによるものと考えられます（未検証）。パネル名は2026-09-28に「Host CPU (via app psutil)」へ改めました。
+
 「Application Container Resource History」では 13:05 頃に一時的な CPU スパイクが記録されている（手元操作に起因するものと推測、原因の追跡はしていない）。「Linux Host Filesystem Use」は `/`・`/mnt/c`・`/var/lib/docker`・`/mnt/wsl/drivers`・`/init` の各マウントポイントを表示。
 
 ### Server Monitor SLO（表示期間: Last 6 hours）

@@ -67,6 +67,8 @@ Prometheus APIを実行した時刻の32.0228%と一致する必要はない。
 Linux HostはUbuntu VMを指し、Windowsホスト全体の値ではない。
 Application Containerというパネル名があっても、psutilの全指標がコンテナ専用値とは限らない。
 
+> **2026-09-28 訂正**：上の一文は言い切れる内容でした。コンテナ内の`psutil`は、CPU・メモリを`/proc/stat`・`/proc/meminfo`から読みます。この2つはコンテナの名前空間で分離されないため、「Application Container」パネルのCPU・メモリは**VM全体の値**です（E08で、Resource HistoryのMemory約37%とLinux Host Memory 34.6%が近いのもこのためです）。パネル名は2026-09-28に「Host CPU (via app psutil)」「Host CPU / Memory History (via app psutil)」へ改めました。本文と画像は当時の名前のまま残します。
+
 ## アクセス方法と発見事項
 
 Grafanaの公開先はVMの127.0.0.1:3000。Windowsからは、既存の名前付きSSH鍵を使い、
