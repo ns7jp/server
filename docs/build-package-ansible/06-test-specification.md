@@ -35,7 +35,7 @@
 | AFIT-01 | 新規構築（Ubuntu） | `ansible-playbook -i inventory/foundation.local.yml playbooks/foundation.yml` | play recapで`failed=0` | `NOT RUN` | — |
 | AFIT-02 | 冪等性 | 上記コマンドを2回目実行 | play recapで`changed=0, failed=0` | `NOT RUN` | — |
 | AFIT-03 | Docker動作確認 | `docker version && docker compose version && systemctl is-active docker` | いずれも正常応答、`active` | `NOT RUN` | — |
-| AFIT-04 | 時刻同期 | `systemctl is-active chrony`（Ubuntu）/ `chronyd`（RHEL系） | `active` | `NOT RUN` | — |
+| AFIT-04 | 時刻同期 | `systemctl is-active chrony`（Ubuntu）/ `chronyd`（RHEL系）、`chronyc tracking`、`chronyc sources`、`timedatectl` | サービスが`active`であることに加え、**同期していること**：`chronyc tracking`の`Leap status`が`Normal`、`chronyc sources`に選択中の時刻源を示す`^*`の行がある、`timedatectl`が`System clock synchronized: yes`（2026-09-28改訂。サービスの起動だけではNTPサーバーに届かない状態でもPASSになるため） | `NOT RUN` | — |
 | AFIT-05 | 自動更新設定 | Ubuntu: `unattended-upgrade --dry-run -d`／RHEL系: `dnf automatic --timer status`相当の確認 | 有効化されている | `NOT RUN` | — |
 | AFIT-06 | RHEL系（フェーズ2）構築 | [05-build-procedure.md 手順9](05-build-procedure.md#9-フェーズ2-almalinuxrocky-9への適用) | `failed=0`、AFIT-01〜05相当がRHEL系でも成立 | `BLOCKED`（フェーズ2着手待ち。実VM未用意） | — |
 | AFIT-07 | 実ホストnetwork | [09-network-validation-procedure.md](09-network-validation-procedure.md)のAFNW-01〜05を実行 | 名前解決/経路/待受/SSH到達性/firewallが設計どおり | `NOT RUN` | [結果票テンプレート](../evidence/templates/network-host-validation.md) |

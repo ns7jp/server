@@ -43,6 +43,8 @@
 | AFIT-06 | RHEL系（フェーズ2）構築 | BLOCKED | 実VM未用意のため未着手（既存の状態を維持） |
 | AFIT-07 | 実ホストnetwork | PASS | 下表AFNW参照。AFNW-01〜05すべてPASS（AFNW-06は任意項目でNOT RUN） |
 
+> **2026-09-28 訂正**：AFIT-04の備考にある「NTPポート（`127.0.0.1:323`、`[::1]:323`）」は誤りです。323/udpは、`chronyc`コマンドが`chronyd`へ状態を問い合わせるための**制御用ポート（cmdport）**で、NTPの通信に使うポートは123/udpです。また、`chronyd`がポートを待ち受けていることは、時刻が同期していることを意味しません。この記録で確認できたのは「`chronyd`が起動している」ところまでで、**同期状態は記録されていません**。当時の期待結果（[試験仕様書](../build-package-ansible/06-test-specification.md)のAFIT-04、`systemctl is-active chrony`が`active`）に照らした判定としてPASSは残しますが、同期の確認にはなっていません。試験仕様書のAFIT-04は、`chronyc tracking`（`Leap status: Normal`）、`chronyc sources`（`^*`の行）、`timedatectl`（`System clock synchronized: yes`）で同期を確かめる形に改訂しました。`ans-01`での再確認は行っていません（同期まで確認した例は[lab-base01の初期構築](2026-09-08-lab-base01-initial-build.md)のT-03）。
+
 ## セキュリティ試験（AFST）
 
 | ID | 確認対象 | 結果 | 実出力（要点）/ 備考 |
