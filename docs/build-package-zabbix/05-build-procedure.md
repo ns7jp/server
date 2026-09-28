@@ -29,7 +29,7 @@
 
 ```bash
 git clone https://github.com/ns7jp/server.git
-cd server-monitor
+cd server
 git rev-parse HEAD
 cat compose.zabbix.yaml
 cat deploy/zabbix/zabbix_agent2.d/plugins.d/service_monitor_healthz.conf.example

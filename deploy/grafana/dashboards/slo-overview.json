@@ -252,7 +252,7 @@
       "gridPos": {"h": 4, "w": 12, "x": 12, "y": 22},
       "id": 8,
       "options": {
-        "content": "## SLO 早見表\n\n| 指標 | 目標 | 期間 |\n| --- | --- | --- |\n| 可用性 | 99.5% | 30 日 |\n| /healthz p95 | < 500ms | 28 日 |\n| アラート到達時間 | < 2 分 | 月次手動テスト |\n\n運用ルールと月次レビューは [docs/slo.md](https://github.com/ns7jp/server-monitor/blob/main/docs/slo.md) を参照。",
+        "content": "## SLO 早見表\n\n| 指標 | 目標 | 期間 |\n| --- | --- | --- |\n| 可用性 | 99.5% | 30 日 |\n| /healthz p95 | < 500ms | 28 日 |\n| アラート到達時間 | < 2 分 | 月次手動テスト |\n\n運用ルールと月次レビューは [docs/slo.md](https://github.com/ns7jp/server/blob/main/docs/slo.md) を参照。",
         "mode": "markdown"
       },
       "title": "SLO Definition",

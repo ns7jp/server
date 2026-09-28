@@ -9,7 +9,7 @@ groups:
         annotations:
           summary: "Server Monitor cannot be scraped"
           description: "Prometheus has failed to scrape the monitoring application for two minutes."
-          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/service-down.md"
+          runbook_url: "https://github.com/ns7jp/server/blob/main/docs/runbooks/service-down.md"
 
       - alert: LinuxNodeExporterUnavailable
         expr: up{job="linux-node"} == 0
@@ -19,7 +19,7 @@ groups:
         annotations:
           summary: "Linux host metrics are unavailable"
           description: "node-exporter has not been reachable for two minutes."
-          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/service-down.md"
+          runbook_url: "https://github.com/ns7jp/server/blob/main/docs/runbooks/service-down.md"
 
       # 常時発火し続ける「死活の死活」。これが Alertmanager に届かなくなった
       # ことをもって、Prometheus ごと落ちた／配送経路が切れたと判断する。
@@ -46,7 +46,7 @@ groups:
         annotations:
           summary: "Prometheus is failing to evaluate rules"
           description: "アラートルールの評価が失敗している。発火しないことが正常とは限らない。"
-          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/alertmanager-down.md"
+          runbook_url: "https://github.com/ns7jp/server/blob/main/docs/runbooks/alertmanager-down.md"
 
       - alert: PrometheusNotificationsDropped
         expr: increase(prometheus_notifications_dropped_total[10m]) > 0
@@ -56,7 +56,7 @@ groups:
         annotations:
           summary: "Prometheus is dropping notifications to Alertmanager"
           description: "発火はしているが Alertmanager へ届いていない。"
-          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/alertmanager-down.md"
+          runbook_url: "https://github.com/ns7jp/server/blob/main/docs/runbooks/alertmanager-down.md"
 
       # 監視の監視: アラート配送経路自体が止まっていないか
       - alert: AlertmanagerDown
@@ -68,7 +68,7 @@ groups:
         annotations:
           summary: "Alertmanager is not reachable"
           description: "Alertmanager 自身が応答していない。アラート通知が届かない可能性が高い。"
-          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/alertmanager-down.md"
+          runbook_url: "https://github.com/ns7jp/server/blob/main/docs/runbooks/alertmanager-down.md"
 
       # SLI 計測経路の生存（blackbox-exporter）
       - alert: BlackboxExporterDown
@@ -80,7 +80,7 @@ groups:
         annotations:
           summary: "blackbox-exporter is not reachable"
           description: "SLI を計測する blackbox-exporter が落ちており、SLO 値が信頼できない。"
-          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/alertmanager-down.md"
+          runbook_url: "https://github.com/ns7jp/server/blob/main/docs/runbooks/alertmanager-down.md"
 
   - name: linux-node-capacity
     rules:
@@ -92,7 +92,7 @@ groups:
         annotations:
           summary: "Sustained high CPU usage"
           description: "CPU usage has remained above 85 percent for ten minutes."
-          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/incidents/cpu-high-drill.md"
+          runbook_url: "https://github.com/ns7jp/server/blob/main/docs/incidents/cpu-high-drill.md"
 
       - alert: LinuxNodeMemoryPressure
         expr: (1 - (node_memory_MemAvailable_bytes{job="linux-node"} / node_memory_MemTotal_bytes{job="linux-node"})) * 100 > 90
@@ -102,7 +102,7 @@ groups:
         annotations:
           summary: "Sustained memory pressure"
           description: "Used memory has remained above 90 percent for ten minutes."
-          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/memory-pressure.md"
+          runbook_url: "https://github.com/ns7jp/server/blob/main/docs/runbooks/memory-pressure.md"
 
       - alert: LinuxNodeFilesystemAlmostFull
         expr: (1 - (node_filesystem_avail_bytes{job="linux-node",fstype!~"tmpfs|overlay|squashfs"} / node_filesystem_size_bytes{job="linux-node",fstype!~"tmpfs|overlay|squashfs"})) * 100 > 85
@@ -112,4 +112,4 @@ groups:
         annotations:
           summary: "Filesystem capacity is low"
           description: "A persistent filesystem has remained above 85 percent usage for fifteen minutes."
-          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/disk-full.md"
+          runbook_url: "https://github.com/ns7jp/server/blob/main/docs/runbooks/disk-full.md"

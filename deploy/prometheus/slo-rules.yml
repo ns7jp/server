@@ -128,7 +128,7 @@ groups:
         annotations:
           summary: "可用性 SLO のエラーバジェットを高速消費中（fast burn）"
           description: "5分窓と1時間窓の両方で 14.4 倍のバーンレートを観測している。このまま継続すると数時間で30日分のバジェットを使い切る。即時対応が必要。"
-          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/service-down.md"
+          runbook_url: "https://github.com/ns7jp/server/blob/main/docs/runbooks/service-down.md"
           dashboard: "http://127.0.0.1:3000/d/slo-overview/server-monitor-slo"
 
       - alert: SLOSlowBurnRateAvailability
@@ -144,7 +144,7 @@ groups:
         annotations:
           summary: "可用性 SLO のエラーバジェットを継続消費中（slow burn）"
           description: "30分窓と6時間窓の両方で 6 倍のバーンレートを観測している。30日バジェットの5%を6時間で消費する速度。業務時間内に原因を特定する。"
-          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/service-down.md"
+          runbook_url: "https://github.com/ns7jp/server/blob/main/docs/runbooks/service-down.md"
           dashboard: "http://127.0.0.1:3000/d/slo-overview/server-monitor-slo"
 
       # バジェットを使い切った時点で通知（締めくくり用）
@@ -157,7 +157,7 @@ groups:
         annotations:
           summary: "可用性 SLO のエラーバジェットを使い切った"
           description: "直近 30 日のエラーバジェット (0.5%) を使い切り、SLO を割り込んだ。新規リリースを凍結し、信頼性改善を優先する。"
-          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/slo.md"
+          runbook_url: "https://github.com/ns7jp/server/blob/main/docs/slo.md"
 
       # レイテンシ SLO 違反: 1 時間の p95 が 500ms を超えた状態が継続
       - alert: SLOLatencyHigh
@@ -169,5 +169,5 @@ groups:
         annotations:
           summary: "/healthz の p95 応答時間が SLO を超過"
           description: "直近 1 時間の p95 応答時間が 500ms を超えた状態が 10 分継続している。"
-          runbook_url: "https://github.com/ns7jp/server-monitor/blob/main/docs/runbooks/latency-spike.md"
+          runbook_url: "https://github.com/ns7jp/server/blob/main/docs/runbooks/latency-spike.md"
           dashboard: "http://127.0.0.1:3000/d/slo-overview/server-monitor-slo"

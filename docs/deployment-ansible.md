@@ -49,7 +49,7 @@ pipx inject ansible-core ansible-lint
 リポジトリ直下から、Ansible 関連の collection を取得する。
 
 ```bash
-cd server-monitor/ansible
+cd server/ansible
 ansible-galaxy collection install -r requirements.yml
 ```
 
