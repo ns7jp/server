@@ -17,6 +17,12 @@
 
 そのほかの主要な記録（2 台目の DC、計画停止、WSUS 構築、Ansible 基盤構築、CI の E2E・性能試験など）は、この下に日付順で並べています。
 
+## 2026-09-27〜28：AI が実行した新 Hyper-V ラボ
+
+[新ラボの実行記録](2026-09-28-new-hyperv-lab-operations.md)に、旧 VM が失われた後の再構築から観測終了までを採録しました。本人の承認を受けた Codex による操作・判定であり、上の「本人が VM を操作した」記録や独力実績には加算しません。
+
+Ubuntu10サービスと OS 再起動後33項目、0・1・6時間の点検は確認済みです。12件の観測記録の間には2つの長い間隔があり、時計の不一致も確認されました。24時間前に本人の指示で終了しており、**24時間試験は未完了・未合格**です。新AD・WSUS・復元先VMの部分結果、未実施範囲、公開用に項目を選別したJSONと原記録のハッシュも同じ記録から参照できます。過去のAD・WSUSの判定は変更していません。
+
 ## 練習ログ
 
 2026-09-09〜15 の Ansible / Git の細かな練習 51 件は、[練習ログ](practice/README.md)（`docs/evidence/practice/`）へ分けました。記録の本文と判定は変えていません。
@@ -156,9 +162,8 @@ Loki log到達、`directory` modeのtracked archive / sync、初回適用`change
 > network/UFW（IT-12）、backup restoreは未採録でした。この履歴を示す
 > [2026-08-19結果票](2026-08-19-build-validation.md)は後から上書きしていません。
 
-AlertmanagerからSlackへの実配信、D-2、AWS適用、永続hostの再起動・24h / 72h確認、
-実管理端末・組織DNS・cloud firewallを含むproduction相当のnetwork検証は、現在も
-`NOT RUN`です。
+AlertmanagerからSlackへの実配信、D-2、AWS適用、72h確認、実管理端末・組織DNS・cloud firewallを含むproduction相当のnetwork検証は、現在も `NOT RUN` です。
+新しいローカルVMでの再起動は [2026-09-27〜28のAI実行記録](2026-09-28-new-hyperv-lab-operations.md)に部分実測を追加しましたが、24h試験は未完了・未合格です。使い捨てrunnerの結果と合算せず、常時稼働ホストや本人の独力再現の実績にも読み替えません。
 
 **AlmaLinux / Rocky 9 対応（role と Molecule scenario）、B-1〜B-4 の構築演習
 （LVM、3 層構成、DB 復元、L2 / L3）を追加しました。**
@@ -228,7 +233,7 @@ main `5480662`、common / docker role の el9 scenario ともに成功）。
 | B-4 L2 / L3 切り分け演習 | ✅ [2026-08-24](../drills/logs/2026-08-24-B-4.md)：**6 PASS / 0 FAIL / 3 SKIP-ENV**。静的ルート・戻り経路の欠落・`ip_forward` を実測。VLAN 部はこの kernel が `CONFIG_VLAN_8021Q` 無効のため未検証 |
 | AWS `apply` / `destroy` と実費 | ❌ **NOT RUN** |
 | 構成commit / 設定rollback rehearsal | ✅ [2026-08-23](2026-08-23-change-CI-GIT-ROLLBACK.md)：使い捨てUbuntu runnerでcandidate `84e1492`からmain `59aa88e`へGit-mode rollbackを実測。永続hostでは**NOT RUN** |
-| 永続hostの再起動・24h / 72h確認 | ❌ **NOT RUN**（[`acceptance-check.sh`](../../scripts/ops/acceptance-check.sh) の `--mode after-reboot` / `--mode soak` で自動採録できる状態。手順は[10 立ち上げと受け入れ試験](../build-package/10-host-bringup-and-acceptance.md)） |
+| ホストの再起動・24h / 72h確認 | ⚠ [新しいローカルHyper-VラボのAI実行](2026-09-28-new-hyperv-lab-operations.md)：OS再起動後33項目成功。24h試験は欠測・時刻不一致と本人の終了指示により未完了・未合格、72hは `NOT RUN`。今回の専用点検は下記の正式な受け入れ試験全体とは別 |
 | 引き渡し対象hostの受け入れ試験 | ❌ **NOT RUN**（[`acceptance-check.sh`](../../scripts/ops/acceptance-check.sh) が試験IDに対応した結果票を生成する。対象host 1台があれば実行できる） |
 | [試験仕様書](../build-package/06-test-specification.md)の2026-08-19結果 | ⚠ **日付付き履歴**: [11/21 PASS、残り NOT RUN](2026-08-19-build-validation.md)。現在のcoverageは下表で別管理 |
 

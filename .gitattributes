@@ -1,2 +1,3 @@
 # Preserve archived CI evidence bytes and SHA-256 on every operating system.
 docs/evidence/assets/** -text
+docs/evidence/data/2026-09-28-new-hyperv-lab-summary.json -text
