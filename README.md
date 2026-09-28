@@ -25,7 +25,11 @@ Ansible と Git の小さな練習（2026-09-09〜15）の記録は、[練習ロ
 
 AD の作業結果と、障害・課題 15 件（LAB-01〜15）の対処は[作業結果・引き渡し報告](docs/evidence/2026-09-02-work-result-SM-AD-001.md)にまとめています。
 
-Linux の演習は、次に [小さな構成の再起動・24 時間点検・別 VM 復元・引き渡し](docs/partial-lab-continuation.md)へ進みます。**この続編は手順を準備した段階で、新しい実機結果は `NOT RUN`** です。過去の記録を上書きせず、実行した段階だけ追記します。
+## AI が実行した新しいラボの検証（2026-09-27〜28）
+
+旧 VM が残っていないため、新しい Hyper-V ラボを用意しました。[新ラボの実行記録](docs/evidence/2026-09-28-new-hyperv-lab-operations.md)には、本人の承認を受けて **Codex が操作・判定した結果**をまとめています。上記の本人による実習や、AI なしの独力再現とは分けています。
+
+Ubuntu の10サービス起動と OS 再起動後の33項目を確認しました。0・1・6時間の点検記録はありますが、記録の欠測と時計の不一致があり、24時間前に本人の指示で終了したため、**24時間試験は未完了・未合格**です。AD はフォレスト作成後の確認待ち、WSUS は起動準備まで、別 VM は復元先の OS・Docker 準備までです。バックアップ転送・別 VM 復元・第三者確認は未実施です。[続編の手順](docs/partial-lab-continuation.md)では、これらの部分結果と残作業を区別しています。
 
 ## 採用ご担当者向け：最初に見る 3 本
 
@@ -72,7 +76,8 @@ flowchart LR
 | 記録済みの CI 実測 | [2026-08-22 の E2E](docs/evidence/2026-08-22-full-stack-e2e.md)：一括構築・冪等性・復旧・復元など 23 ID PASS | 当該 commit の使い捨て Ubuntu runner。最新差分や永続ホストの保証には使わない |
 | 記録済みの VM 実測 | [2026-09-04 Ubuntu の基盤構築](docs/evidence/2026-09-04-ansible-foundation-build.md)と[AlmaLinux の基盤構築](docs/evidence/2026-09-04-ansible-foundation-el9-build.md)：`foundation.yml` の `common` / `docker` role 適用・冪等性 | 監視全体の `site.yml` とは別。AlmaLinux は再利用 VM で、新規構築・最小公開の証明には未到達 |
 | 記録済みの手作業構築（2026-09） | [手元の VM で私が確認したこと](#手元の-vm-で私が確認したこと)の Ubuntu・Docker 最小構成・AD / WSUS の各記録。AD / WSUS は [AD 構築案件パック](docs/build-package-ad/README.md)と [WSUS 構築案件パック](docs/build-package-wsus/README.md)の手順書・試験仕様書に沿って構築・試験し、実機で見つけた手順書の誤り・欠落（AD 6 件・WSUS 9 件）を修正（[AD の作業結果](docs/evidence/2026-09-02-work-result-SM-AD-001.md)・[WSUS の作業結果](docs/evidence/2026-09-07-work-result-SM-WSUS-001.md)） | AI の手順案内を受けた手作業で、本リポジトリの Ansible（Windows 用 role を含む）は使っていない。監視全体の同時稼働と通知、組織 DNS・クライアント PC、中央 Prometheus からの収集（BLOCKED）、電源断からの復旧、独力での再現、長期稼働は `NOT RUN` |
-| 未実施 | AWS の実適用・削除、Slack 実配信、監視ラボの長期稼働、D-2 ホスト障害復元 | `NOT RUN`。[実測計画](docs/real-environment-validation-plan.md)を参照 |
+| AI が実行した新ラボ（2026-09-27〜28） | [実行記録](docs/evidence/2026-09-28-new-hyperv-lab-operations.md)：Ubuntu10サービス、OS再起動後33項目、0・1・6時間点検 | 24時間試験は未完了・未合格、本人の独力再現ではない。新ADの受け入れ・WSUS通し試験・別VM復元も未完了 |
+| 未実施・未達 | AWS の実適用・削除、Slack 実配信、D-2 ホスト障害復元は `NOT RUN`。新ラボの24時間観測は開始後に終了し未合格、72時間確認は `NOT RUN` | [実測計画](docs/real-environment-validation-plan.md)と日付付き記録を参照 |
 
 実行者が私・CI・AI 支援環境のどれかは、各証跡に書いています。
 

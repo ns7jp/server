@@ -5,6 +5,8 @@
 
 ## Definition of Done
 
+以下は本人が再実行する計画の判定です。2026-09-27〜28の [新Hyper-VラボのAI実行](evidence/2026-09-28-new-hyperv-lab-operations.md)では、Ubuntu10サービス・OS再起動・0/1/6時間点検までを別の部分結果として確認しました。24時間試験は欠測・時刻不一致があり終了したため未合格です。下表のAnsible全体適用・正式な受け入れ・本人の再現が完了したという意味ではなく、部分結果だけで下表を一括PASSにはしません。
+
 | Phase | 対象 | 完了条件 | 現在 |
 | --- | --- | --- | --- |
 | 1 | fresh Ubuntu 24.04 VPS/VM | Ansible初回`failed=0`、2回目`changed=0` | NOT RUN |

@@ -1,0 +1,564 @@
+{
+  "schema_version": 1,
+  "title": "新しいHyper-Vラボの構築・運用・中断記録",
+  "record_dates": [
+    "2026-09-27",
+    "2026-09-28"
+  ],
+  "authorization": "利用者が新しいローカルHyper-Vラボの作成と改善作業を指示",
+  "executor": "Codexが利用者の許可の下でコマンドを実行",
+  "labels_are_logical_roles_not_real_hostnames": true,
+  "evidence_type": "private_local_metadataから選択した事実をAIが整理した公開用サマリー",
+  "validation_limits": [
+    "原本のメタデータ・生ログ・アーカイブは公開していない",
+    "原本のSHA256は同じ内容との対応付け用であり独立した実行証明ではない",
+    "第三者は公開JSONのハッシュを再計算できるが、非公開原本との全文照合はできない",
+    "本人の独力再現・第三者引き渡し・業務経験の証拠ではない"
+  ],
+  "runtime_git_commit": "b7aeb80a1584a1b54bd97cf4687f7e70d3acd12f",
+  "publication_base_commit": "fab172eb6a0673d3a50fe8bac5022f3f8f064f4e",
+  "media": {
+    "ubuntu": {
+      "publisher_iso_sha256_match": true,
+      "source_ids": [
+        "S02"
+      ]
+    },
+    "windows": {
+      "publisher_whole_iso_checksum": "NOT VERIFIED",
+      "setup_exe_authenticode": "Valid Microsoft signature",
+      "source_ids": [
+        "S03",
+        "S04"
+      ]
+    },
+    "derived_media": {
+      "publisher_issued": false,
+      "original_media_preserved": true,
+      "scope": "自動実行とゲスト内WinPE修復用"
+    },
+    "extra_windows_packages": {
+      "msi_count": 2,
+      "checksum_file_count": 2,
+      "api_digest_matches": 4,
+      "guest_installation": "NOT RUN",
+      "source_ids": [
+        "S26"
+      ]
+    }
+  },
+  "roles": [
+    {
+      "role": "monitoring",
+      "label": "監視用Ubuntu VM",
+      "result": "10サービスの機能点検と再起動後点検を実測。観測は利用者の依頼で停止",
+      "source_ids": [
+        "S01",
+        "S05",
+        "S06",
+        "S08"
+      ]
+    },
+    {
+      "role": "directory",
+      "label": "AD用Windows VM",
+      "result": "フォレスト作成はSuccess。再起動後のDC検証は未完了",
+      "source_ids": [
+        "S15",
+        "S17",
+        "S18",
+        "S19",
+        "S20"
+      ]
+    },
+    {
+      "role": "update_management",
+      "label": "WSUS用Windows VM",
+      "result": "OSオフライン展開とWinPE媒体の読戻しまで。起動・WSUS実機試験は未実施",
+      "source_ids": [
+        "S21",
+        "S22"
+      ]
+    },
+    {
+      "role": "restore_target",
+      "label": "復元専用Ubuntu VM",
+      "result": "OS・SSH・sudo・Docker準備済み。アーカイブ受領と復元は未実施",
+      "source_ids": [
+        "S23",
+        "S24",
+        "S25"
+      ]
+    }
+  ],
+  "linux_runtime": {
+    "inventory_at": "2026-09-27T04:45:21.341553+00:00",
+    "docker_engine": "29.8.1",
+    "docker_compose": "5.5.1",
+    "services": [
+      "alertmanager",
+      "alloy",
+      "app",
+      "blackbox",
+      "docker-socket-proxy",
+      "grafana",
+      "loki",
+      "nginx",
+      "node-exporter",
+      "prometheus"
+    ],
+    "all_ten_running_at_inventory": true,
+    "app_health": "healthy",
+    "all_restart_counts_zero_at_inventory": true,
+    "all_oom_flags_false_at_inventory": true,
+    "http_checks": {
+      "health": 200,
+      "health_json_status": "ok",
+      "anonymous_ui": 401,
+      "anonymous_metrics": 401,
+      "authenticated_stats": 200,
+      "authenticated_metrics": 200
+    },
+    "five_readiness_endpoints_http_200": true,
+    "prometheus_application_and_host_targets_up": true,
+    "new_nginx_marker_retrieved_from_loki": true,
+    "published_ports": "loopback only",
+    "ssh_authentication": "key only",
+    "firewall": "SSHは管理ホスト1台に制限",
+    "second_ssh_connection_after_firewall_verified": true,
+    "grafana_browser_dashboard": "NOT RUN",
+    "external_alert_delivery": "NOT RUN",
+    "full_host_acceptance": "NOT RUN",
+    "source_ids": [
+      "S05",
+      "S06",
+      "S27",
+      "S28",
+      "S29"
+    ]
+  },
+  "reboot": {
+    "early_observation": {
+      "at": "2026-09-27T04:55:01Z",
+      "verdict": "FAIL",
+      "observed": [
+        "app health starting",
+        "Loki readiness HTTP 503"
+      ],
+      "source_ids": [
+        "S10"
+      ]
+    },
+    "final_observation": {
+      "at": "2026-09-27T04:55:47.156079+00:00",
+      "verdict": "PASS",
+      "check_count": 33,
+      "manual_container_start_after_reboot": false,
+      "verified": [
+        "同じVMで起動識別子が変化",
+        "実測対象Git SHA・設定26件・イメージ・コンテナ識別子が同じ",
+        "再起動回数の増加なし",
+        "10サービス・認証・監視・公開範囲"
+      ],
+      "source_ids": [
+        "S06"
+      ]
+    },
+    "scope": "このラボ用点検33件。既存のAD31項目試験や本番相当の引き渡し試験とは別"
+  },
+  "observation": {
+    "t0": "2026-09-27T05:12:05.913125+00:00",
+    "planned_24h_due": "2026-09-28T05:12:05.913130+00:00",
+    "initial_manual_service_check_count": 34,
+    "subsequent_scheduled_timer_firing_observed": true,
+    "immutable_observation_code_baseline_and_unit_file_count": 6,
+    "last_reported_six_hashes_unchanged": true,
+    "recorded_sample_count": 12,
+    "all_12_sample_verdicts_independently_audited": false,
+    "checkpoints": [
+      {
+        "hour": 0,
+        "verdict": "PASS",
+        "actual_time": "2026-09-27T05:12:06.642739+00:00"
+      },
+      {
+        "hour": 1,
+        "verdict": "PASS",
+        "actual_time": "2026-09-27T06:12:07.109650+00:00"
+      },
+      {
+        "hour": 6,
+        "verdict": "PASS",
+        "actual_time": "2026-09-27T11:12:12.097342+00:00"
+      },
+      {
+        "hour": 24,
+        "collector_status_at_stop": "PENDING",
+        "actual_time": null,
+        "publication_outcome": "未到達・未完了"
+      }
+    ],
+    "latest_recorded_sample": {
+      "at": "2026-09-28T03:49:35.675962+00:00",
+      "verdict": "PASS"
+    },
+    "recorded_timestamp_gaps": [
+      {
+        "seconds": 43721.02285909653,
+        "from_utc_second_precision": "2026-09-27T12:12:13Z",
+        "to_utc_second_precision": "2026-09-28T00:20:54Z"
+      },
+      {
+        "seconds": 5303.3611261844635,
+        "from_utc_second_precision": "2026-09-28T02:21:12Z",
+        "to_utc_second_precision": "2026-09-28T03:49:35Z"
+      }
+    ],
+    "gaps_are_vm_downtime_measurements": false,
+    "clock_disagreement": {
+      "guest_lag_lower_seconds": 1702.1040859222412,
+      "guest_lag_upper_seconds": 1702.7978520393372,
+      "ntp_synchronized_flag_reported": true,
+      "manual_correction_attempted": false,
+      "later_host_guest_comparison_lower_seconds": -0.2819409950898262,
+      "later_host_guest_comparison_upper_seconds": 0.3228921049158089,
+      "lasting_clock_stability_proven": false,
+      "cause": "NOT DETERMINED"
+    },
+    "final_state": "STOPPED_BY_USER",
+    "stopped_at_guest": "2026-09-28T13:26:11.584541+09:00",
+    "stop_followup_recorded_at": "2026-09-28T13:27:17.852466+09:00",
+    "guest_timer_stopped_and_disabled": true,
+    "observer_service_running_at_stop": false,
+    "containers_running_at_stop": 10,
+    "vm_shutdown_requested": false,
+    "records_deleted": false,
+    "baseline_reset": false,
+    "backfilled": false,
+    "completed_24h": false,
+    "continuous_uptime_claimed": false,
+    "completed_72h": false,
+    "source_ids": [
+      "S07",
+      "S08",
+      "S11"
+    ]
+  },
+  "backup": {
+    "scope": "今回の新ラボで新規に作成したLokiバックアップ",
+    "distinct_new_marker_count": 2,
+    "archive_bytes": 261873,
+    "stopped_loki_only": true,
+    "source_volume_read_only_during_archive": true,
+    "checksum_files_verified_count": 5,
+    "loki_restarted_and_ready": true,
+    "host_transfer": "BLOCKED: automatic approval review rejected transfer; not performed",
+    "restore_vm_received_archive": false,
+    "separate_vm_restore": "NOT RUN",
+    "previous_lab_archive_used": false,
+    "all_data_completeness_or_rpo_claimed": false,
+    "source_ids": [
+      "S12",
+      "S25"
+    ]
+  },
+  "windows_directory": {
+    "windows_boot_and_first_login_verified": true,
+    "initial_credential_rotated_and_new_login_verified": true,
+    "targeted_answer_files_remaining": 0,
+    "roles_installed": [
+      "AD DS",
+      "DNS"
+    ],
+    "prepromotion_checkpoint_verified": true,
+    "checkpoint_kind": "Standard",
+    "forest_creation": {
+      "status": "Success",
+      "succeeded": true,
+      "reboot_required": true,
+      "completed_at": "2026-09-27T05:23:19.7706803Z",
+      "exit_code_property_present": false
+    },
+    "post_reboot_dc_validation": "NOT RUN / PENDING",
+    "new_domain_dns_shares_ou_password_policy_acceptance": "NOT RUN",
+    "full_31_id_acceptance": "NOT RUN",
+    "patch_validation": "NOT RUN",
+    "source_ids": [
+      "S14",
+      "S15",
+      "S16",
+      "S17",
+      "S18",
+      "S19",
+      "S20"
+    ],
+    "single_dc_scope": true,
+    "not_a_replication_or_failover_test": true
+  },
+  "windows_update_management": {
+    "offline_image_stage": "OfflineImageAwaitingGuestBootFiles",
+    "winpe_seed_bytes": 118784,
+    "winpe_seed_files_readback_verified": 3,
+    "seed_embedded_utility_signature": "NotSigned",
+    "utility_same_image_hash_verified": true,
+    "catalog_membership_verified": false,
+    "guest_boot": "NOT RUN",
+    "domain_join": "NOT RUN",
+    "wsus_role_and_synchronization": "NOT RUN",
+    "corrected_sit_retest": "NOT RUN",
+    "source_ids": [
+      "S21",
+      "S22"
+    ]
+  },
+  "restore_preparation": {
+    "os_ssh_sudo_verified": true,
+    "docker_engine": "29.8.1",
+    "docker_compose": "5.5.1",
+    "software_preparation": "VERIFIED",
+    "archive_received": false,
+    "loki_restore": "NOT RUN",
+    "graceful_shutdown_command_accepted": true,
+    "hyperv_off_state_readback": "NOT VERIFIED",
+    "source_ids": [
+      "S23",
+      "S24",
+      "S25"
+    ]
+  },
+  "retained_failures": [
+    {
+      "event": "Ubuntu初回認証で改行形式の不一致",
+      "handling": "Live ISOで限定的に修復後、SSHとsudoで確認",
+      "source_ids": [
+        "S13",
+        "S29",
+        "S05"
+      ]
+    },
+    {
+      "event": "厳しいumaskで取得したソースがコンテナの非root実行から読めない",
+      "handling": "ソース権限を修復し再ビルド。秘密値は再生成しない",
+      "source_ids": [
+        "S09",
+        "S05"
+      ]
+    },
+    {
+      "event": "再起動直後はapp起動途中・Loki 503",
+      "handling": "FAILを保持し、手動起動なしで後の33項目PASSを別採録",
+      "source_ids": [
+        "S10",
+        "S06"
+      ]
+    },
+    {
+      "event": "観測サービスの制限により状態確認用ロック作成と通信種別が不適合",
+      "handling": "読み取り専用の確認に変更し、失敗した候補T0を保存して実際の新T0を採録",
+      "source_ids": [
+        "S11"
+      ]
+    },
+    {
+      "event": "Windows起動ファイル作成とWinPEの補助ツール探索に失敗",
+      "handling": "ホスト側処理を継続せずゲストWinPEで修復。補助ツールを媒体から参照",
+      "source_ids": [
+        "S14"
+      ]
+    },
+    {
+      "event": "観測欠測・時計の不一致",
+      "handling": "修復や埋め合わせで消さず、未完了として本人の停止依頼を記録",
+      "source_ids": [
+        "S08"
+      ]
+    }
+  ],
+  "remaining_unverified": [
+    "本人による独力再現",
+    "本人の今回の学び・理解の独立確認",
+    "第三者による引き渡し手順の実行",
+    "外部通知",
+    "AWS実適用・削除・費用確認",
+    "別VMでのLoki復元",
+    "AD再起動後の受け入れ",
+    "WSUS修正後の実機再試験",
+    "24時間・72時間の成功"
+  ],
+  "provenance": [
+    {
+      "source_id": "S01",
+      "description": "新規Hyper-Vラボ作成メタデータ",
+      "sha256": "4ad67abb3c760cd47c56581026e840bf35ed6ab81f1e6861811393adb48c6057",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S02",
+      "description": "Ubuntu配布ISO照合",
+      "sha256": "c00fa041ea0b8e2165e98be9b1a21b06935f83b6ec7e74e733dfd05d95113df5",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S03",
+      "description": "Windows配布ISO取得記録",
+      "sha256": "513d93991e1bf57ddaee9ab3604aed28b13cbb4b8055e57f6b12e0166dec321b",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S04",
+      "description": "Windowsメディア署名確認",
+      "sha256": "e520fc1edc8b1c654e2b698f6ac7de3e648663f3222902a7e806bb047b9d20c3",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S05",
+      "description": "Ubuntu監視構成インベントリ",
+      "sha256": "4e01dc4f34f5b97da78eac753eb001c17fc90d2e1d6dd6730d4f59735a707a38",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S06",
+      "description": "Ubuntu再起動後点検",
+      "sha256": "e79d2754f29d39e64490249835a5fb38248a066722cb5b668fb08ff490c39f42",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S07",
+      "description": "観測開始基準とコード整合性記録",
+      "sha256": "c74d7331a74bb7c47232fd6ad5a0951a9e64a5e8a9bf79b77d14ecdf08b7d7ef",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S08",
+      "description": "観測経過・欠測・時刻差・本人停止記録",
+      "sha256": "ceeeb1b89c4bbbc45921ef5b4d717980e19877aef7db12579bf7567a810af4f8",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S09",
+      "description": "Ubuntu最初のコンテナ起動診断",
+      "sha256": "7433aca142282a5f966364c9ac9621ac66e9bb65d9f54d046010635139ea73ad",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S10",
+      "description": "Ubuntu再起動直後の点検",
+      "sha256": "38b2d2c7156bf37d64393c21c6c43f6e53bcc894abb8e0f23fdafa6c66889cc2",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S11",
+      "description": "修正後の観測開始とサービス実行",
+      "sha256": "843dc05944ff6443829ea8183abb36516ede35a15865c0631882de70af796012",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S12",
+      "description": "新規Lokiバックアップ作成記録",
+      "sha256": "d3e3177bdb6b92563d929df64e4d57f98528f164d9b52beb756d13dacbb52306",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S13",
+      "description": "Ubuntu初回認証の改行診断",
+      "sha256": "9589a9fa27ed772263e3f2ec2ec657e16a6b1eabdf4b5547f928e4033c1f793c",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S14",
+      "description": "AD用WindowsのWinPE起動ファイル検証",
+      "sha256": "c6dceb38fa61499cc5f90603fabc96abbaa8be138bc50ff7366994468cc0303d",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S15",
+      "description": "AD用Windows初回ログイン",
+      "sha256": "6460354b86f021e65a589454f180bf4693b9acdf4a93034a9adccf65d1c66442",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S16",
+      "description": "初期資格情報変更と応答ファイル後処理",
+      "sha256": "10bbe338bdd4fc04519430c9fce76c9e99edcd2cacf0e0eb00ab6dae77b6c187",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S17",
+      "description": "AD DSとDNSの役割導入",
+      "sha256": "fdb7087318d0de1664a7dd16945981c9f6b63bfa1e89450016736e1f126f3a67",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S18",
+      "description": "フォレスト作成前チェックポイント",
+      "sha256": "770d9a597844142076342afd9e8fedc69581a053d84218413dc445e503f60295",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S19",
+      "description": "新規フォレスト作成結果",
+      "sha256": "90d959b37bf2d6431ed361aafae69397def5748965927c6429ac072ee60aac1e",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S20",
+      "description": "AD用VMの確認待ち状態",
+      "sha256": "04dd81bf6f30c6b3ec98105c3ed99f302178731273b55b6c7621b7021f38e641",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S21",
+      "description": "WSUS用Windowsオフライン展開",
+      "sha256": "a60131b29cf881c783c2ee9a1d6243a8101647270bfba8b15f036a7d3ed8c0ea",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S22",
+      "description": "WSUS用WinPE媒体の作成と読戻し",
+      "sha256": "9b4fd55773ee97c4c5804199fd3738981bbdaec3998a9810f9b559439cb406aa",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S23",
+      "description": "復元専用VMのOSとsudo確認",
+      "sha256": "6caf1d298405c6b82dcac67a4fd8e168d761e7a19ea2db3911c6b4fc81bc476c",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S24",
+      "description": "復元専用VMのソフトウェア確認",
+      "sha256": "879e0d95dcf9b50593daf2c07db8e6a744974e52ad248ad9698a1674e49d213c",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S25",
+      "description": "復元準備・未実行範囲・停止要求記録",
+      "sha256": "f9187581aa83c34884969de3e94e20f74059267225780626d97f017330a00bfc",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S26",
+      "description": "追加Windowsパッケージ取得照合",
+      "sha256": "9ff23db4312544b4b2b62e642646959f1c6b217759f3232dad5476bf8446bfd0",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S27",
+      "description": "PrometheusとLoki APIの機能点検",
+      "sha256": "1659dd950bca9ccca5bbc13c30accd2ddd1f5885e158097b28e00c22e24b4ffc",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S28",
+      "description": "ファイアウォール有効化後の別SSH接続確認",
+      "sha256": "9c794096ef0ee2deed24190ba424a5b65febc22f0ee51e2104fe322f67caacd7",
+      "access": "local_only_not_published"
+    },
+    {
+      "source_id": "S29",
+      "description": "Ubuntuの対象・SSH設定・sudoの事前確認",
+      "sha256": "83c035f05e78e77216f2bbf9d64b78158db06429564c5cf00d99b369e9e5304f",
+      "access": "local_only_not_published"
+    }
+  ]
+}
