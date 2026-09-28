@@ -224,8 +224,8 @@ shutdown /r /t 0
 
 設定を戻すだけではデータ破損を解消できない場合に限り、AD ごみ箱による復元、またはWindows Server BackupによるSystem State復元(6節3)を使用します。両者は次の基準で使い分けます。
 
-- 少数オブジェクトの誤削除・誤変更で、tombstone lifetime(既定180日)以内、かつAD ごみ箱機能(`Enable-ADOptionalFeature 'Recycle Bin Feature'`)が有効な場合は、**AD ごみ箱による復元**(`Get-ADObject -IncludeDeletedObjects`と`Restore-ADObject`、AIT-07相当)を優先します。ダウンタイムが無く、対象オブジェクト以外の変更を巻き戻さないためです。
-- `ntds.dit`自体の破損、AD ごみ箱で戻せない範囲の欠損(機能無効時、tombstone lifetime超過、System State全体の不整合)の場合は、**System State復元**(6節3、原則として非権威復元)を使用します。
+- 少数オブジェクトの誤削除・誤変更で、削除済みオブジェクトの保持期間(`msDS-deletedObjectLifetime`、未設定時は`tombstoneLifetime`と同値、既定180日)以内、かつAD ごみ箱機能(`Enable-ADOptionalFeature 'Recycle Bin Feature'`)が有効な場合は、**AD ごみ箱による復元**(`Get-ADObject -IncludeDeletedObjects`と`Restore-ADObject`、AIT-07相当)を優先します。ダウンタイムが無く、対象オブジェクト以外の変更を巻き戻さないためです。
+- `ntds.dit`自体の破損、AD ごみ箱で戻せない範囲の欠損(機能無効時、削除済みオブジェクトの保持期間の超過、System State全体の不整合)の場合は、**System State復元**(6節3、原則として非権威復元)を使用します。
 - AD ごみ箱でも復元できず、かつ誤って削除したオブジェクトを他のドメインコントローラーからの複製で上書きされないよう確実に戻す必要がある場合に限り、6節3の**権威復元**(`ntdsutil` authoritative restore)を検討します。単一DC構成の本パックでは複製パートナーが存在しないためこの状況は通常発生しませんが、判断基準として記録します。
 
 復元作業では次の点を確認します。

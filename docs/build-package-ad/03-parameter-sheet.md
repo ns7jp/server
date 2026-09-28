@@ -123,7 +123,7 @@ OU構造は既定の`CN=Users`・`CN=Computers`コンテナをそのまま使わ
 | バックアップ対象 | System State(AD DS データベース`ntds.dit`、SYSVOL、レジストリ等一式)、Firewallルールのエクスポート(`netsh advfirewall export`) | 同上 |
 | スケジュール | 毎日03:30(Asia/Tokyo)、Task Schedulerに登録 | 同上 |
 | 保持世代 | 14日([Linux版](../build-package/03-parameter-sheet.md)・[Windows版](../build-package-windows/03-parameter-sheet.md)と同じ値) | 同上 |
-| AD ごみ箱 | `Enable-ADOptionalFeature 'Recycle Bin Feature'`で有効化。tombstone lifetime(既定180日)の間、削除オブジェクトを`Restore-ADObject`で復元可能 | [構築手順書](05-build-procedure.md) |
+| AD ごみ箱 | `Enable-ADOptionalFeature 'Recycle Bin Feature'`で有効化。削除済みオブジェクトの保持期間`msDS-deletedObjectLifetime`(未設定時は`tombstoneLifetime`と同値、既定180日)の間、`Restore-ADObject`で復元可能。その後はリサイクル済みとなり復元不可 | [構築手順書](05-build-procedure.md) |
 | 復元試験方法 | System Stateバックアップからの復元(権威復元/非権威復元の違いを含む)と、AD ごみ箱によるオブジェクト単位の復元を区別して確認(AIT-06、AIT-07) | [試験仕様書・結果票](06-test-specification.md) |
 
 ## 公開ポート

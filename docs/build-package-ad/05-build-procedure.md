@@ -564,7 +564,7 @@ Get-WinEvent -LogName 'Microsoft-Windows-Backup' -MaxEvents 15 |
 Enable-ADOptionalFeature -Identity "Recycle Bin Feature" -Scope ForestOrConfigurationSet -Target corp.example.test -Confirm:$false
 ```
 
-有効化は不可逆(一度有効化すると無効化できない)であることに注意してください。有効化後、削除したオブジェクトを一定期間(既定tombstone lifetime、180日)`Restore-ADObject`で復元できます。復元手順の例は次のとおりです。
+有効化は不可逆(一度有効化すると無効化できない)であることに注意してください。有効化後、削除したオブジェクトを、削除済みオブジェクトの保持期間(`msDS-deletedObjectLifetime`。未設定時は`tombstoneLifetime`と同じ値で、既定180日)の間、`Restore-ADObject`で復元できます。その後は「リサイクル済み」オブジェクトとなり、復元できません。復元手順の例は次のとおりです。
 
 ```powershell
 Get-ADObject -Filter { displayName -eq "test-user-for-recycle-bin" } -IncludeDeletedObjects | Restore-ADObject

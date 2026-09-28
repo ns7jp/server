@@ -135,7 +135,7 @@ flowchart LR
 
 - 単一ドメインコントローラー構成のため、ホスト障害時の無停止継続は保証しません。単一障害点(SPOF)であることは、[基本設計書](01-basic-design.md)2.4節の発展構成(2台目のDC追加)で扱う課題として明記します。
 - System Stateバックアップは日次03:30(Asia/Tokyo)、保持14世代を初期値とし([Linux版](../build-package/01-basic-design.md)・[Windows版](../build-package-windows/01-basic-design.md)と同じ値)、別ボリューム/別ホストへの復元試験(AIT-06)で確認します。
-- AD ごみ箱の保存期間(削除オブジェクトの保持期間)は既定のtombstone lifetime(180日、フォレスト機能レベルWindows Server 2008 R2以降の既定値)をそのまま使用します。
+- AD ごみ箱で復元できる期間は、削除済みオブジェクトの保持期間`msDS-deletedObjectLifetime`で決まります。本パックでは設定せず、既定どおり`tombstoneLifetime`と同じ値(180日)を使用します。この期間を過ぎたオブジェクトは「リサイクル済み」状態になり、さらに`tombstoneLifetime`の期間残った後に削除されます。リサイクル済みのオブジェクトは`Restore-ADObject`では復元できません。
 - 中央側のPrometheus/Lokiの保持期間は既存設計を変更しません。値は[Linux版基本設計書](../build-package/01-basic-design.md)のとおり、Prometheusは35日、Lokiは30日を初期値とします。
 - ラボ内SLOは、フェーズ1の範囲ではディレクトリサービス関連サービスの起動状態確認にとどめます。既存の[SLO](../slo.md)への正式な数値目標の統合は、フェーズ2(中央Prometheusによる監視)が有効化された後に行う予定であり、現時点で`ad-dc01`のSLO数値は`NOT SET`です。
 

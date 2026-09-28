@@ -67,7 +67,7 @@ WinRM/AD DS関連ポート/windows_exporterのFirewallルールは、許可送�
 - Windows Server Backup機能(`wbadmin`)を導入し、System State(AD DSデータベース`ntds.dit`、SYSVOL、レジストリ等一式)、Firewallルールのエクスポート(`netsh advfirewall export`)をバックアップ対象とします。
 - スケジュールは毎日03:30(Asia/Tokyo)、Task Schedulerに登録します。保持世代は14日([Linux版](../build-package/03-parameter-sheet.md)・[Windows版](../build-package-windows/03-parameter-sheet.md)と同じ値)です。
 - System Stateバックアップからの復元試験(AIT-06)は権威復元/非権威復元の違いを含めて確認する試験であり、AD ごみ箱によるオブジェクト単位の復元試験(AIT-07)とは別に管理します。現時点でAIT-06、AIT-07はいずれも`NOT RUN`です([検証証跡台帳](../evidence/README.md)参照)。
-- ADごみ箱は`Enable-ADOptionalFeature -Identity "Recycle Bin Feature"`で有効化し、tombstone lifetime(既定180日)の間、削除オブジェクトを`Restore-ADObject`で復元できます。
+- ADごみ箱は`Enable-ADOptionalFeature -Identity "Recycle Bin Feature"`で有効化し、削除済みオブジェクトの保持期間`msDS-deletedObjectLifetime`(未設定時は`tombstoneLifetime`と同じ値、既定180日)の間は、削除済みオブジェクトとして`Restore-ADObject`で復元できます。その後は「リサイクル済み」オブジェクトとなり、復元できません。
 - Windows対応Ansible roleが無いため、[Linux版](../build-package/02-detailed-design.md)のような「直前commitへ戻して`deploy.yml`を再適用する」commit SHA基準の再配備は使えません。構成変更のロールバックは優先順位順に次の3段階の手段を使います。
   1. VM/ハイパーバイザーのスナップショット復元(Hyper-Vの`Checkpoint-VM`/`Restore-VMCheckpoint`、VMware等)を最優先の手段とします。取得タイミングは変更直前で、特にフォレスト作成やFSMO操作等の取り消しが困難な変更の前は必須とします。
   2. スナップショットが無い場合は、変更前に取得したFirewallルールのエクスポート(`netsh advfirewall export`)、レジストリの該当キー(LDAP署名/チャネルバインディング等)のエクスポートを個別に戻します。
