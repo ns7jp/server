@@ -13,8 +13,8 @@
 | 実施日 | 私の操作と確認結果 |
 | --- | --- |
 | 2026-09-01〜02 | [AD の構築・試験](docs/evidence/2026-09-01-ad-build-validation.md)：Windows Server 2022 評価版の `ad-dc01`（VM 1 台）で AD DS（ドメインの認証基盤）を構築し、試験仕様書のフェーズ 1 必須 31 項目がすべて PASS。手順書・設計書の欠陥 6 件を実機で見つけて修正 |
-| 2026-09-02 | [System State 復元](docs/evidence/2026-09-02-ad-restore-drill.md)：非権威復元で、バックアップ後に作った目印の OU が消えることを確認。復元処理 15 分 29 秒、復旧全体は約 40 分（うち約 18 分は `safeboot` 解除漏れによるやり直し）。当日見落とした SYSVOL の欠損は翌日に訂正 |
-| 2026-09-03〜04 | [2 台目の DC と複製](docs/evidence/2026-09-03-ad-second-dc-replication.md)：複製の失敗 0/5、遅延 17.8 秒。GPO（グループポリシー）が届かない原因を、前日の復元で欠けた `gpt.ini` と特定して修復。[計画停止](docs/evidence/2026-09-03-ad-dc-outage-drill.md)：1 台を止めても DNS・LDAP・Kerberos が継続し、復帰後の収束は 18 分 31 秒。[FSMO 奪取](docs/evidence/2026-09-04-ad-fsmo-seize.md)：正常停止した 1 台を失った想定で、残った DC へ FSMO 役割（特定の DC だけが担う管理役割）を奪取し、`ntdsutil` で古い DC の情報を削除 |
+| 2026-09-02 | [System State 復元](docs/evidence/2026-09-02-ad-restore-drill.md)：非権威復元で、バックアップ後に作った目印の OU が消えることを確認。復元処理 15 分 29 秒、復旧全体は約 40 分（うち約 18 分は `safeboot` 解除漏れによるやり直し）。当日見落とした SYSVOL の欠損は翌日に訂正。唯一の DC なのに `-authsysvol`（SYSVOL の権威復元）を付けずに復元しており、手順書は 2026-09-28 に直した（実機では未検証） |
+| 2026-09-03〜04 | [2 台目の DC と複製](docs/evidence/2026-09-03-ad-second-dc-replication.md)：複製の失敗 0/5、遅延 17.8 秒。GPO（グループポリシー）が届かない原因が SYSVOL から欠けた `gpt.ini` であることを突き止め、手書きで再作成して適用を再開（応急処置。パスワードポリシーの正本である `GptTmpl.inf` は欠けたまま。欠損は前日の復元を `-authsysvol` なしで行ったことが最有力の仮説で、未確認）。[計画停止](docs/evidence/2026-09-03-ad-dc-outage-drill.md)：1 台を止めても DNS・LDAP・Kerberos が継続し、復帰後の収束は 18 分 31 秒。[FSMO 奪取](docs/evidence/2026-09-04-ad-fsmo-seize.md)：正常停止した 1 台を失った想定で、残った DC へ FSMO 役割（特定の DC だけが担う管理役割）を奪取し、`ntdsutil` で古い DC の情報を削除 |
 | 2026-09-07〜08 | [WSUS の構築](docs/evidence/2026-09-07-wsus-build-validation.md)：更新配信サーバー `wsus-01` をドメインに参加させて構築。必須 28 項目中 26 PASS / 1 FAIL / 1 期待結果未達で、判定は FAIL。翌日、[残った 2 件の原因](docs/evidence/2026-09-08-wsus-sit04-sit06-root-cause.md)を実機で特定し、手順書を修正（SIT-06 は承認ルールの分類・製品が 0 件で保存され、「絞り込みなし」と解釈されていた。修正後の通し再試験は未実施） |
 | 2026-09-07〜08 | [Ubuntu 初期構築](docs/evidence/2026-09-08-lab-base01-initial-build.md)：固定 IP、SSH 鍵認証、sudo、UFW、時刻同期、自動更新を手作業で設定し、わざと起こした設定不備から復旧（OS 単体の演習） |
 | 2026-09-08 | [Docker 最小構成](docs/evidence/2026-09-08-lab-base01-compose-practice.md)：app と nginx の 2 サービスを起動し、未認証 401・認証あり 200、計画停止・手動再開を確認 |
@@ -31,7 +31,7 @@ Linux の演習は、次に [小さな構成の再起動・24 時間点検・別
 
 手元の VM で確認した記録のうち、特に説明したいものを 3 本に絞りました。
 
-1. **AD の冗長化と復旧**：[構築・試験](docs/evidence/2026-09-01-ad-build-validation.md)・[System State 復元](docs/evidence/2026-09-02-ad-restore-drill.md)・[FSMO 奪取](docs/evidence/2026-09-04-ad-fsmo-seize.md)
+1. **AD の 2 台構成と復旧**：[構築・試験](docs/evidence/2026-09-01-ad-build-validation.md)・[System State 復元](docs/evidence/2026-09-02-ad-restore-drill.md)・[FSMO 奪取](docs/evidence/2026-09-04-ad-fsmo-seize.md)
 2. **Ubuntu の構築と監視**：[初期構築](docs/evidence/2026-09-08-lab-base01-initial-build.md)・[数値監視](docs/evidence/2026-09-08-lab-base01-monitoring-practice.md)
 3. **原因の切り分け**：[WSUS の SIT-04 / SIT-06 原因特定](docs/evidence/2026-09-08-wsus-sit04-sit06-root-cause.md)
 
