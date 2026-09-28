@@ -105,10 +105,10 @@ flowchart LR
 
 | 日付 | 演習 | 主な結果 |
 | --- | --- | --- |
-| 2026-09-03 | [2台目DC追加とレプリケーション実測](../evidence/2026-09-03-ad-second-dc-replication.md) | `ad-dc02`を追加し、サイト内レプリケーション遅延**17.8秒**、FSMOフォレストレベル2役割の移譲**0.238秒**を実測。**単一DC構成では無症状だった欠陥3件**（SYSVOLの`scripts`欠損、Default Domain Policyの`gpt.ini`欠損、2設定がGPO化されていなかったこと）を発見・修復 |
+| 2026-09-03 | [2台目DC追加とレプリケーション実測](../evidence/2026-09-03-ad-second-dc-replication.md) | `ad-dc02`を追加し、サイト内レプリケーション遅延**17.8秒**、FSMOフォレストレベル2役割の移譲**0.238秒**を実測。**単一DC構成では無症状だった欠陥3件**（SYSVOLの`scripts`欠損、Default Domain Policyの`gpt.ini`・`GptTmpl.inf`欠損、2設定がGPO化されていなかったこと）を発見。SYSVOLの2件は応急処置（`scripts`作成・`gpt.ini`再作成）のみで、`GptTmpl.inf`は欠けたまま。原因は前日の復元を`-authsysvol`なしで行ったことが最有力の仮説で未確認（2026-09-28 訂正） |
 | 2026-09-03 | [DC 1台停止時の可用性試験](../evidence/2026-09-03-ad-dc-outage-drill.md) | `ad-dc01`を計画停止し、`ad-dc02`単独での継続性を実測。DNS・LDAP・Kerberos・GCは継続、PDCエミュレーター/RIDマスター固有の操作のみ縮退。復帰後の**ディレクトリ完全収束まで18分31秒** |
 | 2026-09-04 | [FSMO役割の奪取と`ad-dc01`の完全喪失想定復旧](../evidence/2026-09-04-ad-fsmo-seize.md) | 「dc01が復旧不能になった」想定へ切り替え、`ad-dc02`から役割を強制奪取。ADのメタデータから`ad-dc01`を除去し、**VM自体も削除（不可逆）**。以降このドメインは`ad-dc02`の単一DC構成 |
-| 2026-09-07 | [`ad-dc02`の時刻同期元の是正](../evidence/2026-09-07-ad-dc02-time-sync-fix.md) | 上記の奪取で`ad-dc02`がPDCエミュレーターを保持する構成へ変わったため、時刻同期の前提を再評価して是正 |
+| 2026-09-07 | [`ad-dc02`の時刻同期元の変更](../evidence/2026-09-07-ad-dc02-time-sync-fix.md) | 上記の奪取で`ad-dc02`がPDCエミュレーターを保持する構成へ変わったため、時刻同期の前提を再評価し`Type: NTP`へ変更。`NtpServer`は未設定で、時刻源はHyper-Vホスト時刻のままの暫定状態（2026-09-28 訂正） |
 | 2026-09-07 | [windows_exporterの最小権限化(gMSA)](../evidence/2026-09-07-ad-windows-exporter-least-privilege.md) | [03 パラメータシート](03-parameter-sheet.md)等で「AST-07相当の継続課題」としていた、実行アカウントの`LocalSystem`からの最小権限化を実施 |
 
 なお、[WSUS版パック](../build-package-wsus/README.md)の構築に伴い、`ad-dc02`のdefault route

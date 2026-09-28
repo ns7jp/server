@@ -90,7 +90,7 @@ flowchart LR
 - **2台目のDC追加とレプリケーション実測**: `Install-ADDSDomainController`で2台目を追加し、`repadmin /replsummary`・`repadmin /showrepl`でレプリケーション状態を確認する。FSMO役割の一部を`Move-ADDirectoryServerOperationMasterRole`で移譲し、単一障害点を減らす設計を検証する。
   - **2026-09-03に実施済み(ラボ範囲)**: `ad-dc02`(`192.0.2.51/24`)を追加し、NTDS複製5パーティション失敗0、SYSVOL初期同期成功、**サイト内レプリケーション遅延17.8秒**を実測しました([証跡](../evidence/2026-09-03-ad-second-dc-replication.md))。FSMO移譲も実施し、フォレストレベル2役割(スキーマ、ドメイン名前付け)を`ad-dc02`へ、ドメインレベル3役割(PDC、RID、インフラストラクチャ)を`ad-dc01`に分けました(所要0.238秒、`dcdiag /test:knowsofroleholders`合格)。`ad-dc02`の要塞化(WinRM HTTPS、Firewallスコープ、RDP無効、SMBv1無効)まで実施し、**GPO化したセキュリティ設定3件(LDAP署名必須、チャネルバインディング、DSアクセス監査)が、dc02側で一切のレジストリ編集なしに自動適用されること**を検証しました。
 
-  この演習で、前日のSystem State復元がdc01から`scripts`フォルダーとDefault Domain Policyの`gpt.ini`を失わせていたことも判明しています。**いずれも単一DCでは無症状**で(前者は共有定義が残るため、後者は適用済みのローカルポリシーが残るため)、2台目を追加して初めて顕在化しました。後者はdc02にGPOが1件も適用されない状態を招いていました。**冗長化は可用性のためだけでなく、「設定が正しく配信されているか」を検証する手段でもある**というのが、この演習で得られた最も大きな知見です。
+  この演習で、dc01のSYSVOLから`scripts`フォルダーとDefault Domain Policyの`gpt.ini`・`GptTmpl.inf`が欠けていたことも判明しています。**いずれも単一DCでは無症状**で(前者は共有定義が残るため、後者は適用済みのローカルポリシーが残るため)、2台目を追加して初めて顕在化しました。`gpt.ini`の欠損はdc02にGPOが1件も適用されない状態を招いていました。欠損の原因は、前日のSystem State復元を唯一のDCなのに`-authsysvol`なしで実行したことが最有力の仮説で、確認はしていません。行ったのは`scripts`の作成と`gpt.ini`の手書き再作成による応急処置で、パスワードポリシーの正本であるDefault Domain Policyの`GptTmpl.inf`は欠けたままです(2026-09-28 訂正。正規の復旧手順は[構築手順書](05-build-procedure.md)14節)。**DCを2台にすることは可用性のためだけでなく、「設定が正しく配信されているか」を検証する手段でもある**というのが、この演習で得られた最も大きな知見です。
 
   `ad-dc02`のフェーズ1相当設定(要塞化、windows_exporter、System Stateバックアップ)はすべて完了し、**2台のDCが同等の設定・監視・バックアップを持つ状態**になりました。
 
@@ -98,7 +98,7 @@ flowchart LR
 
   **FSMO役割の奪取(seize)も2026-09-04に実施済み(ラボ範囲)**です([証跡](../evidence/2026-09-04-ad-fsmo-seize.md))。`ad-dc01`が復旧不能になったと想定し、`ad-dc02`から`-Force`でドメインレベル3役割を強制奪取、`ntdsutil`のメタデータクリーンアップで`ad-dc01`をADから完全に除去しました。単一DC(`ad-dc02`)でDC・GC・DNS・KDCの全機能が正常に稼働することを確認し、`ad-dc01`のVM自体も削除しています。これにより、本節に記載した発展課題(2台目DC追加・可用性試験・FSMO奪取)はすべて実施済みとなりました。
 
-  FSMO奪取の副次的な影響として、**`ad-dc02`がPDCエミュレーターになったにもかかわらずWindows Time Serviceの構成が追従していなかった点も2026-09-07に是正済み**です([証跡](../evidence/2026-09-07-ad-dc02-time-sync-fix.md))。奪取(seize)は役割の付け替えのみで、依存する周辺サービスの構成までは自動的に追従しないことを実測で確認しています。
+  FSMO奪取の副次的な影響として、**`ad-dc02`がPDCエミュレーターになった後もWindows Time Serviceの`Type`が`NT5DS`のまま残っていた点は、2026-09-07に`Type: NTP` / `AnnounceFlags: 5`へ変更しました**([証跡](../evidence/2026-09-07-ad-dc02-time-sync-fix.md))。ただし是正済みではありません。`NtpServer`は未設定で、時刻源はHyper-Vホスト時刻(`VMICTimeProvider`)の既定動作が続いているだけのため、[詳細設計書](02-detailed-design.md)の`manualpeerlist`による外部NTP同期から外れた**暫定状態**です。PDCエミュレーターの時刻設定は、移譲・奪取のどちらでも役割の移動に合わせて自動では切り替わらず、手作業で付け替えるのが仕様です(2026-09-28 訂正。手順は[変更・ロールバック計画](08-change-rollback-plan.md)10節、実機では未検証)。
 
   windows_exporterサービスアカウントの最小権限化(3.4節・7節で継続課題としていた項目)も**2026-09-07に実施済み**です([証跡](../evidence/2026-09-07-ad-windows-exporter-least-privilege.md))。DCにはローカルSAMが無いため、既定`LocalSystem`からgMSA(`CORP\svc-winexp$`)+`Performance Monitor Users`メンバーシップへ移行しました。
 
