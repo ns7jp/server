@@ -276,7 +276,9 @@ w32tm /query /source
 w32tm /query /status
 
 # 旧PDCエミュレーターが残っている場合(移譲時)は、ドメイン階層に従う設定へ戻す
-w32tm /config /syncfromflags:domhier /update
+# /reliable:no も付ける。/syncfromflags だけでは、PDC時代に /reliable:yes で立てた
+# AnnounceFlags(5 = 信頼できる時刻源として広告)が残り、旧PDCが時刻源として名乗り続けるため
+w32tm /config /syncfromflags:domhier /reliable:no /update
 Restart-Service w32time
 ```
 

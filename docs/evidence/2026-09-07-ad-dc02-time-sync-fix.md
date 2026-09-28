@@ -44,6 +44,8 @@ Windowsは本来、あるDCがPDCエミュレーター役割を持つと、Netlo
 
 > **2026-09-28 訂正**：上の段落の根本原因の説明は誤りでした。PDCエミュレーター役割が移ったときに、Netlogonが検知して`Type`を自動で`NTP`へ切り替える仕組みは、Windowsにはありません。移譲(transfer)でも奪取(seize)でも同じで、**PDCエミュレーターの時刻設定は手作業で付け替えるのが仕様**です。定石は、新しいPDCエミュレーターで`w32tm /config /manualpeerlist:"<外部NTP>" /syncfromflags:manual /reliable:yes /update`を実行し、旧PDC(残っていれば)を`w32tm /config /syncfromflags:domhier /update`に戻すことです。したがって「奪取だったから自動切り替えが働かなかった」のではなく、「役割を移した後に時刻設定を付け替える手順が、奪取の手順に入っていなかった」が正しい原因です。付け替えの手順は[変更・ロールバック計画](../build-package-ad/08-change-rollback-plan.md)10節に加えました(実機では未検証)。
 
+> **2026-09-28 訂正**：上の訂正で示した旧PDCの戻し方`w32tm /config /syncfromflags:domhier /update`には、`/reliable:no`が欠けていました。正しくは`w32tm /config /syncfromflags:domhier /reliable:no /update`です。`/syncfromflags`は同期元を変えるだけで`AnnounceFlags`には触れないため、PDC時代に`/reliable:yes`で設定した値(`5`、信頼できる時刻源として広告)が残り、旧PDCが時刻源として名乗り続けてしまいます。[変更・ロールバック計画](../build-package-ad/08-change-rollback-plan.md)10節も同じ形に直しました(実機では未検証)。
+
 **FSMO奪取(seize)は役割の付け替えだけで、Windows Time Serviceの構成までは自動的に追従しない。** 09-03に記録した「VMTPは逸脱」という当時の判断は、`ad-dc02`がまだPDCでなかった時点では正しい指摘でしたが、その後の奪取によって前提が変わり、単なるフォールバックの副作用として構成不備が残っていた、というのが実態です。
 
 ## 是正
