@@ -77,11 +77,13 @@ OU構造は既定の`CN=Users`・`CN=Computers`コンテナをそのまま使わ
 
 | GPO名 | 適用先 | 内容 | 実装状態 |
 | --- | --- | --- | --- |
-| Default Domain Policy | ドメインルート | パスワードポリシー(NFR-07)、アカウントロックアウトポリシー | 済(手動)。実務では専用GPOへ分離することが多いが、本パックでは既定GPOを直接編集し、そのトレードオフを[詳細設計書](02-detailed-design.md)に明記する |
+| Default Domain Policy | ドメインルート | パスワードポリシー(NFR-07)、アカウントロックアウトポリシー | 済(手動)。実務では専用GPOへ分離することが多いが、本パックでは既定GPOで管理し、そのトレードオフを[詳細設計書](02-detailed-design.md)に明記する。**2026-09-28 注記**: 実機では`Set-ADDefaultDomainPasswordPolicy`でドメインオブジェクトの属性を直接設定しており、DDPの`GptTmpl.inf`は09-02の復元後に欠損したまま(DDPは実質空)。GPMCでDDPに設計値を入れ直して`GptTmpl.inf`を再生成する作業は未実施 |
 | Servers-Baseline(設計のみ) | `OU=Servers` | NLA必須化、監査ポリシー、Windows Updateの集中管理 | 未実装(設計のみ。適用対象サーバーが本パックに無いため) |
 | Workstation-Baseline(設計のみ) | `OU=Workstations` | 画面ロック、監査ポリシー、ローカル管理者制限 | 未実装(設計のみ。適用対象クライアントが本パックに無いため) |
 
 ## パスワードポリシー(既定ドメインGPO)
+
+正本はDefault Domain Policyの`GptTmpl.inf`(アカウント ポリシー)です。`Get-ADDefaultDomainPasswordPolicy`はPDCエミュレーターが属性へ書き戻した結果を読む確認用コマンドで、GPOとずれている場合はGPO側の値が優先されます。下表の「正本」列は確認手段を示します。
 
 | 項目 | 設定値 | 正本 |
 | --- | --- | --- |

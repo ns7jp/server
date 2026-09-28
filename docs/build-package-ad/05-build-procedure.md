@@ -303,7 +303,13 @@ New-ADOrganizationalUnit -Name "ServiceAccounts" -Path "DC=corp,DC=example,DC=te
 Get-ADOrganizationalUnit -Filter * | Select-Object Name, DistinguishedName
 ```
 
-続けて、既定ドメインGPO(Default Domain Policy)のパスワードポリシーを設計値(NFR-07)に設定します。
+続けて、パスワードポリシーを設計値(NFR-07)に設定します。
+
+> **2026-09-28 訂正**: 以前の版は、下の`Set-ADDefaultDomainPasswordPolicy`を「既定ドメインGPO(Default Domain Policy)のパスワードポリシーを設定する」操作として説明していましたが、誤りでした。このコマンドはGPOを編集せず、ドメインオブジェクトの属性を直接書き込みます。パスワードポリシーの正本はDefault Domain Policy(DDP)の`GptTmpl.inf`で、PDCエミュレーターがGPOの値を属性へ書き戻すため、両者がずれるとGPO側の値に戻ります。正しい手順は、GPMCでDDPを編集する方法です(下の手順)。2026-09-01の実機構築は`Set-ADDefaultDomainPasswordPolicy`で行いました。
+
+**推奨手順(GPMC、未検証)**: GPMCで「Default Domain Policy」を右クリック →「編集」→「コンピューターの構成 → ポリシー → Windows の設定 → セキュリティの設定 → アカウント ポリシー」の「パスワードのポリシー」「アカウント ロックアウトのポリシー」に設計値を入れます。`gpupdate /force`の後、`Get-ADDefaultDomainPasswordPolicy`で属性側に同じ値が反映されたこと、`C:\Windows\SYSVOL\domain\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Microsoft\Windows NT\SecEdit\GptTmpl.inf`に`MinimumPasswordLength = 14`などが書かれていることを確認します。この手順は本ラボの実機ではまだ実行していません。
+
+参考として、2026-09-01の実機構築で実行したコマンドを残します。属性だけを書き換えるため、DDP側の値と一致していることを必ず確認してください。
 
 ```powershell
 Set-ADDefaultDomainPasswordPolicy -Identity corp.example.test -MinPasswordLength 14 `
