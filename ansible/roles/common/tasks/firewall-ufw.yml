@@ -1,7 +1,12 @@
 ---
+# 順序: 既定 policy の設定 → 許可 / limit rule の追加 → 最後に有効化。
+# 有効化を先にすると、SSH の rule が入る前に 22 番が閉じた状態ができる。
+# 既存の SSH セッションは conntrack（接続追跡）の ESTABLISHED 許可で切れないが、
+# タスクの合間に Ansible が SSH を張り直すと締め出される可能性がある。
+# UFW が無効な間も policy と rule は設定として保存され、有効化した時点でまとめて効く。
+# Molecule（docker 接続）は SSH を使わないため、この順序の誤りを検出できない。
 - name: Configure UFW default incoming policy
   community.general.ufw:
-    state: enabled
     policy: "{{ common_ufw_default_incoming }}"
     direction: incoming
 
@@ -56,3 +61,8 @@
   when:
     - common_ufw_limit_ssh | bool
     - common_ufw_ssh_source_cidr | length > 0
+
+# SSH の許可 / limit rule を入れ終えてから有効化する（冒頭のコメント参照）。
+- name: Enable UFW after the SSH rules are in place
+  community.general.ufw:
+    state: enabled

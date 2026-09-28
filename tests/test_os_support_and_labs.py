@@ -674,6 +674,25 @@ def test_ufw_restricts_ssh_source_when_a_management_cidr_is_given():
     assert "common_ufw_ssh_source_cidr | length == 0" in any_source
 
 
+def test_ufw_is_enabled_only_after_ssh_rules_are_added():
+    """SSH の rule を入れる前に UFW を有効化しない。
+
+    有効化が先だと、タスクの合間に SSH を張り直したときに締め出される。
+    Molecule（docker 接続）では検出できないため、順序をここで固定する。
+    """
+    ufw = read("ansible", "roles", "common", "tasks", "firewall-ufw.yml")
+    tasks = ufw.split("- name: ")[1:]
+    enabling = [i for i, task in enumerate(tasks) if "state: enabled" in task]
+    assert len(enabling) == 1, "UFW を有効化するタスクは 1 つだけにする"
+    ssh_rules = [
+        i for i, task in enumerate(tasks)
+        if "common_ufw_ssh_port" in task and "delete: true" not in task
+    ]
+    allow_rules = [i for i, task in enumerate(tasks) if "rule: allow" in task]
+    assert ssh_rules and allow_rules
+    assert enabling[0] > max(ssh_rules + allow_rules)
+
+
 def test_bringup_runbook_states_what_one_host_cannot_cover():
     """1 台で埋まらないものを、埋まったことにしない。"""
     runbook = read("docs", "build-package", "10-host-bringup-and-acceptance.md")

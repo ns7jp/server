@@ -68,6 +68,8 @@
 | AFNW-05 | firewall許可範囲 | PASS | `sudo ufw status verbose` → `Status: active`、`Default: deny (incoming), allow (outgoing), deny (routed)`、`22/tcp` / `22/tcp (v6)`のみ`LIMIT IN Anywhere` |
 | AFNW-06 | rate limit発火確認（任意） | NOT RUN | 対象ホストへの負荷を伴うため未実施 |
 
+> **2026-09-28 訂正（補足）**：この適用時点の`common` roleは、最初のタスクでUFWを有効化し（既定policy `deny`）、SSHの`limit` ruleをその後で追加する順序でした。適用が途切れなかったのは、既存のSSH接続がconntrack（接続追跡）のESTABLISHED許可で維持され、Ansibleが接続を再利用していたためと考えられます。タスクの合間にSSHを張り直すと締め出される可能性がある順序だったため、2026-09-28にroleを「policy設定 → rule追加 → 最後に有効化」の順へ改めました（`ans-01`での再適用は未実施）。上表の結果は当時の記録のままです。
+
 ## 見つかった欠陥
 
 実行して初めて見つかった実装上の欠陥が1件あります。詳細は[欠陥台帳](defects-found.md)（#30）を参照してください。
