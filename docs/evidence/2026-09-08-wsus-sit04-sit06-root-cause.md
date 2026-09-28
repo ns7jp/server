@@ -236,6 +236,8 @@ registry TargetGroup = Pilot
 | 12 | 05 9.2節 | **`WsusService`は`BITS`の依存サービス。** 中断手順の`Stop-Service BITS -Force`は`WsusService`も黙って一緒に停止させる。本調査では同期実行中にこれが起き、同期がデータベース上で`Running`のまま固まった（`GetSynchronizationStatus()`は`Running`なのに`GetSynchronizationProgress()`は`Phase=NotProcessing`・`0/0`） | 依存関係を注記し、固まった同期は`WsusService`開始後に`StopSynchronization()`で解除する手順を追記 |
 | 13 | 05 7節 | **GPO操作コマンドはWinRMセッション越しには実行できない。** `Set-GPRegistryValue`等はDC上のGPOへアクセスするため資格情報の再委任（ダブルホップ）が必要で、`操作エラーが発生しました。 (Exception from HRESULT: 0x80072020)`で失敗する | コンソール/RDPの対話セッションか、DC上で実行する旨を注記 |
 
+> **2026-09-28 訂正**：#13の対処「コンソール/RDPの対話セッションか、DC上で実行」は、管理端末がドメインに参加していないラボでの代替策です。本来は、ドメインに参加した管理端末にRSAT(GPMCとGroupPolicyモジュールを含む)を入れて直接実行すれば、ダブルホップ自体が起きません。2段目の接続が避けられない場合は、リソースベースの制約付き委任やCredSSPを検討します。
+
 補足: 2026-09-07の証跡末尾に記録されているBOM無しUTF-8の落とし穴を本調査でも踏みました。検証スクリプトをBOM無しUTF-8で保存したため、日本語リテラルとの文字列比較（`$_.UpdateClassificationTitle -eq "セキュリティ問題の修正プログラム"`）が成立せず、コホート選定が壊れました。以降の検証はロケール非依存のGUIDと`UpdateScope`で対象を選ぶ方式へ切り替えています。
 
 ## 手順書への反映

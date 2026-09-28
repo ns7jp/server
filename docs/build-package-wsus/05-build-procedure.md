@@ -546,7 +546,7 @@ Set-GPRegistryValue -Name $gpoName -Key $wuKey -ValueName "TargetGroup" -Type St
 
 `wsus-01`自身もこのGPOの適用対象(`Servers`OU)に含まれるため、即時適用・確認を行う。
 
-なお`New-GPO`・`New-GPLink`・`Set-GPRegistryValue`は**WinRMセッション越しには実行できない**。ドメインコントローラー上のGPOへアクセスするために資格情報の再委任(ダブルホップ)が必要で、`操作エラーが発生しました。 (Exception from HRESULT: 0x80072020)`で失敗する。コンソール/RDPでの対話セッションから実行するか、DC上で実行すること。
+なお`New-GPO`・`New-GPLink`・`Set-GPRegistryValue`は**WinRMセッション越しには実行できない**。ドメインコントローラー上のGPOへアクセスするために資格情報の再委任(ダブルホップ)が必要で、`操作エラーが発生しました。 (Exception from HRESULT: 0x80072020)`で失敗する。本来は、ドメインに参加した管理端末にRSAT(GPMCとGroupPolicyモジュール)を入れ、そこから直接実行する(1段目で済むためダブルホップが起きない)。本ラボでは管理端末がドメイン未参加のため、コンソール/RDPでの対話セッションから、またはDC上で実行した。2段目の接続が避けられない場合は、リソースベースの制約付き委任やCredSSPを検討する(本ラボでは未検証)。
 
 ```powershell
 gpupdate /force /target:computer

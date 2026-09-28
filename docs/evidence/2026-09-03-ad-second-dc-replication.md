@@ -97,6 +97,8 @@ detected on dc02 at: 11:46:50.510   (Get-ADOrganizationalUnit -Server localhost)
 
 5つのFSMO役割のうち、**フォレスト全体に関わる2つ**(スキーマ マスター、ドメイン名前付けマスター)を`ad-dc02`へ移譲し、**ドメイン内で頻繁に使われる3つ**(PDCエミュレーター、RIDプールマネージャー、インフラストラクチャマスター)は`ad-dc01`に残しました。フォレストレベルとドメインレベルで分けるのは、片方のDCが失われても残る役割が偏らないようにするためです。
 
+> **2026-09-28 訂正**：上の配置理由は正確ではありません。役割を2台に分けても、DCを1台失えばそのDCが持っていた役割は奪取が必要になります。分割は可用性を上げるのではなく、障害時に奪取の対象となる組み合わせを増やします。単一ドメインのフォレストでは、5役割をPDCエミュレーター側の1台にまとめるのが一般的です。この配置は、**同日の[DC停止試験](2026-09-03-ad-dc-outage-drill.md)で「役割を持つDCが止まると何が起きるか」を観察するために、演習として意図的に分けたもの**と位置づけるのが正確です。移譲の操作と実出力は当時の記録のまま残します。
+
 ```powershell
 Move-ADDirectoryServerOperationMasterRole -Identity "ad-dc02" `
     -OperationMasterRole SchemaMaster, DomainNamingMaster -Confirm:$false
