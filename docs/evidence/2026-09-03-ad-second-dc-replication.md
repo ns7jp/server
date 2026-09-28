@@ -349,6 +349,8 @@ Get-ScheduledTask -TaskPath '\Microsoft\Windows\Backup\' | Get-ScheduledTaskInfo
 
 LAB-19は、[復元演習の証跡](2026-09-02-ad-restore-drill.md)で`dcdiag`の`DFSREvent`失敗を「DSRM起動時のNTDS依存サービス起動失敗が System ログに残っているだけ」と判断した点が不十分だったことを示します。当該証跡の判断はこの発見をもって訂正します。**復元後は`dcdiag`の合否だけでなく、SYSVOL配下に`Policies`と`scripts`が揃っているかをファイルシステムで確認すべき**でした。
 
+> **2026-09-28 訂正**：LAB-19・LAB-20 の原因欄と本文にある「09-02 の System State 非権威復元の巻き添え」は、記録の突き合わせから立てた**最有力の仮説**で、確かめてはいません。当時は、DFSR が退避したファイルを置く `DfsrPrivate` 配下の `PreExisting`・`ConflictAndDeleted` や、`DFS Replication` ログのイベントを確認していないためです。また、唯一の DC を System State 復元するときは `-authsysvol`(SYSVOL の権威復元)を付けるのが Microsoft の手順で、09-02 の演習はこれを付けていませんでした。さらに、LAB-20 の対応(`gpt.ini` の手書き再作成)は GPO の適用を再開させる**応急処置**です。`GptTmpl.inf` は再作成していないため、Default Domain Policy の中身は欠けたままです。正規の復旧は、事前の GPO バックアップからの `Restore-GPO`、または最終手段としての `dcgpofix` です。手順書は [05](../build-package-ad/05-build-procedure.md) 14節で直しました。
+
 ## 学び
 
 - **単一構成では隠れる不具合がある**。dc01は共有定義が残っていたため、SYSVOLの実体が欠けていても1台では動き続けた。冗長化して初めて「複製元に無いものは複製されない」形で露呈した

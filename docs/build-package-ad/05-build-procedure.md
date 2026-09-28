@@ -731,7 +731,16 @@ netsh advfirewall import "C:\Backup\firewall-<yyyyMMdd>.wfw"
 Restore-GPO -Name "Default Domain Policy" -Path "C:\Backup\gpo-<yyyyMMdd>" -Domain corp.example.test
 ```
 
-3. **データ破損時: Windows Server Backupからの復元。** ドメインコントローラー上でSystem Stateを復元するには、対象ホストをDSRM(ディレクトリサービス復元モード)で起動する必要があります。`ad-dc01`はこのフォレストの唯一のドメインコントローラーであり複製元となる他のDCが存在しないため、非権威復元・権威復元の区別が実質的な意味を持ちません(この区別は複数DC環境で、他のDCからのレプリケーションによって復元内容が上書きされることを防ぎたい場合に意味を持ちます)。
+3. **データ破損時: Windows Server Backupからの復元。** ドメインコントローラー上でSystem Stateを復元するには、対象ホストをDSRM(ディレクトリサービス復元モード)で起動する必要があります。`ad-dc01`はこのフォレストの唯一のドメインコントローラーです。AD データベース(NTDS)については、複製で上書きしてくる相手が存在しないため、`ntdsutil`による権威復元(オブジェクト単位で「こちらが正」と印を付ける操作)は不要です。**ただしSYSVOL(GPOやログオンスクリプトを置く共有フォルダー。DFSRで複製されます)は別に扱う必要があります**。
+
+| 状況 | SYSVOLの扱い | `wbadmin`の指定 |
+| --- | --- | --- |
+| 唯一のDCを戻す、または全DCを失って最初の1台を戻す | SYSVOLの**権威復元**(このDCのSYSVOLを正として扱う) | `-authsysvol`を付ける |
+| 複数DCのうち1台だけを戻す | 非権威復元。DFSRが他のDCからSYSVOLを初期同期するのを待つ(DFS Replicationログのイベント`4614`(初期同期待ち)→`4604`(初期同期完了)) | `-authsysvol`を付けない |
+
+非権威のままSYSVOLを復元すると、DFSRは複製相手からの初期同期を待つ状態になります。相手が居ない単一DCでは、復元したSYSVOLが正として確定しない可能性があります。2026-09-02の実機演習は`-authsysvol`を付けずに実行し、その後SYSVOLの一部(`scripts`とDefault Domain Policyの`gpt.ini`・`GptTmpl.inf`)の欠損が見つかりました。`-authsysvol`を付けなかったことが欠損の原因である、というのは**最有力の仮説であり、実機では確かめていません**(当時は`DfsrPrivate`配下の`PreExisting`・`ConflictAndDeleted`フォルダーやDFSRイベントを調べていません)。
+
+> **未検証**: 下の`-authsysvol`付きの手順は、Microsoftの手順に沿って2026-09-28に書き直したもので、本ラボの実機ではまだ実行していません。実機演習で動いたのは`-authsysvol`無しの形です。新しいラボで単一DCに`-authsysvol`付きで復元し、SYSVOLが欠けないことを確かめるまでは「検証済み」と扱いません。
 
 2026-09-02の実機演習(バックアップ→目印OUの作成→DSRM復元→目印が消えたことの確認)で、この手順が動くことと所要時間を確認しています([復元演習の証跡](../evidence/2026-09-02-ad-restore-drill.md))。同じ演習で見つけた注意点を各手順に添えます。
 
@@ -750,7 +759,10 @@ DSRMのログオン画面ではドメインアカウントは使えません。�
 wbadmin get versions -backupTarget:D:
 # 上の出力の「バージョン識別子」(例: 09/02/2026-05:16。UTC基準)を指定する。<> をそのまま残すと構文エラーになる
 $restoreVersion = "<NOT SET: 復元対象のバージョン識別子>"
-wbadmin start systemstaterecovery -version:$restoreVersion -backupTarget:D: -quiet
+# 唯一のDC(本パックの ad-dc01)を戻す場合。-authsysvol で SYSVOL を権威復元する(未検証)
+wbadmin start systemstaterecovery -version:$restoreVersion -backupTarget:D: -authsysvol -quiet
+# 複数DCのうち1台だけを戻す場合は -authsysvol を付けない(2026-09-02 の実機演習はこの形で実行)
+# wbadmin start systemstaterecovery -version:$restoreVersion -backupTarget:D: -quiet
 ```
 
 `-quiet`でも進捗は表示されます。実機(System State約8GB)では**約15分**でした。「システム状態の回復が正常に完了しました」「再起動が必要です」が出たら、通常起動へ戻します。
@@ -799,9 +811,24 @@ Get-WinEvent -LogName 'Microsoft-Windows-GroupPolicy/Operational' -MaxEvents 20 
   Select-Object TimeCreated, Id, LevelDisplayName
 ```
 
-> ⚠️ **復元後は SYSVOL の中身を必ず目視で確認してください**。2026-09-02の実機演習では、非権威復元の後に `C:\Windows\SYSVOL\domain\scripts`(NETLOGON共有の実体)が失われていました。単一DC構成では既存の共有定義がメモリ・レジストリ上に残るため `Get-SmbShare` には `NETLOGON` が表示され続け、症状が出ません。翌日2台目のDCを追加した際に「複製元に無いものは複製されない」形で初めて顕在化しました(詳細は[2台目DC追加の証跡](../evidence/2026-09-03-ad-second-dc-replication.md) LAB-19)。欠損していた場合は `New-Item -ItemType Directory -Path 'C:\Windows\SYSVOL\domain\scripts'` で作成し直します(DFSRが他のDCへ複製します)。
+> ⚠️ **復元後は SYSVOL の中身を必ず目視で確認してください**。2026-09-02の実機演習では、非権威復元の後に `C:\Windows\SYSVOL\domain\scripts`(NETLOGON共有の実体)が失われていました。単一DC構成では既存の共有定義がメモリ・レジストリ上に残るため `Get-SmbShare` には `NETLOGON` が表示され続け、症状が出ません。翌日2台目のDCを追加した際に「複製元に無いものは複製されない」形で初めて顕在化しました(詳細は[2台目DC追加の証跡](../evidence/2026-09-03-ad-second-dc-replication.md) LAB-19)。欠損を見つけたら、作り直す前に**原因の手がかりを保存**します。DFSRは競合したファイルや初期同期の前から有ったファイルを `C:\Windows\SYSVOL\domain\DfsrPrivate` 配下の `ConflictAndDeleted`・`PreExisting` へ移すことがあるため、そこに失われたファイルが残っていないかと、`DFS Replication` ログのイベントを確認します(2026-09-02の演習ではこの確認をしていません)。
 
-> ⚠️ **GPOのSYSVOL側の実体も同様に確認してください**。同じ演習で、Default Domain Policy(`{31B2F340-...}`)の `gpt.ini` と `GptTmpl.inf` も失われていました。`gpt.ini` はGPOのバージョン番号だけを持つ小さなファイルですが、**これが読めないとGPO本体を取得できず、しかも1つのGPOのダウンロード失敗が適用サイクル全体を中断させます**。この状態のDCは「一部のGPOだけ効かない」ではなく「GPOが1件も適用されない」状態になります。既に適用済みのローカルポリシーは残るため、既存DCでは無症状です(パスワードポリシーはドメインオブジェクトの属性として保持されるため、これも効いたままに見えます)。`gpt.ini` が欠損していた場合は、ADオブジェクト側のバージョン番号(`Get-GPO`の`DS`列)に合わせて再作成します(詳細は[2台目DC追加の証跡](../evidence/2026-09-03-ad-second-dc-replication.md) LAB-20)。
+```powershell
+Get-ChildItem C:\Windows\SYSVOL\domain\DfsrPrivate -Force -Recurse -ErrorAction SilentlyContinue |
+  Select-Object FullName, Length, LastWriteTime
+Get-WinEvent -LogName 'DFS Replication' -MaxEvents 50 | Select-Object TimeCreated, Id, LevelDisplayName, Message
+```
+
+`scripts`フォルダーそのものが無い場合の**応急処置**は、`New-Item -ItemType Directory -Path 'C:\Windows\SYSVOL\domain\scripts'` で作成し直すことです(DFSRが他のDCへ複製します)。中身のログオンスクリプトがあった環境では、フォルダーを作るだけでは戻らないため、バックアップからファイルを戻します。
+
+> ⚠️ **GPOのSYSVOL側の実体も同様に確認してください**。同じ演習で、Default Domain Policy(`{31B2F340-...}`)の `gpt.ini` と `GptTmpl.inf` も失われていました。`gpt.ini` はGPOのバージョン番号だけを持つ小さなファイルですが、**これが読めないとGPO本体を取得できず、しかも1つのGPOのダウンロード失敗が適用サイクル全体を中断させます**。この状態のDCは「一部のGPOだけ効かない」ではなく「GPOが1件も適用されない」状態になります。既に適用済みのローカルポリシーは残るため、既存DCでは無症状です(パスワードポリシーも効いたままに見えます。これは、`Set-ADDefaultDomainPasswordPolicy` がドメインオブジェクトの属性へ直接書き込んでおり、その値が残っているためです。正本であるDefault Domain Policyの`GptTmpl.inf`が失われたままでは、後でDDPを作り直したときに既定値へ戻る危険があります。詳しくは[詳細設計書](02-detailed-design.md)を参照してください)。
+
+GPOのSYSVOL側の実体が欠けていた場合、**正規の復旧**は次の順で検討します。
+
+1. 事前に取得したGPOバックアップ(9.3節の`Backup-GPO`)から`Restore-GPO`で戻す。`gpt.ini`・`GptTmpl.inf`を含むGPOの中身が、ADオブジェクト側とそろった状態で戻ります。
+2. GPOバックアップが無く、既定の2つのGPO(Default Domain Policy・Default Domain Controllers Policy)を戻す必要がある場合に限り、`dcgpofix`(既定GPOを初期状態で作り直すコマンド)を**最終手段**として使う。既定GPOに加えていた設定(パスワードポリシー、LDAP署名など)はすべて初期値に戻るため、実行後に設計値を設定し直します。
+
+`gpt.ini`だけをADオブジェクト側のバージョン番号(`Get-GPO`の`DS`列)に合わせて手で作り直す次の方法は、GPOの適用を止めている状態を**一時的に解消する応急処置**です。`GptTmpl.inf`など中身の設定は戻らないため、この処置の後で上の正規の復旧を行います(2026-09-03の実機ではこの応急処置だけを行いました。詳細は[2台目DC追加の証跡](../evidence/2026-09-03-ad-second-dc-replication.md) LAB-20)。
 
 ```powershell
 $gpoPath = 'C:\Windows\SYSVOL\domain\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}'
@@ -814,7 +841,7 @@ Get-GPO -All | Select-Object DisplayName, @{n='DS';e={$_.Computer.DSVersion}}, @
 gpupdate /force /target:computer
 ```
 
-`DS`列と`Sysvol`列が一致し、`Microsoft-Windows-GroupPolicy/Operational` に `8004` が記録されれば復旧です。
+`DS`列と`Sysvol`列が一致し、`Microsoft-Windows-GroupPolicy/Operational` に `8004` が記録されれば、GPOの適用が再開したことを確認できます。ただし、これはGPOの中身が戻ったことを意味しません。`GptTmpl.inf`が無い間、そのGPOは実質的に空です。
 
 いずれの手段を使った場合も、ロールバック後は11節の構築後確認と、影響範囲に応じた試験を再実行します。Go / No-Go条件、実施結果の記録様式は[変更・ロールバック計画](08-change-rollback-plan.md)を正本とします。
 
