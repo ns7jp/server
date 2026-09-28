@@ -69,8 +69,8 @@ Targets画面で収集状態を確認する」と説明します。当日、翌�
 - **一言**: ホストは土台、ゲストはその上で動く環境。
 - **意味**: DockerではLinux本体がホスト、コンテナが分離された実行環境です。
   VMではハイパーバイザー側がホスト、VM内のOSがゲストです。
-- **このリポジトリ**: node-exporterはLinuxホスト、Flaskの`psutil`は主に
-  アプリコンテナの状態を見ます。
+- **このリポジトリ**: node-exporterはLinuxホストを見ます。Flaskの`psutil`はコンテナ内で動きますが、
+  CPU・メモリは`/proc`を通じてホスト全体の値を返します(コンテナ単位の値ではありません)。
 - **確認**: `docker info`、`docker compose ps`
 
 ### OS（Operating System）

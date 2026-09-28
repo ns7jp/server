@@ -54,7 +54,7 @@ flowchart LR
 
 **最初は左の 3 要素だけで考えます。** Linux は動作の土台、Docker Compose は部品の起動係です。上の矢印はリクエストの方向です。Grafana が Prometheus に問い合わせて数値を受け取ります。ログ収集と通知まで含む構成は [詳細な構成図](docs/architecture.md) にあります。
 
-コンテナ内の `psutil` は実行環境から見える値を返します。すべてがコンテナの使用量だけを表すとは限らないため、Linux ホストの監視は `node-exporter` 側で確認します。
+コンテナ内の `psutil` が返す CPU・メモリは、`/proc/stat`・`/proc/meminfo` がコンテナごとに分離されないため、コンテナの使用量ではなくホスト(VM)全体の値です。Grafana のパネル名もこれに合わせて「Host CPU (via app psutil)」としています。Linux ホストの監視の正本は `node-exporter` 側で確認します。
 
 <a id="3分で説明するなら"></a>
 
