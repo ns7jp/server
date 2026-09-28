@@ -160,6 +160,8 @@ Get-DnsServerResourceRecord -ZoneName corp.example.test |
 
 `nltest`の`フラグ`に`PDC`・`DNS_DC`・`DNS_DOMAIN`・`DNS_FOREST`を含む全役割が反映されており、`ad-dc02`単独でDC・GC・DNS・KDCの全機能を担えていることを確認しました。
 
+> **2026-09-28 訂正**：上のDNS確認の記録には2つの問題があります。1つ目は、書かれたコマンドがそのままでは動かないことです。`Where-Object`の簡易構文(`Where HostName -match ...`)には`-or`パラメーターが無く、このまま実行するとパラメーターのバインドでエラーになります(結果が0件になるのではありません)。`RecordData`も文字列ではなくオブジェクトなので、`-match`でIPアドレスを照合する書き方としても不適切です。実機でどの形のコマンドを実行したかは記録が無く、分かりません。この行は実際に打ったコマンドではなく、要約して書き写したものと考えられます(134行の`(現在-5分)`も同様の疑似的な表記です)。2つ目は、確認範囲が`corp.example.test`ゾーンだけだったことです。DSA GUIDのCNAME、`gc`のAレコード、DC用のSRVレコードが入る`_msdcs.corp.example.test`ゾーン、NSレコード、逆引き、サイトのサーバーオブジェクト、SYSVOLのDFSRメンバーは確認していません。また、奪取の前に確認したのは`netdom query fsmo`だけで、`repadmin /showrepl`による複製状態の確認をしていません。したがって「dc01由来のDNSレコードは残っていない」は、確認できた範囲を超えた記述です。正しい確認コマンド(スクリプトブロック形式の`Where-Object { $_.HostName -match 'ad-dc01' -or ... }`)と確認範囲は、[変更・ロールバック計画](../build-package-ad/08-change-rollback-plan.md)10節にまとめました(実機では未実行)。判定と当時の出力は記録のまま残します。
+
 ## 段階6: dc01 VMの削除
 
 ```text

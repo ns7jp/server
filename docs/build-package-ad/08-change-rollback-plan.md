@@ -253,3 +253,55 @@ shutdown /r /t 0
 - [ ] 変更前後の時刻、実出力、判断理由をevidenceへ保存した(命名・記録ルールは[検証証跡台帳](../evidence/README.md)に合わせる)
 - [ ] 残存リスク、暫定対応、恒久対応のIssueを記録した
 - [ ] 一時的なFirewall許可、DSRMブート設定(`bcdedit /set safeboot`)、試験データ、保守モードを解除した
+## 10. 参考: FSMO役割の移譲・奪取時のチェックリスト
+
+2026-09-03の移譲、2026-09-04の奪取([証跡](../evidence/2026-09-04-ad-fsmo-seize.md))の後で、時刻設定の付け替え漏れ(09-07に別件として発覚)や、確認範囲の不足が見つかりました。その反省から、実施時に確認する項目をまとめます。**本節は2026-09-28に追加したもので、項目の多くは実機で未検証です。** 奪取(seize)は、元の保持者が二度と戻らないと判断した場合だけに使います。
+
+**事前確認**
+
+- [ ] `repadmin /showrepl`と`repadmin /replsummary`で、奪取する側のDCが元の保持者と最後にいつ複製できていたかを記録する(最後の複製以降の変更は失われるため)。
+- [ ] 元の保持者の電源を切り、ネットワークから外したことを確認する(戻ってくると役割が二重になる)。
+
+**時刻設定の付け替え(PDCエミュレーターを移した場合は必須)**
+
+Windowsは、PDCエミュレーター役割の移動に合わせて時刻設定を自動で切り替えません。移譲・奪取のどちらでも、次を手作業で行います。
+
+```powershell
+# 新しいPDCエミュレーターで(外部NTP、閉域なら組織内NTPを指定)
+w32tm /config /manualpeerlist:"time.windows.com,0x8 ntp.nict.jp,0x8" /syncfromflags:manual /reliable:yes /update
+# 仮想マシンのPDCでは、ホスト時刻への依存を切るかどうかを判断して記録する
+# Set-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\TimeProviders\VMICTimeProvider' -Name Enabled -Value 0
+Restart-Service w32time
+w32tm /query /source
+w32tm /query /status
+
+# 旧PDCエミュレーターが残っている場合(移譲時)は、ドメイン階層に従う設定へ戻す
+w32tm /config /syncfromflags:domhier /update
+Restart-Service w32time
+```
+
+**奪取後の後始末(メタデータ削除の確認)**
+
+`ntdsutil`のメタデータクリーンアップの後、元のDCの痕跡が次の場所に残っていないかを確認します。
+
+```powershell
+$old = 'ad-dc01'; $oldIp = '192.0.2.50'
+# ドメインゾーンと _msdcs ゾーンの両方を確認する(DSA GUID の CNAME、gc の A レコード、SRV は _msdcs 側にある)
+foreach ($zone in 'corp.example.test', '_msdcs.corp.example.test') {
+    Get-DnsServerResourceRecord -ZoneName $zone |
+      Where-Object {
+          $_.HostName -match $old -or
+          ($_.RecordType -eq 'A'     -and $_.RecordData.IPv4Address.IPAddressToString -eq $oldIp) -or
+          ($_.RecordType -eq 'SRV'   -and $_.RecordData.DomainName -match $old) -or
+          ($_.RecordType -eq 'CNAME' -and $_.RecordData.HostNameAlias -match $old) -or
+          ($_.RecordType -eq 'NS'    -and $_.RecordData.NameServer -match $old)
+      } | Select-Object @{n='Zone';e={$zone}}, HostName, RecordType
+}
+# 逆引きゾーンがある場合はそのゾーンも同様に確認する
+Get-ADObject -SearchBase "CN=Sites,CN=Configuration,DC=corp,DC=example,DC=test" -Filter "Name -eq '$old'"   # サイトのサーバーオブジェクト
+Get-ADObject -SearchBase "CN=Topology,CN=Domain System Volume,CN=DFSR-GlobalSettings,CN=System,DC=corp,DC=example,DC=test" -Filter * |
+  Where-Object Name -match $old                                                                      # SYSVOL の DFSR メンバー
+```
+
+- [ ] 上の確認でどれも0件であること。残っていた場合は手作業で削除し、削除したものを記録する。
+- [ ] `dcdiag /test:dns /v`がエラーなしで通ること。
