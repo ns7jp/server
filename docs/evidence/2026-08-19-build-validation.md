@@ -20,11 +20,11 @@
 
 | ID | 試験 | 操作 | 期待結果 | 結果 | 証跡 |
 | --- | --- | --- | --- | --- | --- |
-| UT-01 | Python tests | `pytest` | 全 test pass | **PASS** | 14 passed（[CI](https://github.com/ns7jp/server-monitor/actions/runs/32227795483)、2026-08-19T07:25:57Z） |
+| UT-01 | Python tests | `pytest` | 全 test pass | **PASS** | 14 passed（[CI](https://github.com/ns7jp/server/actions/runs/32227795483)、2026-08-19T07:25:57Z） |
 | UT-02 | Compose config | `docker compose config --quiet` | exit 0 | **PASS** | exit 0（ローカル実行、2026-08-19） |
-| UT-03 | Prometheus rules | `promtool check rules ...` | SUCCESS | **PASS** | CI 内で `promtool check config` / `check rules` を実行（[CI](https://github.com/ns7jp/server-monitor/actions/runs/32227795483)、同上） |
+| UT-03 | Prometheus rules | `promtool check rules ...` | SUCCESS | **PASS** | CI 内で `promtool check config` / `check rules` を実行（[CI](https://github.com/ns7jp/server/actions/runs/32227795483)、同上） |
 | UT-04 | Ansible syntax | `ansible-playbook playbooks/site.yml --syntax-check` | exit 0 | **PASS** | `playbook: playbooks/site.yml` を出力し exit 0（ローカル実行、ansible-core 2.19.12、2026-08-19） |
-| UT-05 | Terraform validate | `terraform validate` | Success | **PASS** | `validate (dev)` / `validate (prod)` 両ジョブ success（[CI](https://github.com/ns7jp/server-monitor/actions/runs/32223863869)、2026-08-19T06:32:46Z） |
+| UT-05 | Terraform validate | `terraform validate` | Success | **PASS** | `validate (dev)` / `validate (prod)` 両ジョブ success（[CI](https://github.com/ns7jp/server/actions/runs/32223863869)、2026-08-19T06:32:46Z） |
 
 ## 構築・結合試験
 
@@ -50,7 +50,7 @@
 | ST-02 | container user | `docker inspect` | app は root でない | NOT RUN | `Dockerfile` は `USER monitor`（非 root）を宣言している（静的事実）が、稼働中コンテナへの `docker inspect` 確認はしていない |
 | ST-03 | secret tracking | `git ls-files deploy/secrets` | 実値なし | **PASS** | `.example` ファイル 4 件のみが追跡対象（ローカル実行、2026-08-19） |
 | ST-04 | firewall | `ufw status verbose` | 許可通信だけ開放 | NOT RUN | UFW ルールの妥当性は Molecule の idempotence テストで検証済み（[Molecule フル実行記録](2026-08-17-molecule.md)）だが、実ホストでの `ufw status verbose` による確認ではない |
-| ST-05 | secret scan | CI security scan | high severity なし | **PASS** | Trivy スキャン success（[CI](https://github.com/ns7jp/server-monitor/actions/runs/32227795460)、2026-08-19T07:25:56Z） |
+| ST-05 | secret scan | CI security scan | high severity なし | **PASS** | Trivy スキャン success（[CI](https://github.com/ns7jp/server/actions/runs/32227795460)、2026-08-19T07:25:56Z） |
 
 ## 終了判定
 

@@ -10,10 +10,10 @@
 
 | ワークフロー | 内容 | 結果 | commit | 実行日時（UTC） | 実行 URL |
 | --- | --- | --- | --- | --- | --- |
-| Python check | `pytest`、lint 等 | ✅ success | `cc7e478` | 2026-08-19T07:25:57Z | [run](https://github.com/ns7jp/server-monitor/actions/runs/32227795483) |
-| Terraform check | `fmt` / `validate` / `tfsec` / `checkov` | ✅ success | `6f31f930` | 2026-08-19T06:32:46Z | [run](https://github.com/ns7jp/server-monitor/actions/runs/32223863869) |
-| Security scan | Trivy（脆弱性・secret・misconfig） | ✅ success | `cc7e478` | 2026-08-19T07:25:56Z | [run](https://github.com/ns7jp/server-monitor/actions/runs/32227795460) |
-| Backup verify | バックアップアーカイブの smoke test | ✅ success | `8e3f659` | 2026-08-18T09:16:22Z | [run](https://github.com/ns7jp/server-monitor/actions/runs/32120720528) |
+| Python check | `pytest`、lint 等 | ✅ success | `cc7e478` | 2026-08-19T07:25:57Z | [run](https://github.com/ns7jp/server/actions/runs/32227795483) |
+| Terraform check | `fmt` / `validate` / `tfsec` / `checkov` | ✅ success | `6f31f930` | 2026-08-19T06:32:46Z | [run](https://github.com/ns7jp/server/actions/runs/32223863869) |
+| Security scan | Trivy（脆弱性・secret・misconfig） | ✅ success | `cc7e478` | 2026-08-19T07:25:56Z | [run](https://github.com/ns7jp/server/actions/runs/32227795460) |
+| Backup verify | バックアップアーカイブの smoke test | ✅ success | `8e3f659` | 2026-08-18T09:16:22Z | [run](https://github.com/ns7jp/server/actions/runs/32120720528) |
 
 ## Backup verify の累計実行回数（訂正）
 

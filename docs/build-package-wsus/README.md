@@ -76,7 +76,7 @@ flowchart LR
 | 引き渡し | [07-handover-checklist.md](07-handover-checklist.md) | 作成済み |
 | 変更・ロールバック | [08-change-rollback-plan.md](08-change-rollback-plan.md) | 計画・記録様式作成済み(スナップショット復元を最優先手段とする設計)。実施結果は`NOT RUN` |
 | ネットワーク実機検証 | [09-network-validation-procedure.md](09-network-validation-procedure.md) | [結果票](../evidence/2026-09-07-network-host-validation-wsus.md) SNW-01〜09 9/9 PASS |
-| 立ち上げ・受け入れ | [10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md) | 評価版ISO + Hyper-V(Windows 11 Pro)の選択肢で実施。**フェーズ1の通し再試験の進め方は8節**(何を再試験するか、開始点の選び方、メモリの事前条件、SIT-06再現試験との関係) |
+| 立ち上げ・受け入れ | [10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md) | 評価版ISO + Hyper-V(Windows 11 Pro)の選択肢で実施。**フェーズ1の通し再試験は、旧`wsus-01`と`ad-dc02`が残っていないため、新しいVMで0節から行う。何を再試験するかは8節で確認する**(8.2の開始点のうち使えるのは「新規VMを作り直す」だけ) |
 | 作業結果報告 | [11-work-result-report.md](11-work-result-report.md) | [2026-09-07 記入済み版](../evidence/2026-09-07-work-result-SM-WSUS-001.md)あり |
 | ネットワーク結果票(WSUS) | [実機検証テンプレート](../evidence/templates/network-host-validation-wsus.md) | テンプレート作成済み。記入例は[2026-09-07 結果票](../evidence/2026-09-07-network-host-validation-wsus.md) |
 | 一次切り分け記録 | [トラブルシュート一次記録テンプレート](../evidence/templates/troubleshooting-worklog.md) | テンプレート作成済み(既存4パックと共用) |

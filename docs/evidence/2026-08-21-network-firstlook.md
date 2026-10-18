@@ -199,6 +199,8 @@ tcpdump: pcap_loop: truncated dump file; tried to read 16 header bytes, only got
 
 **同じパターンが 30 秒間隔で複数回記録されている点について**: 送信元 `172.18.0.2` は自分が打った `curl` の結果というより、`compose.yaml` で `frontend` ネットワークにも参加している `blackbox`（blackbox-exporter、監視スタック全体が既に起動していたため常時稼働中）が `/healthz` を定期プローブしている通信だと考えている（未確認。ソース側のプロセスを特定する追加確認はしていない）。手動の `curl` によるものかプローブによるものか、この記録だけでは完全には区別できていない。
 
+> **2026-10-18 注記**：ホストから打った `curl` の送信元は、通常はホスト側のブリッジのアドレス（多くの環境で `172.18.0.1`）になります（この記録では確かめていません）。上の出力の送信元はすべて `172.18.0.2` なので、手動の `curl` の通信は写っていない可能性が高いです。`curl` 自体の出力も残していないため、コンテナ IP を直接指定した `curl` が成功したかは、この記録からは分かりません。観察できたのは、定期的な `/healthz` の通信と考えられるものです。
+
 末尾の `tcpdump: pcap_loop: truncated dump file` は、キャプチャファイルを読んだ際に出た警告で、`kill` した直後の書き込み未完了によるものと考えられる。実際に読めた内容自体には影響していない。
 
 ## 今回の証跡としての範囲
@@ -221,7 +223,7 @@ tcpdump: pcap_loop: truncated dump file; tried to read 16 header bytes, only got
 Alertmanager / Grafana / Lokiだけを、非internalの`host-access` bridgeにも接続しています。
 公開portはすべて`127.0.0.1` bindのままで、app / exporter / collectorは`host-access`へ接続していません。
 
-[Full-stack E2E run 32563104045](https://github.com/ns7jp/server-monitor/actions/runs/32563104045)で、
+[Full-stack E2E run 32563104045](https://github.com/ns7jp/server/actions/runs/32563104045)で、
 次を再検証してすべてPASSになりました。詳細は
 [2026-08-22 Full-stack E2E証跡](2026-08-22-full-stack-e2e.md)に記録しています。
 

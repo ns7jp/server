@@ -69,7 +69,7 @@ default via 172.28.10.1 dev eth1
 このドリルを初めて実行するにあたり、事前レビューで実機の欠陥を2件発見し、実行前に修正した。
 
 1. **`nginx.conf` の静的名前解決によるクラッシュループのリスク**（未発生・予防的に修正）
-   `proxy` と `app` の間に `depends_on` が無く起動順序が保証されないため、[D-1 演習で見つけた不具合](../drills/logs/2026-08-19-D-1.md)（[PR #61](https://github.com/ns7jp/server-monitor/pull/61)）と同じパターンで `proxy` が起動失敗しうる状態だった。同じ `resolver` + 変数によるパターンで修正（[PR #63](https://github.com/ns7jp/server-monitor/pull/63)）。
+   `proxy` と `app` の間に `depends_on` が無く起動順序が保証されないため、[D-1 演習で見つけた不具合](../drills/logs/2026-08-19-D-1.md)（[PR #61](https://github.com/ns7jp/server/pull/61)）と同じパターンで `proxy` が起動失敗しうる状態だった。同じ `resolver` + 変数によるパターンで修正（[PR #63](https://github.com/ns7jp/server/pull/63)）。
 2. **`run-drill.sh` に実行ビットが付与されていなかった**（実機で発生・修正）
    `./run-drill.sh` を実行すると `Permission denied` になった。`chmod +x` で修正。
 
@@ -79,5 +79,5 @@ default via 172.28.10.1 dev eth1
 
 - [検証証跡台帳](README.md)
 - [ラボ README](../../labs/network-troubleshooting/README.md)
-- [予防的修正 PR #63](https://github.com/ns7jp/server-monitor/pull/63)
+- [予防的修正 PR #63](https://github.com/ns7jp/server/pull/63)
 - [D-1 演習記録 2026-08-19](../drills/logs/2026-08-19-D-1.md)（同じ nginx 不具合パターンの初出）

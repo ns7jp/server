@@ -19,13 +19,13 @@ Backup/RestoreのCI証跡を手動で再実行した。これはGitHub-hosted ru
 
 | Workflow / job | Run | 結果 | 実測範囲 |
 | --- | --- | --- | --- |
-| Ansible integration evidence / Molecule `common` | [32606763914](https://github.com/ns7jp/server-monitor/actions/runs/32606763914) | PASS | create → converge → idempotence → verify |
-| Ansible integration evidence / Molecule `docker` | [32606763914](https://github.com/ns7jp/server-monitor/actions/runs/32606763914) | PASS | create → converge → idempotence → verify |
-| Ansible integration evidence / Molecule `nginx` | [32606763914](https://github.com/ns7jp/server-monitor/actions/runs/32606763914) | PASS | create → converge → idempotence → verify |
-| Ansible integration evidence / Molecule `monitoring` | [32606763914](https://github.com/ns7jp/server-monitor/actions/runs/32606763914) | PASS | create → converge → idempotence → verify |
-| Backup verify / script syntax | [32606763827](https://github.com/ns7jp/server-monitor/actions/runs/32606763827) | PASS | template render、bash syntax、ShellCheck |
-| Backup verify / archive smoke | [32606763827](https://github.com/ns7jp/server-monitor/actions/runs/32606763827) | PASS | fake Compose volumesのarchive作成・非空確認 |
-| Backup verify / AWS recovery point age | [32606763827](https://github.com/ns7jp/server-monitor/actions/runs/32606763827) | SKIPPED | AWS Variable / OIDC role未設定のため。AWS PASSではない |
+| Ansible integration evidence / Molecule `common` | [32606763914](https://github.com/ns7jp/server/actions/runs/32606763914) | PASS | create → converge → idempotence → verify |
+| Ansible integration evidence / Molecule `docker` | [32606763914](https://github.com/ns7jp/server/actions/runs/32606763914) | PASS | create → converge → idempotence → verify |
+| Ansible integration evidence / Molecule `nginx` | [32606763914](https://github.com/ns7jp/server/actions/runs/32606763914) | PASS | create → converge → idempotence → verify |
+| Ansible integration evidence / Molecule `monitoring` | [32606763914](https://github.com/ns7jp/server/actions/runs/32606763914) | PASS | create → converge → idempotence → verify |
+| Backup verify / script syntax | [32606763827](https://github.com/ns7jp/server/actions/runs/32606763827) | PASS | template render、bash syntax、ShellCheck |
+| Backup verify / archive smoke | [32606763827](https://github.com/ns7jp/server/actions/runs/32606763827) | PASS | fake Compose volumesのarchive作成・非空確認 |
+| Backup verify / AWS recovery point age | [32606763827](https://github.com/ns7jp/server/actions/runs/32606763827) | SKIPPED | AWS Variable / OIDC role未設定のため。AWS PASSではない |
 
 両runの`headSha`は上記commitと一致し、結論は`success`だった。AWS jobのskipを
 AWS Backup、AWS apply、snapshot restoreの実績へ読み替えない。

@@ -77,7 +77,7 @@ flowchart LR
 | [バックアップ・復旧設計](backup-restore.md) | 🟡 中級 | 30分 | 永続データ、復元試験、復旧目標 |
 | [運用ランブック索引](runbooks/README.md) | 🟡 中級 | 30分〜 | 停止・遅延・disk・memory・監視停止時の切り分け |
 | [CPU 高負荷演習記録](incidents/cpu-high-drill.md) | 🟡 中級 | 15分 | 模擬障害の再現、確認、復旧、再発防止 |
-| [演習一覧](drills/README.md) | 🟡 中級 | 15分 | 構築演習 B-1〜B-4 と復旧演習 D-1 / D-2 |
+| [演習一覧](drills/README.md) | 🟡 中級 | 15分 | 構築演習 B-1〜B-4 と復旧演習 D-1・D-2・D-6〜D-9（実施済みは D-1 のみ。D-3〜D-5 は未実装） |
 | [Web / AP / DB 3 層ラボ](../labs/three-tier/README.md) | 🔴 発展 | 半日 | 層別 health、層の分離、DB のバックアップ・復元試験 |
 | [L2 / L3 切り分けラボ](../labs/routing/README.md) | 🔴 発展 | 半日 | 静的routing、転送設定、802.1Q VLAN |
 | [LogQL クエリ集](loki-queries.md) | 🟡 中級 | 20分 | dashboardと運用で使うLogQLの例 |
@@ -498,9 +498,9 @@ Windows Server の手作業構築（AD・WSUS、2026-09-01〜08）の記録は�
 | **実装コードの生成** | Ansible role、Terraform module、CI workflow、テスト、ラボの雛形 |
 | コードレビュー、リンク・表記の確認 | PR 上でのレビューと修正提案 |
 
-`git log --no-merges` で数えると、`Author: Claude <noreply@anthropic.com>` または
-`Co-Authored-By: Claude` を含むコミットは **95 件中 49 件**です（2026-08-25 時点）。
-プロフィール側は 71 件中 42 件、サイト側は 77 件中 19 件で、
+`git log --no-merges` で数えると、作者名または本文（Co-Authored-By など）に Claude か Codex が入っているコミットは
+**355 件中 285 件**（Claude 220、Codex 84。両方が入ったコミットがあるため内訳の合計は一致しません）です（2026-09-28 時点）。
+プロフィール側は 211 件中 133 件、サイト側は 171 件中 53 件で、
 **AI 支援はこのリポジトリに限りません**（ポートフォリオ全体の前提は
 [プロフィール README](https://github.com/ns7jp/ns7jp/blob/main/README.md#3-つの前提ai-の利用を含む)に書いています）。
 
@@ -510,7 +510,8 @@ Windows Server の手作業構築（AD・WSUS、2026-09-01〜08）の記録は�
 **証跡の実行環境は、次のように区別しています。** B-1〜B-4（2026-08-24）は
 AI 支援セッションの作業環境上で実行しました。独立した物理／VPS ホストでも、
 私の手元の WSL2 でもありません。各証跡ファイルの「実施環境」欄には、採録時の `uname` を
-そのまま残しています。2026-08-18 / 19 の WSL2 上の実測は、証跡に実行者を明記しています。
+そのまま残しています。2026-08-18 の可観測性の記録と 2026-08-19 の試験仕様書・結果票には、実行者を明記しています。
+同じ時期の WSL2 上の [D-1 の記録](drills/logs/2026-08-19-D-1.md)と[二セグメント障害ラボの記録](evidence/2026-08-19-network-drill.md)には、実行者の記載がありません。
 
 仮説を外した経緯を含む一次記録は、プロフィール側の
 [学習の一次記録](https://github.com/ns7jp/ns7jp/blob/main/LEARNINGS.md)にあります

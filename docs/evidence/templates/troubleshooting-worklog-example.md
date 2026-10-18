@@ -23,7 +23,7 @@
 | 発生 / 検知日時 | 2026-08-19 14:45 JST頃 |
 | 調査開始 / 復旧日時 | 2026-08-19 14:45 JST 開始 / 15:20 JST 復旧確認 |
 | 環境 / host | ローカル Linux（WSL2 Ubuntu 24.04）+ Docker Compose |
-| commit SHA / 直近変更 | `5dfc67d`（[PR #56](https://github.com/ns7jp/server-monitor/pull/56)適用直後） |
+| commit SHA / 直近変更 | `5dfc67d`（[PR #56](https://github.com/ns7jp/server/pull/56)適用直後） |
 | 作業者 | 演習実施者（1名） |
 | 関連 alert / Issue / runbook | [D-1-process-down.md](../../drills/D-1-process-down.md)、[docs/runbooks/service-down.md](../../runbooks/service-down.md) |
 | raw log | `docker compose logs --tail=200 nginx app`（この記入例では要約のみ。実際の演習では保存する） |
