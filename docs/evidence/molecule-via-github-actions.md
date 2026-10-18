@@ -27,7 +27,7 @@ Molecule が使い捨てコンテナを立てて次を順に実行する。
 
 ## 実行手順
 
-1. GitHub で `ns7jp/server-monitor` を開く。
+1. GitHub で `ns7jp/server` を開く。
 2. **Actions** タブをクリックする。
 3. 左サイドバーの一覧から **Ansible integration evidence** を選ぶ。
 4. 右側に表示される **Run workflow** ボタンをクリックする。

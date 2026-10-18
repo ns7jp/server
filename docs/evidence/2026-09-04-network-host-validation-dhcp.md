@@ -10,7 +10,7 @@
 | --- | --- |
 | 全体状態 | DNW-01/02/04/05/06/08/09が`PASS`。DNW-03が`NOT RUN`、DNW-07が`BLOCKED`（詳細は下記） |
 | 実施日時（JST） | 2026-09-04 |
-| 実施者 | ns7jp（AI支援セッション） |
+| 実施者 | ns7jp（AI支援セッション）。**2026-10-18 訂正**：正しくは AI支援セッション（ユーザー: net7jp）。サンドボックスコンテナ内でAIが実行した記録で、本人がVMを操作した記録ではない |
 | 対象環境 / host | サンドボックスコンテナ自身（`dhcp-01`役）。veth `veth-d01`（`192.168.50.5/24`）をbridge `br-dhcp50`経由でクライアント役netnsへ接続 |
 | 管理端末 | 同一コンテナ内（`ansible_connection: local`） |
 | クライアント検証VM | `client01`という別network namespace内のveth `veth-cli`（複数MACアドレスで複数クライアントを模擬） |

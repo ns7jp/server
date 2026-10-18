@@ -3,7 +3,7 @@
 [![Python check](https://github.com/ns7jp/server/actions/workflows/python-check.yml/badge.svg)](https://github.com/ns7jp/server/actions/workflows/python-check.yml)
 [![Full-stack Ansible E2E](https://github.com/ns7jp/server/actions/workflows/full-stack-e2e.yml/badge.svg)](https://github.com/ns7jp/server/actions/workflows/full-stack-e2e.yml)
 
-**未経験からサーバー構築エンジニアを目指す私が、「サーバーを作る → 動作を確かめる → 異常を調べる → 元へ戻す」を学ぶための個人学習ラボです。**
+**未経験からインフラエンジニア（中心は Linux サーバーの設計・構築）を目指す私が、「サーバーを作る → 動作を確かめる → 異常を調べる → 元へ戻す」を学ぶための個人学習ラボです。**
 業務での構築・運用経験を示すものではありません。コード・手順・試験記録をつなぎ、確認できた範囲を自分の言葉で説明することを目指します。
 
 ## 手元の VM で私が確認したこと
@@ -20,6 +20,8 @@
 | 2026-09-08 | [Docker 最小構成](docs/evidence/2026-09-08-lab-base01-compose-practice.md)：app と nginx の 2 サービスを起動し、未認証 401・認証あり 200、計画停止・手動再開を確認 |
 | 2026-09-08 | [数値監視](docs/evidence/2026-09-08-lab-base01-monitoring-practice.md)：Prometheus / Grafana で収集状態の 1→0→1。[ログ検索](docs/evidence/2026-09-08-lab-base01-loki-practice.md)：目印付き Nginx ログ 2 件（メモリ 2 GiB の VM で、それぞれ 5 / 6 サービスを分けて起動） |
 | 2026-09-08 | [バックアップ復元](docs/evidence/2026-09-08-lab-base01-restore-practice.md)：Loki の別名ボリューム（同じ VM 内）から同じログ 2 件を読取り。[D-1](docs/evidence/2026-09-08-lab-base01-d1-practice.md)：アプリの自動再起動で再起動回数 0→1、HTTP 復帰 2 秒（1 回の計測）、その後 healthy を確認 |
+| 2026-09-30 | [新しい VM と SSH 鍵認証](docs/evidence/2026-09-30-ubuntu-practice01-ssh-key-auth.md)：新しい Ubuntu VM（`ubuntu-practice01`）を用意し、公開鍵認証が失敗したときに、登録した鍵の各行の先頭に余分な文字（BOM）と行末の CR があることを確認。修正後の接続成功は本人の報告だけで、成功画面は未採録 |
+| 2026-10-01 | [Docker 導入と Nginx の手動再開](docs/evidence/2026-10-01-ubuntu-practice01-nginx-manual-recovery.md)：同じ VM に Docker を入れ、app と nginx で healthz 200・未認証 401・認証あり 200、nginx の計画停止中の接続失敗と手動再開後の 200 を確認（画像はリポジトリ未収録） |
 
 Ansible と Git の小さな練習（2026-09-09〜15）の記録は、[練習ログ](docs/evidence/practice/README.md)に分けています。各記録で確認できていない範囲は、それぞれの証跡と下の[実装と検証の範囲](#実装と検証の範囲)に書いています。
 
@@ -79,7 +81,7 @@ flowchart LR
 | AI が実行した新ラボ（2026-09-27〜28） | [実行記録](docs/evidence/2026-09-28-new-hyperv-lab-operations.md)：Ubuntu10サービス、OS再起動後33項目、0・1・6時間点検 | 24時間試験は未完了・未合格、本人の独力再現ではない。新ADの受け入れ・WSUS通し試験・別VM復元も未完了 |
 | 未実施・未達 | AWS の実適用・削除、Slack 実配信、D-2 ホスト障害復元は `NOT RUN`。新ラボの24時間観測は開始後に終了し未合格、72時間確認は `NOT RUN` | [実測計画](docs/real-environment-validation-plan.md)と日付付き記録を参照 |
 
-実行者が私・CI・AI 支援環境のどれかは、各証跡に書いています。
+実行者が私・CI・AI 支援環境のどれかは、原則として各証跡に書いています。2026-08-19 の [D-1](docs/drills/logs/2026-08-19-D-1.md) と[二セグメント障害ラボ](docs/evidence/2026-08-19-network-drill.md)の記録には実行者の記載がなく、実行者不明として扱います。2026-09-07 の [dc02 の時刻同期](docs/evidence/2026-09-07-ad-dc02-time-sync-fix.md)と [windows_exporter の最小権限化](docs/evidence/2026-09-07-ad-windows-exporter-least-privilege.md)の記録も、本文には実行者の記載がありません。プロフィールでは 2026-09-01〜15 の VM の記録を、AI の手順案内を受けて私が操作したものとしており、この 2 本もその期間に入ります。そのことを各記録の冒頭に追記しています。
 
 ## ドキュメント
 

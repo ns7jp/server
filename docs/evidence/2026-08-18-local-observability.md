@@ -91,7 +91,7 @@ Server Monitor アプリ自身の画面で、Linux（WSL2）上で動作して�
 | RESOLVED 通知 | 未確認 | — |
 | 通知到達時間 | 未計測 | — |
 | runbook_url | 未確認 | — |
-| Slack 通知（優先 4） | 未確認。Alertmanager UI 上の FIRING 表示は確認したが、Slack への実配信は試していない | — |
+| Slack 通知（優先 4） | 未確認。Alertmanager UI 上の FIRING 表示は確認したが、Slack への実配信は試していない（**2026-10-18 訂正**：「FIRING 表示は確認した」は、上の FIRING 通知の行のとおり記憶だけで記録が残っていないため、証跡にしない） | — |
 
 ## マスキング確認
 

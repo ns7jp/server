@@ -21,7 +21,7 @@
 | --- | --- |
 | 全体状態 | DHCP機能面（DUT-01〜03/05、DIT-01〜09/11、DST-02/06、DNW-01/02/04〜06/08/09）は**実測`PASS`**。`common` role相当のセキュリティ強化・監視統合・実systemd/AppArmor/journaldに依存する項目は環境制約で`BLOCKED`/`NOT RUN`（詳細は下表）。22/31が`PASS`、6/31が`BLOCKED`、3/31が`NOT RUN` |
 | 実施日時（JST） | 2026-09-04 |
-| 実施者 | ns7jp（AI支援セッション） |
+| 実施者 | ns7jp（AI支援セッション）。**2026-10-18 訂正**：正しくは AI支援セッション（ユーザー: net7jp）。サンドボックスコンテナ内でAIが実行した記録で、本人がVMを操作した記録ではない |
 | 対象環境 / host | AI支援セッションのサンドボックスコンテナ自身を`dhcp-01`役として使用。払い出し対象セグメント`192.168.50.0/24`はbridge `br-dhcp50` + veth `veth-d01`（dhcpd側、`192.168.50.5/24`）+ veth `veth-cli`（`client01`という別network namespace内のクライアント役、`fe:b8:0b:ac:82:84`ほか複数MACで模擬） |
 | 管理端末 / controller | 同一コンテナ内（`ansible_connection: local`、`ansible_python_interpreter: /usr/bin/python3.12`。理由は下記「サンドボックス固有の対応」） |
 | commit SHA | `27fc7ec8f1cfe41e03466ba859647b0f66b836a0` |

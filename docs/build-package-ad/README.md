@@ -91,14 +91,15 @@ flowchart LR
 
 基準環境はWindows Server 2022 Standard(Desktop Experience基準)の検証用VM 1台(論理ホスト名`ad-dc01`)です。Windows Server 2022 Server Coreへの対応は検討課題であり、基準VMはDesktop Experienceであるため、両エディションでの実測を意味しません。最小構成の目安は2 vCPU / メモリ4GB / ディスク60GBです([Windows版パック](../build-package-windows/README.md)と同じ最小要件)。Windows Serverはライセンス費用が発生するため、[Linux版パック](../build-package/README.md)で使える無償のVirtualBox VMのような代替が使えません。立ち上げ環境の選択肢(クラウドWindows Serverインスタンス/評価版ISOによるHyper-V・VMware上のVM/社内ボリュームライセンス)は[10-host-bringup-and-acceptance.md](10-host-bringup-and-acceptance.md)にまとめます。
 
-2026-09-01〜02に、Windows 11 Pro上のHyper-V(内部スイッチ)にWindows Server 2022 評価版のVM 1台を立て、ホストPCを管理端末としてフェーズ1を実施しました。**なおこの`ad-dc01`は2026-09-04の[FSMO役割奪取演習](../evidence/2026-09-04-ad-fsmo-seize.md)で削除済みで、現在は`ad-dc02`の単一DC構成です**（[上記の発展演習](#フェーズ1完了後に実施した発展演習2026-09-0307)を参照）。([ネットワーク結果票](../evidence/2026-09-01-network-host-validation-ad.md)、[構築・試験結果票](../evidence/2026-09-01-ad-build-validation.md))。ホストPCとVMが同一物理機であるため、独立した管理端末・組織DNS・実ドメインメンバーからの検証は含みません。
+2026-09-01〜02に、Windows 11 Pro上のHyper-V(内部スイッチ)にWindows Server 2022 評価版のVM 1台を立て、ホストPCを管理端末としてフェーズ1を実施しました。**なおこの`ad-dc01`は2026-09-04の[FSMO役割奪取演習](../evidence/2026-09-04-ad-fsmo-seize.md)で削除済みで、演習後は`ad-dc02`の単一DC構成になりました（この`ad-dc02`も現在は残っていません）**（[上記の発展演習](#フェーズ1完了後に実施した発展演習2026-09-0307)を参照）。([ネットワーク結果票](../evidence/2026-09-01-network-host-validation-ad.md)、[構築・試験結果票](../evidence/2026-09-01-ad-build-validation.md))。ホストPCとVMが同一物理機であるため、独立した管理端末・組織DNS・実ドメインメンバーからの検証は含みません。
 
 ## フェーズ1完了後に実施した発展演習（2026-09-03〜07）
 
 **重要: この案件パックが構築対象とした `ad-dc01` は、現在存在しません。** 上のフェーズ1の
 `PASS`(31/31)は2026-09-02時点、`ad-dc01`上で取得した結果であり、記録としては有効です。
 その後、[01 基本設計書](01-basic-design.md)3.4節の発展構成を順に実施した結果、
-**現在このドメインを構成しているのは `ad-dc02` 1台のみ**です。
+**このドメインは `ad-dc02` 1台だけの構成になりました**（その `ad-dc02` を含む 2026-09 の旧 VM は、現在は残っていません）。
+2026-09-27〜28 の[新ラボ](../evidence/2026-09-28-new-hyperv-lab-operations.md)の AD 用 VM は、Codex がフォレスト作成まで進めた別の環境で、このドメインや旧 VM を復元したものではありません。
 
 パックの成果物（00〜11の12文書）はフェーズ1を対象としており、以下の演習は成果物の範囲外です。
 ただしこのパックの設計判断を実際に検証・是正した記録であるため、ここから辿れるようにしています。

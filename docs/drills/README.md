@@ -41,6 +41,8 @@ VG/LVを作るためです。VGとLV名は`vg_drill`/`lv_drill`のように演�
 | B-4 | ✅ 実行済み（[証跡](logs/2026-08-24-B-4.md)、6 PASS / 0 FAIL / 3 SKIP-ENV） |
 | B-1 | ✅ 実行済み（[証跡](logs/2026-08-24-B-1.md)、5 PASS / 0 FAIL。220M→457M の online 拡張を実測）。安全装置テストも 7/7 PASS |
 
+4 本とも、AI 支援セッションの作業環境（B-1 は qemu 上の Ubuntu 24.04 ゲスト、B-2・B-3 は Docker コンテナ、B-4 は network namespace）で実行した。本人の環境（手元の WSL2 や VM）では、まだ実行していない（[検証証跡台帳](../evidence/README.md)）。
+
 ### B-4 のトポロジは Docker の network を使わない
 
 当初は Docker の bridge network を 3 つ並べていたが、実行を試みて成立しない

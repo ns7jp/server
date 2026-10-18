@@ -11,7 +11,7 @@ PR #75再検証は11 containersです。artifactの保存期限後も判断根�
 | --- | --- |
 | 結果 | **PASS** |
 | 実施時刻 | 2026-08-22 17:45〜17:49 JST（08:45〜08:49 UTC） |
-| Actions run | [Full-stack Ansible E2E run 32563104045 / attempt 1](https://github.com/ns7jp/server-monitor/actions/runs/32563104045) |
+| Actions run | [Full-stack Ansible E2E run 32563104045 / attempt 1](https://github.com/ns7jp/server/actions/runs/32563104045) |
 | event / branch | `push` / `codex/full-stack-e2e-20260822` |
 | source / GitHub SHA | `f4ea31993d6d5e3b8478789f8f0d008ed5f44961`（両者一致） |
 | artifact | `full-stack-e2e-32563104045-1` / ID `9473385349` / 21,023 bytes |
@@ -33,11 +33,11 @@ Dockerはrunner imageに事前導入済みでした。このrunはDocker roleの
 
 | workflow | main再検証run | 結果 |
 | --- | --- | --- |
-| Ansible check | [32566169563](https://github.com/ns7jp/server-monitor/actions/runs/32566169563) | **success** |
-| Full-stack Ansible E2E | [32566169574](https://github.com/ns7jp/server-monitor/actions/runs/32566169574) | **success**（23 ID gate） |
-| Security scan | [32566169577](https://github.com/ns7jp/server-monitor/actions/runs/32566169577) | **success** |
-| Backup verify | [32566169582](https://github.com/ns7jp/server-monitor/actions/runs/32566169582) | **success**（任意のAWS snapshot age jobは設定なしのためskip） |
-| Python check | [32566169583](https://github.com/ns7jp/server-monitor/actions/runs/32566169583) | **success** |
+| Ansible check | [32566169563](https://github.com/ns7jp/server/actions/runs/32566169563) | **success** |
+| Full-stack Ansible E2E | [32566169574](https://github.com/ns7jp/server/actions/runs/32566169574) | **success**（23 ID gate） |
+| Security scan | [32566169577](https://github.com/ns7jp/server/actions/runs/32566169577) | **success** |
+| Backup verify | [32566169582](https://github.com/ns7jp/server/actions/runs/32566169582) | **success**（任意のAWS snapshot age jobは設定なしのためskip） |
+| Python check | [32566169583](https://github.com/ns7jp/server/actions/runs/32566169583) | **success** |
 
 これはfeature runと同じ変更がmainへmergeされた状態の再検証です。feature runの実行環境、
 artifact digest、個別判定値をmain runの値へ読み替えず、上の表はworkflow statusと対象SHAを
@@ -58,7 +58,7 @@ inventory解決値と静的検査の結果をこのrunへ読み替えません�
 | --- | --- |
 | 結果 | **23/23 ID PASS** |
 | 実施時刻 | 2026-08-22 21:14〜21:17 JST（12:14〜12:17 UTC） |
-| Actions run | [Full-stack Ansible E2E run 32572409469 / attempt 1](https://github.com/ns7jp/server-monitor/actions/runs/32572409469) |
+| Actions run | [Full-stack Ansible E2E run 32572409469 / attempt 1](https://github.com/ns7jp/server/actions/runs/32572409469) |
 | event / branch | `pull_request` / `codex/final-server-hardening-20260822` |
 | source / GitHub SHA | `7622a9da974f694ae75e0173135923701be9e5a5`（runtime変更最終commit） |
 | Ansible初回適用 | `changed=30 / failed=0` |
@@ -76,17 +76,17 @@ D-1は1秒で復旧し、3 archivesのchecksum検証と別名3 volumesへのrest
 
 | workflow | PR #75再検証run | 結果 |
 | --- | --- | --- |
-| Ansible check | [32572409470](https://github.com/ns7jp/server-monitor/actions/runs/32572409470) | **success** |
-| Full-stack Ansible E2E | [32572409469](https://github.com/ns7jp/server-monitor/actions/runs/32572409469) | **success**（23/23 ID PASS） |
-| Security scan | [32572409480](https://github.com/ns7jp/server-monitor/actions/runs/32572409480) | **success** |
-| Backup verify | [32572409434](https://github.com/ns7jp/server-monitor/actions/runs/32572409434) | **success** |
-| Python check | [32572409487](https://github.com/ns7jp/server-monitor/actions/runs/32572409487) | **success** |
+| Ansible check | [32572409470](https://github.com/ns7jp/server/actions/runs/32572409470) | **success** |
+| Full-stack Ansible E2E | [32572409469](https://github.com/ns7jp/server/actions/runs/32572409469) | **success**（23/23 ID PASS） |
+| Security scan | [32572409480](https://github.com/ns7jp/server/actions/runs/32572409480) | **success** |
+| Backup verify | [32572409434](https://github.com/ns7jp/server/actions/runs/32572409434) | **success** |
+| Python check | [32572409487](https://github.com/ns7jp/server/actions/runs/32572409487) | **success** |
 
 PR上の先行runでは、実環境でのみ表面化した2点を検出して修正しました。
 
-1. run [32571650745](https://github.com/ns7jp/server-monitor/actions/runs/32571650745)で、
+1. run [32571650745](https://github.com/ns7jp/server/actions/runs/32571650745)で、
    `ansible.builtin.assert`に対するtask-level `vars`のindent不整合を検出し、task直下へ修正した。
-2. run [32571890175](https://github.com/ns7jp/server-monitor/actions/runs/32571890175)で、
+2. run [32571890175](https://github.com/ns7jp/server/actions/runs/32571890175)で、
    `become_user: monitor`が作成する`/opt/server-monitor/.ansible/tmp`をsource同期が削除し、
    2回目適用が`changed=1`になることを検出した。OpenSSL実行を`runuser`へ変更し、
    controller側sourceと配備先の収束を維持した。
@@ -165,7 +165,7 @@ credential、token、webhook secretはartifactへ記録していません。
 3. CI専用backup設定をhost varsへ移し、`group_vars/monitor`の通常環境向け既定値より
    確実に優先させた。
 
-途中run [32562858347](https://github.com/ns7jp/server-monitor/actions/runs/32562858347)では
+途中run [32562858347](https://github.com/ns7jp/server/actions/runs/32562858347)では
 `IT-02 changed=0`、runtime、通知、D-1まで進んだ後、backup保存先の変数優先順位不整合を検出しました。
 その修正後のrun 32563104045で全項目が成功しています。
 

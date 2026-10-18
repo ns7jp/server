@@ -13,8 +13,8 @@ staging / production、AWS復旧、D-2、Slack実配信、再起動後24h / 72h�
 | 項目 | 値 |
 | --- | --- |
 | 結果 | **PASS** / `GIT_MODE_ROLLBACK_REHEARSAL=PASS` |
-| Actions run | [Full-stack Ansible E2E run 32611251044 / attempt 1](https://github.com/ns7jp/server-monitor/actions/runs/32611251044) |
-| PR / event | [PR #77](https://github.com/ns7jp/server-monitor/pull/77) / `pull_request` |
+| Actions run | [Full-stack Ansible E2E run 32611251044 / attempt 1](https://github.com/ns7jp/server/actions/runs/32611251044) |
+| PR / event | [PR #77](https://github.com/ns7jp/server/pull/77) / `pull_request` |
 | branch | `codex/execute-remaining-evidence-20260823` |
 | head / candidate SHA | `84e149254d463a8a27a4cabcd09efa4504d1b47e` |
 | candidate commit | `test: tolerate terraform formatter alignment` |

@@ -13,10 +13,10 @@
 
 この学習ポートフォリオには、実際に手を動かした記録（証跡）が **99 本**あります
 （`docs/evidence/*.md` と、練習ログを分けた `docs/evidence/practice/*.md` から、台帳の `README.md` を除いた数。
-`ls docs/evidence/*.md docs/evidence/practice/*.md | grep -v '/README.md' | wc -l`。2026-09-28 時点）。
+`ls docs/evidence/*.md docs/evidence/practice/*.md | grep -v '/README.md' | wc -l`。2026-09-28 時点。その後、9/28 の新ラボと 9/30・10/1 の ubuntu-practice01 の記録が加わり、2026-10-18 に同じ式で数えると 102 本です）。
 そのうち **大半が「AI 支援セッションで実施した」と本文に書いています**
-（`grep -lE 'AI ?(が|支援|に|の)' docs/evidence/*.md docs/evidence/practice/*.md | grep -v '/README.md' | wc -l` で 79 本。
-このうち 6 本は、2026-09-28 に実施体制を明記する追記を加えたことで数に入ったもので、それを除くと 73 本です。
+（`grep -lE 'AI ?(が|支援|に|の)' docs/evidence/*.md docs/evidence/practice/*.md | grep -v '/README.md' | wc -l` で 79 本（2026-09-28 時点。2026-10-18 に同じ式で数えると 84 本。増えた 5 本は、上の 3 本の新しい記録と、2026-10-18 に実施体制の追記を加えた AD の記録 2 本です）。
+2026-09-28 時点の 79 本のうち 6 本は、2026-09-28 に実施体制を明記する追記を加えたことで数に入ったもので、それを除くと 73 本です。
 以前の版は 2026-09-17 時点の `docs/evidence/*.md` だけを数えて 96 本・72 本としていましたが、
 2026-09-27 に練習ログ 51 件を `practice/` へ移したため、同じ式では再現できなくなっていました。
 数え方を変えれば前後します。

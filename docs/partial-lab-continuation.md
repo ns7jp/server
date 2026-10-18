@@ -8,7 +8,7 @@
 2026-09-27〜28には、旧VMとは別の新しいHyper-Vラボで [Codexが実行した部分検証](evidence/2026-09-28-new-hyperv-lab-operations.md)を採録しました。Ubuntu10サービスとOS再起動後33項目、0・1・6時間の点検を確認しましたが、欠測・時刻不一致があり、24時間前に本人の指示で終了しました。24時間試験は未完了・未合格、別VM復元は準備のみで未実施です。本ページを本人が独力で完走した実績とは扱いません。
 既存の [数値監視](evidence/2026-09-08-lab-base01-monitoring-practice.md)・[ログ復元](evidence/2026-09-08-lab-base01-restore-practice.md)の実績と合算しません。
 
-**旧 VM が存在しない場合、既存環境を再開する経路は `BLOCKED` です。** 保管済みバックアップも実物を確認し、
+**9 月の記録に使った旧 VM（`lab-base01`）は残っていないため、旧環境を再開する経路は `BLOCKED` です。** 今ある `ubuntu-practice01` の app/nginx（[2026-10-01 の記録](evidence/2026-10-01-ubuntu-practice01-nginx-manual-recovery.md)）で進める場合は、下の `cd ~/server` を `cd ~/server-nginx-practice` に、`docker compose` を `docker compose -p nginx-practice` に読み替えます。保管済みバックアップも実物を確認し、
 取得できなければ過去の archive を使う段階4も `BLOCKED` とします。公開画像や過去の PASS から現存を推定しません。
 新しいラボで進める場合は、既存の [検証環境の準備](learning-path.md#level-0-の前に--検証環境と本体コードを用意する)と
 [最初の実習](beginner-learning-guide.md)から始め、新しい VM・SHA・正常時の動作を記録します。
