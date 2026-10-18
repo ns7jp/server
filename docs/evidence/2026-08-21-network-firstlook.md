@@ -193,7 +193,9 @@ $ tcpdump -r /tmp/lab-capture.pcap -n
 tcpdump: pcap_loop: truncated dump file; tried to read 16 header bytes, only got 15
 ```
 
-TCP の 3-way handshake → `HTTP: GET /healthz HTTP/1.1` → `HTTP: HTTP/1.1 200 OK`（617 バイト）→ FIN/ACK による正常終了、という一連のやり取りを平文 HTTP のまま観察できた（このラボは TLS 未設定のため、想定どおり暗号化されていない）。
+`HTTP: GET /healthz HTTP/1.1` → `HTTP: HTTP/1.1 200 OK`（617 バイト）→ FIN/ACK による正常終了、という一連のやり取りを平文 HTTP のまま観察できた（このラボは TLS 未設定のため、想定どおり暗号化されていない）。
+
+> **2026-10-18 訂正**：当初は「TCP の 3-way handshake から観察できた」と書いていました。しかし上の出力の先頭は `Flags [.], ack 1` で、接続を始める SYN（`[S]`）と SYN-ACK（`[S.]`）の行は写っていません。この記録では 3-way handshake を観察できていません（写らなかった理由は確かめていません）。
 
 **同じパターンが 30 秒間隔で複数回記録されている点について**: 送信元 `172.18.0.2` は自分が打った `curl` の結果というより、`compose.yaml` で `frontend` ネットワークにも参加している `blackbox`（blackbox-exporter、監視スタック全体が既に起動していたため常時稼働中）が `/healthz` を定期プローブしている通信だと考えている（未確認。ソース側のプロセスを特定する追加確認はしていない）。手動の `curl` によるものかプローブによるものか、この記録だけでは完全には区別できていない。
 
