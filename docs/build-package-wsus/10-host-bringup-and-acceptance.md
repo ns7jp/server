@@ -282,6 +282,32 @@ Get-VMCheckpoint -VMName 'wsus-01' | Select-Object Name, CreationTime, ParentChe
 
 巻き戻す前に、現在の状態のチェックポイントを別名で取っておく。巻き戻しは`wsus-01`側の状態だけを戻すもので、`ad-dc02`上のGPO(`TargetGroup=Pilot`へ変更済み)は戻らない。これは再試験にとっては都合がよく、修正後のGPOのまま構築をやり直せる。
 
+### 8.2a 新ラボで再開する順番(2026-10-19 追記、`NOT RUN`)
+
+[新ラボの記録](../evidence/2026-09-28-new-hyperv-lab-operations.md)時点の到達点は、ADがフォレスト作成(Success・再起動要)まで、WSUS用VMがOSのオフライン展開までである。新規VMで再試験する場合は、次の順に進める。
+
+1. **監視用UbuntuVMの24時間観測を先に終わらせる**([小構成の続編](../partial-lab-continuation.md)3節)。同じホストPC上で、WSUSの初回全同期と24時間観測を同時に走らせない。8GBを要求する全同期がメモリを圧迫すると、観測の欠測とWSUSの停止のどちらが原因か切り分けられなくなる
+2. **AD用VMの再起動後の正常性を確認する。** WSUSはドメイン参加が前提のため、ここが通らなければ以降は`BLOCKED`とする
+
+   ```powershell
+   # AD用VMのコンソールで実行する
+   Get-Service NTDS, DNS, Netlogon, KDC | Select-Object Name, Status, StartType
+   dcdiag /q
+   Get-ADDomain | Select-Object DNSRoot, PDCEmulator
+   Resolve-DnsName (Get-ADDomain).DNSRoot
+   ```
+
+   4サービスが`Running`、`dcdiag /q`が何も出力しない、ドメイン名がDNSで引ける、の3点を満たしたら次へ進む。続けて`Servers`OUを用意する
+3. **WSUS用VMの着手前確認**を行う
+   - コンテンツストア用D:(100GB以上)が別ボリュームとして接続されているか。無ければ先に追加する
+   - 評価版の期限を`slmgr /dli`で確認し、証跡に残す
+   - 監視用VMと復元専用VMを停止したうえで8.3のメモリ確認を行う
+   - WSUSロール導入前にチェックポイントを取る(例:`pre-wsus-role-YYYYMMDD`)。旧`pre-wsus-role`とは別物として扱う
+   - 初回全同期は2026-09-07に64分かかった。1.5〜2時間、ホストPCを触らずに済む時間帯を選ぶ
+4. 8.4の実施順で通し再試験を行う
+
+**新ラボのADはDC1台である。** 本パックは`ad-dc01`・`ad-dc02`の2台を前提にしているため、`ad-dc02`に依存する項目(8.3のとおり`SUT-01`・`SNW-03`・`SIT-04`)は、DC1台で読み替えた内容と理由を証跡の差異欄へ書く。DC2台構成を再実証したとは扱わない。
+
 ### 8.3 事前条件 — メモリを先に確かめる
 
 [切り分け結果票](../evidence/2026-09-08-wsus-sit04-sit06-root-cause.md)の残存リスクは、**「この状態で全同期を開始すると`WsusService`が停止する」**と記録している。記録された値は次のとおり。
