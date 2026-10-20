@@ -19,9 +19,9 @@
 | 実際の checkout SHA | `da53d8d7a7ad7eb936d8498f478c406c52a02daf`（PR #260 の合成マージ。job の `git log -1 --format=%H` で確認） |
 | 比較上の注意 | 後日の main `2896db6`、今回の文書・コード修正版の実測ではない |
 | Runner | GitHub hosted、Ubuntu 24.04.5、image `20260907.300.1`、CPython 3.11.16 |
-| Artifact | [10486587103 / perf-test-35197884893-1](https://github.com/ns7jp/server/actions/runs/35197884893/artifacts/10486587103) |
+| Artifact | 10486587103 / `perf-test-35197884893-1`（保存期限切れ。下の行を参照） |
 | ZIP | 591,313 bytes、SHA-256 `e2bc4cb94c3a68cf2ab507f387866b378b82a5842089d86afe34ae6ae71aba55`。取得ファイルと API の digest が一致 |
-| Artifact の期限 | API の `expires_at`: 2026-10-17T08:08:58Z。数値原本の抜粋を本リポジトリに保持 |
+| Artifact の期限 | API の `expires_at`: 2026-10-17T08:08:58Z。数値原本の抜粋を本リポジトリに保持。2026-10-20 に API で確認したところ、この run の artifact は 0 件で、GitHub からは取得できない |
 
 API 項目の抜粋は [source-metadata.json](assets/2026-09-17-performance-ci-analysis/source-metadata.json)、
 実行版・環境・終了を示すログ抜粋は [job-excerpt.txt](assets/2026-09-17-performance-ci-analysis/job-excerpt.txt) にあります。

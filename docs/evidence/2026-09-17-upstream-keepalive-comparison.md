@@ -21,7 +21,7 @@
 | Job | [105142512730](https://github.com/ns7jp/server/actions/runs/35203160709/job/105142512730) |
 | PR head | `dbd61155cad4a80bfbd2f8943cf9633a1928b327` |
 | 実際の checkout | `f9069e8632cdd63de514f19c18dcab4ec6778c45`（PR 合成マージ、job log で確認） |
-| Artifact | [10488697888 / perf-test-35203160709-1](https://github.com/ns7jp/server/actions/runs/35203160709/artifacts/10488697888) |
+| Artifact | 10488697888 / `perf-test-35203160709-1`。保存期間 30 日を過ぎ、2026-10-20 に API で確認したところ、この run の artifact は 0 件で、GitHub からは取得できない。保存した抜粋は下記の `assets/` を参照 |
 | ZIP の検証 | 875,207 bytes。SHA-256 `7d8024a4323a27b001318e07bbc334a92b5da7c800ae09913a0de6b887791a5e`、API digest と取得 ZIP が一致 |
 | 当時の workflow conclusion | **failure**。負荷試験と error gate は success、独立した復旧回帰試験は failure |
 | 負荷条件 | app/nginx、同一 runner の loopback `/healthz`、並列 1 / 2 / 4 / 8 / 16、各 20 秒、最初に助走 5 秒を 1 回 |
@@ -137,7 +137,7 @@ root の未認証 401・認証あり 200、**app を別 IP で再作成した後
 元の Nginx container を作り直さずに復帰しました。
 これは専用 Docker network 上の CI 回帰試験で、本人 VM の実習やホスト全体の復旧ではありません。
 
-保存した artifact は [10489525742](https://github.com/ns7jp/server/actions/runs/35204028943/artifacts/10489525742)、
+保存した artifact は 10489525742（保存期間 30 日を過ぎ、2026-10-20 時点で GitHub から取得できない）、
 1,169,937 bytes、ZIP の SHA-256 は
 `e446a5bedc138989f205cd15b7fcd21520a78d33bddf046e761cac5f21686627` で API digest と一致しました。
 原本は [result.json](assets/2026-09-17-upstream-keepalive-comparison/confirmation-run-35204028943/result.json)、

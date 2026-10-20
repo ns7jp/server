@@ -14,7 +14,7 @@
 | PR head SHA | `a8bf1ee23d7770c94f205f9a35f46ce441ceaf02` |
 | 実際の checkout SHA | `6df5b50ddbf418c276ef1db0aaeedafbd7eebcb7`（合成マージ。job の `git log -1 --format=%H` で確認） |
 | 対象 | `app` / `nginx`、同じ runner の `http://127.0.0.1:8080/healthz`。closed-loop、各段 20 秒、最初に並列 1 の助走 5 秒を 1 回 |
-| Artifact | [10488187600 / perf-test-35201803905-1](https://github.com/ns7jp/server/actions/runs/35201803905/artifacts/10488187600)、527,371 bytes。期限 2026-10-17T08:52:45Z |
+| Artifact | 10488187600 / `perf-test-35201803905-1`、527,371 bytes。期限 2026-10-17T08:52:45Z。2026-10-20 に API で確認したところ、この run の artifact は 0 件で、GitHub からは取得できない。保存した抜粋は下記の `assets/` を参照 |
 | ZIP SHA-256 | `10837ae8944e4ed5b3ba869083ee3de558f597299fa2e826d59eb4cb6192edcc`。取得 ZIP と API digest が一致 |
 
 [source-metadata.json](assets/2026-09-17-performance-rerun/source-metadata.json) と [job-excerpt.txt](assets/2026-09-17-performance-rerun/job-excerpt.txt) に実行版・原資料・CI 失敗の確認箇所を保存しました。この結果を、後続のコード版や本番環境の合否へ流用しません。
