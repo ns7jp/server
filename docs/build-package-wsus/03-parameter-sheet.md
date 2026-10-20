@@ -23,6 +23,8 @@
 
 ## ホスト識別・ネットワーク
 
+この表のDC・ドメイン・OUは既定2DC構成の設計値です。単一DCラボでは、[補足手順1〜2節](single-dc-lab-procedure.md)の別票に構成区分、実DC名/FQDN/IP、実ドメインのDNS名/NetBIOS名/DN、`Servers` OU DN、実WSUS名/FQDN/IP、NIC・gateway・CIDRを確定します。DNSは実在するそのDCのIP1件のみとし、架空の第2DCや公開DNSを足しません。未確定値は`NOT SET`、未確認の開始条件は`BLOCKED`として扱い、下表の実績欄を推測で埋めません。
+
 | 項目 | 設計値 | 実績値 | 正本 / 確認方法 |
 | --- | --- | --- | --- |
 | inventory hostname(論理名) | `wsus-01` | `NOT RUN` | 本書 / `hostname`、`Get-ComputerInfo`の`CsName` |

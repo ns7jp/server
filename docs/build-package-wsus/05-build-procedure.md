@@ -8,7 +8,8 @@ Windows対応Ansible role(`ansible/roles/common`相当のもの)は存在しな�
 
 ## 0. 作業前確認
 
-- 対象: `wsus-01`(Windows Server 2022 Standard、Desktop Experience基準)検証用VM 1台。[AD版パック](../build-package-ad/00-requirements.md)の`ad-dc01`・`ad-dc02`が既に稼働し、ドメイン`corp.example.test`のAD統合DNS、`Servers`OUを含む6OU構成が存在することを前提とする(未構築の場合は本書を開始しない)。
+- **経路を先に選ぶ。** 既定2DC構成は本書を使う。新規の単一DCラボは[補足手順](single-dc-lab-procedure.md)1〜3節の開始条件・実値・操作の代替を適用してから進む。下の両DC条件、2.1節のDNS2台設定、2.2節の固定DNS照会を単一DCへそのまま適用しない。
+- 対象: `wsus-01`(Windows Server 2022 Standard、Desktop Experience基準)検証用VM 1台。既定2DC経路では、[AD版パック](../build-package-ad/00-requirements.md)の`ad-dc01`・`ad-dc02`が既に稼働し、ドメイン`corp.example.test`のAD統合DNS、`Servers`OUを含む6OU構成が存在することを前提とする(未構築の場合は既定経路を開始しない)。
 - 対象VMの初回作業はWinRMがまだ有効化されていないため、ハイパーバイザーのVMコンソール(またはローカルコンソール)から直接ログオンして行う。WinRM HTTPS経由の管理は2節で有効化した後にのみ成立する。
 - 対象IPv4/prefix(例示`192.0.2.52/24`。TEST-NET-1、RFC 5737の例示用アドレス。`ad-dc01`=`192.0.2.50/24`、`ad-dc02`=`192.0.2.51/24`と同一レンジで、重複を避けるため`.52`を使用)、管理端末IP(例示`192.0.2.40`)、管理元CIDR、内部ネットワークCIDR(いずれも環境ごとに`NOT SET`)、コンテンツストア用Dドライブ(100GB以上)の確保、作業時間帯、ロールバック条件(VM/ハイパーバイザーのスナップショット取得タイミング)を記録済みであること。
 - ドメイン参加操作に使うアカウントが、常用アカウントではなくドメイン参加権限を持つ適切な権限のアカウントであること([AD版パック](../build-package-ad/03-parameter-sheet.md)のTier0の考え方を踏襲)。
@@ -65,6 +66,7 @@ Rename-Computer -NewName "wsus-01" -Restart
 New-NetIPAddress -InterfaceAlias "イーサネット" -IPAddress 192.0.2.52 -PrefixLength 24 `
   -DefaultGateway "<NOT SET: 環境ごとに決定するdefault gateway>"
 
+# 以下のDNS設定は既定2DC用。単一DCでは補足手順3.1のブロックへ置換する。
 # DNSは既存ADドメインのDC(ad-dc01・ad-dc02)を優先/セカンダリで指定する。
 # ドメイン参加・GPO配布・後続のAレコード自動登録には、この時点でAD統合DNSへ向いている必要がある
 Set-DnsClientServerAddress -InterfaceAlias "イーサネット" -ServerAddresses "192.0.2.50", "192.0.2.51"
