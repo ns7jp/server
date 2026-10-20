@@ -162,7 +162,8 @@ SSH が切れるのは正常です。VM コンソールで起動を確認して�
 次の観測では、候補を先に潰してから T0 を取ります。
 
 - Windows の電源設定でスリープしない設定にし、`powercfg /query` の結果を結果票に残す
-- Windows Update の再起動が観測期間に入らないよう、アクティブ時間か一時停止を設定する
+- Windows Update の[更新の一時停止](https://support.microsoft.com/en-us/windows/deployment/updates-lifecycle/pause-updates-in-windows)を設定し、再開予定日を **+24 時間以降の最後の採録より後**にする。アクティブ時間だけでは代用しない（[Microsoft の説明](https://learn.microsoft.com/en-us/windows/deployment/update/waas-restart#configure-active-hours)では最大18時間で、時間外に自動再起動するため）
+- 一時停止が有効であることと再開予定日、再起動待ち・予約の有無を Windows Update 画面で確認し、日時付きの画面を結果票に残す。必要な再起動は T0 より前に終える。一時停止が使えない、管理ポリシー等により全観測期間を確保できない、または確認できない場合は、段階3を `BLOCKED` として開始しない
 - Hyper-V マネージャーで対象 VM 以外の状態を記録する。WSUS の初回全同期など、メモリを大きく使う作業と同時に行わない
 - VM コンソールに入れることを確認する
 
@@ -185,6 +186,7 @@ date --iso-8601=seconds
 これは4時点の**間欠点検**です。間の短い停止を検知した証拠、稼働率100%、72時間試験にはなりません。
 PC のスリープや VM 停止で観測が途切れたら、その期間と理由を記録します。時刻を埋めて成功扱いにはしません。
 不調があれば段階2の調査と [運用手順](runbooks/README.md)へ戻り、修正後の新しい24時間記録を作ります。
+観測の終了・中止後は Windows Update の一時停止を解除し、更新を再開した日時を結果票に残します。
 
 ### 合格条件
 
