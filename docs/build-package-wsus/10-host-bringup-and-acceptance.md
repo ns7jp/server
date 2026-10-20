@@ -8,7 +8,7 @@
 
 | 用途 | 読む順 |
 | --- | --- |
-| ゼロから新しいホストを立ち上げる | 0節から順に |
+| ゼロから新しいホストを立ち上げる | 既定2DCは0節から順に。新規の単一DCラボは[補足手順](single-dc-lab-procedure.md)で開始条件・置換を確定してから進む |
 | 2026-09-07の`wsus-01`でフェーズ1を再試験する | `wsus-01`と依存先の`ad-dc02`は残っていないため`BLOCKED`。新しいVMで行う場合は0節から順に(何を再試験するかは8.1節で確認) |
 
 `wsus-01`を1台構築してもなお、次は`NOT RUN`または`BLOCKED`のまま残っている。
@@ -26,7 +26,7 @@
 
 ## 0. 何を用意するか
 
-本パックには、他パックには無い前提が1つ増える。**`wsus-01`は既存ADドメイン(`corp.example.test`)へのメンバーサーバー参加が前提であり、[AD版パック](../build-package-ad/README.md)(案件ID`SM-AD-001`)の`ad-dc01`・`ad-dc02`が稼働していなければ着手できない。** 検証用ホストを選ぶ前に、依存先のドメインが実際に稼働していることを確認する。
+本パックには、他パックには無い前提が1つ増える。**既定2DC経路では、`wsus-01`は既存ADドメイン(`corp.example.test`)へのメンバーサーバー参加が前提であり、[AD版パック](../build-package-ad/README.md)(案件ID`SM-AD-001`)の`ad-dc01`・`ad-dc02`が稼働していなければ着手できない。** 新規の単一DCラボを選ぶ場合だけ、[補足手順1節](single-dc-lab-procedure.md)の実在DC1台・AD DNS・`Servers` OU確認へ置き換える。どちらも検証用ホストを選ぶ前に、依存先のドメインが実際に稼働していることを確認する。
 
 | 選択肢 | 目安費用 | 向き |
 | --- | --- | --- |
@@ -47,7 +47,7 @@ OSは[基本設計書](01-basic-design.md)のとおり**Windows Server 2022 Stan
 | 項目 | 記入 |
 | --- | --- |
 | 対象ホスト(用途・OS・スペック) | |
-| 依存先ADドメインの稼働確認(`ad-dc01`・`ad-dc02`への疎通、`corp.example.test`のAD統合DNS) | |
+| 構成区分と依存先ADドメインの稼働確認(既定2DCは`ad-dc01`・`ad-dc02`、単一DCは補足手順の実値・確認結果を別票へ) | |
 | 対象IPv4/prefix(例示`192.0.2.52/24`。`ad-dc01`=`192.0.2.50/24`、`ad-dc02`=`192.0.2.51/24`と重複しない値) | |
 | 内部ネットワークCIDR / 管理元CIDRの範囲決定([AD版パック](../build-package-ad/04-network-ip-plan.md)が定義した概念を利用) | |
 | コンテンツストア用D:ドライブ(100GB以上)がVM/ハイパーバイザー側で確保済みか | |
@@ -63,7 +63,7 @@ OSは[基本設計書](01-basic-design.md)のとおり**Windows Server 2022 Stan
 
 ## 2. 構築
 
-[構築手順書](05-build-procedure.md)をそのまま実行する。Windows対応Ansible roleは存在しないため(要件定義書「未実装」参照)、ここは**すべて「済(手動)」のPowerShell実行**であり、`site.yml`のような自動化された経路ではない。1節で決めた対象IP、内部ネットワークCIDR、管理元CIDRを使い、各コマンドの引数を実際の値に置き換える。
+既定2DC経路は[構築手順書](05-build-procedure.md)を使う。単一DC経路は[補足手順3節](single-dc-lab-procedure.md)の代替を適用して進む。Windows対応Ansible roleは存在しないため(要件定義書「未実装」参照)、ここは**すべて「済(手動)」のPowerShell実行**であり、`site.yml`のような自動化された経路ではない。1節で決めた対象IP、内部ネットワークCIDR、管理元CIDRを使い、各コマンドの引数を実際の値に置き換える。
 
 ```powershell
 # 対象ホストのビルド番号を先に記録する(証跡の必須項目)
@@ -304,9 +304,9 @@ Get-VMCheckpoint -VMName 'wsus-01' | Select-Object Name, CreationTime, ParentChe
    - 監視用VMと復元専用VMを停止したうえで8.3のメモリ確認を行う
    - WSUSロール導入前にチェックポイントを取る(例:`pre-wsus-role-YYYYMMDD`)。旧`pre-wsus-role`とは別物として扱う
    - 初回全同期は2026-09-07に64分かかった。1.5〜2時間、ホストPCを触らずに済む時間帯を選ぶ
-4. 8.4の実施順で通し再試験を行う
+4. 新規の単一DCラボは[補足手順1〜5節](single-dc-lab-procedure.md)で実値・開始条件・代替操作・試験範囲を確定し、8.4でその経路を選ぶ。既定2DCとして再構築する場合は両DCを用意して8.4へ進む
 
-**新ラボのADはDC1台である。** 本パックは`ad-dc01`・`ad-dc02`の2台を前提にしているため、`ad-dc02`に依存する項目(8.3のとおり`SUT-01`・`SNW-03`・`SIT-04`)は、DC1台で読み替えた内容と理由を証跡の差異欄へ書く。DC2台構成を再実証したとは扱わない。
+**新ラボの記録時点のADはDC1台である。** 現在の状態は補足手順1節で再確認する。差異欄に3つの試験IDを書くだけでは、両DCの開始条件やDNS設定を置き換えたことにはならない。補足手順は開始条件・DNS・AD/GPOの実行場所と`SUT-01`・`SIT-01/02/04`・`SNW-01/02/03/04`を明示的に代替する。実値や前提確認が揃うまで`BLOCKED`とし、2DC構成の再実証とは扱わない。
 
 ### 8.3 事前条件 — メモリを先に確かめる
 
@@ -320,27 +320,29 @@ Get-VMCheckpoint -VMName 'wsus-01' | Select-Object Name, CreationTime, ParentChe
 | `wsus-01` | 動的(上限8GB)。実割り当ては1.89GB |
 | ホストの空き | 1.6GB |
 
-`wsus-01`は本パックの最小構成として**8GB**を要求する(0節)。`ad-dc02`は`wsus-01`のドメイン参加先で`SUT-01`・`SNW-03`・`SIT-04`が依存するため停止できない。空けられるのは`lab-base01`の2GBだけであり、**上の記録値からの単純計算では`wsus-01`へ回せるのは数GB程度**にとどまる。これは概算であって実測ではないため、再試験の前に実際の値で確かめる。
+`wsus-01`は本パックの最小構成として**8GB**を要求する(0節)。旧環境では`ad-dc02`が依存先のため停止できず、空けられるのは`lab-base01`の2GBだけであり、**上の記録値からの単純計算では`wsus-01`へ回せるのは数GB程度**だった。これは当時の概算であって、新ラボの実測ではない。新規構成では、選んだ経路の実DCを稼働させたまま次の現在値を採る。
 
 ```powershell
 # ホストPC(Windows 11 Pro)側で実行する
+$WsusVmName = 'NOT SET' # 今回の実VM名を記入。旧wsus-01の存在を推定しない
+if ($WsusVmName -eq 'NOT SET') { throw 'BLOCKED: 対象VM名が未確定' }
 Get-VM | Select-Object Name, State, MemoryAssigned, MemoryMinimum, MemoryMaximum, DynamicMemoryEnabled
 Get-Counter '\Memory\Available MBytes'
-Get-VHD (Get-VMHardDiskDrive -VMName 'wsus-01').Path | Select-Object Path, Size, FileSize
+Get-VHD (Get-VMHardDiskDrive -VMName $WsusVmName).Path | Select-Object Path, Size, FileSize
 ```
 
-- `lab-base01`を停止した状態で`wsus-01`を起動し、**`MemoryAssigned`が8GBに届くか**を見る(`MemoryMaximum`は上限値であって割り当て実績ではない)
+- 依存先の実DCは稼働を維持し、用途・停止可否を確認した他のVMだけを停止計画に従って止める。今回のWSUSを起動し、**`MemoryAssigned`が8GBに届くか**を見る(`MemoryMaximum`は上限値であって割り当て実績ではない)
 - 届かないなら、ホストのメモリ増設なしに全同期を完走できるかを先に見極める
 
 **8GBが割り当たらないまま全同期を始めない。** 途中で`WsusService`が止まれば、再試験そのものが計測不能になる。
 
 ### 8.4 実施順
 
-1. 8.3の事前条件を満たす。`ad-dc02`が稼働していることも確認する
-2. 8.2で開始点を決め、巻き戻す前に現在の状態のチェックポイントを取る
-3. [構築手順書](05-build-procedure.md)を0節から順に実行する。`Restore-VMCheckpoint`で`pre-wsus-role`へ戻した場合は、そのチェックポイントに3節(Firewall・RDPの締め)が含まれているかを`Get-NetFirewallProfile`と`fDenyTSConnections`で確認し、未適用なら3節から、適用済みなら4節から実行する。**どちらだったかを証跡に書く**
+1. 経路を決めて8.3の資源条件を満たす。既定2DCでは両DC、単一DCでは[補足手順1節](single-dc-lab-procedure.md)の実DC・AD DNS・OU・実値が確認できなければ開始しない
+2. 8.2で開始点を決める。旧VMが残っていない新ラボでは新規VM経路だけを選び、今回の変更前チェックポイントを取る。旧`pre-wsus-role`の存在を仮定しない
+3. 既定2DCは[構築手順書](05-build-procedure.md)0節から、単一DCは[補足手順3節の代替](single-dc-lab-procedure.md)を適用して構築する。現存する今回のチェックポイントから再開する場合は3節(Firewall・RDPの締め)が含まれているかを確認し、再開位置と理由を証跡に書く
 4. 9.2節の実行直前検証(分類・製品・グループのいずれかが0件なら`throw`)が働くことを確認する。**ここで`throw`したら、それ自体が2026-09-07の再現である**
-5. [試験仕様書](06-test-specification.md)のIDを判定し、日付付きの証跡ファイルへ記録する(8.5)
+5. [試験仕様書](06-test-specification.md)のIDを判定し、日付付きの証跡ファイルへ記録する(8.7)。単一DCは補足手順4〜5節のネットワーク試験・期待値差分・判定範囲を使う
 
 ### 8.5 SIT-06の再現試験との関係
 
@@ -372,3 +374,5 @@ Get-VHD (Get-VMHardDiskDrive -VMName 'wsus-01').Path | Select-Object Path, Size,
 [試験仕様書](06-test-specification.md)の原本は`NOT RUN`のまま上書きしない。結果は`docs/evidence/YYYY-MM-DD-wsus-build-validation.md`(ネットワークは[WSUS版テンプレート](../evidence/templates/network-host-validation-wsus.md))へ新規に作り、[検証証跡台帳](../evidence/README.md)へ行を追加する。2026-09-07の証跡は当時の記録として残し、上書きしない。
 
 **総合判定を`PASS`にできるのは、`SIT-01`〜`SIT-08`を修正後の手順で通し、実出力と期待結果の照合を証跡へ残したときだけである。** 原因が分かったことと、直したことと、直した手順が通ることは別である。
+
+単一DC経路の結論は[補足手順5節](single-dc-lab-procedure.md)の限定構成の結果として記録する。既定2DC構成の受け入れ、過去の総合`FAIL`、案件パックの`NOT READY`を、その結果で上書きしない。

@@ -22,6 +22,8 @@ Windows/ADのネットワーク障害を注入・体験できるラボは本リ�
 
 ## 3. 事前準備
 
+**新規の単一DCラボを選ぶ場合**は、先に[補足手順1〜2節](single-dc-lab-procedure.md)の実値・開始条件を確定します。本節の値を実環境へ置換し、`$AdDc01IP`・`$AdDc02IP`は使いません。5〜7節（SNW-02/03/04）のコード・DC台数の期待値は、同補足手順4節の単一DC用ブロックへ丸ごと置換します。その他の試験は省略せず、管理端末とWSUSの出力を別々に記録します。
+
 管理端末に PowerShell 7.4系(または組込5.1)があることを確認します。`pktmon`、`Get-NetAdapter`、`Get-NetFirewallRule`、`Resolve-DnsName`等はWindows Server標準搭載であり追加インストールは不要です。`wsus-01`側は、[構築手順書](05-build-procedure.md)のフェーズ1(ドメイン参加、WSUSロール導入、GPO`WSUS-Client-Policy`の作成・リンク、WinRM HTTPSリスナー設定、`WsusPool`チューニングを含む)が完了していることを前提とします。管理端末の値を実環境に合わせて設定します。
 
 ```powershell
