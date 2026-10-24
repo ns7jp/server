@@ -24,7 +24,7 @@
 set -euo pipefail
 
 # 証跡には「どこで、誰が」流したのかを必ず残す。実行環境を書かない証跡は、
-# あとから「実機で実行した」と読み替えられてしまう（STATUS §0 ルール 9）。
+# あとから「実機で実行した」と読み替えられてしまう。
 drill_operator() {
   printf '%s' "${DRILL_OPERATOR:-未設定（DRILL_OPERATOR 環境変数で指定する）}"
 }
