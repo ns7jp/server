@@ -17,6 +17,12 @@
 
 そのほかの主要な記録（2 台目の DC、計画停止、WSUS 構築、Ansible 基盤構築、CI の E2E・性能試験など）は、この下に日付順で並べています。
 
+## 2026-10-31：再起動後の app / nginx 復帰確認
+
+[再接続後の2サービス稼働と HTTP 200](2026-10-31-ubuntu-practice01-reboot-check.md)を追加しました。
+AI の手順案内を受けた本人操作で、Docker の自動起動設定・コンテナの restart policy を事前確認し、再接続後に Docker active・app healthy・nginx 稼働・curl終了0を確認しました。
+IP が変わったため新しい接続先で SSH に接続した経緯も記録しています。原ログは本人の手元にあり、本文・ハッシュの独立照合、監視全体・長期稼働の確認は未実施です。
+
 ## 2026-10-31：本人操作による Nginx 停止・手動復旧の再確認
 
 [Tera Term からの起動・停止・手動復旧と説明の確認](2026-10-31-ubuntu-practice01-guided-recovery.md)を追加しました。
