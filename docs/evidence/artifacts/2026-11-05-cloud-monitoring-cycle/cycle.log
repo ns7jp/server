@@ -1,0 +1,12 @@
+{"check": "baseline", "observed_at": "2026-11-05T02:28:25.546042+00:00", "http_status": 200, "app_up": "1", "preexisting_cycle": false}
+ Container portfolio-cloud-cycle-20261105-app-1  Stopping
+ Container portfolio-cloud-cycle-20261105-app-1  Stopped
+{"check": "app_stopped", "observed_at": "2026-11-05T02:28:26.836221+00:00", "operation": "docker compose stop app"}
+{"check": "fault_observed", "observed_at": "2026-11-05T02:28:41.869402+00:00", "http_status": 502, "app_up": "0"}
+{"check": "firing_received", "observed_at": "2026-11-05T02:30:54.116854+00:00", "event": {"received_at": "2026-11-05T02:30:52.306404+00:00", "status": "firing", "alerts": [{"status": "firing", "labels": {"alertname": "ServerMonitorUnavailable", "environment": "lab", "instance": "app:5000", "job": "server-monitor", "severity": "critical"}}]}}
+{"check": "prometheus_firing", "observed_at": "2026-11-05T02:30:54.120553+00:00", "alerts": [{"labels": {"alertname": "ServerMonitorUnavailable", "environment": "lab", "instance": "app:5000", "job": "server-monitor", "severity": "critical"}, "annotations": {"description": "Prometheus has failed to scrape the monitoring application for two minutes.", "runbook_url": "https://github.com/ns7jp/server/blob/main/docs/runbooks/service-down.md", "summary": "Server Monitor cannot be scraped"}, "state": "firing", "activeAt": "2026-11-05T02:28:47.299940581Z", "value": "0e+00"}]}
+ Container portfolio-cloud-cycle-20261105-app-1  Starting
+ Container portfolio-cloud-cycle-20261105-app-1  Started
+{"check": "app_restarted", "observed_at": "2026-11-05T02:30:54.434068+00:00", "operation": "docker compose start app"}
+{"check": "recovery_observed", "observed_at": "2026-11-05T02:31:10.505756+00:00", "http_status": 200, "app_up": "1"}
+{"check": "resolved_received", "observed_at": "2026-11-05T02:31:18.527530+00:00", "event": {"received_at": "2026-11-05T02:31:17.310776+00:00", "status": "resolved", "alerts": [{"status": "resolved", "labels": {"alertname": "ServerMonitorUnavailable", "environment": "lab", "instance": "app:5000", "job": "server-monitor", "severity": "critical"}}]}}

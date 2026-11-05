@@ -1,0 +1,26 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.cloud
+      secrets:
+        - proxy_ca
+  nginx:
+    ports: !override
+      - "127.0.0.1:28080:8080"
+  prometheus:
+    ports: !override
+      - "127.0.0.1:29090:9090"
+    volumes:
+      - ./deploy/prometheus/prometheus.cloud.yml:/etc/prometheus/prometheus.yml:ro
+  alertmanager:
+    ports: !override
+      - "127.0.0.1:29093:9093"
+    volumes:
+      - ./deploy/alertmanager/alertmanager.cloud.yml:/etc/alertmanager/alertmanager.yml:ro
+  webhook-sink:
+    ports: !override
+      - "127.0.0.1:28081:8081"
+secrets:
+  proxy_ca:
+    file: /etc/ssl/certs/ca-certificates.crt
