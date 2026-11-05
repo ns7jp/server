@@ -58,6 +58,12 @@ services:
 
 一次資料はチャット内で本人が提示した画像です。画像原本と生ログ・events.jsonはリポジトリ未収録です。events.jsonの保存終了0は画面で確認しましたが、ファイル内容の取得・照合はしていません。受信器の履歴はメモリ上にあり、再作成で消えるためVM上へ保存しました。秘密値・プライベートIP・マシン識別子は本文へ転記していません。
 
-最終画面でapp / nginxの正常と上記監視値を確認しました。検証用受信器の撤去、Alertmanagerの通常設定への復帰、全サービスの終了は今回まだ実施していません。AIによる別のクラウド検証と合算せず、本人の独力再現、外部通知、OS再起動後の全構成復帰、長期稼働、自動復旧、バックアップ復元、監視全体・本番運用は未確認です。
+最終画面でapp / nginxの正常と上記監視値を確認しました。後続の本人操作で検証用受信器の撤去と通常Compose指定によるAlertmanagerの再作成を確認しました。全サービスの終了は実施せず、6サービスを稼働状態で残しています。AIによる別のクラウド検証と合算せず、本人の独力再現、外部通知、OS再起動後の全構成復帰、長期稼働、自動復旧、バックアップ復元、監視全体・本番運用は未確認です。
 
 [証跡台帳](README.md) / [初心者向け学習ガイド](../beginner-learning-guide.md)
+
+## 後片付けの確認
+
+本人が同じ実習VMで、3ファイル指定の `docker compose rm --stop --force webhook-sink` を実行し、画面で受信器のStopped・Removedを確認しました。続いて通常の `docker compose up -d --no-deps alertmanager` を実行し、Alertmanagerを再作成しました。
+
+後続の `docker compose ps --all` では、webhook-sinkがなく、app healthy、nginx・Prometheus・node-exporter・blackbox・AlertmanagerがUpでした。これで一時的な通知構成の後片付けまで確認しました。保存済みevents.jsonは受信器の外のVM内ファイルです。後片付け後のファイル内容再読込・通常設定のマウント内容の独立照合は未実施です。
