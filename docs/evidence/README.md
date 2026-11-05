@@ -17,6 +17,10 @@
 
 そのほかの主要な記録（2 台目の DC、計画停止、WSUS 構築、Ansible 基盤構築、CI の E2E・性能試験など）は、この下に日付順で並べています。
 
+## 2026-11-05：KVM 本人実習でGrafana表示・Loki検索を確認
+
+[Grafanaの数値表示とLokiのログ検索](2026-11-05-kvm-grafana-loki-practice.md)。AIの案内に沿った本人操作で、Grafanaの収集状態1・CPU/メモリ指標、目印付きNginxログの検索1件（GET・401）、各ツールの役割の回答を確認しました。最終画面はコードd4004ec・Git差分表示なし・10サービスUp・app healthy、メモリavailable 2.9 GiB・ルート空き12 GiB。画像原本・生ログ未収録。独力再現・長期稼働・復元試験とは区別します。
+
 ## 2026-11-05：KVM 本人実習で監視・通知・手動復旧を確認
 
 [同じKVM構成での監視・ローカル通知の記録](2026-11-05-kvm-monitoring-notification.md)。本人がAIの案内に沿って監視値1→0→1、app停止に伴うFIRING受信、手動復旧後のRESOLVED受信を確認しました。最終確認はapp healthy・HTTP 200・app up=1・probe_success=1。通知履歴のVM内保存は終了0。画像原本・受信JSONはリポジトリ未収録で、外部通知・独力再現・長期稼働の実績とは区別しています。
