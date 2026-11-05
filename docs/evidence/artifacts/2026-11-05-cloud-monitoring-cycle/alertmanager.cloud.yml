@@ -1,0 +1,15 @@
+route:
+  receiver: local-cycle
+  group_by: ["alertname", "instance"]
+  group_wait: 5s
+  group_interval: 5s
+  repeat_interval: 1h
+  routes:
+    - matchers: ['alertname="Watchdog"']
+      receiver: watchdog
+receivers:
+  - name: local-cycle
+    webhook_configs:
+      - url: http://webhook-sink:8081/alerts
+        send_resolved: true
+  - name: watchdog
