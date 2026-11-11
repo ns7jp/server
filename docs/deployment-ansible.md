@@ -222,10 +222,23 @@ GitHub Actions（`.github/workflows/ansible-check.yml`）では次を検証す�
 
 | ジョブ | 内容 |
 | --- | --- |
+| `controller`（Fixed controller runtime） | Python 3.12の専用venvへ`ansible/controller-requirements.txt`を実インストールし、固定版との一致・`pip check`・AWS SDKのスタブ応答・localhostのping・8組合せのplaybook構文を確認 |
 | `lint` | `ansible-lint --offline` と全 playbook の `--syntax-check` |
 | `molecule (common/docker/nginx/monitoring)` | `molecule list`でscenarioを読み込み、存在する`prepare.yml`と`converge.yml` / `verify.yml`を`--syntax-check` |
+| `molecule-foundation` | foundationシナリオの検出とconverge / verifyの構文検査 |
 
-通常の PR CI はシナリオの妥当性のみを検証する。実コンテナでの収束 / 冪等性確認は
+Ansible checkはGitHub Actions画面の「Run workflow」、または次のコマンドで手動実行できます。
+実行後はrunの`head_sha`を確認し、古い版の成功と区別してください。
+
+```bash
+gh workflow run ansible-check.yml --repo ns7jp/server --ref main
+```
+
+固定構成のジョブは汎用lint/Moleculeジョブとは別の環境を使います。SDKはダミーの認証値と
+Stubberで検証し、HTTP送信も禁止します。AWSの実資源・本人の管理ホストへは接続しません。
+固定controllerでのローカル動作・構文確認であり、実ホストへの構成適用やAWS操作の合格ではありません。
+
+Molecule関連の通常の PR CI はシナリオの妥当性のみを検証する。実コンテナでの収束 / 冪等性確認は
 上記のローカル実行に加え、`.github/workflows/ansible-integration.yml` を手動実行
 して確認できる。結果は `docs/evidence/` に記録してから実績として扱う。
 
