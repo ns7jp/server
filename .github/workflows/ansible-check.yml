@@ -1,18 +1,69 @@
 name: Ansible check
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'ansible/**'
       - '.github/workflows/ansible-check.yml'
       - 'tests/test_git_source_fetch.py'
+      - 'scripts/ci/verify_controller.py'
   pull_request:
     paths:
       - 'ansible/**'
       - '.github/workflows/ansible-check.yml'
       - 'tests/test_git_source_fetch.py'
+      - 'scripts/ci/verify_controller.py'
 
 jobs:
+  controller:
+    name: Fixed controller runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      AWS_EC2_METADATA_DISABLED: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install the fixed controller in an isolated environment
+        run: |
+          python -m venv "$RUNNER_TEMP/controller-venv"
+          "$RUNNER_TEMP/controller-venv/bin/python" -m pip install --requirement ansible/controller-requirements.txt
+          echo "$RUNNER_TEMP/controller-venv/bin" >> "$GITHUB_PATH"
+
+      - name: Check installed dependencies and versions
+        run: |
+          python -m pip check
+          ansible --version
+          python scripts/ci/verify_controller.py
+
+      - name: Exercise a local module with the fixed controller Python
+        run: |
+          ansible localhost -i localhost, --connection local --module-name ansible.builtin.ping \
+            --extra-vars "ansible_python_interpreter=$(command -v python)"
+
+      - name: Install project collections
+        run: ansible-galaxy collection install --requirements-file ansible/requirements.yml
+
+      - name: Parse project playbooks with the fixed controller
+        working-directory: ansible
+        run: |
+          for playbook in site bootstrap deploy verify storage dhcp; do
+            ansible-playbook -i inventory/staging.yml "playbooks/$playbook.yml" --syntax-check
+          done
+          ansible-playbook -i inventory/ci.yml playbooks/site.yml --syntax-check
+          cp inventory/foundation.local.yml.example inventory/foundation-ci.yml
+          trap 'rm -f inventory/foundation-ci.yml' EXIT
+          ansible-playbook -i inventory/foundation-ci.yml playbooks/foundation.yml --syntax-check
+
   lint:
     runs-on: ubuntu-latest
     steps:
