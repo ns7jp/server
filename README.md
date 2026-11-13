@@ -42,7 +42,7 @@ System State 復元後に、バックアップ後に作った目印の OU が消
 ## 実装と検証の範囲
 
 本人操作・CI・AI による実行を分けて記録しています。本人による監視から実通知・復旧までの一連の検証、24時間以上の稼働、別 VM への復元、AWS の実構築は未完了です。
-[実習一覧と確認範囲](docs/validation-summary.md)に、実施日・環境ごとの結果と制約をまとめています。
+[実習一覧と確認範囲](docs/validation-summary.md)に、実施日・環境ごとの結果と制約をまとめています。未完了項目は[実測計画](docs/real-environment-validation-plan.md)を参照してください。
 
 ## ドキュメント
 
@@ -50,12 +50,13 @@ System State 復元後に、バックアップ後に作った目印の OU が消
 | --- | --- |
 | 実習の結果・原資料を確かめる | [実習一覧と検証範囲](docs/validation-summary.md)・[検証証跡台帳](docs/evidence/README.md) |
 | 経歴・応募条件を確認する | [採用ご担当者向けページ](https://github.com/ns7jp/ns7jp/blob/main/docs/overview-for-recruiters.md) |
+| 失敗と改善の過程を読む | [失敗から学んだ事例](docs/lessons-learned.md) |
 | 最初の実習を進める | [初心者向け学習ガイド](docs/beginner-learning-guide.md)・[学習計画](docs/learning-path.md) |
-| 設計・手順書・教材を探す | [詳細一覧](docs/project-reference.md)・[作業を閉じる運用キット](docs/work-completion/README.md) |
+| 設計・手順書・教材を探す | [詳細一覧](docs/project-reference.md)・[構築キーワード集](docs/server-building-keywords.md)・[作業を閉じる運用キット](docs/work-completion/README.md) |
 
 ## 学習に使う方へ
 
-[初心者向け学習ガイド](docs/beginner-learning-guide.md)に沿い、専用 Linux 検証環境の `app` / `nginx` の2サービスから始めます。構成を見る → 起動する → 応答・認証を確認する → 計画停止・再開する → 結果を説明する、の順に進めます。
+[初心者向け学習ガイド](docs/beginner-learning-guide.md)に沿い、専用 Linux 検証環境の `app` / `nginx` の2サービスから始めます。見る → 動かす → 確認する → 壊して直す（計画停止・再開）→ 説明する、の順に進めます。
 
 前提診断は **Linux の Bash** で実行します。環境の準備、起動・終了手順、[記録用紙](docs/evidence/templates/beginner-practice-record.md)はガイドを参照してください。
 
