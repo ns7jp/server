@@ -62,6 +62,12 @@ services:
 
 [証跡台帳](README.md) / [初心者向け学習ガイド](../beginner-learning-guide.md)
 
+## 原資料の確認と次の再実施
+
+当時保存した `.artifacts/notify-practice/events.json` が手元に残っている場合は、内容とこの表の通知を照合し、公開用のコピーで秘密値・識別情報を確認してから記録へ結び付けます。保存済みファイルの取得・照合・公開は **NOT RUN** です。要約から受信履歴を作り直しません。
+
+本人の判断による再実施は、[実習記録](templates/beginner-practice-record.md)の「環境・事前の予想・実結果・原資料」を別の日付で残します。まず通信経路、次に確認する対象、復旧と判断する出力を本人が書き、必要な手順書を参照して進めます。新しい実行結果で、この回の未採録部分を上書きしません。
+
 ## 後片付けの確認
 
 本人が同じ実習VMで、3ファイル指定の `docker compose rm --stop --force webhook-sink` を実行し、画面で受信器のStopped・Removedを確認しました。続いて通常の `docker compose up -d --no-deps alertmanager` を実行し、Alertmanagerを再作成しました。
