@@ -20,6 +20,12 @@
 
 > アプリの入り口であるnginxが通っているかを確認する
 
+続いて、Nginx 経由では接続に失敗し、アプリ内部の `/healthz` は HTTP 200 を返したことを示しました。どこまで正常と言えるか、次に何を確かめるかを尋ねたときの本人の回答です。
+
+> アプリ自体は正常なので、Nginxへの経由を確かめる
+
+**Codex による補足**　この HTTP 200 で確認できたのは、アプリがコンテナ内部からの `/healthz` に応答したことです。同じ時点で Nginx 経由の `/healthz` には接続できず、Compose の状態表示は `nginx exited` でした。
+
 ## 実行環境
 
 - [測定に使った server の版](https://github.com/ns7jp/server/tree/4e986f2304b71f7d9959cae697f742d530a0da73)。Docker Engine 29.9.2、Compose v2.40.3、Nginx 1.27.5、Python 3.14.10。
