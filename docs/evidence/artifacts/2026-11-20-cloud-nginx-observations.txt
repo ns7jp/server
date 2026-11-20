@@ -1,0 +1,21 @@
+2026-11-20T12:17:31+09:00 operator=Codex; target=Cloud temporary compose project; source_commit=4e986f2304b71f7d9959cae697f742d530a0da73
+2026-11-20T12:17:31+09:00 client_endpoint=http://127.0.0.1:41561
+2026-11-20T12:17:31+09:00 Docker Engine 29.9.2, Docker Compose version v2.40.3
+2026-11-20T12:17:32+09:00 nginx version: nginx/1.27.5, Python 3.14.10
+2026-11-20T12:17:32+09:00 baseline authenticated GET / through nginx: http_code=200 curl_exit=0
+2026-11-20T12:17:32+09:00 baseline GET /healthz through nginx: http_code=200 curl_exit=0
+2026-11-20T12:17:32+09:00 baseline app running healthy
+2026-11-20T12:17:32+09:00 baseline nginx running
+2026-11-20T12:17:33+09:00 baseline app internal GET /healthz: 200 {"status":"ok"}
+2026-11-20T12:17:33+09:00 planned action: stopped temporary nginx
+2026-11-20T12:17:33+09:00 during authenticated GET / through nginx: http_code=000 curl_exit=7
+2026-11-20T12:17:33+09:00 during GET /healthz through nginx: http_code=000 curl_exit=7
+2026-11-20T12:17:34+09:00 during app running healthy
+2026-11-20T12:17:34+09:00 during nginx exited
+2026-11-20T12:17:34+09:00 during app internal GET /healthz: 200 {"status":"ok"}
+2026-11-20T12:17:35+09:00 recovery action: started temporary nginx
+2026-11-20T12:17:35+09:00 after-start authenticated GET / through nginx: http_code=200 curl_exit=0
+2026-11-20T12:17:35+09:00 after-start GET /healthz through nginx: http_code=200 curl_exit=0
+2026-11-20T12:17:35+09:00 after-start app running healthy
+2026-11-20T12:17:35+09:00 after-start nginx running
+2026-11-20T12:17:36+09:00 after-start app internal GET /healthz: 200 {"status":"ok"}
