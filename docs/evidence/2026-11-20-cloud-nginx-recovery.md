@@ -1,0 +1,21 @@
+# Nginx の計画停止中に、Web の入口とアプリの応答を比べる
+
+2026年11月20日、Codex がクラウドの専用 Docker Compose 環境で `nginx` と `app` を起動し、一度だけ Nginx を停止・再開しました。確認方法の選択と端末操作は Codex が行いました。本人が操作し、復旧と判断した理由を答えた回は[11月6日の VM 実習](2026-11-06-nginx-guided-recovery.md)です。
+
+## 何を比べたか
+
+利用者が開く画面の経路を確かめるため、ホスト上の curl から Nginx を経由して、一時アカウントでトップページ `/` にアクセスしました。同じ入口経由の `/healthz` と、アプリコンテナ内から直接呼んだ `/healthz` も確認しました。入口で失敗したとき、この二つの経路を比べると、アプリ自体がリクエストに応答できているかが分かります。
+
+| 段階（日本時間） | Nginx 経由のトップページ | Nginx 経由の /healthz | アプリ内部の /healthz | Compose に表示された状態 |
+| --- | --- | --- | --- | --- |
+| 正常時 12:17:32〜33 | HTTP 200、curl 終了0 | HTTP 200、curl 終了0 | 200、`{"status":"ok"}` | app は running / healthy、nginx は running |
+| Nginx 停止中 12:17:33〜34 | 応答なし、curl 終了7 | 応答なし、curl 終了7 | 200、`{"status":"ok"}` | app は running / healthy、nginx は exited |
+| Nginx 再開後 12:17:35〜36 | HTTP 200、curl 終了0 | HTTP 200、curl 終了0 | 200、`{"status":"ok"}` | app は running / healthy、nginx は running |
+
+停止中に curl が表示した `000` は、HTTP 応答を受け取れなかったことを示します。アプリ内部の応答は3段階とも同じでした。復旧の根拠は、再開後に**停止前と同じ入口・同じアカウントでトップページが再び HTTP 200 を返したこと**です。観測した範囲は同じホストからの HTTP 応答までです。[時刻付きの測定出力](artifacts/2026-11-20-cloud-nginx-observations.txt)
+
+## 実行環境
+
+- [測定に使った server の版](https://github.com/ns7jp/server/tree/4e986f2304b71f7d9959cae697f742d530a0da73)。Docker Engine 29.9.2、Compose v2.40.3、Nginx 1.27.5、Python 3.14.10。
+- 監視サービスは起動せず、試験用のポートを `127.0.0.1` に割り当てました。準備時には一時コピーの権限でアプリが起動できず、コピーの権限を直し、正常応答を確認してから表の測定を開始しました。
+- 試験後に専用コンテナ、ネットワーク、一時認証情報を撤去しました。
